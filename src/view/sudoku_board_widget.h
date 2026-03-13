@@ -19,9 +19,8 @@
 #include "../model/game_state.h"
 #include "../view_model/game_view_model.h"
 
+#include <cstddef>
 #include <memory>
-
-#include <stddef.h>
 
 #include <QWidget>
 #include <qcolor.h>

@@ -23,6 +23,7 @@
 #include "i_puzzle_rater.h"
 #include "solution_counter.h"
 
+#include <cstddef>
 #include <expected>
 #include <memory>
 #include <optional>
@@ -30,8 +31,6 @@
 #include <ranges>
 #include <utility>
 #include <vector>
-
-#include <stddef.h>
 
 namespace sudoku::core {
 

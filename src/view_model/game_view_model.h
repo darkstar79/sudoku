@@ -29,6 +29,7 @@
 #include "core/solving_technique.h"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <memory>
@@ -37,8 +38,6 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-
-#include <stddef.h>
 
 #include <fmt/base.h>
 #include <fmt/format.h>

@@ -16,14 +16,13 @@
 
 #pragma once
 
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
-
-#include <stddef.h>
 
 namespace sudoku::core {
 

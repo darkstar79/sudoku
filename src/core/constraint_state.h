@@ -20,13 +20,12 @@
 #include "core/constants.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <ranges>
 #include <utility>
 #include <vector>
-
-#include <stddef.h>
 
 namespace sudoku::core {
 

@@ -21,6 +21,7 @@
 #include "core/i_statistics_manager.h"
 
 #include <array>
+#include <cstdint>
 #include <ctime>
 #include <exception>
 #include <fstream>
@@ -28,7 +29,6 @@
 #include <string_view>
 
 #include <limits.h>
-#include <stdint.h>
 
 #include <fmt/base.h>
 #include <fmt/format.h>

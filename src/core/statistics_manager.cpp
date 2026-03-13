@@ -25,12 +25,11 @@
 #include <algorithm>
 #include <array>
 #include <compare>
+#include <cstddef>
 #include <exception>
 #include <ratio>
 #include <utility>
 #include <vector>
-
-#include <stddef.h>
 
 #include <fmt/base.h>
 #include <fmt/format.h>

@@ -18,9 +18,8 @@
 
 #include "i_game_validator.h"
 
+#include <cstddef>
 #include <vector>
-
-#include <stddef.h>
 
 namespace sudoku::core {
 

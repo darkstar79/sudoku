@@ -19,7 +19,7 @@
 #include "core/board_utils.h"
 #include "core/constants.h"
 
-#include <stddef.h>
+#include <cstddef>
 
 namespace sudoku::core {
 

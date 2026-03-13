@@ -21,13 +21,12 @@
 #include "i_time_provider.h"
 
 #include <chrono>
+#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <unordered_map>
-
-#include <stdint.h>
 
 namespace sudoku::core {
 

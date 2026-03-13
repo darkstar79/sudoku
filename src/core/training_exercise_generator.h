@@ -23,14 +23,13 @@
 #include "i_sudoku_solver.h"
 #include "i_training_exercise_generator.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <format>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
-
-#include <stddef.h>
-#include <stdint.h>
 
 namespace sudoku::core {
 

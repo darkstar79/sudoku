@@ -64,10 +64,9 @@
 #include "strategies/xy_wing_strategy.h"
 #include "strategies/xyz_wing_strategy.h"
 
+#include <cstddef>
 #include <optional>
 #include <utility>
-
-#include <stddef.h>
 
 #include <spdlog/spdlog.h>
 

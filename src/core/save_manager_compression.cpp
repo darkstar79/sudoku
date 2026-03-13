@@ -18,12 +18,11 @@
 #include "save_manager.h"
 
 #include <chrono>
+#include <cstdint>
 #include <exception>
 #include <expected>
 #include <filesystem>
 #include <vector>
-
-#include <stdint.h>
 
 #include <fmt/base.h>
 #include <fmt/format.h>

@@ -22,12 +22,11 @@
 #include "../core/observable.h"
 
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <vector>
-
-#include <stddef.h>
-#include <stdint.h>
 
 namespace sudoku::model {
 

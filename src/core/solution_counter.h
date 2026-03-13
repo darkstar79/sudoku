@@ -21,11 +21,10 @@
 
 #include <array>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <vector>
-
-#include <stddef.h>
 
 namespace sudoku::core {
 

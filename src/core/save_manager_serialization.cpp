@@ -23,6 +23,8 @@
 #include "save_manager.h"
 
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <expected>
 #include <filesystem>
@@ -32,9 +34,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <stddef.h>
-#include <stdint.h>
 
 #include <fmt/base.h>
 #include <fmt/format.h>

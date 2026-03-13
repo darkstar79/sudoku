@@ -38,12 +38,11 @@
 #include "core/cpu_features.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <ranges>
 #include <utility>
 #include <vector>
-
-#include <stddef.h>
 
 // Note: <immintrin.h> is intentionally NOT included here.
 // The header API uses only uint16_t/int types (no __m256i/__m512i).

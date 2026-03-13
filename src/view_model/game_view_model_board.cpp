@@ -23,13 +23,12 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <expected>
 #include <format>
 #include <memory>
 #include <optional>
 #include <vector>
-
-#include <stddef.h>
 
 #include <fmt/base.h>
 #include <fmt/format.h>

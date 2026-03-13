@@ -242,6 +242,7 @@ jobs:
         run: |
           PMD_VERSION="7.21.0"
           curl -sL "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-dist-${PMD_VERSION}-bin.zip" -o /tmp/pmd.zip
+          mkdir -p "$HOME/.local/share/pmd"
           unzip -q /tmp/pmd.zip -d "$HOME/.local/share/pmd"
           rm /tmp/pmd.zip
 

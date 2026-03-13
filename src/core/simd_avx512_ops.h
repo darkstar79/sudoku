@@ -33,9 +33,8 @@
 #include "core/board.h"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
-
-#include <stddef.h>
 
 namespace sudoku::core {
 

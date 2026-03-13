@@ -23,9 +23,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <utility>
-
-#include <stddef.h>
 
 namespace sudoku::core {
 
