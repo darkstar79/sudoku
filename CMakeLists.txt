@@ -226,10 +226,60 @@ endif()
 #     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 # )
 
-# Install configuration for distribution
+# ── Install: exe
 install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
+    RUNTIME DESTINATION "."
 )
+
+# ── Install: locales
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/locales"
+    DESTINATION "."
+)
+
+# ── Install: Qt runtime via windeployqt (Windows only)
+# QT6_DIR is set as an environment variable by the build scripts; read it with $ENV{}
+if(WIN32 AND NOT "$ENV{QT6_DIR}" STREQUAL "")
+    set(_qt6_dir "$ENV{QT6_DIR}")
+    file(TO_CMAKE_PATH "${_qt6_dir}" _qt6_dir)
+    install(CODE "
+        message(STATUS \"Running windeployqt on staged install...\")
+        execute_process(
+            COMMAND \"${_qt6_dir}/bin/windeployqt.exe\"
+                    --release --no-translations
+                    \"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.exe\"
+            RESULT_VARIABLE _wdqt_result
+        )
+        if(NOT _wdqt_result EQUAL 0)
+            message(FATAL_ERROR \"windeployqt failed: \${_wdqt_result}\")
+        endif()
+    ")
+endif()
+
+# ── CPack configuration
+set(CPACK_PACKAGE_NAME                "Sudoku")
+set(CPACK_PACKAGE_VENDOR              "sudoku-cpp")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Sudoku puzzle game")
+set(CPACK_PACKAGE_VERSION             "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY   "Sudoku")
+set(CPACK_RESOURCE_FILE_LICENSE       "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+
+# NSIS-specific settings
+set(CPACK_NSIS_DISPLAY_NAME           "Sudoku")
+set(CPACK_NSIS_PACKAGE_NAME           "Sudoku ${PROJECT_VERSION}")
+set(CPACK_NSIS_INSTALL_ROOT           "$LOCALAPPDATA")
+set(CPACK_NSIS_EXECUTABLES_DIRECTORY  ".")
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+set(CPACK_NSIS_CREATE_ICONS_EXTRA
+    "CreateShortcut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk' '$INSTDIR\\\\${PROJECT_NAME}.exe'")
+set(CPACK_NSIS_DELETE_ICONS_EXTRA
+    "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk'")
+set(CPACK_NSIS_MUI_FINISHPAGE_RUN     "${PROJECT_NAME}.exe")
+
+# Output filename: Sudoku-1.0.0-win64.exe
+set(CPACK_SYSTEM_NAME                 "win64")
+set(CPACK_PACKAGE_FILE_NAME           "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
+
+include(CPack)
 
 # Static analysis targets
 if(CLANG_TIDY_EXE)

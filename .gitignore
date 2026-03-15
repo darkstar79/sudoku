@@ -115,3 +115,11 @@ callgrind.out.*
 
 # Benchmark results and profiling data
 benchmarks/
+
+# Windows build/installer logs
+scripts/build_log.txt
+scripts/build_log_debug.txt
+scripts/installer_log.txt
+
+# Windows installer output
+Sudoku-*-win64.exe

@@ -105,6 +105,16 @@ The build scripts auto-detect the Visual Studio installation via `vswhere`. The 
 
 See [CONAN_PROFILES.md](docs/CONAN_PROFILES.md) for MSVC profile details and manual profile configuration.
 
+**Creating a Windows installer:**
+
+Requires [NSIS](https://nsis.sourceforge.io/Download) (`winget install NSIS.NSIS`).
+
+```bat
+scripts\create_installer.bat
+```
+
+Produces `Sudoku-1.0.0-win64.exe` — a standard installer with Start Menu shortcut and Add/Remove Programs entry.
+
 ---
 
 ### Quick Start (Linux/macOS)
