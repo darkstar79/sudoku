@@ -45,7 +45,7 @@ class SudokuConan(ConanFile):
             self.requires("catch2/3.4.0")
     
     def build_requirements(self):
-        self.tool_requires("cmake/3.28.1")
+        self.tool_requires("cmake/3.31.11")
     
     def layout(self):
         # Simplified layout: build/Debug or build/Release (no nesting)
