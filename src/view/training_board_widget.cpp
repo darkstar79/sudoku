@@ -252,8 +252,6 @@ void TrainingBoardWidget::paintCell(QPainter& painter, size_t row, size_t col, c
         bg = playerColorBackground(cell.player_color);
     } else if (cell.player_selected && cell.highlight_role != core::CellRole::Pattern) {
         bg = cellRoleColor(cell.highlight_role);
-    } else if (cell.highlight_role != core::CellRole::Pattern && cell.player_selected) {
-        bg = cellRoleColor(cell.highlight_role);
     }
 
     if (is_selected) {

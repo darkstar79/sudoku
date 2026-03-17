@@ -47,79 +47,75 @@ struct TechniquePrerequisite {
     switch (technique) {
         // Subset chains
         case NakedTriple:
-            return {{NakedPair}};
+            return {{.prerequisite = NakedPair}};
         case NakedQuad:
-            return {{NakedTriple}};
+            return {{.prerequisite = NakedTriple}};
         case HiddenTriple:
-            return {{HiddenPair}};
+            return {{.prerequisite = HiddenPair}};
         case HiddenQuad:
-            return {{HiddenTriple}};
+            return {{.prerequisite = HiddenTriple}};
 
         // Intersections build on singles
         case PointingPair:
-            return {{HiddenSingle}};
         case BoxLineReduction:
-            return {{HiddenSingle}};
+            return {{.prerequisite = HiddenSingle}};
 
         // Fish chain
         case Swordfish:
-            return {{XWing}};
+            return {{.prerequisite = XWing}};
         case Jellyfish:
-            return {{Swordfish}};
+            return {{.prerequisite = Swordfish}};
         case FinnedXWing:
-            return {{XWing}};
+            return {{.prerequisite = XWing}};
         case FinnedSwordfish:
-            return {{Swordfish}, {FinnedXWing}};
+            return {{.prerequisite = Swordfish}, {.prerequisite = FinnedXWing}};
         case FinnedJellyfish:
-            return {{Jellyfish}, {FinnedSwordfish}};
+            return {{.prerequisite = Jellyfish}, {.prerequisite = FinnedSwordfish}};
         case FrankenFish:
-            return {{XWing}};
+            return {{.prerequisite = XWing}};
 
         // Wing chain
         case XYZWing:
-            return {{XYWing}};
+            return {{.prerequisite = XYWing}};
         case WXYZWing:
-            return {{XYZWing}};
+            return {{.prerequisite = XYZWing}};
         case VWXYZWing:
-            return {{WXYZWing}};
+            return {{.prerequisite = WXYZWing}};
         case WWing:
-            return {{XYWing}};
+            return {{.prerequisite = XYWing}};
 
         // Coloring chain
         case MultiColoring:
-            return {{SimpleColoring}};
+            return {{.prerequisite = SimpleColoring}};
         case ThreeDMedusa:
-            return {{MultiColoring}};
+            return {{.prerequisite = MultiColoring}};
 
         // Chain techniques
         case XYChain:
-            return {{XYWing}};
+            return {{.prerequisite = XYWing}};
         case XCycles:
-            return {{SimpleColoring}};
+            return {{.prerequisite = SimpleColoring}};
         case GroupedXCycles:
-            return {{XCycles}};
+            return {{.prerequisite = XCycles}};
         case ForcingChain:
-            return {{XYChain}};
+            return {{.prerequisite = XYChain}};
         case NiceLoop:
-            return {{ForcingChain}};
+            return {{.prerequisite = ForcingChain}};
 
         // Unique rectangles
         case HiddenUniqueRectangle:
-            return {{UniqueRectangle}};
         case AvoidableRectangle:
-            return {{UniqueRectangle}};
+            return {{.prerequisite = UniqueRectangle}};
 
         // ALS family
         case ALSXYWing:
-            return {{ALSxZ}};
         case DeathBlossom:
-            return {{ALSxZ}};
         case SueDeCoq:
-            return {{ALSxZ}};
+            return {{.prerequisite = ALSxZ}};
 
         // Remote Pairs builds on naked pairs
         case RemotePairs:
-            return {{NakedPair}};
+            return {{.prerequisite = NakedPair}};
 
         default:
             return {};

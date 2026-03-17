@@ -40,55 +40,70 @@ public:
     buildConjugatePairGraph(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int value) {
         std::array<std::vector<size_t>, TOTAL_CELLS> adj{};
 
-        auto addEdge = [&adj](size_t a, size_t b) {
-            adj[a].push_back(b);
-            adj[b].push_back(a);
+        auto hasCandidate = [&board, &candidates, value](size_t r, size_t c) {
+            return board[r][c] == EMPTY_CELL && candidates.isAllowed(r, c, value);
         };
 
-        // Rows
+        scanRows(adj, hasCandidate);
+        scanColumns(adj, hasCandidate);
+        scanBoxes(adj, hasCandidate);
+
+        return adj;
+    }
+
+private:
+    /// Link two cells as conjugate pair neighbours
+    static void linkIfConjugate(std::array<std::vector<size_t>, TOTAL_CELLS>& adj, const std::vector<size_t>& cells) {
+        if (cells.size() == 2) {
+            adj[cells[0]].push_back(cells[1]);
+            adj[cells[1]].push_back(cells[0]);
+        }
+    }
+
+    /// Scan all rows for conjugate pairs of a candidate value
+    template <typename Pred>
+    static void scanRows(std::array<std::vector<size_t>, TOTAL_CELLS>& adj, const Pred& hasCandidate) {
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            std::vector<size_t> cols;
+            std::vector<size_t> cells;
             for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (board[row][col] == EMPTY_CELL && candidates.isAllowed(row, col, value)) {
-                    cols.push_back(col);
+                if (hasCandidate(row, col)) {
+                    cells.push_back(cellIndex(row, col));
                 }
             }
-            if (cols.size() == 2) {
-                addEdge(cellIndex(row, cols[0]), cellIndex(row, cols[1]));
-            }
+            linkIfConjugate(adj, cells);
         }
+    }
 
-        // Columns
+    /// Scan all columns for conjugate pairs of a candidate value
+    template <typename Pred>
+    static void scanColumns(std::array<std::vector<size_t>, TOTAL_CELLS>& adj, const Pred& hasCandidate) {
         for (size_t col = 0; col < BOARD_SIZE; ++col) {
-            std::vector<size_t> rows;
+            std::vector<size_t> cells;
             for (size_t row = 0; row < BOARD_SIZE; ++row) {
-                if (board[row][col] == EMPTY_CELL && candidates.isAllowed(row, col, value)) {
-                    rows.push_back(row);
+                if (hasCandidate(row, col)) {
+                    cells.push_back(cellIndex(row, col));
                 }
             }
-            if (rows.size() == 2) {
-                addEdge(cellIndex(rows[0], col), cellIndex(rows[1], col));
-            }
+            linkIfConjugate(adj, cells);
         }
+    }
 
-        // Boxes
+    /// Scan all boxes for conjugate pairs of a candidate value
+    template <typename Pred>
+    static void scanBoxes(std::array<std::vector<size_t>, TOTAL_CELLS>& adj, const Pred& hasCandidate) {
         for (size_t box = 0; box < BOARD_SIZE; ++box) {
             size_t start_row = (box / BOX_SIZE) * BOX_SIZE;
             size_t start_col = (box % BOX_SIZE) * BOX_SIZE;
             std::vector<size_t> cells;
             for (size_t r = start_row; r < start_row + BOX_SIZE; ++r) {
                 for (size_t c = start_col; c < start_col + BOX_SIZE; ++c) {
-                    if (board[r][c] == EMPTY_CELL && candidates.isAllowed(r, c, value)) {
+                    if (hasCandidate(r, c)) {
                         cells.push_back(cellIndex(r, c));
                     }
                 }
             }
-            if (cells.size() == 2) {
-                addEdge(cells[0], cells[1]);
-            }
+            linkIfConjugate(adj, cells);
         }
-
-        return adj;
     }
 };
 

@@ -21,6 +21,7 @@ Checks: '
   -readability-avoid-const-params-in-decls,
   -readability-magic-numbers,
   -readability-named-parameter,
+  -cppcoreguidelines-owning-memory,
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -cppcoreguidelines-pro-type-vararg,
   -readability-implicit-bool-conversion,

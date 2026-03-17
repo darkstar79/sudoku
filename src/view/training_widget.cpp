@@ -130,6 +130,7 @@ void TrainingWidget::refreshCurrentPage() {
     animatePageTransition(target);
 }
 
+// NOLINTNEXTLINE(readability-function-size) — UI builder: constructs grouped technique buttons with signal wiring
 void TrainingWidget::buildTechniqueSelectionPage() {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);
@@ -168,8 +169,8 @@ void TrainingWidget::buildTechniqueSelectionPage() {
 
     for (const auto& group : groups) {
         auto* group_box = new QGroupBox(group.name);
-        auto* group_layout = new QVBoxLayout(
-            group_box);  // NOLINT(cppcoreguidelines-owning-memory,clang-analyzer-cplusplus.NewDeleteLeaks) — Qt parent takes ownership
+        // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) — Qt parent (group_box) takes ownership
+        auto* group_layout = new QVBoxLayout(group_box);
 
         for (auto technique : group.techniques) {
             auto name = core::getTechniqueName(technique);
@@ -188,8 +189,8 @@ void TrainingWidget::buildTechniqueSelectionPage() {
             group_layout->addWidget(btn);
         }
 
-        layout->addWidget(
-            group_box);  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks) — group_layout owned by group_box
+        // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) — group_layout owned by group_box via Qt parent
+        layout->addWidget(group_box);
     }
 
     auto* back_btn = new QPushButton("Back to Game");
@@ -226,9 +227,13 @@ void TrainingWidget::buildTechniqueSelectionPage() {
 
             bool prereqs_met = core::arePrerequisitesMet(technique, *stats_mgr);
             btn->setEnabled(prereqs_met);
-            btn->setToolTip(!prereqs_met     ? "Prerequisites not met"
-                            : is_recommended ? "Recommended next technique"
-                                             : "");
+            if (!prereqs_met) {
+                btn->setToolTip("Prerequisites not met");
+            } else if (is_recommended) {
+                btn->setToolTip("Recommended next technique");
+            } else {
+                btn->setToolTip("");
+            }
         }
     });
 
@@ -328,6 +333,7 @@ void TrainingWidget::buildTheoryPage() {
     pages_->addWidget(page);
 }
 
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) — UI builder: widget tree + signal wiring
 void TrainingWidget::buildExercisePage() {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);
@@ -393,7 +399,7 @@ void TrainingWidget::buildExercisePage() {
     layout->addLayout(btn_layout);
 
     // Keyboard shortcuts for undo/redo
-    // NOLINTBEGIN(cppcoreguidelines-owning-memory) — Qt parent takes ownership
+    // Keyboard shortcuts — Qt parent (this) takes ownership
     auto* undo_shortcut = new QShortcut(QKeySequence::Undo, this);
     connect(undo_shortcut, &QShortcut::activated, this, [this]() {
         if (training_vm_) {
@@ -410,7 +416,6 @@ void TrainingWidget::buildExercisePage() {
             redo_btn_->setEnabled(training_vm_->canRedo());
         }
     });
-    // NOLINTEND(cppcoreguidelines-owning-memory)
 
     // --- Connections ---
 

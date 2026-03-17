@@ -147,6 +147,7 @@ run_clang_tidy_check() {
     local tidy_args=(
         "-p=$BUILD_DIR"
         "--config-file=$TIDY_CONFIG"
+        "--warnings-as-errors=*"
     )
 
     # On LLVM < 19, Clang may compile with a lower C++ standard than what

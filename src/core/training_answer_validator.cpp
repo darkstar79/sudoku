@@ -78,6 +78,66 @@ inline constexpr int kMaxFindAllIterations = 100;
     return result;
 }
 
+/// Find a matching placement step from all strategy-generated steps
+[[nodiscard]] std::optional<SolveStep> findMatchingPlacement(const std::vector<std::vector<int>>& board,
+                                                             const CandidateGrid& candidates,
+                                                             SolvingTechnique technique, Position position, int value,
+                                                             SolveStepType required_type = SolveStepType::Placement) {
+    auto all_steps = TrainingAnswerValidator::findAllSteps(board, candidates, technique);
+    for (auto& step : all_steps) {
+        if (step.type == required_type && step.position == position && step.value == value) {
+            return std::move(step);
+        }
+    }
+    return std::nullopt;
+}
+
+/// Check if value appears as candidate in exactly one empty cell in a unit
+[[nodiscard]] int countCandidateInRow(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
+                                      size_t row, int value) {
+    int count = 0;
+    for (size_t c = 0; c < BOARD_SIZE; ++c) {
+        if (board[row][c] == 0 && candidates.isAllowed(row, c, value)) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] int countCandidateInCol(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
+                                      size_t col, int value) {
+    int count = 0;
+    for (size_t r = 0; r < BOARD_SIZE; ++r) {
+        if (board[r][col] == 0 && candidates.isAllowed(r, col, value)) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] int countCandidateInBox(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
+                                      size_t row, size_t col, int value) {
+    size_t box_row = (row / BOX_SIZE) * BOX_SIZE;
+    size_t box_col = (col / BOX_SIZE) * BOX_SIZE;
+    int count = 0;
+    for (size_t br = 0; br < BOX_SIZE; ++br) {
+        for (size_t bc = 0; bc < BOX_SIZE; ++bc) {
+            if (board[box_row + br][box_col + bc] == 0 && candidates.isAllowed(box_row + br, box_col + bc, value)) {
+                ++count;
+            }
+        }
+    }
+    return count;
+}
+
+/// Check if value is a hidden single at the given position (unique candidate in any unit)
+[[nodiscard]] bool isHiddenSingle(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
+                                  Position position, int value) {
+    return countCandidateInRow(board, candidates, position.row, value) == 1 ||
+           countCandidateInCol(board, candidates, position.col, value) == 1 ||
+           countCandidateInBox(board, candidates, position.row, position.col, value) == 1;
+}
+
 }  // namespace
 
 std::optional<SolveStep> TrainingAnswerValidator::validatePlacement(const std::vector<std::vector<int>>& board,
@@ -95,87 +155,22 @@ std::optional<SolveStep> TrainingAnswerValidator::validatePlacement(const std::v
 
     // For NakedSingle: cell must have exactly one candidate
     if (technique == SolvingTechnique::NakedSingle) {
-        if (candidates.countPossibleValues(position.row, position.col) == 1) {
-            // Run the strategy to get the explanation
-            auto strategy = createStrategy(technique);
-            // Find ALL naked singles and check if this one matches
-            auto all_steps = findAllSteps(board, candidates, technique);
-            for (auto& step : all_steps) {
-                if (step.position == position && step.value == value) {
-                    return std::move(step);
-                }
-            }
-            // Shouldn't happen if our validation above is correct, but be safe
+        if (candidates.countPossibleValues(position.row, position.col) != 1) {
             return std::nullopt;
         }
-        return std::nullopt;
+        return findMatchingPlacement(board, candidates, technique, position, value);
     }
 
     // For HiddenSingle: value must appear as candidate in exactly one cell in a row, col, or box
     if (technique == SolvingTechnique::HiddenSingle) {
-        bool is_hidden_single = false;
-
-        // Check row
-        int row_count = 0;
-        for (size_t c = 0; c < BOARD_SIZE; ++c) {
-            if (board[position.row][c] == 0 && candidates.isAllowed(position.row, c, value)) {
-                row_count++;
-            }
-        }
-        if (row_count == 1) {
-            is_hidden_single = true;
-        }
-
-        // Check column
-        int col_count = 0;
-        for (size_t r = 0; r < BOARD_SIZE; ++r) {
-            if (board[r][position.col] == 0 && candidates.isAllowed(r, position.col, value)) {
-                col_count++;
-            }
-        }
-        if (col_count == 1) {
-            is_hidden_single = true;
-        }
-
-        // Check box
-        size_t box_row = (position.row / BOX_SIZE) * BOX_SIZE;
-        size_t box_col = (position.col / BOX_SIZE) * BOX_SIZE;
-        int box_count = 0;
-        for (size_t br = 0; br < BOX_SIZE; ++br) {
-            for (size_t bc = 0; bc < BOX_SIZE; ++bc) {
-                size_t r = box_row + br;
-                size_t c = box_col + bc;
-                if (board[r][c] == 0 && candidates.isAllowed(r, c, value)) {
-                    box_count++;
-                }
-            }
-        }
-        if (box_count == 1) {
-            is_hidden_single = true;
-        }
-
-        if (is_hidden_single) {
-            // Find the matching step for the explanation
-            auto all_steps = findAllSteps(board, candidates, technique);
-            for (auto& step : all_steps) {
-                if (step.position == position && step.value == value) {
-                    return std::move(step);
-                }
-            }
-            // Valid hidden single but strategy didn't produce it (shouldn't happen)
+        if (!isHiddenSingle(board, candidates, position, value)) {
             return std::nullopt;
         }
-        return std::nullopt;
+        return findMatchingPlacement(board, candidates, technique, position, value);
     }
 
     // For other placement techniques (e.g., ForcingChain placement): use findAllSteps
-    auto all_steps = findAllSteps(board, candidates, technique);
-    for (auto& step : all_steps) {
-        if (step.type == SolveStepType::Placement && step.position == position && step.value == value) {
-            return std::move(step);
-        }
-    }
-    return std::nullopt;
+    return findMatchingPlacement(board, candidates, technique, position, value);
 }
 
 std::optional<SolveStep>

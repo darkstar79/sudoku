@@ -775,6 +775,7 @@ const char* MainWindow::difficultyString(core::Difficulty difficulty) const {
     }
 }
 
+// NOLINTNEXTLINE(readability-function-size) — UI builder: settings dialog with tabs and signal wiring
 void MainWindow::showSettingsDialog() {
     if (!settings_manager_) {
         return;

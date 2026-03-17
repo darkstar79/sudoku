@@ -105,7 +105,6 @@ enum class TechniqueCategory : uint8_t {
         case DeathBlossom:
             return TechniqueCategory::SetLogic;
         case BUG:
-            return TechniqueCategory::Special;
         case Backtracking:
             return TechniqueCategory::Special;
     }
@@ -154,7 +153,7 @@ inline void appendEliminationHighlights(TrainingHint& hint, const SolveStep& exp
 /// @param level Hint level (1-3)
 /// @param expected The expected solving step (contains positions, values, explanation data)
 /// @return TrainingHint with text and cells to highlight
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) — per-category hint dispatch with 3 levels each; inherent branching
+// NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — per-category hint dispatch with 3 levels each; inherent branching
 [[nodiscard]] inline TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveStep& expected) {
     auto category = getTechniqueCategory(technique);
     const auto& data = expected.explanation_data;

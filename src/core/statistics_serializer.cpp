@@ -21,14 +21,13 @@
 #include "core/i_statistics_manager.h"
 
 #include <array>
+#include <climits>
 #include <cstdint>
 #include <ctime>
 #include <exception>
 #include <fstream>
 #include <iomanip>
 #include <string_view>
-
-#include <limits.h>
 
 #include <fmt/base.h>
 #include <fmt/format.h>
