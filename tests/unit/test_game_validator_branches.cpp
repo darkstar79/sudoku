@@ -29,10 +29,9 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
 
     SECTION("validateMove on complete board returns GameComplete error") {
         // Create a complete board (all cells filled with valid values)
-        std::vector<std::vector<int>> solution = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         // Verify board is complete
         REQUIRE(validator.isComplete(solution));
@@ -53,7 +52,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
     }
 
     SECTION("validateMove with conflicting flags: is_note=true AND move_type=PlaceNumber") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         // Create move with conflicting flags
         Move move{.position = {.row = 0, .col = 0},
@@ -72,7 +71,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
     }
 
     SECTION("validateMove with is_note=false but move_type=AddNote") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         Move move{.position = {.row = 0, .col = 0},
                   .value = 5,
@@ -90,7 +89,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
     }
 
     SECTION("validateMove with move_type=RemoveNote") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         Move move{.position = {.row = 0, .col = 0},
                   .value = 5,
@@ -108,7 +107,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
     }
 
     SECTION("validateMove with move_type=RemoveNumber") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
 
         Move move{.position = {.row = 0, .col = 0},
@@ -127,7 +126,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
     }
 
     SECTION("Multiple simultaneous conflicts - row AND column") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][5] = 5;  // Row conflict
         board[5][0] = 5;  // Column conflict
 
@@ -147,7 +146,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
     }
 
     SECTION("Multiple simultaneous conflicts - row AND box") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][5] = 5;  // Row conflict
         board[1][1] = 5;  // Box conflict (same 3x3 box)
 
@@ -167,7 +166,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
     }
 
     SECTION("Multiple simultaneous conflicts - column AND box") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[5][0] = 5;  // Column conflict
         board[1][1] = 5;  // Box conflict
 
@@ -187,7 +186,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
     }
 
     SECTION("Multiple simultaneous conflicts - row AND column AND box") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][5] = 5;  // Row conflict
         board[5][0] = 5;  // Column conflict
         board[1][1] = 5;  // Box conflict
@@ -208,7 +207,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
     }
 
     SECTION("Box conflict only (no row/column conflict)") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[1][1] = 5;  // Same box as {0, 0}
 
         Move move{.position = {.row = 0, .col = 0},
@@ -230,7 +229,7 @@ TEST_CASE("GameValidator - getPossibleValues edge cases", "[game_validator][bran
     GameValidator validator;
 
     SECTION("getPossibleValues on filled cell returns empty vector") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;  // Cell already filled
 
         Position pos{.row = 0, .col = 0};
@@ -241,7 +240,7 @@ TEST_CASE("GameValidator - getPossibleValues edge cases", "[game_validator][bran
     }
 
     SECTION("getPossibleValues on invalid position returns empty vector") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         Position invalid_pos{.row = 9, .col = 0};  // Out of bounds
         auto possible = validator.getPossibleValues(board, invalid_pos);
@@ -251,7 +250,7 @@ TEST_CASE("GameValidator - getPossibleValues edge cases", "[game_validator][bran
     }
 
     SECTION("getPossibleValues on empty cell with all values possible") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         Position pos{.row = 0, .col = 0};
         auto possible = validator.getPossibleValues(board, pos);
@@ -264,7 +263,7 @@ TEST_CASE("GameValidator - getPossibleValues edge cases", "[game_validator][bran
     }
 
     SECTION("getPossibleValues on empty cell with some conflicts") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][1] = 1;  // Row conflict for value 1
         board[1][0] = 2;  // Column conflict for value 2
         board[1][1] = 3;  // Box conflict for value 3
@@ -281,7 +280,7 @@ TEST_CASE("GameValidator - getPossibleValues edge cases", "[game_validator][bran
     }
 
     SECTION("getPossibleValues on empty cell with no values possible") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         // Fill row 0 with values 1-8, leaving column 0 empty
         for (int i = 1; i < 9; ++i) {
@@ -345,21 +344,21 @@ TEST_CASE("GameValidator - Conflict detection edge cases", "[game_validator][bra
     GameValidator validator;
 
     SECTION("hasRowConflict - conflict at first column") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
 
         REQUIRE(validator.hasRowConflict(board, 0, 8, 5));
     }
 
     SECTION("hasRowConflict - conflict at last column") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][8] = 5;
 
         REQUIRE(validator.hasRowConflict(board, 0, 0, 5));
     }
 
     SECTION("hasRowConflict - no conflict with same cell") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
 
         // Line 119: check_col != col condition prevents self-conflict
@@ -367,21 +366,21 @@ TEST_CASE("GameValidator - Conflict detection edge cases", "[game_validator][bra
     }
 
     SECTION("hasColumnConflict - conflict at first row") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
 
         REQUIRE(validator.hasColumnConflict(board, 8, 0, 5));
     }
 
     SECTION("hasColumnConflict - conflict at last row") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[8][0] = 5;
 
         REQUIRE(validator.hasColumnConflict(board, 0, 0, 5));
     }
 
     SECTION("hasColumnConflict - no conflict with same cell") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
 
         // Line 129: check_row != row condition prevents self-conflict
@@ -389,7 +388,7 @@ TEST_CASE("GameValidator - Conflict detection edge cases", "[game_validator][bra
     }
 
     SECTION("hasBoxConflict - conflict at all 9 positions within box") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         // Test box {0,0} to {2,2}
         std::vector<Position> box_positions = {{.row = 0, .col = 0}, {.row = 0, .col = 1}, {.row = 0, .col = 2},
@@ -415,7 +414,7 @@ TEST_CASE("GameValidator - Conflict detection edge cases", "[game_validator][bra
     }
 
     SECTION("hasBoxConflict - all 9 boxes tested") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         // Test all 9 boxes
         for (size_t box_row = 0; box_row < 3; ++box_row) {
@@ -447,7 +446,7 @@ TEST_CASE("GameValidator - findConflicts comprehensive", "[game_validator][branc
     }
 
     SECTION("findConflicts on board with multiple conflicts") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
         board[0][1] = 5;  // Row conflict
         board[1][0] = 5;  // Column conflict
@@ -462,7 +461,7 @@ TEST_CASE("GameValidator - findConflicts comprehensive", "[game_validator][branc
     }
 
     SECTION("findConflicts ignores empty cells") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         // All cells empty (value = 0)
 
         auto conflicts = validator.findConflicts(board);
@@ -478,7 +477,7 @@ TEST_CASE("GameValidator - findConflicts comprehensive", "[game_validator][branc
     }
 
     SECTION("validateBoard returns false when conflicts exist") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
         board[0][1] = 5;  // Conflict
 
@@ -490,7 +489,7 @@ TEST_CASE("GameValidator - isComplete edge cases", "[game_validator][branches]")
     GameValidator validator;
 
     SECTION("isComplete on empty board") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         REQUIRE_FALSE(validator.isComplete(board));
     }
@@ -502,7 +501,7 @@ TEST_CASE("GameValidator - isComplete edge cases", "[game_validator][branches]")
     }
 
     SECTION("isComplete on full board with conflicts") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 5));
+        BoardData board = BoardData::filled(5);
 
         // Line 58: anyCell returns false (no empty cells)
         // Line 63: validateBoard returns false (conflicts exist)
@@ -511,10 +510,9 @@ TEST_CASE("GameValidator - isComplete edge cases", "[game_validator][branches]")
 
     SECTION("isComplete on valid solution") {
         // Use the same complete solution from earlier test
-        std::vector<std::vector<int>> solution = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         REQUIRE(validator.isComplete(solution));
     }

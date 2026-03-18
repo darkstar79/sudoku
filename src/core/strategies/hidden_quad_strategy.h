@@ -34,7 +34,7 @@ namespace sudoku::core {
 /// can be eliminated from those four cells.
 class HiddenQuadStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         for (auto region_type : {RegionType::Row, RegionType::Col, RegionType::Box}) {
             for (size_t region_idx = 0; region_idx < BOARD_SIZE; ++region_idx) {
@@ -60,7 +60,7 @@ public:
     }
 
 private:
-    [[nodiscard]] static std::optional<SolveStep> findHiddenQuadInRegion(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findHiddenQuadInRegion(const BoardData& board,
                                                                          const CandidateGrid& candidates,
                                                                          RegionType region_type, size_t region_idx) {
         auto empty_cells = getEmptyCellsInUnit(board, region_type, region_idx);

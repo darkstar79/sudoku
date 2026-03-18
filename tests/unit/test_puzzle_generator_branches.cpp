@@ -48,8 +48,7 @@ public:
         error_ = error;
     }
 
-    [[nodiscard]] std::expected<PuzzleRating, RatingError>
-    ratePuzzle(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] std::expected<PuzzleRating, RatingError> ratePuzzle(const BoardData& /*board*/) const override {
         call_count_++;
         if (return_error_) {
             return std::unexpected(error_);
@@ -78,7 +77,7 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution Branch Coverage", "[puzzle_genera
     PuzzleGenerator generator;
 
     SECTION("Board with unique solution returns true") {
-        std::vector<std::vector<int>> unique_puzzle = {
+        BoardData unique_puzzle = {
             {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
             {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
             {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
@@ -90,7 +89,7 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution Branch Coverage", "[puzzle_genera
 
     SECTION("Board with multiple solutions returns false") {
         // Underconstrained puzzle with multiple solutions
-        std::vector<std::vector<int>> multi_solution_puzzle(9, std::vector<int>(9, 0));
+        BoardData multi_solution_puzzle;
         multi_solution_puzzle[0][0] = 1;
         multi_solution_puzzle[1][1] = 2;
         multi_solution_puzzle[2][2] = 3;
@@ -101,7 +100,7 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution Branch Coverage", "[puzzle_genera
     }
 
     SECTION("Empty board has many solutions (not unique)") {
-        std::vector<std::vector<int>> empty_board(9, std::vector<int>(9, 0));
+        BoardData empty_board;
 
         // Tests findEmptyPosition() on empty board (many options)
         // Tests countSolutionsHelper() early termination branch
@@ -109,7 +108,7 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution Branch Coverage", "[puzzle_genera
     }
 
     SECTION("Complete board has unique solution (itself)") {
-        std::vector<std::vector<int>> complete_board = {
+        BoardData complete_board = {
             {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
             {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
             {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
@@ -121,7 +120,7 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution Branch Coverage", "[puzzle_genera
 
     SECTION("Overconstrained board has no unique solution") {
         // Create an overconstrained board with multiple conflicts
-        std::vector<std::vector<int>> overconstrained(9, std::vector<int>(9, 0));
+        BoardData overconstrained;
         // Fill first row with 1-9
         for (int col = 0; col < 9; ++col) {
             overconstrained[0][col] = col + 1;
@@ -150,7 +149,7 @@ TEST_CASE("PuzzleGenerator - solvePuzzle Branch Coverage", "[puzzle_generator][b
     PuzzleGenerator generator;
 
     SECTION("Solve puzzle successfully") {
-        std::vector<std::vector<int>> solvable_puzzle = {
+        BoardData solvable_puzzle = {
             {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
             {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
             {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
@@ -170,7 +169,7 @@ TEST_CASE("PuzzleGenerator - solvePuzzle Branch Coverage", "[puzzle_generator][b
     }
 
     SECTION("Solve empty board (many solutions)") {
-        std::vector<std::vector<int>> empty_board(9, std::vector<int>(9, 0));
+        BoardData empty_board;
 
         // Tests findEmptyPosition() with completely empty board
         // Should find one valid solution
@@ -180,21 +179,22 @@ TEST_CASE("PuzzleGenerator - solvePuzzle Branch Coverage", "[puzzle_generator][b
     }
 
     SECTION("Solve unsolvable board returns error") {
-        std::vector<std::vector<int>> unsolvable = {{1, 1, 0, 0, 0, 0, 0, 0, 0},  // Row conflict
-                                                    {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                                    {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                                    {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                                    {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+        BoardData unsolvable = {{1, 1, 0, 0, 0, 0, 0, 0, 0},  // Row conflict
+                                {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                                {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                                {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
         // Tests countSolutionsHelper() finding 0 solutions
         auto result = generator.solvePuzzle(unsolvable);
         REQUIRE_FALSE(result.has_value());
     }
 
-    SECTION("Solve invalid dimensions returns error") {
-        std::vector<std::vector<int>> invalid_board(8, std::vector<int>(9, 0));
+    SECTION("Solve board with conflicts returns error") {
+        // Create a board with row conflicts (two 5s in first row) — unsolvable
+        BoardData invalid_board;
+        invalid_board[0][0] = 5;
+        invalid_board[0][1] = 5;
 
-        // Tests validation branch for invalid board dimensions
         auto result = generator.solvePuzzle(invalid_board);
         REQUIRE_FALSE(result.has_value());
     }
@@ -205,10 +205,9 @@ TEST_CASE("PuzzleGenerator - propagateConstraints Branch Coverage", "[puzzle_gen
 
     SECTION("Propagate constraints fills forced cells") {
         // Board with naked singles (forced moves)
-        std::vector<std::vector<int>> board = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
         // Tests applyIterativePropagation*() happy path
         auto result = generator.propagateConstraints(board);
@@ -224,7 +223,7 @@ TEST_CASE("PuzzleGenerator - propagateConstraints Branch Coverage", "[puzzle_gen
     }
 
     SECTION("Propagate constraints on empty board") {
-        std::vector<std::vector<int>> empty_board(9, std::vector<int>(9, 0));
+        BoardData empty_board;
 
         // Tests propagation with no initial constraints
         // Should be no-op (no forced moves on empty board)
@@ -234,7 +233,7 @@ TEST_CASE("PuzzleGenerator - propagateConstraints Branch Coverage", "[puzzle_gen
     }
 
     SECTION("Propagate constraints on complete board is no-op") {
-        std::vector<std::vector<int>> complete_board = {
+        BoardData complete_board = {
             {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
             {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
             {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
@@ -247,7 +246,7 @@ TEST_CASE("PuzzleGenerator - propagateConstraints Branch Coverage", "[puzzle_gen
     }
 
     SECTION("Propagate constraints on contradictory board returns error") {
-        std::vector<std::vector<int>> contradiction_board(9, std::vector<int>(9, 0));
+        BoardData contradiction_board;
         contradiction_board[0][0] = 5;
         contradiction_board[0][1] = 5;  // Row conflict
 
@@ -270,17 +269,16 @@ TEST_CASE("PuzzleGenerator - hasContradiction Branch Coverage", "[puzzle_generat
     PuzzleGenerator generator;
 
     SECTION("Valid board has no contradiction") {
-        std::vector<std::vector<int>> valid_board = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData valid_board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                                 {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                                 {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
         REQUIRE_FALSE(generator.hasContradiction(valid_board));
     }
 
     SECTION("Board with empty domain (no legal values) has contradiction") {
         // Create scenario where a cell has no legal values
-        std::vector<std::vector<int>> empty_domain(9, std::vector<int>(9, 0));
+        BoardData empty_domain;
         // Fill row 0 with 1-8, leaving [0][8] empty but blocked
         for (int col = 0; col < 8; ++col) {
             empty_domain[0][col] = col + 1;  // 1, 2, 3, 4, 5, 6, 7, 8
@@ -295,7 +293,7 @@ TEST_CASE("PuzzleGenerator - hasContradiction Branch Coverage", "[puzzle_generat
 
     SECTION("Board with conflicts but no empty domain") {
         // Simple conflicts don't create contradiction if cells still have legal values
-        std::vector<std::vector<int>> conflict(9, std::vector<int>(9, 0));
+        BoardData conflict;
         conflict[0][0] = 5;
         conflict[0][1] = 5;  // Row conflict, but other cells still have legal values
 
@@ -304,13 +302,13 @@ TEST_CASE("PuzzleGenerator - hasContradiction Branch Coverage", "[puzzle_generat
     }
 
     SECTION("Empty board has no contradiction") {
-        std::vector<std::vector<int>> empty_board(9, std::vector<int>(9, 0));
+        BoardData empty_board;
 
         REQUIRE_FALSE(generator.hasContradiction(empty_board));
     }
 
     SECTION("Complete valid board has no contradiction") {
-        std::vector<std::vector<int>> complete_board = {
+        BoardData complete_board = {
             {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
             {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
             {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
@@ -325,45 +323,42 @@ TEST_CASE("PuzzleGenerator - removeCluesToTarget Boundary Testing", "[puzzle_gen
 
     SECTION("Remove clues to moderate target (25 clues)") {
         // Generate complete solution
-        std::vector<std::vector<int>> solution = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         // Tests moderate target (25 clues, easier than 17)
         auto result = generator.removeCluesToTarget(solution, 25, 200, rng);
 
-        if (!result.empty()) {
-            int clues = generator.countClues(result);
+        if (result.has_value()) {
+            int clues = generator.countClues(*result);
             // Should achieve target or be close
             REQUIRE(clues >= 22);  // Within Hard difficulty range
             REQUIRE(clues <= 28);  // Allow some variance
-            REQUIRE(generator.validatePuzzle(result));
+            REQUIRE(generator.validatePuzzle(*result));
         } else {
             // Failure is acceptable for difficult targets
-            REQUIRE(result.empty());
+            REQUIRE(!result.has_value());
         }
     }
 
     SECTION("Remove clues to maximum (81 clues - complete board)") {
-        std::vector<std::vector<int>> solution = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         // Tests boundary: 81 clues (no removal)
         auto result = generator.removeCluesToTarget(solution, 81, 10, rng);
 
-        REQUIRE(!result.empty());
-        REQUIRE(generator.countClues(result) == 81);
+        REQUIRE(result.has_value());
+        REQUIRE(generator.countClues(*result) == 81);
         REQUIRE(result == solution);  // Should be unchanged
     }
 
     SECTION("Impossible target clues (0 clues) returns empty board") {
-        std::vector<std::vector<int>> solution = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         // Tests error path: impossible to achieve 0 clues with unique solution
         // Use 2 attempts to keep Debug-mode runtime manageable (50 attempts × 81 uniqueness
@@ -372,23 +367,22 @@ TEST_CASE("PuzzleGenerator - removeCluesToTarget Boundary Testing", "[puzzle_gen
 
         // Should fail (empty board or very few clues, but likely fails)
         // Empty board indicates failure to reach target
-        if (result.empty()) {
-            REQUIRE(result.empty());
+        if (!result.has_value()) {
+            REQUIRE(!result.has_value());
         }
     }
 
     SECTION("Max attempts exceeded returns empty board") {
-        std::vector<std::vector<int>> solution = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         // Tests max_attempts branch: very low attempts for difficult target
         auto result = generator.removeCluesToTarget(solution, 17, 1, rng);
 
         // With only 1 attempt, likely to fail for target 17
-        if (result.empty()) {
-            REQUIRE(result.empty());  // Failure is acceptable
+        if (!result.has_value()) {
+            REQUIRE(!result.has_value());  // Failure is acceptable
         }
     }
 }
@@ -398,10 +392,9 @@ TEST_CASE("PuzzleGenerator - selectCluesForDropping Edge Cases", "[puzzle_genera
     std::mt19937 rng(42);
 
     SECTION("Select 0 clues returns empty vector") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
         // Tests boundary: num_clues = 0
         auto selected = generator.selectCluesForDropping(board, 0, rng);
@@ -409,7 +402,7 @@ TEST_CASE("PuzzleGenerator - selectCluesForDropping Edge Cases", "[puzzle_genera
     }
 
     SECTION("Select from empty board returns empty vector") {
-        std::vector<std::vector<int>> empty_board(9, std::vector<int>(9, 0));
+        BoardData empty_board;
 
         // Tests edge case: no clues to select from
         auto selected = generator.selectCluesForDropping(empty_board, 10, rng);
@@ -417,7 +410,7 @@ TEST_CASE("PuzzleGenerator - selectCluesForDropping Edge Cases", "[puzzle_genera
     }
 
     SECTION("Select all clues from sparse board") {
-        std::vector<std::vector<int>> sparse_board(9, std::vector<int>(9, 0));
+        BoardData sparse_board;
         sparse_board[0][0] = 5;
         sparse_board[1][1] = 3;
         sparse_board[2][2] = 7;
@@ -432,10 +425,9 @@ TEST_CASE("PuzzleGenerator - selectCluesForDropping Edge Cases", "[puzzle_genera
     }
 
     SECTION("Select negative clues returns empty vector") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
         // Tests error path: negative num_clues
         auto selected = generator.selectCluesForDropping(board, -5, rng);
@@ -499,10 +491,9 @@ TEST_CASE("PuzzleGenerator - removeCluesToCreatePuzzleIterative Coverage", "[puz
     std::mt19937 rng(42);
 
     SECTION("Iterative removal for Expert difficulty") {
-        std::vector<std::vector<int>> solution = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         GenerationSettings settings;
         settings.difficulty = Difficulty::Expert;
@@ -512,20 +503,19 @@ TEST_CASE("PuzzleGenerator - removeCluesToCreatePuzzleIterative Coverage", "[puz
         // Tests removeCluesToCreatePuzzleIterative() for Expert (uses iterative deepening)
         auto puzzle_board = generator.removeCluesToCreatePuzzleIterative(solution, settings, rng);
 
-        if (!puzzle_board.empty()) {
-            int clues = generator.countClues(puzzle_board);
+        if (puzzle_board.has_value()) {
+            int clues = generator.countClues(*puzzle_board);
             // Expert: 17-21 clues
             REQUIRE(clues >= 17);
             REQUIRE(clues <= 21);
-            REQUIRE(generator.validatePuzzle(puzzle_board));
+            REQUIRE(generator.validatePuzzle(*puzzle_board));
         }
     }
 
     SECTION("Iterative removal for Easy difficulty (greedy path)") {
-        std::vector<std::vector<int>> solution = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         GenerationSettings settings;
         settings.difficulty = Difficulty::Easy;
@@ -535,12 +525,12 @@ TEST_CASE("PuzzleGenerator - removeCluesToCreatePuzzleIterative Coverage", "[puz
         // Tests greedy removal path (not iterative) for Easy difficulty
         auto puzzle_board = generator.removeCluesToCreatePuzzleIterative(solution, settings, rng);
 
-        if (!puzzle_board.empty()) {
-            int clues = generator.countClues(puzzle_board);
+        if (puzzle_board.has_value()) {
+            int clues = generator.countClues(*puzzle_board);
             // Easy: 36-40 clues
             REQUIRE(clues >= 36);
             REQUIRE(clues <= 40);
-            REQUIRE(generator.validatePuzzle(puzzle_board));
+            REQUIRE(generator.validatePuzzle(*puzzle_board));
         }
     }
 }
@@ -549,7 +539,7 @@ TEST_CASE("PuzzleGenerator - analyzeClueConstraints Edge Cases", "[puzzle_genera
     PuzzleGenerator generator;
 
     SECTION("Analyze single clue") {
-        std::vector<std::vector<int>> single_clue_board(9, std::vector<int>(9, 0));
+        BoardData single_clue_board;
         single_clue_board[4][4] = 5;  // Center cell
 
         auto analysis = generator.analyzeClueConstraints(single_clue_board);
@@ -564,7 +554,7 @@ TEST_CASE("PuzzleGenerator - analyzeClueConstraints Edge Cases", "[puzzle_genera
     }
 
     SECTION("Analyze complete board (all clues)") {
-        std::vector<std::vector<int>> complete_board = {
+        BoardData complete_board = {
             {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
             {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
             {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
@@ -586,10 +576,9 @@ TEST_CASE("PuzzleGenerator - Scalar vs SIMD Propagation Parity", "[puzzle_genera
     PuzzleGenerator generator;
 
     SECTION("Scalar propagation matches SIMD propagation") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
         // Test both scalar and SIMD versions (SIMD may not be available)
         auto scalar_result = generator.propagateConstraintsScalar(board);
@@ -666,31 +655,24 @@ TEST_CASE("PuzzleGenerator - generatePuzzle Error Paths", "[puzzle_generator][br
 TEST_CASE("PuzzleGenerator - Additional Edge Cases", "[puzzle_generator][branches]") {
     PuzzleGenerator generator;
 
-    SECTION("validatePuzzle with invalid row size") {
-        std::vector<std::vector<int>> invalid_row_size = {
-            {5, 3, 4, 6, 7, 8, 9, 1},  // Only 8 columns
-            {6, 7, 2, 1, 9, 5, 3, 4}, {1, 9, 8, 3, 4, 2, 5, 6}, {8, 5, 9, 7, 6, 1, 4, 2}, {4, 2, 6, 8, 5, 3, 7, 9},
-            {7, 1, 3, 9, 2, 4, 8, 5}, {9, 6, 1, 5, 3, 7, 2, 8}, {2, 8, 7, 4, 1, 9, 6, 3}, {3, 4, 5, 2, 8, 6, 1, 7}};
-
-        REQUIRE_FALSE(generator.validatePuzzle(invalid_row_size));
-    }
+    // Board dimension tests removed — BoardData is always 9x9 (fixed-size flat array)
 
     SECTION("validatePuzzle with negative values") {
-        std::vector<std::vector<int>> negative_values(9, std::vector<int>(9, 0));
+        BoardData negative_values;
         negative_values[0][0] = -1;  // Invalid negative value
 
         REQUIRE_FALSE(generator.validatePuzzle(negative_values));
     }
 
     SECTION("validatePuzzle with value > 9") {
-        std::vector<std::vector<int>> large_value(9, std::vector<int>(9, 0));
+        BoardData large_value;
         large_value[4][4] = 15;  // Invalid value
 
         REQUIRE_FALSE(generator.validatePuzzle(large_value));
     }
 
     SECTION("countClues on partial board") {
-        std::vector<std::vector<int>> partial(9, std::vector<int>(9, 0));
+        BoardData partial;
         // Add exactly 25 clues
         for (int i = 0; i < 25; ++i) {
             partial[i / 9][i % 9] = (i % 9) + 1;
@@ -700,7 +682,7 @@ TEST_CASE("PuzzleGenerator - Additional Edge Cases", "[puzzle_generator][branche
     }
 
     SECTION("solvePuzzle with nearly complete board") {
-        std::vector<std::vector<int>> nearly_complete = {
+        BoardData nearly_complete = {
             {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
             {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
             {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 0}};
@@ -884,14 +866,14 @@ TEST_CASE("PuzzleGenerator - No Rater (null rater)", "[puzzle_generator][rater][
 
 TEST_CASE("PuzzleGenerator - Scalar solver path (countSolutions)", "[puzzle_generator][scalar]") {
     // Classic near-complete puzzle with a unique solution
-    const std::vector<std::vector<int>> unique_puzzle = {
+    const BoardData unique_puzzle = {
         {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
         {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
         {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
-    const std::vector<std::vector<int>> multi_solution_puzzle(9, std::vector<int>(9, 0));
+    const BoardData multi_solution_puzzle;
 
-    const std::vector<std::vector<int>> complete_board = {
+    const BoardData complete_board = {
         {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
         {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
         {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};

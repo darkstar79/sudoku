@@ -66,13 +66,12 @@ private:
     /// @param target_index Index of the step that uses the target technique
     /// @return {board_at_target, candidate_masks} or nullopt on error
     struct BoardSnapshot {
-        std::vector<std::vector<int>> board;
+        BoardData board;
         std::vector<uint16_t> candidate_masks;
     };
 
-    [[nodiscard]] static std::optional<BoardSnapshot> walkForward(const std::vector<std::vector<int>>& initial_board,
-                                                                  const std::vector<SolveStep>& solve_path,
-                                                                  size_t target_index);
+    [[nodiscard]] static std::optional<BoardSnapshot>
+    walkForward(const BoardData& initial_board, const std::vector<SolveStep>& solve_path, size_t target_index);
 };
 
 }  // namespace sudoku::core

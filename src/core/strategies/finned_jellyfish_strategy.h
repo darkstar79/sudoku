@@ -35,7 +35,7 @@ namespace sudoku::core {
 /// in cells that also share the fin's box.
 class FinnedJellyfishStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         auto result = findRowBased(board, candidates);
         if (result.has_value()) {
@@ -59,7 +59,7 @@ public:
 private:
     // CPD-OFF — fish enumeration pattern shared with finned_swordfish and jellyfish
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×row1×row2×row3×row4 search; nesting is inherent to fish algorithms
-    [[nodiscard]] static std::optional<SolveStep> findRowBased(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findRowBased(const BoardData& board,
                                                                const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             auto rows_cols = FishHelpers::collectCandidatePositions(board, candidates, value, true);
@@ -99,8 +99,8 @@ private:
         return std::nullopt;
     }
 
-    [[nodiscard]] static std::optional<SolveStep> tryRowFinned(const std::vector<std::vector<int>>& board,
-                                                               const CandidateGrid& candidates, int value,
+    [[nodiscard]] static std::optional<SolveStep> tryRowFinned(const BoardData& board, const CandidateGrid& candidates,
+                                                               int value,
                                                                const std::vector<std::vector<size_t>>& rows_cols,
                                                                size_t r1, size_t r2, size_t r3, size_t r4,
                                                                const std::vector<size_t>& union_cols) {
@@ -144,7 +144,7 @@ private:
     }
 
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×col1×col2×col3×col4 search; nesting is inherent to fish algorithms
-    [[nodiscard]] static std::optional<SolveStep> findColBased(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findColBased(const BoardData& board,
                                                                const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             auto cols_rows = FishHelpers::collectCandidatePositions(board, candidates, value, false);
@@ -184,8 +184,8 @@ private:
         return std::nullopt;
     }
 
-    [[nodiscard]] static std::optional<SolveStep> tryColFinned(const std::vector<std::vector<int>>& board,
-                                                               const CandidateGrid& candidates, int value,
+    [[nodiscard]] static std::optional<SolveStep> tryColFinned(const BoardData& board, const CandidateGrid& candidates,
+                                                               int value,
                                                                const std::vector<std::vector<size_t>>& cols_rows,
                                                                size_t c1, size_t c2, size_t c3, size_t c4,
                                                                const std::vector<size_t>& union_rows) {

@@ -228,8 +228,8 @@ TEST_CASE("GameState - Note Management", "[game_state][notes]") {
     SECTION("Add note") {
         state.addNote({.row = 0, .col = 0}, 5);
         const auto& cell = state.getCell({.row = 0, .col = 0});
-        REQUIRE(cell.notes.size() == 1);
-        REQUIRE(cell.notes[0] == 5);
+        REQUIRE(cell.notes.count() == 1);
+        REQUIRE(cell.notes.contains(5));
     }
 
     SECTION("Add multiple notes") {
@@ -238,11 +238,10 @@ TEST_CASE("GameState - Note Management", "[game_state][notes]") {
         state.addNote({.row = 1, .col = 1}, 1);
 
         const auto& cell = state.getCell({.row = 1, .col = 1});
-        REQUIRE(cell.notes.size() == 3);
-        // Notes should be sorted
-        REQUIRE(cell.notes[0] == 1);
-        REQUIRE(cell.notes[1] == 3);
-        REQUIRE(cell.notes[2] == 7);
+        REQUIRE(cell.notes.count() == 3);
+        REQUIRE(cell.notes.contains(1));
+        REQUIRE(cell.notes.contains(3));
+        REQUIRE(cell.notes.contains(7));
     }
 
     SECTION("Add duplicate note") {
@@ -250,7 +249,7 @@ TEST_CASE("GameState - Note Management", "[game_state][notes]") {
         state.addNote({.row = 2, .col = 2}, 4);
 
         const auto& cell = state.getCell({.row = 2, .col = 2});
-        REQUIRE(cell.notes.size() == 1);
+        REQUIRE(cell.notes.count() == 1);
     }
 
     SECTION("Remove note") {
@@ -259,8 +258,8 @@ TEST_CASE("GameState - Note Management", "[game_state][notes]") {
         state.removeNote({.row = 3, .col = 3}, 2);
 
         const auto& cell = state.getCell({.row = 3, .col = 3});
-        REQUIRE(cell.notes.size() == 1);
-        REQUIRE(cell.notes[0] == 6);
+        REQUIRE(cell.notes.count() == 1);
+        REQUIRE(cell.notes.contains(6));
     }
 
     SECTION("Clear notes") {
@@ -276,8 +275,8 @@ TEST_CASE("GameState - Note Management", "[game_state][notes]") {
     SECTION("Toggle note - add") {
         state.toggleNote({.row = 5, .col = 5}, 8);
         const auto& cell = state.getCell({.row = 5, .col = 5});
-        REQUIRE(cell.notes.size() == 1);
-        REQUIRE(cell.notes[0] == 8);
+        REQUIRE(cell.notes.count() == 1);
+        REQUIRE(cell.notes.contains(8));
     }
 
     SECTION("Toggle note - remove") {
@@ -294,7 +293,7 @@ TEST_CASE("GameState - Note Management", "[game_state][notes]") {
         state.toggleNote({.row = 7, .col = 7}, 5);
 
         const auto& cell = state.getCell({.row = 7, .col = 7});
-        REQUIRE(cell.notes.size() == 1);
+        REQUIRE(cell.notes.count() == 1);
     }
 
     SECTION("Add note with invalid value") {
@@ -315,9 +314,9 @@ TEST_CASE("GameState - Highlight Management", "[game_state][highlight]") {
     GameState state;
 
     SECTION("Highlight number") {
-        state.getCell({.row = 0, .col = 0}).value = 5;
-        state.getCell({.row = 1, .col = 1}).value = 5;
-        state.getCell({.row = 2, .col = 2}).value = 3;
+        state.setValue({.row = 0, .col = 0}, 5);
+        state.setValue({.row = 1, .col = 1}, 5);
+        state.setValue({.row = 2, .col = 2}, 3);
 
         state.highlightNumber(5);
 
@@ -327,8 +326,8 @@ TEST_CASE("GameState - Highlight Management", "[game_state][highlight]") {
     }
 
     SECTION("Clear highlights") {
-        state.getCell({.row = 0, .col = 0}).is_highlighted = true;
-        state.getCell({.row = 1, .col = 1}).is_highlighted = true;
+        state.setHighlighted({.row = 0, .col = 0}, true);
+        state.setHighlighted({.row = 1, .col = 1}, true);
 
         state.clearHighlights();
 
@@ -378,8 +377,8 @@ TEST_CASE("GameState - Board Operations", "[game_state][board]") {
     GameState state;
 
     SECTION("Clear board") {
-        state.getCell({.row = 0, .col = 0}).value = 5;
-        state.getCell({.row = 1, .col = 1}).notes = {1, 2, 3};
+        state.setValue({.row = 0, .col = 0}, 5);
+        state.setNotes({.row = 1, .col = 1}, {1, 2, 3});
         state.setComplete(true);
         state.incrementMoves();
         state.incrementMistakes();
@@ -396,7 +395,7 @@ TEST_CASE("GameState - Board Operations", "[game_state][board]") {
     }
 
     SECTION("Load puzzle") {
-        std::vector<std::vector<int>> puzzle(9, std::vector<int>(9, 0));
+        BoardData puzzle;
         puzzle[0][0] = 5;
         puzzle[1][1] = 3;
         puzzle[2][2] = 7;
@@ -414,9 +413,9 @@ TEST_CASE("GameState - Board Operations", "[game_state][board]") {
     }
 
     SECTION("Extract numbers") {
-        state.getCell({.row = 0, .col = 0}).value = 1;
-        state.getCell({.row = 1, .col = 1}).value = 2;
-        state.getCell({.row = 2, .col = 2}).value = 3;
+        state.setValue({.row = 0, .col = 0}, 1);
+        state.setValue({.row = 1, .col = 1}, 2);
+        state.setValue({.row = 2, .col = 2}, 3);
 
         auto numbers = state.extractNumbers();
 
@@ -486,7 +485,7 @@ TEST_CASE("GameState - Equality Operator", "[game_state][equality]") {
     }
 
     SECTION("Not equal after board change") {
-        state1.getCell({.row = 0, .col = 0}).value = 5;
+        state1.setValue({.row = 0, .col = 0}, 5);
         REQUIRE(!(state1 == state2));
     }
 

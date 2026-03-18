@@ -17,6 +17,7 @@
 #pragma once
 
 #include "candidate_grid.h"
+#include "core/board_data.h"
 #include "solve_step.h"
 #include "solving_technique.h"
 
@@ -37,7 +38,7 @@ public:
     /// @param board Current board state (0 = empty, 1-9 = filled)
     /// @param candidates Candidate grid with O(1) candidate tracking and elimination support
     /// @return SolveStep if technique found, nullopt otherwise
-    [[nodiscard]] virtual std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] virtual std::optional<SolveStep> findStep(const BoardData& board,
                                                             const CandidateGrid& candidates) const = 0;
 
     /// Returns the technique this strategy implements

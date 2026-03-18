@@ -36,40 +36,35 @@ public:
     GameValidator& operator=(GameValidator&&) = default;
 
     /// Validates if a move is legal according to Sudoku rules
-    [[nodiscard]] std::expected<bool, ValidationError> validateMove(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::expected<bool, ValidationError> validateMove(const BoardData& board,
                                                                     const Move& move) const override;
 
     /// Checks if the current board state is complete and valid
-    [[nodiscard]] bool isComplete(const std::vector<std::vector<int>>& board) const override;
+    [[nodiscard]] bool isComplete(const BoardData& board) const override;
 
     /// Finds all conflicts on the current board
-    [[nodiscard]] std::vector<Position> findConflicts(const std::vector<std::vector<int>>& board) const override;
+    [[nodiscard]] std::vector<Position> findConflicts(const BoardData& board) const override;
 
     /// Validates that the entire board state is consistent
-    [[nodiscard]] bool validateBoard(const std::vector<std::vector<int>>& board) const override;
+    [[nodiscard]] bool validateBoard(const BoardData& board) const override;
 
     /// Gets all possible valid values for a given position
-    [[nodiscard]] std::vector<int> getPossibleValues(const std::vector<std::vector<int>>& board,
-                                                     const Position& position) const override;
+    [[nodiscard]] std::vector<int> getPossibleValues(const BoardData& board, const Position& position) const override;
 
     /// Finds a naked single (cell with only one legal value)
-    [[nodiscard]] std::optional<int> findNakedSingle(const std::vector<std::vector<int>>& board,
-                                                     const Position& position) const override;
+    [[nodiscard]] std::optional<int> findNakedSingle(const BoardData& board, const Position& position) const override;
 
     /// Checks if placing a value at position would create a conflict
-    [[nodiscard]] static bool hasConflict(const std::vector<std::vector<int>>& board, const Position& pos, int value);
+    [[nodiscard]] static bool hasConflict(const BoardData& board, const Position& pos, int value);
 
     /// Checks for conflicts in the same row
-    [[nodiscard]] static bool hasRowConflict(const std::vector<std::vector<int>>& board, size_t row, size_t col,
-                                             int value);
+    [[nodiscard]] static bool hasRowConflict(const BoardData& board, size_t row, size_t col, int value);
 
     /// Checks for conflicts in the same column
-    [[nodiscard]] static bool hasColumnConflict(const std::vector<std::vector<int>>& board, size_t row, size_t col,
-                                                int value);
+    [[nodiscard]] static bool hasColumnConflict(const BoardData& board, size_t row, size_t col, int value);
 
     /// Checks for conflicts in the same 3x3 box
-    [[nodiscard]] static bool hasBoxConflict(const std::vector<std::vector<int>>& board, size_t row, size_t col,
-                                             int value);
+    [[nodiscard]] static bool hasBoxConflict(const BoardData& board, size_t row, size_t col, int value);
 
     /// Validates position is within board bounds
     [[nodiscard]] static bool isValidPosition(const Position& pos);

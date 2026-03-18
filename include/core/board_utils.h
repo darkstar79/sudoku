@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "core/board_data.h"
 #include "core/constants.h"
 
 #include <functional>
@@ -92,7 +93,7 @@ void forEachBoxCell(size_t box_start_row, size_t box_start_col, Func&& func) {
  *     });
  */
 template <typename Predicate, typename Func>
-void forEachCellIf(const std::vector<std::vector<int>>& board, Predicate&& pred, Func&& func) {
+void forEachCellIf(const BoardData& board, Predicate&& pred, Func&& func) {
     forEachCell([&](size_t row, size_t col) {
         if (pred(board[row][col])) {
             func(row, col);

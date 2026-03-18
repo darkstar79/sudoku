@@ -37,8 +37,7 @@ namespace sudoku::core {
 /// Note: Each cell can have 2 or 3 candidates, but the union must be exactly 3 values.
 class NakedTripleStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
-                                                    const CandidateGrid& state) const override {
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board, const CandidateGrid& state) const override {
         // Check all regions (rows, columns, boxes)
         for (auto region_type : {RegionType::Row, RegionType::Col, RegionType::Box}) {
             for (size_t region_idx = 0; region_idx < BOARD_SIZE; ++region_idx) {
@@ -65,7 +64,7 @@ public:
     }
 
 private:
-    [[nodiscard]] static std::optional<SolveStep> findNakedTripleInRegion(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findNakedTripleInRegion(const BoardData& board,
                                                                           const CandidateGrid& state,
                                                                           RegionType region_type, size_t region_idx) {
         // Get empty cells in region
@@ -140,7 +139,7 @@ private:
     }
 
     [[nodiscard]] static std::vector<Elimination>
-    createEliminationsForTriple(const std::vector<std::vector<int>>& /* board */, const CandidateGrid& state,
+    createEliminationsForTriple(const BoardData& /* board */, const CandidateGrid& state,
                                 const std::vector<Position>& region_cells, const Position& triple_pos1,
                                 const Position& triple_pos2, const Position& triple_pos3,
                                 const std::vector<int>& triple_values) {

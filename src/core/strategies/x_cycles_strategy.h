@@ -39,7 +39,7 @@ namespace sudoku::core {
 ///   Type 3 (weak-weak discontinuity): eliminates from the discontinuity cell
 class XCyclesStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         for (int digit = MIN_VALUE; digit <= MAX_VALUE; ++digit) {
             auto result = findXCycleForDigit(board, candidates, digit);
@@ -74,7 +74,7 @@ private:
     }
 
     /// Build strong link adjacency list (conjugate pairs in each unit).
-    static void buildStrongLinks(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int digit,
+    static void buildStrongLinks(const BoardData& board, const CandidateGrid& candidates, int digit,
                                  std::array<std::vector<size_t>, TOTAL_CELLS>& strong_adj) {
         strong_adj = ColoringHelpers::buildConjugatePairGraph(board, candidates, digit);
     }
@@ -93,7 +93,7 @@ private:
     }
 
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — orchestrates graph building and DFS from each cell; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findXCycleForDigit(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findXCycleForDigit(const BoardData& board,
                                                                      const CandidateGrid& candidates, int digit) {
         std::vector<size_t> cand_cells;
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
@@ -149,9 +149,9 @@ private:
 
     /// Recursive DFS with alternating link constraint.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — recursive DFS with alternating link search; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> dfs(const std::vector<std::vector<int>>& board,
-                                                      const CandidateGrid& candidates, int digit, size_t start,
-                                                      bool first_link_strong, std::vector<size_t>& chain,
+    [[nodiscard]] static std::optional<SolveStep> dfs(const BoardData& board, const CandidateGrid& candidates,
+                                                      int digit, size_t start, bool first_link_strong,
+                                                      std::vector<size_t>& chain,
                                                       std::array<bool, TOTAL_CELLS>& visited, bool last_was_strong,
                                                       const std::array<std::vector<size_t>, TOTAL_CELLS>& strong_adj,
                                                       const std::array<std::vector<size_t>, TOTAL_CELLS>& weak_adj) {
@@ -234,7 +234,7 @@ private:
 
     /// Type 1: Continuous nice loop — eliminate digit from external cells seeing
     /// both endpoints of any weak link in the loop.
-    [[nodiscard]] static std::optional<SolveStep> buildType1Step(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> buildType1Step(const BoardData& board,
                                                                  const CandidateGrid& candidates, int digit,
                                                                  const std::vector<size_t>& chain,
                                                                  bool first_link_strong) {

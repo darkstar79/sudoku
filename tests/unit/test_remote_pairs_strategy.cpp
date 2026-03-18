@@ -23,8 +23,8 @@ using namespace sudoku::core;
 
 namespace {
 
-[[nodiscard]] std::vector<std::vector<int>> createEmptyBoard() {
-    return std::vector<std::vector<int>>(9, std::vector<int>(9, 0));
+[[nodiscard]] BoardData createEmptyBoard() {
+    return BoardData{};
 }
 
 void keepOnly(CandidateGrid& grid, size_t row, size_t col, const std::vector<int>& keep) {
@@ -46,10 +46,9 @@ TEST_CASE("RemotePairsStrategy - Metadata", "[remote_pairs]") {
 }
 
 TEST_CASE("RemotePairsStrategy - Returns nullopt for complete board", "[remote_pairs]") {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     RemotePairsStrategy strategy;
 
@@ -122,10 +121,9 @@ TEST_CASE("RemotePairsStrategy - Can be used through ISolvingStrategy interface"
     REQUIRE(strategy->getName() == "Remote Pairs");
     REQUIRE(strategy->getDifficultyPoints() == 350);
 
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     auto result = strategy->findStep(board, state);
     REQUIRE_FALSE(result.has_value());

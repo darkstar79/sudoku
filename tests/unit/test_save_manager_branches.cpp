@@ -67,10 +67,10 @@ private:
 
 SavedGame makeMinimalGame() {
     SavedGame game;
-    game.current_state.assign(9, std::vector<int>(9, 0));
-    game.original_puzzle.assign(9, std::vector<int>(9, 0));
-    game.notes.assign(9, std::vector<std::vector<int>>(9));
-    game.hint_revealed_cells.assign(9, std::vector<bool>(9, false));
+    game.current_state = BoardData{};
+    game.original_puzzle = BoardData{};
+    game.notes = NotesData{};
+    game.hint_revealed_cells = HintMaskData{};
     game.difficulty = Difficulty::Easy;
     game.puzzle_seed = 1;
     game.display_name = "Test Game";
@@ -464,14 +464,8 @@ TEST_CASE("SaveManager - backward compat: load YAML without hint_revealed_cells"
 
     auto result = mgr.loadGame("compat-no-hints");
     REQUIRE(result.has_value());
-    // Backward compat path should resize hint_revealed_cells to 9x9 false
-    REQUIRE(result->hint_revealed_cells.size() == 9);
-    for (const auto& row : result->hint_revealed_cells) {
-        REQUIRE(row.size() == 9);
-        for (bool val : row) {
-            REQUIRE_FALSE(val);
-        }
-    }
+    // Backward compat path should leave hint_revealed_cells as all-false (default)
+    REQUIRE(result->hint_revealed_cells.empty());
 }
 
 // ============================================================================

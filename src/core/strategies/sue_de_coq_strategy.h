@@ -37,7 +37,7 @@ namespace sudoku::core {
 /// and box-set values from box remainder.
 class SueDeCoqStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // Check each box/line intersection
         for (size_t box = 0; box < BOARD_SIZE; ++box) {
@@ -75,9 +75,8 @@ public:
 
 private:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — partitions intersection candidates into ALS pairs; nesting is inherent to Sue de Coq
-    [[nodiscard]] static std::optional<SolveStep> tryIntersection(const std::vector<std::vector<int>>& board,
-                                                                  const CandidateGrid& candidates, size_t box,
-                                                                  size_t line_idx, bool is_row) {
+    [[nodiscard]] static std::optional<SolveStep>
+    tryIntersection(const BoardData& board, const CandidateGrid& candidates, size_t box, size_t line_idx, bool is_row) {
         // Find empty cells in the intersection
         std::vector<Position> inter_cells;
         size_t box_start_row = (box / BOX_SIZE) * BOX_SIZE;

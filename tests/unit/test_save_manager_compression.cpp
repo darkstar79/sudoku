@@ -62,14 +62,14 @@ SavedGame createRichTestGame() {
     game.original_puzzle = game.current_state;
 
     // Notes on multiple cells
-    game.notes = std::vector<std::vector<std::vector<int>>>(9, std::vector<std::vector<int>>(9, std::vector<int>()));
+    game.notes = NotesData{};
     game.notes[0][2] = {1, 2, 4};  // Cell (0,2) has notes 1,2,4
     game.notes[1][1] = {2, 4, 7};  // Cell (1,1) has notes 2,4,7
     game.notes[2][0] = {1};        // Cell (2,0) has note 1
 
     // Hint revealed cells
-    game.hint_revealed_cells = std::vector<std::vector<bool>>(9, std::vector<bool>(9, false));
-    game.hint_revealed_cells[0][3] = true;
+    game.hint_revealed_cells = HintMaskData{};
+    game.hint_revealed_cells.set(0, 3, true);
 
     // Game metadata
     game.difficulty = Difficulty::Medium;
@@ -89,10 +89,10 @@ SavedGame createRichTestGame() {
 // Helper: Create empty/minimal game
 SavedGame createEmptyTestGame() {
     SavedGame game;
-    game.current_state = std::vector<std::vector<int>>(9, std::vector<int>(9, 0));
+    game.current_state = BoardData{};
     game.original_puzzle = game.current_state;
-    game.notes = std::vector<std::vector<std::vector<int>>>(9, std::vector<std::vector<int>>(9, std::vector<int>()));
-    game.hint_revealed_cells = std::vector<std::vector<bool>>(9, std::vector<bool>(9, false));
+    game.notes = NotesData{};
+    game.hint_revealed_cells = HintMaskData{};
     game.difficulty = Difficulty::Easy;
     game.puzzle_seed = 0;
     game.created_time = std::chrono::system_clock::now();
@@ -319,16 +319,7 @@ TEST_CASE("Compression handles empty game data", "[save_manager][compression]") 
     REQUIRE(loaded_game.original_puzzle == empty_game.original_puzzle);
     REQUIRE(loaded_game.difficulty == empty_game.difficulty);
 
-    // Note: Empty notes may not be serialized/deserialized the same way
-    // (SaveManager may optimize away empty structures)
-    // Just verify notes are empty (either empty vector or 9x9 of empty vectors)
-    bool notes_are_empty = loaded_game.notes.empty() ||
-                           (loaded_game.notes.size() == 9 &&
-                            std::all_of(loaded_game.notes.begin(), loaded_game.notes.end(), [](const auto& row) {
-                                return row.size() == 9 && std::all_of(row.begin(), row.end(),
-                                                                      [](const auto& cell) { return cell.empty(); });
-                            }));
-    REQUIRE(notes_are_empty);
+    REQUIRE(loaded_game.notes.empty());
 
     // Note: Some fields like save_id, display_name, timestamps are set by SaveManager
     // so we don't check full equality via gamesAreEqual()

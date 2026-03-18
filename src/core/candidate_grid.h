@@ -52,7 +52,7 @@ public:
      * @brief Construct CandidateGrid from current board state.
      * @param board 9x9 Sudoku board (0 = empty, 1-9 = filled)
      */
-    explicit CandidateGrid(const std::vector<std::vector<int>>& board) : constraint_state_(board) {
+    explicit CandidateGrid(const BoardData& board) : constraint_state_(board) {
     }
 
     /**
@@ -134,8 +134,7 @@ public:
      * @param board Current board state
      * @return Optional (Position, value) if any hidden single found
      */
-    [[nodiscard]] std::optional<std::pair<Position, int>>
-    findHiddenSingle(const std::vector<std::vector<int>>& board) const {
+    [[nodiscard]] std::optional<std::pair<Position, int>> findHiddenSingle(const BoardData& board) const {
         // Check rows
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
@@ -173,7 +172,7 @@ public:
      * @brief Initialize givens mask from original puzzle (non-zero cells = given).
      * @param original_puzzle The original puzzle board before any solving
      */
-    void setGivensFromPuzzle(const std::vector<std::vector<int>>& original_puzzle) {
+    void setGivensFromPuzzle(const BoardData& original_puzzle) {
         for (size_t r = 0; r < BOARD_SIZE; ++r) {
             for (size_t c = 0; c < BOARD_SIZE; ++c) {
                 givens_[(r * BOARD_SIZE) + c] = (original_puzzle[r][c] != EMPTY_CELL);
@@ -216,7 +215,7 @@ private:
 
     /// Find the single cell in a row where value is a candidate, or nullopt if 0 or 2+ cells
     [[nodiscard]] std::optional<Position> findSingleCandidateInRow(size_t row, int value,
-                                                                   const std::vector<std::vector<int>>& board) const {
+                                                                   const BoardData& board) const {
         Position candidate_pos{.row = BOARD_SIZE, .col = BOARD_SIZE};
         int count = 0;
 
@@ -235,7 +234,7 @@ private:
 
     /// Find the single cell in a column where value is a candidate, or nullopt
     [[nodiscard]] std::optional<Position> findSingleCandidateInCol(size_t col, int value,
-                                                                   const std::vector<std::vector<int>>& board) const {
+                                                                   const BoardData& board) const {
         Position candidate_pos{.row = BOARD_SIZE, .col = BOARD_SIZE};
         int count = 0;
 
@@ -254,7 +253,7 @@ private:
 
     /// Find the single cell in a box where value is a candidate, or nullopt
     [[nodiscard]] std::optional<Position> findSingleCandidateInBox(size_t box, int value,
-                                                                   const std::vector<std::vector<int>>& board) const {
+                                                                   const BoardData& board) const {
         size_t box_row = (box / BOX_SIZE) * BOX_SIZE;
         size_t box_col = (box % BOX_SIZE) * BOX_SIZE;
 

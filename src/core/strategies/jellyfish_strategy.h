@@ -34,7 +34,7 @@ namespace sudoku::core {
 /// four different rows, and the union of those columns is exactly 4 columns.
 class JellyfishStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         auto result = findRowBased(board, candidates);
         if (result.has_value()) {
@@ -58,7 +58,7 @@ public:
 private:
     // CPD-OFF — fish enumeration pattern shared with finned strategies
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×row1×row2×row3×row4 search; nesting is inherent to fish algorithms
-    [[nodiscard]] static std::optional<SolveStep> findRowBased(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findRowBased(const BoardData& board,
                                                                const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             auto rows_cols = FishHelpers::collectCandidatePositions(board, candidates, value, true);
@@ -144,7 +144,7 @@ private:
     }
 
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×col1×col2×col3×col4 search; nesting is inherent to fish algorithms
-    [[nodiscard]] static std::optional<SolveStep> findColBased(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findColBased(const BoardData& board,
                                                                const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             auto cols_rows = FishHelpers::collectCandidatePositions(board, candidates, value, false);

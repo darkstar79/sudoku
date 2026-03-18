@@ -39,7 +39,7 @@ namespace sudoku::core {
 /// Extension of WXYZ-Wing from 4 cells/values to 5 cells/values.
 class VWXYZWingStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         auto pivot_cells = WingHelpers::findCellsByCandidateCount(board, candidates, 3, 5);
         auto bivalue_cells = WingHelpers::findCellsByCandidateCount(board, candidates, 2, 2);
@@ -69,8 +69,8 @@ public:
 private:
     // CPD-OFF — wing enumeration with different nesting depths vs wxyz_wing
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — enumerates wing quadruples for VWXYZ pattern; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> tryPivot(const std::vector<std::vector<int>>& board,
-                                                           const CandidateGrid& candidates, const Position& pivot,
+    [[nodiscard]] static std::optional<SolveStep> tryPivot(const BoardData& board, const CandidateGrid& candidates,
+                                                           const Position& pivot,
                                                            const std::vector<Position>& bivalue_cells) {
         uint16_t pivot_mask = candidates.getPossibleValuesMask(pivot.row, pivot.col);
 
@@ -174,7 +174,7 @@ private:
 
     /// Classify values as restricted/non-restricted, find Z, and eliminate.
     [[nodiscard]] static std::optional<SolveStep>
-    classifyAndEliminate(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
+    classifyAndEliminate(const BoardData& board, const CandidateGrid& candidates,
                          const std::array<Position, 5>& pattern, const std::array<uint16_t, 5>& masks,
                          uint16_t union_mask, const Position& pivot, const Position& w1, const Position& w2,
                          const Position& w3, const Position& w4) {

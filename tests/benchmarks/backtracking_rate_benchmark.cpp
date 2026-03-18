@@ -59,11 +59,11 @@ using namespace sudoku::core;
 
 /// Snapshot of the board and candidate state at the stall point
 struct StallSnapshot {
-    std::vector<std::vector<int>> board;  ///< Board state when logic stalled
-    int empty_cells{0};                   ///< Cells still empty at stall
-    int filled_by_logic{0};               ///< Cells filled by logical techniques
-    double avg_candidates{0.0};           ///< Average candidates per empty cell at stall
-    int seed{0};                          ///< Puzzle seed for reproducibility
+    BoardData board;             ///< Board state when logic stalled
+    int empty_cells{0};          ///< Cells still empty at stall
+    int filled_by_logic{0};      ///< Cells filled by logical techniques
+    double avg_candidates{0.0};  ///< Average candidates per empty cell at stall
+    int seed{0};                 ///< Puzzle seed for reproducibility
 };
 
 struct PuzzleAnalysis {
@@ -188,8 +188,8 @@ static CommandLineArgs parseArgs(int argc, char* argv[]) {
 }
 
 /// Reconstruct the board state at the stall point by replaying logical steps
-static StallSnapshot buildStallSnapshot(const std::vector<std::vector<int>>& original_board,
-                                        const std::vector<SolveStep>& solve_path, int seed) {
+static StallSnapshot buildStallSnapshot(const BoardData& original_board, const std::vector<SolveStep>& solve_path,
+                                        int seed) {
     StallSnapshot snap;
     snap.seed = seed;
 
@@ -243,8 +243,7 @@ static StallSnapshot buildStallSnapshot(const std::vector<std::vector<int>>& ori
     return snap;
 }
 
-static PuzzleAnalysis analyzePuzzle(PuzzleRater& rater, const std::vector<std::vector<int>>& board, int clue_count,
-                                    int seed) {
+static PuzzleAnalysis analyzePuzzle(PuzzleRater& rater, const BoardData& board, int clue_count, int seed) {
     PuzzleAnalysis analysis;
     analysis.clue_count = clue_count;
 
@@ -424,7 +423,7 @@ static void printStallAnalysis(const DifficultyStats& stats) {
 }
 
 /// Print a compact 9x9 board (. for empty, digit for filled)
-static void printCompactBoard(const std::vector<std::vector<int>>& board) {
+static void printCompactBoard(const BoardData& board) {
     for (size_t row = 0; row < BOARD_SIZE; ++row) {
         if (row == 3 || row == 6) {
             std::cout << "  ------+-------+------\n";
@@ -446,7 +445,7 @@ static void printCompactBoard(const std::vector<std::vector<int>>& board) {
 }
 
 /// Print candidate lists for empty cells (up to max_shown cells)
-static void printCandidateLists(const std::vector<std::vector<int>>& board, int empty_cells, int max_shown = 20) {
+static void printCandidateLists(const BoardData& board, int empty_cells, int max_shown = 20) {
     std::cout << "  Candidates at stall:\n";
     CandidateGrid cands(board);
     int shown = 0;

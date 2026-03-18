@@ -34,8 +34,7 @@ namespace sudoku::core {
 /// can be eliminated from those three cells.
 class HiddenTripleStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
-                                                    const CandidateGrid& state) const override {
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board, const CandidateGrid& state) const override {
         // Check all regions (rows, columns, boxes)
         for (auto region_type : {RegionType::Row, RegionType::Col, RegionType::Box}) {
             for (size_t region_idx = 0; region_idx < BOARD_SIZE; ++region_idx) {
@@ -63,7 +62,7 @@ public:
 
 private:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×cell combination search; nesting is inherent to hidden-subset algorithms
-    [[nodiscard]] static std::optional<SolveStep> findHiddenTripleInRegion(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findHiddenTripleInRegion(const BoardData& board,
                                                                            const CandidateGrid& state,
                                                                            RegionType region_type, size_t region_idx) {
         // Get empty cells in region

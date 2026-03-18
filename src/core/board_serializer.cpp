@@ -23,14 +23,14 @@
 
 namespace sudoku::core {
 
-YAML::Node BoardSerializer::serializeIntBoard(const std::vector<std::vector<int>>& board) {
+YAML::Node BoardSerializer::serializeIntBoard(const BoardData& board) {
     YAML::Node node;
     forEachCell([&](size_t row, size_t col) { node[row][col] = board[row][col]; });
     return node;
 }
 
-void BoardSerializer::deserializeIntBoard(const YAML::Node& node, std::vector<std::vector<int>>& board) {
-    board.resize(BOARD_SIZE, std::vector<int>(BOARD_SIZE, 0));
+void BoardSerializer::deserializeIntBoard(const YAML::Node& node, BoardData& board) {
+    board = BoardData{};
     forEachCell([&](size_t row, size_t col) {
         if (row < node.size() && col < node[row].size()) {
             board[row][col] = node[row][col].as<int>();
@@ -38,22 +38,22 @@ void BoardSerializer::deserializeIntBoard(const YAML::Node& node, std::vector<st
     });
 }
 
-YAML::Node BoardSerializer::serializeBoolBoard(const std::vector<std::vector<bool>>& board) {
+YAML::Node BoardSerializer::serializeBoolBoard(const HintMaskData& board) {
     YAML::Node node;
-    forEachCell([&](size_t row, size_t col) { node[row][col] = board[row][col]; });
+    forEachCell([&](size_t row, size_t col) { node[row][col] = board.get(row, col); });
     return node;
 }
 
-void BoardSerializer::deserializeBoolBoard(const YAML::Node& node, std::vector<std::vector<bool>>& board) {
-    board.resize(BOARD_SIZE, std::vector<bool>(BOARD_SIZE, false));
+void BoardSerializer::deserializeBoolBoard(const YAML::Node& node, HintMaskData& board) {
+    board = HintMaskData{};
     forEachCell([&](size_t row, size_t col) {
         if (row < node.size() && col < node[row].size()) {
-            board[row][col] = node[row][col].as<bool>();
+            board.set(row, col, node[row][col].as<bool>());
         }
     });
 }
 
-YAML::Node BoardSerializer::serializeNotes(const std::vector<std::vector<std::vector<int>>>& notes) {
+YAML::Node BoardSerializer::serializeNotes(const NotesData& notes) {
     YAML::Node node;
     forEachCell([&](size_t row, size_t col) {
         const auto& cell_notes = notes[row][col];
@@ -64,13 +64,13 @@ YAML::Node BoardSerializer::serializeNotes(const std::vector<std::vector<std::ve
     return node;
 }
 
-void BoardSerializer::deserializeNotes(const YAML::Node& node, std::vector<std::vector<std::vector<int>>>& notes) {
-    notes.resize(BOARD_SIZE, std::vector<std::vector<int>>(BOARD_SIZE));
+void BoardSerializer::deserializeNotes(const YAML::Node& node, NotesData& notes) {
+    notes = NotesData{};
     forEachCell([&](size_t row, size_t col) {
         if (node[row] && node[row][col]) {
             const auto& cell_notes = node[row][col];
             for (const auto& note : cell_notes) {
-                notes[row][col].push_back(note.as<int>());
+                notes[row][col].add(note.as<int>());
             }
         }
     });

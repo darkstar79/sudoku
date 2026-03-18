@@ -128,29 +128,26 @@ public:
     SolutionCounter();
 
     /// Counts solutions up to max_solutions (default: 2 for uniqueness check)
-    [[nodiscard]] int countSolutions(const std::vector<std::vector<int>>& board, int max_solutions = 2) const;
+    [[nodiscard]] int countSolutions(const BoardData& board, int max_solutions = 2) const;
 
     /// Counts solutions with explicit timeout
-    [[nodiscard]] int countSolutionsWithTimeout(const std::vector<std::vector<int>>& board, int max_solutions,
+    [[nodiscard]] int countSolutionsWithTimeout(const BoardData& board, int max_solutions,
                                                 std::chrono::milliseconds timeout) const;
 
     /// Checks if board has exactly one solution
-    [[nodiscard]] bool hasUniqueSolution(const std::vector<std::vector<int>>& board) const;
+    [[nodiscard]] bool hasUniqueSolution(const BoardData& board) const;
 
     /// Checks if board has any contradictions (empty domains)
-    [[nodiscard]] static bool hasContradiction(const std::vector<std::vector<int>>& board);
+    [[nodiscard]] static bool hasContradiction(const BoardData& board);
 
     /// Applies iterative constraint propagation until fixed point
-    [[nodiscard]] static std::expected<std::vector<std::vector<int>>, GenerationError>
-    propagateConstraints(const std::vector<std::vector<int>>& board);
+    [[nodiscard]] static std::expected<BoardData, GenerationError> propagateConstraints(const BoardData& board);
 
     /// Scalar version of constraint propagation
-    [[nodiscard]] static std::expected<std::vector<std::vector<int>>, GenerationError>
-    propagateConstraintsScalar(const std::vector<std::vector<int>>& board);
+    [[nodiscard]] static std::expected<BoardData, GenerationError> propagateConstraintsScalar(const BoardData& board);
 
     /// SIMD version of constraint propagation
-    [[nodiscard]] static std::expected<std::vector<std::vector<int>>, GenerationError>
-    propagateConstraintsSIMD(const std::vector<std::vector<int>>& board);
+    [[nodiscard]] static std::expected<BoardData, GenerationError> propagateConstraintsSIMD(const BoardData& board);
 
     /// Clears the memoization cache (called at start of each generation attempt)
     void clearCache() const;
@@ -196,12 +193,10 @@ private:
                                   uint32_t& recursion_count, uint32_t dirty_regions) const;
 
     /// Apply iterative propagation to fill all forced moves (scalar version)
-    [[nodiscard]] static bool applyIterativePropagationScalar(std::vector<std::vector<int>>& board,
-                                                              ConstraintState& state);
+    [[nodiscard]] static bool applyIterativePropagationScalar(BoardData& board, ConstraintState& state);
 
     /// Apply iterative propagation to fill all forced moves (SIMD version)
-    [[nodiscard]] static bool applyIterativePropagationSIMD(std::vector<std::vector<int>>& board,
-                                                            SIMDConstraintState& state);
+    [[nodiscard]] static bool applyIterativePropagationSIMD(BoardData& board, SIMDConstraintState& state);
 };
 
 }  // namespace sudoku::core

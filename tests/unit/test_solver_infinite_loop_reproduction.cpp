@@ -192,7 +192,7 @@ TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rate
 
     SECTION("Minimal valid Sudoku (17 clues)") {
         // Famous "Golden Nugget" - one of the hardest known 17-clue puzzles
-        std::vector<std::vector<int>> minimal_puzzle = {
+        BoardData minimal_puzzle = {
             {0, 0, 0, 0, 0, 0, 0, 1, 2}, {0, 0, 0, 0, 0, 0, 0, 0, 3}, {0, 0, 2, 3, 0, 0, 4, 0, 0},
             {0, 0, 1, 8, 0, 0, 0, 0, 5}, {0, 6, 0, 0, 7, 0, 8, 0, 0}, {0, 0, 0, 0, 0, 9, 0, 0, 0},
             {0, 0, 8, 5, 0, 0, 0, 0, 0}, {9, 0, 0, 0, 4, 0, 5, 0, 0}, {4, 7, 0, 0, 0, 6, 0, 0, 0}};
@@ -223,10 +223,9 @@ TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rate
     SECTION("AI Escargot - World's hardest Sudoku") {
         // "AI Escargot" - claimed to be one of the world's hardest Sudokus
         // This puzzle requires very advanced techniques and could trigger deep solver recursion
-        std::vector<std::vector<int>> ai_escargot = {
-            {1, 0, 0, 0, 0, 7, 0, 9, 0}, {0, 3, 0, 0, 2, 0, 0, 0, 8}, {0, 0, 9, 6, 0, 0, 5, 0, 0},
-            {0, 0, 5, 3, 0, 0, 9, 0, 0}, {0, 1, 0, 0, 8, 0, 0, 0, 2}, {6, 0, 0, 0, 0, 4, 0, 0, 0},
-            {3, 0, 0, 0, 0, 0, 0, 1, 0}, {0, 4, 0, 0, 0, 0, 0, 0, 7}, {0, 0, 7, 0, 0, 0, 3, 0, 0}};
+        BoardData ai_escargot = {{1, 0, 0, 0, 0, 7, 0, 9, 0}, {0, 3, 0, 0, 2, 0, 0, 0, 8}, {0, 0, 9, 6, 0, 0, 5, 0, 0},
+                                 {0, 0, 5, 3, 0, 0, 9, 0, 0}, {0, 1, 0, 0, 8, 0, 0, 0, 2}, {6, 0, 0, 0, 0, 4, 0, 0, 0},
+                                 {3, 0, 0, 0, 0, 0, 0, 1, 0}, {0, 4, 0, 0, 0, 0, 0, 0, 7}, {0, 0, 7, 0, 0, 0, 3, 0, 0}};
 
         MemoryMonitor memory;
         memory.start();
@@ -250,7 +249,7 @@ TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rate
 
     SECTION("Platinum Blonde - Extremely difficult puzzle") {
         // "Platinum Blonde" - another notoriously difficult puzzle
-        std::vector<std::vector<int>> platinum_blonde = {
+        BoardData platinum_blonde = {
             {0, 0, 0, 0, 0, 0, 0, 1, 2}, {0, 0, 0, 0, 3, 5, 0, 0, 0}, {0, 0, 0, 6, 0, 0, 0, 7, 0},
             {7, 0, 0, 0, 0, 0, 3, 0, 0}, {0, 0, 0, 4, 0, 0, 8, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0, 0},
             {0, 0, 0, 1, 2, 0, 0, 0, 0}, {0, 8, 0, 0, 0, 0, 0, 4, 0}, {0, 5, 0, 0, 0, 0, 6, 0, 0}};
@@ -289,7 +288,7 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution on pathological puzzles",
 
     SECTION("Sparse puzzle with few clues") {
         // Very sparse puzzle (18 clues) - could trigger deep recursion
-        std::vector<std::vector<int>> sparse_puzzle = {
+        BoardData sparse_puzzle = {
             {0, 0, 0, 0, 0, 0, 0, 1, 2}, {0, 0, 0, 0, 0, 0, 0, 0, 3}, {0, 0, 2, 3, 0, 0, 4, 0, 0},
             {0, 0, 1, 8, 0, 0, 0, 0, 5}, {0, 6, 0, 0, 7, 0, 8, 0, 0}, {0, 0, 0, 0, 0, 9, 0, 0, 0},
             {0, 0, 8, 5, 0, 0, 0, 0, 0}, {9, 0, 0, 0, 4, 0, 5, 0, 0}, {4, 7, 0, 0, 0, 6, 0, 0, 0}};

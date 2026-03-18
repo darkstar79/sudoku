@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "core/board_data.h"
 #include "core/constants.h"
 
 #include <chrono>
@@ -53,7 +54,7 @@ struct Move {
 
     // For undo: store previous state
     int previous_value{0};               // Previous cell value before this move
-    std::vector<int> previous_notes;     // Previous notes before this move
+    CellNotes previous_notes;            // Previous notes before this move
     bool previous_hint_revealed{false};  // Previous hint-revealed state before this move
 };
 
@@ -77,36 +78,36 @@ public:
     /// @param board Current 9x9 board state (0 = empty, 1-9 = filled)
     /// @param move The move to validate
     /// @return true if valid, or ValidationError if invalid
-    [[nodiscard]] virtual std::expected<bool, ValidationError> validateMove(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] virtual std::expected<bool, ValidationError> validateMove(const BoardData& board,
                                                                             const Move& move) const = 0;
 
     /// Checks if the current board state is complete and valid
     /// @param board Current 9x9 board state
     /// @return true if complete and valid
-    [[nodiscard]] virtual bool isComplete(const std::vector<std::vector<int>>& board) const = 0;
+    [[nodiscard]] virtual bool isComplete(const BoardData& board) const = 0;
 
     /// Finds all conflicts on the current board
     /// @param board Current 9x9 board state
     /// @return vector of conflicting positions
-    [[nodiscard]] virtual std::vector<Position> findConflicts(const std::vector<std::vector<int>>& board) const = 0;
+    [[nodiscard]] virtual std::vector<Position> findConflicts(const BoardData& board) const = 0;
 
     /// Validates that the entire board state is consistent
     /// @param board Current 9x9 board state
     /// @return true if board is valid (no conflicts)
-    [[nodiscard]] virtual bool validateBoard(const std::vector<std::vector<int>>& board) const = 0;
+    [[nodiscard]] virtual bool validateBoard(const BoardData& board) const = 0;
 
     /// Gets all possible valid values for a given position
     /// @param board Current 9x9 board state
     /// @param position Position to check
     /// @return vector of valid values (1-9)
-    [[nodiscard]] virtual std::vector<int> getPossibleValues(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] virtual std::vector<int> getPossibleValues(const BoardData& board,
                                                              const Position& position) const = 0;
 
     /// Finds a naked single (cell with only one legal value)
     /// @param board Current 9x9 board state
     /// @param position Position to check
     /// @return The single legal value if found, std::nullopt otherwise
-    [[nodiscard]] virtual std::optional<int> findNakedSingle(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] virtual std::optional<int> findNakedSingle(const BoardData& board,
                                                              const Position& position) const = 0;
 
 protected:

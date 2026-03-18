@@ -7,6 +7,7 @@ This document provides a deep dive into the architectural design principles that
 ## Table of Contents
 
 - [MVVM Pattern (Model-View-ViewModel)](#mvvm-pattern-model-view-viewmodel)
+  - [Board Data Types](#board-data-types)
 - [SOLID Principles](#solid-principles)
 - [Dependency Injection](#dependency-injection)
 - [Single-Threaded Architecture](#single-threaded-architecture)
@@ -61,6 +62,58 @@ Model State Change → ViewModel (Observable) → View (auto-update)
 - **Testability:** ViewModel and Model can be tested without UI
 - **Maintainability:** Clear boundaries prevent spaghetti code
 - **Reusability:** Model layer can be used in different UIs (CLI, web, mobile)
+
+### Board Data Types
+
+The codebase uses distinct board representations optimized for each architectural layer:
+
+```
+View / ViewModel                  Model (Core)                    Solver (Internal)
+┌─────────────────┐    extract    ┌───────────────┐   fromBoard   ┌──────────────────┐
+│  GameState       │───Numbers()──▶│  BoardData     │───Data()────▶│  Board            │
+│  (flat arrays)   │              │  int[81]       │              │  int8_t[96]       │
+│  values/notes/   │              │                │              │  alignas(32)      │
+│  flags           │◀─loadPuzzle──│                │◀─toBoardData─│                   │
+└─────────────────┘    ()         └───────────────┘    ()          └──────────────────┘
+      │                                │                                │
+      │ BoardData values_              │ strategies,                    │ backtracking,
+      │ NotesData notes_data_          │ validation,                    │ SIMD solution
+      │ CellFlags givens_/             │ save/load                      │ counting
+      │   hints_/conflicts_/           │                                │
+      │   highlights_                  │                                │
+      │                           ┌────┴───────────┐            ┌──────┴──────────┐
+      │                           │ CandidateGrid   │            │ ConstraintState  │
+      │                           │ uint16_t[81]    │            │ uint16_t[27]     │
+      │                           │ + ConstraintState│            │ row/col/box masks│
+      │                           └────────────────┘            └─────────────────┘
+```
+
+**Type details:**
+
+| Type | Storage | Size | Location | Purpose |
+| ------ | --------- | ------ | ---------- | --------- |
+| `GameState` | `BoardData` + `NotesData` + 4x `CellFlags` | ~530 B | `src/model/game_state.h` | UI state: values, notes, given/hint/conflict/highlight flags |
+| `BoardData` | `int[81]` flat array | 324 B | `include/core/board_data.h` | Public API boundary: strategies, validation, serialization |
+| `CellFlags` | `std::bitset<81>` | 11 B | `include/core/board_data.h` | Per-cell boolean flags (givens, hints, conflicts, highlights) |
+| `Board` | `int8_t[96]` aligned | 96 B | `include/core/board.h` | SIMD-optimized backtracking and solution counting |
+| `CandidateGrid` | `uint16_t[81]` + `ConstraintState` | 216 B | `src/core/candidate_grid.h` | Per-cell candidate tracking for solving strategies |
+| `ConstraintState` | `uint16_t[27]` | 54 B | `src/core/constraint_state.h` | Row/column/box constraint bitmasks for O(1) candidate queries |
+
+**Why separate board types?**
+
+1. **`GameState`** stores rich per-cell metadata (notes, flags, conflict markers) needed by the ViewModel and View layers, using flat arrays (`BoardData`, `NotesData`, `CellFlags`) for zero heap allocations and cache locality. The `Cell` struct is a read-only snapshot assembled on demand via `getCell()`.
+
+2. **`BoardData`** is the public API type used at all interface boundaries (`IGameValidator`, `ISolvingStrategy`, `ISaveManager`). Uses `int` for simplicity and `std::span<int, 9>` row accessors for ergonomic `board[row][col]` syntax.
+
+3. **`Board`** is an internal type used only by the backtracking solver and solution counter. Uses `int8_t` to fit more cells per SIMD register and `alignas(32)` for AVX2 aligned loads. The 15 bytes of padding (cells 81-95, always zero) avoid bounds checks in SIMD loops.
+
+**Conversion points:**
+
+- `GameState::extractNumbers()` — returns the internal `BoardData values_` directly (zero-cost copy)
+- `Board::fromBoardData()` / `Board::toBoardData()` — BoardData to/from Board (int narrowing/widening)
+- `CandidateGrid` constructor takes `BoardData` and builds constraint masks automatically
+
+**Design rule:** Layer boundaries always use `BoardData`. Internal solver code may use `Board` or `CandidateGrid` for performance, but these never appear in public interfaces.
 
 ---
 

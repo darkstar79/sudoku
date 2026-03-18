@@ -23,9 +23,6 @@
 #include "core/i_time_provider.h"
 #include "core/observable.h"
 
-#include <algorithm>
-#include <functional>
-#include <ranges>
 #include <utility>
 
 namespace sudoku::model {
@@ -33,14 +30,6 @@ namespace sudoku::model {
 GameState::GameState(std::shared_ptr<core::ITimeProvider> time_provider)
     : onBoardChanged(false), onMoveCountChanged(0), onGameCompleted(false),
       onDifficultyChanged(core::Difficulty::Medium), time_provider_(std::move(time_provider)) {
-    initializeBoard();
-}
-
-void GameState::initializeBoard() {
-    board_.resize(9);
-    for (auto& row : board_) {
-        row.resize(9);
-    }
 }
 
 std::chrono::milliseconds GameState::getElapsedTime() const {
@@ -81,7 +70,7 @@ void GameState::resetTimer() {
     markDirty();
 }
 
-void GameState::setSolutionBoard(const std::vector<std::vector<int>>& solution) {
+void GameState::setSolutionBoard(const core::BoardData& solution) {
     solution_board_ = solution;
     markDirty();
 }
@@ -102,9 +91,12 @@ void GameState::clearSelection() {
 }
 
 void GameState::clearBoard() {
-    core::forEachCell([&](size_t row, size_t col) {
-        board_[row][col] = Cell{};  // Reset to default state
-    });
+    values_ = core::BoardData{};
+    notes_data_ = core::NotesData{};
+    givens_ = core::CellFlags{};
+    hints_revealed_ = core::CellFlags{};
+    conflicts_ = core::CellFlags{};
+    highlights_ = core::CellFlags{};
 
     // Reset game state
     is_complete_ = false;
@@ -147,13 +139,13 @@ void GameState::incrementMistakes() {
     markDirty();
 }
 
-void GameState::loadPuzzle(const std::vector<std::vector<int>>& puzzle) {
+void GameState::loadPuzzle(const core::BoardData& puzzle) {
     clearBoard();
 
     core::forEachCell([&](size_t row, size_t col) {
         if (puzzle[row][col] != 0) {
-            board_[row][col].value = puzzle[row][col];
-            board_[row][col].is_given = true;
+            values_[row][col] = puzzle[row][col];
+            givens_.set(row, col, true);
         }
     });
 
@@ -162,24 +154,84 @@ void GameState::loadPuzzle(const std::vector<std::vector<int>>& puzzle) {
     markDirty();
 }
 
-std::vector<std::vector<int>> GameState::extractNumbers() const {
-    std::vector<std::vector<int>> numbers(core::BOARD_SIZE, std::vector<int>(core::BOARD_SIZE, 0));
-
-    core::forEachCell([&](size_t row, size_t col) { numbers[row][col] = board_[row][col].value; });
-
-    return numbers;
+core::BoardData GameState::extractNumbers() const {
+    return values_;
 }
 
-std::vector<std::vector<int>> GameState::extractGivenNumbers() const {
-    std::vector<std::vector<int>> given(core::BOARD_SIZE, std::vector<int>(core::BOARD_SIZE, 0));
+core::BoardData GameState::extractGivenNumbers() const {
+    core::BoardData given;
 
     core::forEachCell([&](size_t row, size_t col) {
-        if (board_[row][col].is_given) {
-            given[row][col] = board_[row][col].value;
+        if (givens_(row, col)) {
+            given[row][col] = values_[row][col];
         }
     });
 
     return given;
+}
+
+// Per-cell value access
+
+void GameState::setValue(size_t row, size_t col, int value) {
+    values_[row][col] = value;
+    markDirty();
+}
+
+void GameState::setValue(const core::Position& pos, int value) {
+    setValue(pos.row, pos.col, value);
+}
+
+int GameState::getValue(size_t row, size_t col) const {
+    return values_[row][col];
+}
+
+int GameState::getValue(const core::Position& pos) const {
+    return getValue(pos.row, pos.col);
+}
+
+// Per-cell flag access
+
+bool GameState::isGiven(size_t row, size_t col) const {
+    return givens_(row, col);
+}
+
+bool GameState::isGiven(const core::Position& pos) const {
+    return isGiven(pos.row, pos.col);
+}
+
+void GameState::setGiven(const core::Position& pos, bool given) {
+    givens_.set(pos.row, pos.col, given);
+    markDirty();
+}
+
+void GameState::setConflict(const core::Position& pos, bool conflict) {
+    conflicts_.set(pos.row, pos.col, conflict);
+    markDirty();
+}
+
+void GameState::setHighlighted(const core::Position& pos, bool highlighted) {
+    highlights_.set(pos.row, pos.col, highlighted);
+    markDirty();
+}
+
+void GameState::setHintRevealed(const core::Position& pos, bool revealed) {
+    hints_revealed_.set(pos.row, pos.col, revealed);
+    markDirty();
+}
+
+// Per-cell notes access
+
+void GameState::setNotes(const core::Position& pos, const core::CellNotes& notes) {
+    notes_data_[pos.row][pos.col] = notes;
+    markDirty();
+}
+
+const core::CellNotes& GameState::getNotes(size_t row, size_t col) const {
+    return notes_data_[row][col];
+}
+
+const core::CellNotes& GameState::getNotes(const core::Position& pos) const {
+    return getNotes(pos.row, pos.col);
 }
 
 void GameState::updateConflicts(const std::vector<core::Position>& conflicts) {
@@ -189,14 +241,14 @@ void GameState::updateConflicts(const std::vector<core::Position>& conflicts) {
     // Set new conflicts
     for (const auto& pos : conflicts) {
         if (pos.row < core::BOARD_SIZE && pos.col < core::BOARD_SIZE) {
-            board_[pos.row][pos.col].has_conflict = true;
+            conflicts_.set(pos.row, pos.col, true);
         }
     }
     markDirty();
 }
 
 void GameState::clearConflicts() {
-    core::forEachCell([&](size_t row, size_t col) { board_[row][col].has_conflict = false; });
+    conflicts_.reset();
     markDirty();
 }
 
@@ -204,7 +256,7 @@ std::vector<core::Position> GameState::getConflictPositions() const {
     std::vector<core::Position> conflicts;
 
     core::forEachCell([&](size_t row, size_t col) {
-        if (board_[row][col].has_conflict) {
+        if (conflicts_(row, col)) {
             conflicts.push_back({.row = row, .col = col});
         }
     });
@@ -215,10 +267,9 @@ std::vector<core::Position> GameState::getConflictPositions() const {
 void GameState::addNote(const core::Position& pos, int value) {
     if (pos.row < core::BOARD_SIZE && pos.col < core::BOARD_SIZE && value >= core::MIN_VALUE &&
         value <= core::MAX_VALUE) {
-        auto& notes = board_[pos.row][pos.col].notes;
-        if (!std::ranges::contains(notes, value)) {
-            notes.push_back(value);
-            std::ranges::sort(notes);
+        auto& notes = notes_data_[pos.row][pos.col];
+        if (!notes.contains(value)) {
+            notes.add(value);
             markDirty();
         }
     }
@@ -226,10 +277,9 @@ void GameState::addNote(const core::Position& pos, int value) {
 
 void GameState::removeNote(const core::Position& pos, int value) {
     if (pos.row < core::BOARD_SIZE && pos.col < core::BOARD_SIZE) {
-        auto& notes = board_[pos.row][pos.col].notes;
-        auto original_size = notes.size();
-        std::erase(notes, value);
-        if (notes.size() != original_size) {
+        auto& notes = notes_data_[pos.row][pos.col];
+        if (notes.contains(value)) {
+            notes.remove(value);
             markDirty();
         }
     }
@@ -237,7 +287,7 @@ void GameState::removeNote(const core::Position& pos, int value) {
 
 void GameState::clearNotes(const core::Position& pos) {
     if (pos.row < core::BOARD_SIZE && pos.col < core::BOARD_SIZE) {
-        auto& notes = board_[pos.row][pos.col].notes;
+        auto& notes = notes_data_[pos.row][pos.col];
         if (!notes.empty()) {
             notes.clear();
             markDirty();
@@ -248,13 +298,11 @@ void GameState::clearNotes(const core::Position& pos) {
 void GameState::toggleNote(const core::Position& pos, int value) {
     if (pos.row < core::BOARD_SIZE && pos.col < core::BOARD_SIZE && value >= core::MIN_VALUE &&
         value <= core::MAX_VALUE) {
-        auto& notes = board_[pos.row][pos.col].notes;
-        auto it = std::ranges::find(notes, value);
-        if (it != notes.end()) {
-            notes.erase(it);
+        auto& notes = notes_data_[pos.row][pos.col];
+        if (notes.contains(value)) {
+            notes.remove(value);
         } else {
-            notes.push_back(value);
-            std::ranges::sort(notes);
+            notes.add(value);
         }
         markDirty();
     }
@@ -264,8 +312,8 @@ void GameState::highlightNumber(int number) {
     clearHighlights();
     if (number >= 1 && number <= 9) {
         core::forEachCell([&](size_t row, size_t col) {
-            if (board_[row][col].value == number) {
-                board_[row][col].is_highlighted = true;
+            if (values_[row][col] == number) {
+                highlights_.set(row, col, true);
             }
         });
         markDirty();
@@ -273,7 +321,7 @@ void GameState::highlightNumber(int number) {
 }
 
 void GameState::clearHighlights() {
-    core::forEachCell([&](size_t row, size_t col) { board_[row][col].is_highlighted = false; });
+    highlights_.reset();
     markDirty();
 }
 
@@ -286,32 +334,32 @@ void GameState::highlightRelated(const core::Position& pos) {
 
     // Highlight same row
     for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
-        board_[pos.row][col].is_highlighted = true;
+        highlights_.set(pos.row, col, true);
     }
 
     // Highlight same column
     for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
-        board_[row][pos.col].is_highlighted = true;
+        highlights_.set(row, pos.col, true);
     }
 
     // Highlight same 3x3 box
     size_t box_start_row = (pos.row / core::BOX_SIZE) * core::BOX_SIZE;
     size_t box_start_col = (pos.col / core::BOX_SIZE) * core::BOX_SIZE;
     core::forEachBoxCell(box_start_row, box_start_col,
-                         [&](size_t row, size_t col) { board_[row][col].is_highlighted = true; });
+                         [&](size_t row, size_t col) { highlights_.set(row, col, true); });
     markDirty();
 }
 
 void GameState::markCellAsHintRevealed(const core::Position& pos) {
     if (pos.row < core::BOARD_SIZE && pos.col < core::BOARD_SIZE) {
-        board_[pos.row][pos.col].is_hint_revealed = true;
+        hints_revealed_.set(pos.row, pos.col, true);
         markDirty();
     }
 }
 
 bool GameState::isCellHintRevealed(const core::Position& pos) const {
     if (pos.row < core::BOARD_SIZE && pos.col < core::BOARD_SIZE) {
-        return board_[pos.row][pos.col].is_hint_revealed;
+        return hints_revealed_(pos.row, pos.col);
     }
     return false;
 }
@@ -319,7 +367,9 @@ bool GameState::isCellHintRevealed(const core::Position& pos) const {
 bool GameState::operator==(const GameState& other) const {
     // For Observable pattern, compare key state that UI cares about
     // NOTE: timer_running_ MUST be included - it determines isGameActive() which gates all input
-    return board_ == other.board_ && difficulty_ == other.difficulty_ && is_complete_ == other.is_complete_ &&
+    return values_ == other.values_ && notes_data_ == other.notes_data_ && givens_ == other.givens_ &&
+           hints_revealed_ == other.hints_revealed_ && conflicts_ == other.conflicts_ &&
+           highlights_ == other.highlights_ && difficulty_ == other.difficulty_ && is_complete_ == other.is_complete_ &&
            move_count_ == other.move_count_ && mistake_count_ == other.mistake_count_ &&
            selected_position_ == other.selected_position_ && timer_running_ == other.timer_running_;
 }

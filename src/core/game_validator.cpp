@@ -33,8 +33,7 @@ std::pair<size_t, size_t> getBoxOrigin(size_t row, size_t col) {
 }
 }  // namespace
 
-std::expected<bool, ValidationError> GameValidator::validateMove(const std::vector<std::vector<int>>& board,
-                                                                 const Move& move) const {
+std::expected<bool, ValidationError> GameValidator::validateMove(const BoardData& board, const Move& move) const {
     // Validate position
     if (!isValidPosition(move.position)) {
         return std::unexpected(ValidationError::InvalidPosition);
@@ -80,7 +79,7 @@ std::expected<bool, ValidationError> GameValidator::validateMove(const std::vect
     return true;
 }
 
-bool GameValidator::isComplete(const std::vector<std::vector<int>>& board) const {
+bool GameValidator::isComplete(const BoardData& board) const {
     // Check if all cells are filled using board utilities
     if (anyCell([&](size_t row, size_t col) { return board[row][col] == 0; })) {
         return false;
@@ -90,7 +89,7 @@ bool GameValidator::isComplete(const std::vector<std::vector<int>>& board) const
     return validateBoard(board);
 }
 
-std::vector<Position> GameValidator::findConflicts(const std::vector<std::vector<int>>& board) const {
+std::vector<Position> GameValidator::findConflicts(const BoardData& board) const {
     std::vector<Position> conflicts;
 
     forEachCell([&](size_t row, size_t col) {
@@ -103,12 +102,11 @@ std::vector<Position> GameValidator::findConflicts(const std::vector<std::vector
     return conflicts;
 }
 
-bool GameValidator::validateBoard(const std::vector<std::vector<int>>& board) const {
+bool GameValidator::validateBoard(const BoardData& board) const {
     return findConflicts(board).empty();
 }
 
-std::vector<int> GameValidator::getPossibleValues(const std::vector<std::vector<int>>& board,
-                                                  const Position& position) const {
+std::vector<int> GameValidator::getPossibleValues(const BoardData& board, const Position& position) const {
     std::vector<int> possible_values;
 
     if (!isValidPosition(position)) {
@@ -129,8 +127,7 @@ std::vector<int> GameValidator::getPossibleValues(const std::vector<std::vector<
     return possible_values;
 }
 
-std::optional<int> GameValidator::findNakedSingle(const std::vector<std::vector<int>>& board,
-                                                  const Position& position) const {
+std::optional<int> GameValidator::findNakedSingle(const BoardData& board, const Position& position) const {
     // Reuse existing getPossibleValues method
     auto possible = getPossibleValues(board, position);
 
@@ -141,12 +138,12 @@ std::optional<int> GameValidator::findNakedSingle(const std::vector<std::vector<
     return std::nullopt;  // Not a naked single (0, 2+ values possible)
 }
 
-bool GameValidator::hasConflict(const std::vector<std::vector<int>>& board, const Position& pos, int value) {
+bool GameValidator::hasConflict(const BoardData& board, const Position& pos, int value) {
     return hasRowConflict(board, pos.row, pos.col, value) || hasColumnConflict(board, pos.row, pos.col, value) ||
            hasBoxConflict(board, pos.row, pos.col, value);
 }
 
-bool GameValidator::hasRowConflict(const std::vector<std::vector<int>>& board, size_t row, size_t col, int value) {
+bool GameValidator::hasRowConflict(const BoardData& board, size_t row, size_t col, int value) {
     for (size_t check_col = 0; check_col < BOARD_SIZE; ++check_col) {
         if (check_col != col && board[row][check_col] == value) {
             return true;
@@ -155,7 +152,7 @@ bool GameValidator::hasRowConflict(const std::vector<std::vector<int>>& board, s
     return false;
 }
 
-bool GameValidator::hasColumnConflict(const std::vector<std::vector<int>>& board, size_t row, size_t col, int value) {
+bool GameValidator::hasColumnConflict(const BoardData& board, size_t row, size_t col, int value) {
     for (size_t check_row = 0; check_row < BOARD_SIZE; ++check_row) {
         if (check_row != row && board[check_row][col] == value) {
             return true;
@@ -164,7 +161,7 @@ bool GameValidator::hasColumnConflict(const std::vector<std::vector<int>>& board
     return false;
 }
 
-bool GameValidator::hasBoxConflict(const std::vector<std::vector<int>>& board, size_t row, size_t col, int value) {
+bool GameValidator::hasBoxConflict(const BoardData& board, size_t row, size_t col, int value) {
     auto [box_row, box_col] = getBoxOrigin(row, col);
 
     for (size_t check_row = box_row; check_row < box_row + BOX_SIZE; ++check_row) {

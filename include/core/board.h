@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "core/board_data.h"
 #include "core/constants.h"
 
 #include <array>
@@ -64,11 +65,11 @@ struct Board {
     /// Defaulted equality comparison
     bool operator==(const Board&) const = default;
 
-    /// Convert from legacy vector<vector<int>> representation
-    [[nodiscard]] static Board fromVectors(const std::vector<std::vector<int>>& vec);
+    /// Convert from BoardData (int array) to Board (int8_t SIMD-aligned array)
+    [[nodiscard]] static Board fromBoardData(const BoardData& src);
 
-    /// Convert to legacy vector<vector<int>> representation
-    [[nodiscard]] std::vector<std::vector<int>> toVectors() const;
+    /// Convert from Board (int8_t SIMD-aligned array) to BoardData (int array)
+    [[nodiscard]] BoardData toBoardData() const;
 };
 
 }  // namespace sudoku::core

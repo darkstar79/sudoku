@@ -35,7 +35,7 @@ namespace sudoku::core {
 /// from a cell at the intersection of the ER's projection and the conjugate pair's endpoint.
 class EmptyRectangleStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             for (size_t box = 0; box < BOARD_SIZE; ++box) {
@@ -62,8 +62,8 @@ public:
 
 private:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — box/conjugate pair enumeration; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> checkBox(const std::vector<std::vector<int>>& board,
-                                                           const CandidateGrid& candidates, int value, size_t box) {
+    [[nodiscard]] static std::optional<SolveStep> checkBox(const BoardData& board, const CandidateGrid& candidates,
+                                                           int value, size_t box) {
         size_t box_start_row = (box / BOX_SIZE) * BOX_SIZE;
         size_t box_start_col = (box % BOX_SIZE) * BOX_SIZE;
 
@@ -134,7 +134,7 @@ private:
 
     // CPD-OFF — row/col symmetry
     /// Find conjugate pair in a row outside the ER box that passes through er_col.
-    [[nodiscard]] static std::optional<SolveStep> tryRowConjugate(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> tryRowConjugate(const BoardData& board,
                                                                   const CandidateGrid& candidates, int value,
                                                                   size_t box, size_t er_row, size_t er_col) {
         size_t box_start_row = (box / BOX_SIZE) * BOX_SIZE;
@@ -206,7 +206,7 @@ private:
     }
 
     /// Find conjugate pair in a column outside the ER box that passes through er_row.
-    [[nodiscard]] static std::optional<SolveStep> tryColConjugate(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> tryColConjugate(const BoardData& board,
                                                                   const CandidateGrid& candidates, int value,
                                                                   size_t box, size_t er_row, size_t er_col) {
         size_t box_start_col = (box % BOX_SIZE) * BOX_SIZE;

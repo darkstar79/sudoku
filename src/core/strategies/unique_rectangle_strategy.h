@@ -35,7 +35,7 @@ namespace sudoku::core {
 class UniqueRectangleStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — dispatches to UR type 1-4 checks via bivalue pair enumeration; nesting is inherent
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // Find all bivalue cells
         std::vector<Position> bivalue_cells;
@@ -126,7 +126,7 @@ private:
     // CPD-OFF — UR type 1-4 share structural patterns (floor analysis, bivalue matching) that differ in elimination
     // logic
     /// Given two bivalue cells {A,B} in the same row, find a row that completes a UR.
-    [[nodiscard]] static std::optional<SolveStep> findRectangleCompletion(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findRectangleCompletion(const BoardData& board,
                                                                           const CandidateGrid& candidates,
                                                                           const Position& c1, const Position& c2,
                                                                           int val_a, int val_b) {
@@ -147,7 +147,7 @@ private:
     }
 
     /// Column-based: two bivalue cells in same column, find column that completes rectangle.
-    [[nodiscard]] static std::optional<SolveStep> findRectangleCompletionCol(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findRectangleCompletionCol(const BoardData& board,
                                                                              const CandidateGrid& candidates,
                                                                              const Position& c1, const Position& c2,
                                                                              int val_a, int val_b) {
@@ -168,9 +168,9 @@ private:
     }
 
     /// Validates that c3 and c4 are empty, contain A and B, and the 4 cells span exactly 2 boxes.
-    [[nodiscard]] static bool isValidRectangle(const std::vector<std::vector<int>>& board,
-                                               const CandidateGrid& candidates, const Position& c1, const Position& c2,
-                                               const Position& c3, const Position& c4, int val_a, int val_b) {
+    [[nodiscard]] static bool isValidRectangle(const BoardData& board, const CandidateGrid& candidates,
+                                               const Position& c1, const Position& c2, const Position& c3,
+                                               const Position& c4, int val_a, int val_b) {
         if (board[c3.row][c3.col] != EMPTY_CELL || board[c4.row][c4.col] != EMPTY_CELL) {
             return false;
         }
@@ -232,7 +232,7 @@ private:
     }
 
     /// Try all UR types for the given 4 cells. c1 and c2 are bivalue {A,B}.
-    [[nodiscard]] static std::optional<SolveStep> checkRectangle(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> checkRectangle(const BoardData& board,
                                                                  const CandidateGrid& candidates, const Position& c1,
                                                                  const Position& c2, const Position& c3,
                                                                  const Position& c4, int val_a, int val_b) {
@@ -253,8 +253,8 @@ private:
 
     /// Type 1: exactly 3 cells are bivalue {A,B}, the 4th (floor) has extras → eliminate A,B from floor.
     [[nodiscard]] static std::optional<SolveStep>
-    checkType1Rectangle(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, const Position& c1,
-                        const Position& c2, const Position& c3, const Position& c4, int val_a, int val_b) {
+    checkType1Rectangle(const BoardData& board, const CandidateGrid& candidates, const Position& c1, const Position& c2,
+                        const Position& c3, const Position& c4, int val_a, int val_b) {
         if (!isValidRectangle(board, candidates, c1, c2, c3, c4, val_a, val_b)) {
             return std::nullopt;
         }
@@ -296,8 +296,8 @@ private:
     /// Floor cells share a unit → eliminate C from other cells in that unit.
     [[nodiscard]] static std::optional<SolveStep>
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — UR type 2 checks floor cell extras across shared units; nesting is inherent
-    checkType2Rectangle(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, const Position& c1,
-                        const Position& c2, const Position& c3, const Position& c4, int val_a, int val_b) {
+    checkType2Rectangle(const BoardData& board, const CandidateGrid& candidates, const Position& c1, const Position& c2,
+                        const Position& c3, const Position& c4, int val_a, int val_b) {
         if (!isValidRectangle(board, candidates, c1, c2, c3, c4, val_a, val_b)) {
             return std::nullopt;
         }
@@ -384,8 +384,8 @@ private:
     /// Extras from both floor cells form a naked pair with another cell in the shared unit.
     [[nodiscard]] static std::optional<SolveStep>
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — UR type 3 enumerates naked pair candidates across floor units; nesting is inherent
-    checkType3Rectangle(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, const Position& c1,
-                        const Position& c2, const Position& c3, const Position& c4, int val_a, int val_b) {
+    checkType3Rectangle(const BoardData& board, const CandidateGrid& candidates, const Position& c1, const Position& c2,
+                        const Position& c3, const Position& c4, int val_a, int val_b) {
         if (!isValidRectangle(board, candidates, c1, c2, c3, c4, val_a, val_b)) {
             return std::nullopt;
         }
@@ -490,8 +490,8 @@ private:
     /// → Eliminate the OTHER value (B or A) from both floor cells.
     [[nodiscard]] static std::optional<SolveStep>
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — UR type 4 checks strong link across floor units; nesting is inherent
-    checkType4Rectangle(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, const Position& c1,
-                        const Position& c2, const Position& c3, const Position& c4, int val_a, int val_b) {
+    checkType4Rectangle(const BoardData& board, const CandidateGrid& candidates, const Position& c1, const Position& c2,
+                        const Position& c3, const Position& c4, int val_a, int val_b) {
         if (!isValidRectangle(board, candidates, c1, c2, c3, c4, val_a, val_b)) {
             return std::nullopt;
         }

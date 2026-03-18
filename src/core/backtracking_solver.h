@@ -58,8 +58,7 @@ public:
      * @param rng Random number generator (required if strategy == Randomized)
      * @return true if a solution was found, false otherwise
      */
-    [[nodiscard]] bool solve(std::vector<std::vector<int>>& board,
-                             ValueSelectionStrategy strategy = ValueSelectionStrategy::Sequential,
+    [[nodiscard]] bool solve(BoardData& board, ValueSelectionStrategy strategy = ValueSelectionStrategy::Sequential,
                              std::mt19937* rng = nullptr) const;
 
     /**

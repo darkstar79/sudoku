@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "core/board_data.h"
 #include "cpu_features.h"
 #include "solving_technique.h"
 
@@ -49,8 +50,8 @@ struct GenerationSettings {
 
 /// Generated puzzle data
 struct Puzzle {
-    std::vector<std::vector<int>> board;     // 9x9 puzzle with clues
-    std::vector<std::vector<int>> solution;  // 9x9 complete solution
+    BoardData board;     // 9x9 puzzle with clues
+    BoardData solution;  // 9x9 complete solution
     Difficulty difficulty{Difficulty::Easy};
     uint32_t seed{0};
     int clue_count{0};
@@ -87,23 +88,22 @@ public:
     /// Solves a given puzzle and returns the solution
     /// @param board Puzzle to solve (9x9 with some filled cells)
     /// @return Complete solution or error if unsolvable
-    [[nodiscard]] virtual std::expected<std::vector<std::vector<int>>, GenerationError>
-    solvePuzzle(const std::vector<std::vector<int>>& board) const = 0;
+    [[nodiscard]] virtual std::expected<BoardData, GenerationError> solvePuzzle(const BoardData& board) const = 0;
 
     /// Checks if a puzzle has a unique solution
     /// @param board Puzzle to check
     /// @return true if unique solution exists
-    [[nodiscard]] virtual bool hasUniqueSolution(const std::vector<std::vector<int>>& board) const = 0;
+    [[nodiscard]] virtual bool hasUniqueSolution(const BoardData& board) const = 0;
 
     /// Counts the number of clues (filled cells) in a puzzle
     /// @param board Puzzle board
     /// @return Number of filled cells
-    [[nodiscard]] virtual int countClues(const std::vector<std::vector<int>>& board) const = 0;
+    [[nodiscard]] virtual int countClues(const BoardData& board) const = 0;
 
     /// Validates that a puzzle is properly formed
     /// @param board Puzzle to validate
     /// @return true if puzzle is valid
-    [[nodiscard]] virtual bool validatePuzzle(const std::vector<std::vector<int>>& board) const = 0;
+    [[nodiscard]] virtual bool validatePuzzle(const BoardData& board) const = 0;
 
 protected:
     // Protected special member functions to prevent slicing while allowing derived classes

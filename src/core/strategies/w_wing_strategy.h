@@ -36,7 +36,7 @@ namespace sudoku::core {
 /// bivalue cells.
 class WWingStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // CPD-OFF — bivalue cell collection pattern shared with UR and remote_pairs
         // Find all bivalue cells
@@ -98,9 +98,9 @@ private:
     /// Try to find a strong link on link_value connecting c1 and c2.
     /// If found, eliminate elim_value from cells seeing both c1 and c2.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — strong link enumeration across rows/cols/boxes; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> tryStrongLink(const std::vector<std::vector<int>>& board,
-                                                                const CandidateGrid& candidates, const Position& c1,
-                                                                const Position& c2, int link_value, int elim_value) {
+    [[nodiscard]] static std::optional<SolveStep> tryStrongLink(const BoardData& board, const CandidateGrid& candidates,
+                                                                const Position& c1, const Position& c2, int link_value,
+                                                                int elim_value) {
         // Check rows for strong link on link_value
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             std::vector<Position> cells;
@@ -153,8 +153,8 @@ private:
     /// Given a set of cells forming a conjugate pair (exactly 2 cells with link_value),
     /// check if one endpoint sees c1 and the other sees c2 (or vice versa).
     [[nodiscard]] static std::optional<SolveStep>
-    tryLinkEndpoints(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, const Position& c1,
-                     const Position& c2, const std::vector<Position>& link_cells, int link_value, int elim_value) {
+    tryLinkEndpoints(const BoardData& board, const CandidateGrid& candidates, const Position& c1, const Position& c2,
+                     const std::vector<Position>& link_cells, int link_value, int elim_value) {
         if (link_cells.size() != 2) {
             return std::nullopt;
         }

@@ -14,28 +14,32 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "core/board.h"
+#include "core/board_data.h"
 
 namespace sudoku::core {
 
-Board Board::fromBoardData(const BoardData& vec) {
-    Board board;
-    for (size_t row = 0; row < BOARD_SIZE; ++row) {
-        for (size_t col = 0; col < BOARD_SIZE; ++col) {
-            board[row][col] = static_cast<int8_t>(vec[row][col]);
+BoardData::BoardData(std::initializer_list<std::initializer_list<int>> init) : cells_{} {
+    size_t row = 0;
+    for (const auto& row_init : init) {
+        if (row >= BOARD_SIZE) {
+            break;
         }
+        size_t col = 0;
+        for (int value : row_init) {
+            if (col >= BOARD_SIZE) {
+                break;
+            }
+            cells_[(row * BOARD_SIZE) + col] = value;
+            ++col;
+        }
+        ++row;
     }
-    return board;
 }
 
-BoardData Board::toBoardData() const {
-    BoardData result;
-    for (size_t row = 0; row < BOARD_SIZE; ++row) {
-        for (size_t col = 0; col < BOARD_SIZE; ++col) {
-            result[row][col] = static_cast<int>(static_cast<uint8_t>((*this)[row][col]));
-        }
-    }
-    return result;
+BoardData BoardData::filled(int value) {
+    BoardData board;
+    board.cells_.fill(value);
+    return board;
 }
 
 }  // namespace sudoku::core

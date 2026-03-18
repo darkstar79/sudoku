@@ -38,7 +38,7 @@ namespace sudoku::core {
 ///                the value can be eliminated from that cell.
 class MultiColoringStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             auto result = findMultiColoringForValue(board, candidates, value);
@@ -94,7 +94,7 @@ private:
 
     [[nodiscard]] static std::optional<SolveStep>
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — BFS cluster building + inter-cluster rule checking; nesting is inherent
-    findMultiColoringForValue(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int value) {
+    findMultiColoringForValue(const BoardData& board, const CandidateGrid& candidates, int value) {
         // Build conjugate pair graph
         auto adj = ColoringHelpers::buildConjugatePairGraph(board, candidates, value);
 
@@ -220,9 +220,8 @@ private:
     // CPD-ON
 
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — checks all uncolored cells against cluster color pairs; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> checkTrap(const std::vector<std::vector<int>>& board,
-                                                            const CandidateGrid& candidates, int value,
-                                                            const std::vector<Component>& components,
+    [[nodiscard]] static std::optional<SolveStep> checkTrap(const BoardData& board, const CandidateGrid& candidates,
+                                                            int value, const std::vector<Component>& components,
                                                             const std::array<int8_t, TOTAL_CELLS>& color) {
         // For each pair of clusters with a cross-cluster "sees" link:
         // If color_X (cluster i) sees color_Y (cluster j), they can't both be true.

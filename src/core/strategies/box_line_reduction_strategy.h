@@ -33,7 +33,7 @@ namespace sudoku::core {
 /// that value can be eliminated from other cells in that box outside the row/column.
 class BoxLineReductionStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // Check rows
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
@@ -76,7 +76,7 @@ private:
     // CPD-OFF — row/col symmetry
     /// Check if a value in a row is confined to a single box
     [[nodiscard]] static std::optional<SolveStep> checkRowConfinedToBox(const CandidateGrid& candidates,
-                                                                        const std::vector<std::vector<int>>& board,
+                                                                        const BoardData& board,
                                                                         const std::vector<Position>& row_cells,
                                                                         size_t row, int value) {
         auto cells_with_value = getCellsWithCandidate(candidates, row_cells, value);
@@ -128,7 +128,7 @@ private:
 
     /// Check if a value in a column is confined to a single box
     [[nodiscard]] static std::optional<SolveStep> checkColConfinedToBox(const CandidateGrid& candidates,
-                                                                        const std::vector<std::vector<int>>& board,
+                                                                        const BoardData& board,
                                                                         const std::vector<Position>& col_cells,
                                                                         size_t col, int value) {
         auto cells_with_value = getCellsWithCandidate(candidates, col_cells, value);

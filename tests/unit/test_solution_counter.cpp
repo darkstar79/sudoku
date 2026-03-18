@@ -24,44 +24,41 @@ TEST_CASE("SolutionCounter - countSolutions", "[solution_counter]") {
     SolutionCounter counter;
 
     SECTION("Complete valid board has exactly 1 solution") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         int count = counter.countSolutions(board, 2);
         REQUIRE(count == 1);
     }
 
     SECTION("Empty board has multiple solutions") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         int count = counter.countSolutions(board, 2);
         REQUIRE(count >= 2);
     }
 
     SECTION("Unique puzzle returns count of 1") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
         int count = counter.countSolutions(board, 2);
         REQUIRE(count == 1);
     }
 
     SECTION("Nearly empty board has multiple solutions") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 0, 0, 0, 0, 0, 0, 0}, {6, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+        BoardData board = {{5, 3, 0, 0, 0, 0, 0, 0, 0}, {6, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
         int count = counter.countSolutions(board, 2);
         REQUIRE(count >= 2);
     }
 
     SECTION("max_solutions=1 stops after finding first solution") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         int count = counter.countSolutions(board, 1);
         REQUIRE(count == 1);
@@ -72,44 +69,35 @@ TEST_CASE("SolutionCounter - hasUniqueSolution", "[solution_counter]") {
     SolutionCounter counter;
 
     SECTION("Complete board is unique") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         REQUIRE(counter.hasUniqueSolution(board));
     }
 
     SECTION("Empty board is not unique") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         REQUIRE_FALSE(counter.hasUniqueSolution(board));
     }
 
     SECTION("Known unique puzzle (17 clues)") {
-        std::vector<std::vector<int>> board = {
-            {0, 0, 0, 7, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 4, 3, 0, 2, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0, 6}, {0, 0, 0, 5, 0, 9, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 4, 1, 8},
-            {0, 0, 0, 0, 8, 1, 0, 0, 0}, {0, 0, 2, 0, 0, 0, 0, 5, 0}, {0, 4, 0, 0, 0, 0, 3, 0, 0}};
+        BoardData board = {{0, 0, 0, 7, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 4, 3, 0, 2, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 6}, {0, 0, 0, 5, 0, 9, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 4, 1, 8},
+                           {0, 0, 0, 0, 8, 1, 0, 0, 0}, {0, 0, 2, 0, 0, 0, 0, 5, 0}, {0, 4, 0, 0, 0, 0, 3, 0, 0}};
 
         REQUIRE(counter.hasUniqueSolution(board));
     }
 
     SECTION("Board with two removed clues is not unique") {
-        // Start with a complete board and remove two cells that allow multiple solutions
-        std::vector<std::vector<int>> board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
-
         // Remove cells that share a box — (0,0)=5 and (1,1)=7 can potentially swap
         // but they're constrained by row/col, so this specific removal might still be unique.
         // Use a known non-unique configuration instead: remove enough to break uniqueness.
         // Nearly empty board is a safe bet.
-        std::vector<std::vector<int>> non_unique = {
-            {5, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+        BoardData non_unique = {{5, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                                {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                                {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
         REQUIRE_FALSE(counter.hasUniqueSolution(non_unique));
     }
@@ -119,10 +107,9 @@ TEST_CASE("SolutionCounter - countSolutionsWithTimeout", "[solution_counter]") {
     SolutionCounter counter;
 
     SECTION("Completes within timeout for solvable board") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         int count = counter.countSolutionsWithTimeout(board, 2, std::chrono::milliseconds(5000));
         REQUIRE(count == 1);
@@ -130,7 +117,7 @@ TEST_CASE("SolutionCounter - countSolutionsWithTimeout", "[solution_counter]") {
 
     SECTION("Very short timeout returns 0 for complex board") {
         // Empty board with 1 microsecond timeout — should time out
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         // Use an extremely short timeout; countSolutionsWithTimeout returns 0 on timeout
         int count = counter.countSolutionsWithTimeout(board, 2, std::chrono::milliseconds(0));
@@ -142,16 +129,15 @@ TEST_CASE("SolutionCounter - countSolutionsWithTimeout", "[solution_counter]") {
 
 TEST_CASE("SolutionCounter - hasContradiction", "[solution_counter]") {
     SECTION("Valid board has no contradiction") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         REQUIRE_FALSE(SolutionCounter::hasContradiction(board));
     }
 
     SECTION("Empty board has no contradiction") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         REQUIRE_FALSE(SolutionCounter::hasContradiction(board));
     }
@@ -161,10 +147,9 @@ TEST_CASE("SolutionCounter - hasContradiction", "[solution_counter]") {
         // Row 0: values 1-8 in columns 0-7 (eliminates 1-8 from (0,8))
         // Box (0-2,6-8): add 9 so (0,8) can't be 9 either
         // Column 8: add 9 as well for good measure
-        std::vector<std::vector<int>> board = {
-            {1, 2, 3, 4, 5, 6, 7, 8, 0}, {0, 0, 0, 0, 0, 0, 9, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0, 9}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+        BoardData board = {{1, 2, 3, 4, 5, 6, 7, 8, 0}, {0, 0, 0, 0, 0, 0, 9, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 9}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
         // (0,8): row has 1-8, box(0-2,6-8) has 7,8,9, col 8 has 9
         // So all values 1-9 are eliminated from (0,8)
 
@@ -174,10 +159,9 @@ TEST_CASE("SolutionCounter - hasContradiction", "[solution_counter]") {
 
 TEST_CASE("SolutionCounter - propagateConstraints", "[solution_counter]") {
     SECTION("Propagation on valid board succeeds") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
         auto result = SolutionCounter::propagateConstraints(board);
         REQUIRE(result.has_value());
@@ -201,7 +185,7 @@ TEST_CASE("SolutionCounter - propagateConstraints", "[solution_counter]") {
     SECTION("Propagation on contradictory board fails") {
         // Create a board where cell (0,8) has no legal value:
         // Row 0 has 1-8 in columns 0-7, column 8 has 9 in row 1
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         for (int c = 0; c < 8; ++c) {
             board[0][c] = c + 1;
         }
@@ -212,10 +196,9 @@ TEST_CASE("SolutionCounter - propagateConstraints", "[solution_counter]") {
     }
 
     SECTION("Scalar and SIMD propagation agree") {
-        std::vector<std::vector<int>> board = {
-            {0, 0, 0, 6, 0, 0, 4, 0, 0}, {7, 0, 0, 0, 0, 3, 6, 0, 0}, {0, 0, 0, 0, 9, 1, 0, 8, 0},
-            {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 5, 0, 1, 8, 0, 0, 0, 3}, {0, 0, 0, 3, 0, 6, 0, 4, 5},
-            {0, 4, 0, 2, 0, 0, 0, 6, 0}, {9, 0, 3, 0, 0, 0, 0, 0, 0}, {0, 2, 0, 0, 0, 0, 1, 0, 0}};
+        BoardData board = {{0, 0, 0, 6, 0, 0, 4, 0, 0}, {7, 0, 0, 0, 0, 3, 6, 0, 0}, {0, 0, 0, 0, 9, 1, 0, 8, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 5, 0, 1, 8, 0, 0, 0, 3}, {0, 0, 0, 3, 0, 6, 0, 4, 5},
+                           {0, 4, 0, 2, 0, 0, 0, 6, 0}, {9, 0, 3, 0, 0, 0, 0, 0, 0}, {0, 2, 0, 0, 0, 0, 1, 0, 0}};
 
         auto scalar_result = SolutionCounter::propagateConstraintsScalar(board);
         auto simd_result = SolutionCounter::propagateConstraintsSIMD(board);
@@ -232,10 +215,9 @@ TEST_CASE("SolutionCounter - cache management", "[solution_counter]") {
     SolutionCounter counter;
 
     SECTION("clearCache does not affect correctness") {
-        std::vector<std::vector<int>> board = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
         int count1 = counter.countSolutions(board, 2);
         counter.clearCache();
@@ -260,10 +242,9 @@ TEST_CASE("SolutionCounter - solver path", "[solution_counter]") {
     SECTION("Scalar path produces correct results") {
         counter.setSolverPath(SolverPath::Scalar);
 
-        std::vector<std::vector<int>> board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         REQUIRE(counter.hasUniqueSolution(board));
     }

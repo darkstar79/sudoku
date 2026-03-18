@@ -202,7 +202,7 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         fixture.view_model_.enterNote(3);
 
         auto& with_notes = fixture.view_model_.gameState.get();
-        auto& cell = with_notes.getCell(empty_row, empty_col);
+        auto cell = with_notes.getCell(empty_row, empty_col);
 
         REQUIRE(std::find(cell.notes.begin(), cell.notes.end(), 1) != cell.notes.end());
         REQUIRE(std::find(cell.notes.begin(), cell.notes.end(), 2) != cell.notes.end());
@@ -475,7 +475,7 @@ TEST_CASE("GameViewModel - Notes cleanup", "[game_view_model][integration]") {
         for (int c = 0; c < 9; ++c) {
             if (c != target_col && !after_placement.getCell(target_row, c).is_given &&
                 after_placement.getCell(target_row, c).value == 0) {
-                auto& cell = after_placement.getCell(target_row, c);
+                auto cell = after_placement.getCell(target_row, c);
                 REQUIRE(std::find(cell.notes.begin(), cell.notes.end(), 7) == cell.notes.end());
             }
         }

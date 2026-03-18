@@ -39,7 +39,7 @@ namespace sudoku::core {
 ///   - Eliminate Z from cells that see all Z-cells in both A and C
 class ALSXYWingStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         return findALSXYWing(board, candidates);
     }
@@ -59,7 +59,7 @@ public:
 private:
     /// Main search: enumerate triples of ALSs and check for the pattern.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — triple ALS enumeration with restricted common checks; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findALSXYWing(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findALSXYWing(const BoardData& board,
                                                                 const CandidateGrid& candidates) {
         auto all_als = ALSHelpers::enumerateALSs(board, candidates);
         if (all_als.size() < 3) {
@@ -108,8 +108,7 @@ private:
 
     /// Find a third ALS C that completes the ALS-XY-Wing pattern.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — searches for C with restricted common Y and shared Z; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findThirdALS(const std::vector<std::vector<int>>& board,
-                                                               const CandidateGrid& candidates,
+    [[nodiscard]] static std::optional<SolveStep> findThirdALS(const BoardData& board, const CandidateGrid& candidates,
                                                                const std::vector<ALS>& all_als, size_t ai, size_t bi,
                                                                int val_x) {
         const auto& als_a = all_als[ai];
@@ -171,7 +170,7 @@ private:
     }
 
     /// Try to eliminate Z from cells seeing all Z-cells in both A and C.
-    [[nodiscard]] static std::optional<SolveStep> tryElimination(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> tryElimination(const BoardData& board,
                                                                  const CandidateGrid& candidates, const ALS& als_a,
                                                                  const ALS& als_b, const ALS& als_c, int val_x,
                                                                  int val_y, int val_z) {

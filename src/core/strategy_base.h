@@ -88,8 +88,7 @@ protected:
     /// @param board Current board state
     /// @param row Row index (0-8)
     /// @return Vector of positions of empty cells
-    [[nodiscard]] static std::vector<Position> getEmptyCellsInRow(const std::vector<std::vector<int>>& board,
-                                                                  size_t row) {
+    [[nodiscard]] static std::vector<Position> getEmptyCellsInRow(const BoardData& board, size_t row) {
         std::vector<Position> empty_cells;
         for (size_t col = 0; col < BOARD_SIZE; ++col) {
             if (board[row][col] == EMPTY_CELL) {
@@ -103,8 +102,7 @@ protected:
     /// @param board Current board state
     /// @param col Column index (0-8)
     /// @return Vector of positions of empty cells
-    [[nodiscard]] static std::vector<Position> getEmptyCellsInCol(const std::vector<std::vector<int>>& board,
-                                                                  size_t col) {
+    [[nodiscard]] static std::vector<Position> getEmptyCellsInCol(const BoardData& board, size_t col) {
         std::vector<Position> empty_cells;
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             if (board[row][col] == EMPTY_CELL) {
@@ -118,8 +116,7 @@ protected:
     /// @param board Current board state
     /// @param box_idx Box index (0-8, row-major order)
     /// @return Vector of positions of empty cells
-    [[nodiscard]] static std::vector<Position> getEmptyCellsInBox(const std::vector<std::vector<int>>& board,
-                                                                  size_t box_idx) {
+    [[nodiscard]] static std::vector<Position> getEmptyCellsInBox(const BoardData& board, size_t box_idx) {
         std::vector<Position> empty_cells;
         size_t box_start_row = (box_idx / BOX_SIZE) * BOX_SIZE;
         size_t box_start_col = (box_idx % BOX_SIZE) * BOX_SIZE;
@@ -200,8 +197,8 @@ protected:
     }
 
     /// Gets all empty cells in a unit (row, column, or box)
-    [[nodiscard]] static std::vector<Position> getEmptyCellsInUnit(const std::vector<std::vector<int>>& board,
-                                                                   RegionType type, size_t index) {
+    [[nodiscard]] static std::vector<Position> getEmptyCellsInUnit(const BoardData& board, RegionType type,
+                                                                   size_t index) {
         switch (type) {
             case RegionType::Row:
                 return getEmptyCellsInRow(board, index);

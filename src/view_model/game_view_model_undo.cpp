@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../core/string_keys.h"
-#include "core/board_utils.h"
 #include "core/i_game_validator.h"
 #include "core/i_statistics_manager.h"
 #include "core/observable.h"
@@ -23,7 +22,6 @@
 #include "model/game_state.h"
 
 #include <chrono>
-#include <cstddef>
 #include <expected>
 #include <format>
 #include <memory>
@@ -146,12 +144,12 @@ void GameViewModel::checkSolution() {
 
         gameState.update([&conflicts](model::GameState& state) {
             // Clear previous conflicts
-            core::forEachCell([&](size_t row, size_t col) { state.getBoard()[row][col].has_conflict = false; });
+            state.clearConflicts();
 
             // Mark new conflicts
             for (const auto& pos : conflicts) {
-                if (!state.getBoard()[pos.row][pos.col].is_given) {
-                    state.getBoard()[pos.row][pos.col].has_conflict = true;
+                if (!state.isGiven(pos)) {
+                    state.setConflict(pos, true);
                 }
             }
         });
@@ -195,17 +193,16 @@ void GameViewModel::recordMove(const core::Move& move, bool is_mistake) {
 void GameViewModel::applyMove(const core::Move& move) {
     bool auto_notes = isAutoNotesEnabled();
     gameState.update([&move, auto_notes](model::GameState& state) {
-        auto& cell = state.getCell(move.position);
         switch (move.move_type) {
             case core::MoveType::PlaceNumber:
-                cell.value = move.value;
+                state.setValue(move.position, move.value);
                 if (!auto_notes) {
                     state.clearNotes(move.position);
                     cleanupConflictingNotes(state, move.position, move.value);
                 }
                 break;
             case core::MoveType::RemoveNumber:
-                cell.value = 0;
+                state.setValue(move.position, 0);
                 break;
             case core::MoveType::AddNote:
                 if (!auto_notes) {
@@ -218,8 +215,8 @@ void GameViewModel::applyMove(const core::Move& move) {
                 }
                 break;
             case core::MoveType::PlaceHint:
-                cell.value = move.value;
-                cell.is_hint_revealed = true;
+                state.setValue(move.position, move.value);
+                state.setHintRevealed(move.position, true);
                 if (!auto_notes) {
                     state.clearNotes(move.position);
                     cleanupConflictingNotes(state, move.position, move.value);
@@ -240,23 +237,22 @@ void GameViewModel::applyMove(const core::Move& move) {
 void GameViewModel::revertMove(const core::Move& move) {
     bool auto_notes = isAutoNotesEnabled();
     gameState.update([&move, auto_notes](model::GameState& state) {
-        auto& cell = state.getCell(move.position);
         switch (move.move_type) {
             case core::MoveType::PlaceNumber:
-                cell.value = move.previous_value;
-                cell.is_hint_revealed = move.previous_hint_revealed;
+                state.setValue(move.position, move.previous_value);
+                state.setHintRevealed(move.position, move.previous_hint_revealed);
                 if (!auto_notes) {
-                    cell.notes = move.previous_notes;
+                    state.setNotes(move.position, move.previous_notes);
                     if (move.value != 0) {
                         restoreConflictingNotes(state, move.position, move.value);
                     }
                 }
                 break;
             case core::MoveType::RemoveNumber:
-                cell.value = move.previous_value;
-                cell.is_hint_revealed = move.previous_hint_revealed;
+                state.setValue(move.position, move.previous_value);
+                state.setHintRevealed(move.position, move.previous_hint_revealed);
                 if (!auto_notes) {
-                    cell.notes = move.previous_notes;
+                    state.setNotes(move.position, move.previous_notes);
                     if (move.previous_value != 0) {
                         cleanupConflictingNotes(state, move.position, move.previous_value);
                     }
@@ -265,14 +261,14 @@ void GameViewModel::revertMove(const core::Move& move) {
             case core::MoveType::AddNote:
             case core::MoveType::RemoveNote:
                 if (!auto_notes) {
-                    cell.notes = move.previous_notes;
+                    state.setNotes(move.position, move.previous_notes);
                 }
                 break;
             case core::MoveType::PlaceHint:
-                cell.value = move.previous_value;
-                cell.is_hint_revealed = move.previous_hint_revealed;
+                state.setValue(move.position, move.previous_value);
+                state.setHintRevealed(move.position, move.previous_hint_revealed);
                 if (!auto_notes) {
-                    cell.notes = move.previous_notes;
+                    state.setNotes(move.position, move.previous_notes);
                     if (move.value != 0) {
                         restoreConflictingNotes(state, move.position, move.value);
                     }

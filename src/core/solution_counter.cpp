@@ -47,7 +47,7 @@ SolutionCounter::SolutionCounter() {
     initializeZobristTable();
 }
 
-bool SolutionCounter::hasUniqueSolution(const std::vector<std::vector<int>>& board) const {
+bool SolutionCounter::hasUniqueSolution(const BoardData& board) const {
     return countSolutions(board, 2) == 1;
 }
 
@@ -74,14 +74,14 @@ SolverPath SolutionCounter::resolveEffectivePath() const {
 }
 
 // CPD-OFF — different timeout semantics and return-on-timeout policies
-int SolutionCounter::countSolutions(const std::vector<std::vector<int>>& board, int max_solutions) const {
+int SolutionCounter::countSolutions(const BoardData& board, int max_solutions) const {
     // Note: Cache is now cleared per-attempt in generatePuzzle(), not per-call here
     // This allows cache accumulation across multiple countSolutions() calls within
     // a single generation attempt, improving performance when checking uniqueness
     // after each clue removal.
 
     // Convert to Board for hot path: 96-byte stack copy instead of 9 heap allocations
-    auto board_copy = Board::fromVectors(board);
+    auto board_copy = Board::fromBoardData(board);
     int count = 0;
     auto start_time = std::chrono::steady_clock::now();
     auto timeout = std::chrono::milliseconds(DEFAULT_SOLUTION_TIMEOUT_MS);
@@ -123,7 +123,7 @@ int SolutionCounter::countSolutions(const std::vector<std::vector<int>>& board, 
     return count;
 }
 
-int SolutionCounter::countSolutionsWithTimeout(const std::vector<std::vector<int>>& board, int max_solutions,
+int SolutionCounter::countSolutionsWithTimeout(const BoardData& board, int max_solutions,
                                                std::chrono::milliseconds timeout) const {
     // Note: Cache is now cleared per-attempt in generatePuzzle(), not per-call here
     // This allows cache accumulation across multiple countSolutions() calls within
@@ -131,7 +131,7 @@ int SolutionCounter::countSolutionsWithTimeout(const std::vector<std::vector<int
     // after each clue removal.
 
     // Convert to Board for hot path: 96-byte stack copy instead of 9 heap allocations
-    auto board_copy = Board::fromVectors(board);
+    auto board_copy = Board::fromBoardData(board);
     int count = 0;
     auto start_time = std::chrono::steady_clock::now();
     bool timed_out = false;
@@ -628,7 +628,7 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
     }
 }
 
-bool SolutionCounter::hasContradiction(const std::vector<std::vector<int>>& board) {
+bool SolutionCounter::hasContradiction(const BoardData& board) {
     ConstraintState state(board);
 
     // Check each empty cell for empty domain (no legal values)
@@ -649,9 +649,9 @@ bool SolutionCounter::hasContradiction(const std::vector<std::vector<int>>& boar
     return false;  // No contradiction found
 }
 
-std::expected<std::vector<std::vector<int>>, GenerationError>
+std::expected<BoardData, GenerationError>
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — constraint propagation loop with naked/hidden single detection; algorithmically coupled, cannot split without losing context
-SolutionCounter::propagateConstraintsScalar(const std::vector<std::vector<int>>& board) {
+SolutionCounter::propagateConstraintsScalar(const BoardData& board) {
     auto propagated = board;
     ConstraintState state(propagated);
 
@@ -716,8 +716,7 @@ SolutionCounter::propagateConstraintsScalar(const std::vector<std::vector<int>>&
     return propagated;
 }
 
-std::expected<std::vector<std::vector<int>>, GenerationError>
-SolutionCounter::propagateConstraintsSIMD(const std::vector<std::vector<int>>& board) {
+std::expected<BoardData, GenerationError> SolutionCounter::propagateConstraintsSIMD(const BoardData& board) {
     auto propagated = board;
     SIMDConstraintState state;
     state.initFromBoard(propagated);
@@ -776,8 +775,7 @@ SolutionCounter::propagateConstraintsSIMD(const std::vector<std::vector<int>>& b
     return propagated;
 }
 
-std::expected<std::vector<std::vector<int>>, GenerationError>
-SolutionCounter::propagateConstraints(const std::vector<std::vector<int>>& board) {
+std::expected<BoardData, GenerationError> SolutionCounter::propagateConstraints(const BoardData& board) {
     if (hasAvx2()) {
         return propagateConstraintsSIMD(board);
     }
@@ -789,8 +787,7 @@ SolutionCounter::propagateConstraints(const std::vector<std::vector<int>>& board
 // ============================================================================
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — iterative propagation loop; naked/hidden single passes are tightly coupled; complexity is inherent to constraint propagation
-[[nodiscard]] bool SolutionCounter::applyIterativePropagationScalar(std::vector<std::vector<int>>& board,
-                                                                    ConstraintState& state) {
+[[nodiscard]] bool SolutionCounter::applyIterativePropagationScalar(BoardData& board, ConstraintState& state) {
     bool changed = true;
     int iteration_count = 0;
     constexpr int MAX_ITERATIONS = 81;  // Maximum possible iterations (9x9 board)
@@ -851,8 +848,7 @@ SolutionCounter::propagateConstraints(const std::vector<std::vector<int>>& board
     return true;  // Board is complete!
 }
 
-[[nodiscard]] bool SolutionCounter::applyIterativePropagationSIMD(std::vector<std::vector<int>>& board,
-                                                                  SIMDConstraintState& state) {
+[[nodiscard]] bool SolutionCounter::applyIterativePropagationSIMD(BoardData& board, SIMDConstraintState& state) {
     bool changed = true;
     int iteration_count = 0;
     constexpr int MAX_ITERATIONS = 81;

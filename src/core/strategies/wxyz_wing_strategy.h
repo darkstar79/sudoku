@@ -36,7 +36,7 @@ namespace sudoku::core {
 /// can be eliminated from external cells that see all cells containing Z.
 class WXYZWingStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         auto pivot_cells = WingHelpers::findCellsByCandidateCount(board, candidates, 3, 4);
         auto bivalue_cells = WingHelpers::findCellsByCandidateCount(board, candidates, 2, 2);
@@ -66,8 +66,8 @@ public:
 private:
     // CPD-OFF — wing enumeration with different nesting depths vs vwxyz_wing
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — enumerates wing triples for WXYZ pattern; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> tryPivot(const std::vector<std::vector<int>>& board,
-                                                           const CandidateGrid& candidates, const Position& pivot,
+    [[nodiscard]] static std::optional<SolveStep> tryPivot(const BoardData& board, const CandidateGrid& candidates,
+                                                           const Position& pivot,
                                                            const std::vector<Position>& bivalue_cells) {
         uint16_t pivot_mask = candidates.getPossibleValuesMask(pivot.row, pivot.col);
 

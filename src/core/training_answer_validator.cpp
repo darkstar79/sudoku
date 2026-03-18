@@ -79,8 +79,7 @@ inline constexpr int kMaxFindAllIterations = 100;
 }
 
 /// Find a matching placement step from all strategy-generated steps
-[[nodiscard]] std::optional<SolveStep> findMatchingPlacement(const std::vector<std::vector<int>>& board,
-                                                             const CandidateGrid& candidates,
+[[nodiscard]] std::optional<SolveStep> findMatchingPlacement(const BoardData& board, const CandidateGrid& candidates,
                                                              SolvingTechnique technique, Position position, int value,
                                                              SolveStepType required_type = SolveStepType::Placement) {
     auto all_steps = TrainingAnswerValidator::findAllSteps(board, candidates, technique);
@@ -93,8 +92,7 @@ inline constexpr int kMaxFindAllIterations = 100;
 }
 
 /// Check if value appears as candidate in exactly one empty cell in a unit
-[[nodiscard]] int countCandidateInRow(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                                      size_t row, int value) {
+[[nodiscard]] int countCandidateInRow(const BoardData& board, const CandidateGrid& candidates, size_t row, int value) {
     int count = 0;
     for (size_t c = 0; c < BOARD_SIZE; ++c) {
         if (board[row][c] == 0 && candidates.isAllowed(row, c, value)) {
@@ -104,8 +102,7 @@ inline constexpr int kMaxFindAllIterations = 100;
     return count;
 }
 
-[[nodiscard]] int countCandidateInCol(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                                      size_t col, int value) {
+[[nodiscard]] int countCandidateInCol(const BoardData& board, const CandidateGrid& candidates, size_t col, int value) {
     int count = 0;
     for (size_t r = 0; r < BOARD_SIZE; ++r) {
         if (board[r][col] == 0 && candidates.isAllowed(r, col, value)) {
@@ -115,8 +112,8 @@ inline constexpr int kMaxFindAllIterations = 100;
     return count;
 }
 
-[[nodiscard]] int countCandidateInBox(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                                      size_t row, size_t col, int value) {
+[[nodiscard]] int countCandidateInBox(const BoardData& board, const CandidateGrid& candidates, size_t row, size_t col,
+                                      int value) {
     size_t box_row = (row / BOX_SIZE) * BOX_SIZE;
     size_t box_col = (col / BOX_SIZE) * BOX_SIZE;
     int count = 0;
@@ -131,8 +128,8 @@ inline constexpr int kMaxFindAllIterations = 100;
 }
 
 /// Check if value is a hidden single at the given position (unique candidate in any unit)
-[[nodiscard]] bool isHiddenSingle(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                                  Position position, int value) {
+[[nodiscard]] bool isHiddenSingle(const BoardData& board, const CandidateGrid& candidates, Position position,
+                                  int value) {
     return countCandidateInRow(board, candidates, position.row, value) == 1 ||
            countCandidateInCol(board, candidates, position.col, value) == 1 ||
            countCandidateInBox(board, candidates, position.row, position.col, value) == 1;
@@ -140,7 +137,7 @@ inline constexpr int kMaxFindAllIterations = 100;
 
 }  // namespace
 
-std::optional<SolveStep> TrainingAnswerValidator::validatePlacement(const std::vector<std::vector<int>>& board,
+std::optional<SolveStep> TrainingAnswerValidator::validatePlacement(const BoardData& board,
                                                                     const CandidateGrid& candidates,
                                                                     SolvingTechnique technique, Position position,
                                                                     int value) {
@@ -174,8 +171,8 @@ std::optional<SolveStep> TrainingAnswerValidator::validatePlacement(const std::v
 }
 
 std::optional<SolveStep>
-TrainingAnswerValidator::validateElimination(const std::vector<std::vector<int>>& board,
-                                             const CandidateGrid& candidates, SolvingTechnique technique,
+TrainingAnswerValidator::validateElimination(const BoardData& board, const CandidateGrid& candidates,
+                                             SolvingTechnique technique,
                                              const std::set<std::tuple<size_t, size_t, int>>& player_eliminations) {
     auto all_steps = findAllSteps(board, candidates, technique);
     for (auto& step : all_steps) {
@@ -186,8 +183,7 @@ TrainingAnswerValidator::validateElimination(const std::vector<std::vector<int>>
     return std::nullopt;
 }
 
-std::vector<SolveStep> TrainingAnswerValidator::findAllSteps(const std::vector<std::vector<int>>& board,
-                                                             const CandidateGrid& candidates,
+std::vector<SolveStep> TrainingAnswerValidator::findAllSteps(const BoardData& board, const CandidateGrid& candidates,
                                                              SolvingTechnique technique) {
     auto strategy = createStrategy(technique);
     if (!strategy) {
@@ -220,7 +216,7 @@ std::vector<SolveStep> TrainingAnswerValidator::findAllSteps(const std::vector<s
     return results;
 }
 
-CandidateGrid TrainingAnswerValidator::reconstructCandidates(const std::vector<std::vector<int>>& board,
+CandidateGrid TrainingAnswerValidator::reconstructCandidates(const BoardData& board,
                                                              const std::vector<uint16_t>& candidate_masks) {
     CandidateGrid candidates(board);
 

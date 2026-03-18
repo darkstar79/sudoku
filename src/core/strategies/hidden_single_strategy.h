@@ -32,8 +32,7 @@ namespace sudoku::core {
 /// Even if that cell has multiple candidates, the value is "hidden" among them
 class HiddenSingleStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
-                                                    const CandidateGrid& state) const override {
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board, const CandidateGrid& state) const override {
         // Leverage CandidateGrid::findHiddenSingle which respects per-cell eliminations
         auto result = state.findHiddenSingle(board);
 

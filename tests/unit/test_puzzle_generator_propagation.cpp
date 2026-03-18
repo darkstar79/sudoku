@@ -39,7 +39,7 @@
 using namespace sudoku::core;
 
 // Helper: Create board with single naked single at (0,0)
-static std::vector<std::vector<int>> createBoardWithNakedSingle() {
+static BoardData createBoardWithNakedSingle() {
     // Board where (0,0) can only be 9 (all other values 1-8 blocked by row/col/box)
     return {{0, 1, 2, 0, 0, 0, 0, 0, 0},  // Row blocks 1-2
             {3, 0, 0, 0, 0, 0, 0, 0, 0},  // Col blocks 3
@@ -52,7 +52,7 @@ static std::vector<std::vector<int>> createBoardWithNakedSingle() {
 }
 
 // Helper: Create board with hidden single in row
-static std::vector<std::vector<int>> createBoardWithHiddenSingle() {
+static BoardData createBoardWithHiddenSingle() {
     // Value 5 can only go in (0,0) in row 0 (other cells have 1-4, 6-9)
     return {{0, 1, 2, 3, 4, 6, 7, 8, 9},  // Row 0: only (0,0) can hold 5 (hidden single)
             {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -61,7 +61,7 @@ static std::vector<std::vector<int>> createBoardWithHiddenSingle() {
 }
 
 // Helper: Create board with cascading forced moves
-static std::vector<std::vector<int>> createBoardWithCascadingMoves() {
+static BoardData createBoardWithCascadingMoves() {
     // Use a real partial Sudoku with cascading singles
     // From a generated Medium puzzle with known forced moves
     return {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0},
@@ -72,7 +72,7 @@ static std::vector<std::vector<int>> createBoardWithCascadingMoves() {
 }
 
 // Helper: Create board with contradiction (empty domain)
-static std::vector<std::vector<int>> createBoardWithContradiction() {
+static BoardData createBoardWithContradiction() {
     // Cell (0,0) has no legal values - all 1-9 blocked
     return {{0, 1, 2, 0, 0, 0, 0, 0, 0},   // Row blocks 1-2
             {3, 0, 0, 0, 0, 0, 0, 0, 0},   // Col blocks 3, box blocks 3
@@ -164,7 +164,7 @@ TEST_CASE("PuzzleGenerator - Iterative Constraint Propagation", "[puzzle_generat
 
     SECTION("Propagation on valid board succeeds") {
         // Valid partial board with no forced moves
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
         board[1][1] = 3;
         board[2][2] = 7;
@@ -180,7 +180,7 @@ TEST_CASE("PuzzleGenerator - Iterative Constraint Propagation", "[puzzle_generat
     }
 
     SECTION("Propagation on empty board succeeds with no changes") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         auto result = generator.propagateConstraints(board);
 
@@ -210,7 +210,7 @@ TEST_CASE("PuzzleGenerator - hasContradiction Detection", "[puzzle_generator][pr
     }
 
     SECTION("Valid board has no contradiction") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
 
         bool has_contradiction = generator.hasContradiction(board);
@@ -220,11 +220,10 @@ TEST_CASE("PuzzleGenerator - hasContradiction Detection", "[puzzle_generator][pr
 
     SECTION("Nearly-full valid board has no contradiction") {
         // Create board with one empty cell that has valid domain
-        std::vector<std::vector<int>> board = {{5, 3, 0, 6, 7, 8, 9, 1, 2},  // (0,2) can be 4
-                                               {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                                               {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1},
-                                               {7, 1, 3, 9, 2, 4, 8, 5, 6}, {9, 6, 1, 5, 3, 7, 2, 8, 4},
-                                               {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = {{5, 3, 0, 6, 7, 8, 9, 1, 2},  // (0,2) can be 4
+                           {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7}, {8, 5, 9, 7, 6, 1, 4, 2, 3},
+                           {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6}, {9, 6, 1, 5, 3, 7, 2, 8, 4},
+                           {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         bool has_contradiction = generator.hasContradiction(board);
 
@@ -314,10 +313,9 @@ TEST_CASE("PuzzleGenerator - Edge Cases for Propagation", "[puzzle_generator][pr
 
     SECTION("Propagation on completely filled board") {
         // Create valid complete board
-        std::vector<std::vector<int>> board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
 
         auto result = generator.propagateConstraints(board);
 

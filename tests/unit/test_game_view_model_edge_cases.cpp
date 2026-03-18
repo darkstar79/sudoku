@@ -79,9 +79,8 @@ TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
             // Fill every cell with a value
             for (size_t row = 0; row < BOARD_SIZE; ++row) {
                 for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                    auto& cell = state.getCell(row, col);
-                    if (cell.value == 0) {
-                        cell.value = 1;  // Just fill with something
+                    if (state.getValue(row, col) == 0) {
+                        state.setValue(row, col, 1);  // Just fill with something
                     }
                 }
             }

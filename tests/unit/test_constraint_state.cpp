@@ -31,7 +31,7 @@ using namespace sudoku::core;
 
 TEST_CASE("ConstraintState - Initialization", "[constraint_state]") {
     SECTION("Empty board initializes with no constraints") {
-        std::vector<std::vector<int>> empty_board(9, std::vector<int>(9, 0));
+        BoardData empty_board;
         ConstraintState state(empty_board);
 
         // All values should be allowed everywhere
@@ -45,7 +45,7 @@ TEST_CASE("ConstraintState - Initialization", "[constraint_state]") {
     }
 
     SECTION("Partially filled board initializes correctly") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;  // Place 5 at (0,0)
         board[4][4] = 9;  // Place 9 at (4,4)
 
@@ -70,7 +70,7 @@ TEST_CASE("ConstraintState - Initialization", "[constraint_state]") {
 }
 
 TEST_CASE("ConstraintState - Place and Remove", "[constraint_state]") {
-    std::vector<std::vector<int>> empty_board(9, std::vector<int>(9, 0));
+    BoardData empty_board;
     ConstraintState state(empty_board);
 
     SECTION("placeValue updates constraints correctly") {
@@ -128,7 +128,7 @@ TEST_CASE("ConstraintState - Place and Remove", "[constraint_state]") {
 }
 
 TEST_CASE("ConstraintState - getPossibleValuesMask", "[constraint_state]") {
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+    BoardData board;
     // Fill row 0 with values 1-8
     for (int i = 0; i < 8; ++i) {
         board[0][i] = i + 1;
@@ -166,7 +166,7 @@ TEST_CASE("ConstraintState - getPossibleValuesMask", "[constraint_state]") {
 }
 
 TEST_CASE("ConstraintState - countPossibleValues", "[constraint_state]") {
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+    BoardData board;
 
     SECTION("Empty board has 9 possible values everywhere") {
         ConstraintState state(board);
@@ -203,7 +203,7 @@ TEST_CASE("ConstraintState - countPossibleValues", "[constraint_state]") {
 }
 
 TEST_CASE("ConstraintState - Box Index Calculation", "[constraint_state]") {
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+    BoardData board;
     ConstraintState state(board);
 
     SECTION("Box indices are correct") {
@@ -236,7 +236,7 @@ TEST_CASE("ConstraintState - Box Index Calculation", "[constraint_state]") {
 
 TEST_CASE("ConstraintState - Edge Cases", "[constraint_state]") {
     SECTION("Value 0 handling") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 0;  // Explicitly zero
         ConstraintState state(board);
 
@@ -247,7 +247,7 @@ TEST_CASE("ConstraintState - Edge Cases", "[constraint_state]") {
     }
 
     SECTION("Full row constraint") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         // Fill entire row 0
         for (int col = 0; col < 9; ++col) {
             board[0][col] = col + 1;
@@ -264,7 +264,7 @@ TEST_CASE("ConstraintState - Edge Cases", "[constraint_state]") {
 }
 
 TEST_CASE("ConstraintState - Performance Characteristics", "[constraint_state][.performance]") {
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+    BoardData board;
     ConstraintState state(board);
 
     SECTION("Many place/remove operations") {
@@ -289,8 +289,9 @@ TEST_CASE("ConstraintState - Hidden Singles in Row", "[constraint_state][hidden_
          * Position (0,3) is empty, value 4 can only go there
          * This is a hidden single for value 4 in row 0
          */
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
-        board[0] = {1, 2, 3, 0, 5, 6, 7, 8, 9};
+        BoardData board = {{1, 2, 3, 0, 5, 6, 7, 8, 9}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
         ConstraintState state(board);
 
         auto result = state.findHiddenSingleInRow(0, board);
@@ -308,10 +309,9 @@ TEST_CASE("ConstraintState - Hidden Singles in Row", "[constraint_state][hidden_
          * If value 3 is blocked at position 3 (by column/box constraint),
          * then value 3 can only go at position 2 → hidden single
          */
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
-        board[1] = {1, 2, 0, 0, 5, 6, 7, 8, 9};
-        // Block value 3 from position (1,3) by placing it in same column
-        board[0][3] = 3;
+        BoardData board = {{0, 0, 0, 3, 0, 0, 0, 0, 0}, {1, 2, 0, 0, 5, 6, 7, 8, 9}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
         ConstraintState state(board);
 
         auto result = state.findHiddenSingleInRow(1, board);
@@ -327,8 +327,9 @@ TEST_CASE("ConstraintState - Hidden Singles in Row", "[constraint_state][hidden_
          * Values 3 and 4 can both go in either empty cell
          * No hidden single exists
          */
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
-        board[2] = {1, 2, 0, 0, 5, 6, 7, 8, 9};
+        BoardData board = {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {1, 2, 0, 0, 5, 6, 7, 8, 9},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
         ConstraintState state(board);
 
         auto result = state.findHiddenSingleInRow(2, board);
@@ -336,8 +337,9 @@ TEST_CASE("ConstraintState - Hidden Singles in Row", "[constraint_state][hidden_
     }
 
     SECTION("No hidden single when row is complete") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
-        board[3] = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+        BoardData board = {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {1, 2, 3, 4, 5, 6, 7, 8, 9}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
         ConstraintState state(board);
 
         auto result = state.findHiddenSingleInRow(3, board);
@@ -347,7 +349,7 @@ TEST_CASE("ConstraintState - Hidden Singles in Row", "[constraint_state][hidden_
 
 TEST_CASE("ConstraintState - Hidden Singles in Column", "[constraint_state][hidden_singles]") {
     SECTION("Hidden single in column - simple case") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         // Fill column 0 with values 1-8, leaving row 3 empty
         for (int row = 0; row < 9; ++row) {
             if (row != 3) {
@@ -364,7 +366,7 @@ TEST_CASE("ConstraintState - Hidden Singles in Column", "[constraint_state][hidd
     }
 
     SECTION("Hidden single with row constraint") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         // Fill column 4 with values except 2 and 9 at rows 3 and 4
         board[0][4] = 1;
         board[1][4] = 3;
@@ -389,7 +391,7 @@ TEST_CASE("ConstraintState - Hidden Singles in Column", "[constraint_state][hidd
     }
 
     SECTION("No hidden single in empty column") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         ConstraintState state(board);
 
         auto result = state.findHiddenSingleInCol(5, board);
@@ -399,7 +401,7 @@ TEST_CASE("ConstraintState - Hidden Singles in Column", "[constraint_state][hidd
 
 TEST_CASE("ConstraintState - Hidden Singles in Box", "[constraint_state][hidden_singles]") {
     SECTION("Hidden single in box - simple case") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         // Fill box 0 (rows 0-2, cols 0-2) except position (1,1)
         board[0][0] = 1;
         board[0][1] = 2;
@@ -421,7 +423,7 @@ TEST_CASE("ConstraintState - Hidden Singles in Box", "[constraint_state][hidden_
     }
 
     SECTION("Hidden single with row/column constraints") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         // Fill box 4 (rows 3-5, cols 3-5) with 8 values, leaving two cells empty
         board[3][3] = 1;
         board[3][4] = 2;
@@ -447,7 +449,7 @@ TEST_CASE("ConstraintState - Hidden Singles in Box", "[constraint_state][hidden_
     }
 
     SECTION("No hidden single when multiple placements possible") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         // Fill box 8 (rows 6-8, cols 6-8) partially
         board[6][6] = 1;
         board[6][7] = 2;
@@ -461,8 +463,9 @@ TEST_CASE("ConstraintState - Hidden Singles in Box", "[constraint_state][hidden_
 
 TEST_CASE("ConstraintState - findHiddenSingle (All Regions)", "[constraint_state][hidden_singles]") {
     SECTION("Finds hidden single in row first") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
-        board[0] = {1, 2, 3, 0, 5, 6, 7, 8, 9};
+        BoardData board = {{1, 2, 3, 0, 5, 6, 7, 8, 9}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
         ConstraintState state(board);
 
         auto result = state.findHiddenSingle(board);
@@ -474,7 +477,7 @@ TEST_CASE("ConstraintState - findHiddenSingle (All Regions)", "[constraint_state
     }
 
     SECTION("Finds hidden single in column when no row hidden singles") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         // No row hidden singles, but column 0 has one
         for (int row = 0; row < 9; ++row) {
             if (row != 5) {
@@ -492,7 +495,7 @@ TEST_CASE("ConstraintState - findHiddenSingle (All Regions)", "[constraint_state
     }
 
     SECTION("Finds hidden single in box when no row/column hidden singles") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         // Box 0 hidden single
         board[0][0] = 1;
         board[0][1] = 2;
@@ -514,7 +517,7 @@ TEST_CASE("ConstraintState - findHiddenSingle (All Regions)", "[constraint_state
     }
 
     SECTION("Returns nullopt when no hidden singles exist") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         ConstraintState state(board);
 
         auto result = state.findHiddenSingle(board);
@@ -526,10 +529,9 @@ TEST_CASE("ConstraintState - findHiddenSingle (All Regions)", "[constraint_state
          * Create a partially solved board where hidden single detection is useful
          * This simulates a real Sudoku solving scenario
          */
-        std::vector<std::vector<int>> board = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 
         ConstraintState state(board);
         auto result = state.findHiddenSingle(board);

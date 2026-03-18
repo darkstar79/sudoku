@@ -41,7 +41,7 @@ namespace sudoku::core {
 /// Type 2 (Elimination): All branches eliminate the same candidate from the same cell.
 class ForcingChainStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // Try bivalue cells first (most common), then trivalue
         for (int target_count = 2; target_count <= 3; ++target_count) {
@@ -90,8 +90,7 @@ private:
     };
 
     /// Initialize propagation state from current board + candidates
-    [[nodiscard]] static PropagationState initState(const std::vector<std::vector<int>>& board,
-                                                    const CandidateGrid& candidates) {
+    [[nodiscard]] static PropagationState initState(const BoardData& board, const CandidateGrid& candidates) {
         PropagationState state;
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (size_t col = 0; col < BOARD_SIZE; ++col) {
@@ -363,7 +362,7 @@ private:
     }
 
     /// Try forcing chains from a specific cell with given candidates
-    [[nodiscard]] static std::optional<SolveStep> tryForcingCell(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> tryForcingCell(const BoardData& board,
                                                                  const CandidateGrid& candidates, Position source,
                                                                  const std::vector<int>& cands) {
         size_t source_idx = (source.row * BOARD_SIZE) + source.col;
@@ -428,8 +427,7 @@ private:
 
     /// Find a cell+value that all branches agree on placing
     [[nodiscard]] static std::optional<std::pair<Position, int>>
-    findCommonPlacement(const std::vector<std::vector<int>>& board, const std::vector<PropagationState>& branches,
-                        Position source) {
+    findCommonPlacement(const BoardData& board, const std::vector<PropagationState>& branches, Position source) {
         for (size_t idx = 0; idx < TOTAL_CELLS; ++idx) {
             size_t row = idx / BOARD_SIZE;
             size_t col = idx % BOARD_SIZE;
@@ -463,7 +461,7 @@ private:
 
     /// Find a candidate that all branches eliminate from a cell
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — scans all cells for common eliminations across branches; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findCommonElimination(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findCommonElimination(const BoardData& board,
                                                                         const CandidateGrid& candidates,
                                                                         const std::vector<PropagationState>& branches,
                                                                         Position source) {

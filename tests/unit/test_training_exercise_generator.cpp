@@ -28,7 +28,7 @@ namespace {
 /// A nearly-complete board with a few empty cells for testing.
 /// Row 8 cells [6],[7],[8] are empty (values would be 4,8,6 in the solution).
 // clang-format off
-const std::vector<std::vector<int>> CANNED_BOARD = {
+const BoardData CANNED_BOARD = {
     {5, 3, 4, 6, 7, 8, 9, 1, 2},
     {6, 7, 2, 1, 9, 5, 3, 4, 8},
     {1, 9, 8, 3, 4, 2, 5, 6, 7},
@@ -40,7 +40,7 @@ const std::vector<std::vector<int>> CANNED_BOARD = {
     {3, 4, 5, 2, 8, 6, 0, 0, 0},
 };
 
-const std::vector<std::vector<int>> CANNED_SOLUTION = {
+const BoardData CANNED_SOLUTION = {
     {5, 3, 4, 6, 7, 8, 9, 1, 2},
     {6, 7, 2, 1, 9, 5, 3, 4, 8},
     {1, 9, 8, 3, 4, 2, 5, 6, 7},
@@ -256,8 +256,8 @@ const std::vector<SolveStep> CANNED_FORCING_CHAIN_PATH = {
 /// Mock puzzle generator that returns canned puzzles
 class MockPuzzleGenerator : public IPuzzleGenerator {
 public:
-    std::vector<std::vector<int>> board = CANNED_BOARD;
-    std::vector<std::vector<int>> solution = CANNED_SOLUTION;
+    BoardData board = CANNED_BOARD;
+    BoardData solution = CANNED_SOLUTION;
 
     [[nodiscard]] std::expected<Puzzle, GenerationError>
     generatePuzzle(const GenerationSettings& /*settings*/) const override {
@@ -268,16 +268,15 @@ public:
         return generateResult();
     }
 
-    [[nodiscard]] std::expected<std::vector<std::vector<int>>, GenerationError>
-    solvePuzzle(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] std::expected<BoardData, GenerationError> solvePuzzle(const BoardData& /*board*/) const override {
         return solution;
     }
 
-    [[nodiscard]] bool hasUniqueSolution(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] bool hasUniqueSolution(const BoardData& /*board*/) const override {
         return true;
     }
 
-    [[nodiscard]] int countClues(const std::vector<std::vector<int>>& brd) const override {
+    [[nodiscard]] int countClues(const BoardData& brd) const override {
         int count = 0;
         for (const auto& row : brd) {
             for (int cell : row) {
@@ -289,7 +288,7 @@ public:
         return count;
     }
 
-    [[nodiscard]] bool validatePuzzle(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] bool validatePuzzle(const BoardData& /*board*/) const override {
         return true;
     }
 
@@ -310,16 +309,14 @@ class MockSolver : public ISudokuSolver {
 public:
     std::vector<SolveStep> solve_path = CANNED_NAKED_SINGLE_PATH;
 
-    [[nodiscard]] std::expected<SolveStep, SolverError>
-    findNextStep(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const BoardData& /*board*/) const override {
         if (solve_path.empty()) {
             return std::unexpected(SolverError::Unsolvable);
         }
         return solve_path[0];
     }
 
-    [[nodiscard]] std::expected<SolverResult, SolverError>
-    solvePuzzle(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] std::expected<SolverResult, SolverError> solvePuzzle(const BoardData& /*board*/) const override {
         SolverResult result;
         result.solution = CANNED_SOLUTION;
         result.solve_path = solve_path;
@@ -327,7 +324,7 @@ public:
         return result;
     }
 
-    [[nodiscard]] bool applyStep(std::vector<std::vector<int>>& board, const SolveStep& step) const override {
+    [[nodiscard]] bool applyStep(BoardData& board, const SolveStep& step) const override {
         if (step.type == SolveStepType::Placement) {
             board[step.position.row][step.position.col] = step.value;
         }
@@ -353,20 +350,19 @@ public:
         return std::unexpected(GenerationError::GenerationFailed);
     }
 
-    [[nodiscard]] std::expected<std::vector<std::vector<int>>, GenerationError>
-    solvePuzzle(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] std::expected<BoardData, GenerationError> solvePuzzle(const BoardData& /*board*/) const override {
         return std::unexpected(GenerationError::GenerationFailed);
     }
 
-    [[nodiscard]] bool hasUniqueSolution(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] bool hasUniqueSolution(const BoardData& /*board*/) const override {
         return false;
     }
 
-    [[nodiscard]] int countClues(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] int countClues(const BoardData& /*board*/) const override {
         return 0;
     }
 
-    [[nodiscard]] bool validatePuzzle(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] bool validatePuzzle(const BoardData& /*board*/) const override {
         return false;
     }
 };
@@ -374,17 +370,15 @@ public:
 /// Mock solver whose solvePuzzle always fails — covers the !solve_result.has_value() branch
 class FailingSolver : public ISudokuSolver {
 public:
-    [[nodiscard]] std::expected<SolveStep, SolverError>
-    findNextStep(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const BoardData& /*board*/) const override {
         return std::unexpected(SolverError::Unsolvable);
     }
 
-    [[nodiscard]] std::expected<SolverResult, SolverError>
-    solvePuzzle(const std::vector<std::vector<int>>& /*board*/) const override {
+    [[nodiscard]] std::expected<SolverResult, SolverError> solvePuzzle(const BoardData& /*board*/) const override {
         return std::unexpected(SolverError::Unsolvable);
     }
 
-    [[nodiscard]] bool applyStep(std::vector<std::vector<int>>& /*board*/, const SolveStep& /*step*/) const override {
+    [[nodiscard]] bool applyStep(BoardData& /*board*/, const SolveStep& /*step*/) const override {
         return false;
     }
 };
@@ -450,9 +444,6 @@ TEST_CASE("TrainingExerciseGenerator - NakedSingle Exercises", "[training_exerci
 
         const auto& exercise = (*result)[0];
         REQUIRE(exercise.board.size() == 9);
-        for (const auto& row : exercise.board) {
-            REQUIRE(row.size() == 9);
-        }
     }
 
     SECTION("Candidate masks are populated with 81 entries") {

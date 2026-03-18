@@ -41,7 +41,7 @@ namespace sudoku::core {
 /// Discontinuous AIC Type 2: endpoints share a digit → eliminate from cells seeing both endpoints.
 class NiceLoopStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         Graph graph;
         buildGraph(board, candidates, graph);
@@ -91,7 +91,7 @@ private:
     };
 
     /// Build strong and weak link graph
-    static void buildGraph(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, Graph& graph) {
+    static void buildGraph(const BoardData& board, const CandidateGrid& candidates, Graph& graph) {
         // Strong links from conjugate pairs in units
         buildUnitLinks(board, candidates, graph);
         // Strong/weak links from bivalue cells
@@ -100,8 +100,7 @@ private:
 
     /// Build links from units (rows, columns, boxes)
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — builds strong/weak unit links across rows/cols/boxes; nesting is inherent
-    static void buildUnitLinks(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                               Graph& graph) {
+    static void buildUnitLinks(const BoardData& board, const CandidateGrid& candidates, Graph& graph) {
         // Rows
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (int digit = MIN_VALUE; digit <= MAX_VALUE; ++digit) {
@@ -212,8 +211,7 @@ private:
 
     /// Build links from cell candidates (bivalue cells = strong, all cells = weak)
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — builds strong/weak cell links across all candidate pairs; nesting is inherent
-    static void buildCellLinks(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                               Graph& graph) {
+    static void buildCellLinks(const BoardData& board, const CandidateGrid& candidates, Graph& graph) {
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (size_t col = 0; col < BOARD_SIZE; ++col) {
                 if (board[row][col] != EMPTY_CELL) {
@@ -255,8 +253,8 @@ private:
     }
 
     /// Search for alternating inference chains that produce eliminations
-    [[nodiscard]] static std::optional<SolveStep> searchChains(const std::vector<std::vector<int>>& board,
-                                                               const CandidateGrid& candidates, const Graph& graph) {
+    [[nodiscard]] static std::optional<SolveStep> searchChains(const BoardData& board, const CandidateGrid& candidates,
+                                                               const Graph& graph) {
         // Try each active node as chain start with a strong link
         for (size_t start = 0; start < NUM_NODES; ++start) {
             size_t row = nodeRow(start);
@@ -298,9 +296,10 @@ private:
     /// DFS for alternating chains
     /// @param need_strong true if next link must be strong, false if weak
     /// @param chain_start the starting node (for checking discontinuous AIC)
-    [[nodiscard]] static std::optional<SolveStep>
-    dfs(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, const Graph& graph,
-        std::vector<uint16_t>& chain, std::array<bool, NUM_NODES>& visited, bool need_strong, uint16_t chain_start) {
+    [[nodiscard]] static std::optional<SolveStep> dfs(const BoardData& board, const CandidateGrid& candidates,
+                                                      const Graph& graph, std::vector<uint16_t>& chain,
+                                                      std::array<bool, NUM_NODES>& visited, bool need_strong,
+                                                      uint16_t chain_start) {
         if (chain.size() > static_cast<size_t>(MAX_CHAIN_LENGTH)) {
             return std::nullopt;
         }
@@ -357,11 +356,9 @@ private:
 
     /// Find eliminations from a discontinuous AIC (Type 2)
     /// Both endpoints assert the same digit → eliminate from cells seeing both
-    [[nodiscard]] static std::optional<SolveStep> findAICEliminations(const std::vector<std::vector<int>>& board,
-                                                                      const CandidateGrid& candidates,
-                                                                      uint16_t start_node, uint16_t end_node,
-                                                                      const std::vector<uint16_t>& chain,
-                                                                      uint16_t final_node) {
+    [[nodiscard]] static std::optional<SolveStep>
+    findAICEliminations(const BoardData& board, const CandidateGrid& candidates, uint16_t start_node, uint16_t end_node,
+                        const std::vector<uint16_t>& chain, uint16_t final_node) {
         Position start_pos = nodePosition(start_node);
         Position end_pos = nodePosition(end_node);
         int digit = nodeDigit(start_node);

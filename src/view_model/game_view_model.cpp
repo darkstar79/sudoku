@@ -210,9 +210,7 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
     // progress indicators, the save was created by a bug that marked all cells as given.
     // Note: the old bug also prevented number entry and timer start, so move_history and
     // elapsed_time may both be empty/zero. Check notes as an additional progress indicator.
-    bool has_any_notes = std::ranges::any_of(saved_game.notes, [](const auto& row) {
-        return std::ranges::any_of(row, [](const auto& cell_notes) { return !cell_notes.empty(); });
-    });
+    bool has_any_notes = !saved_game.notes.empty();
     if (saved_game.original_puzzle == saved_game.current_state && (!saved_game.move_history.empty() || has_any_notes)) {
         spdlog::warn("Corrupted auto-save detected (original_puzzle == current_state with game progress), "
                      "starting new game instead");
@@ -239,28 +237,23 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
 
     // Overlay user-entered values from current_state onto non-given cells
     core::forEachCell([&](size_t row, size_t col) {
-        auto& cell = loaded_state.getCell(row, col);
         int saved_value = saved_game.current_state[row][col];
-        if (!cell.is_given && saved_value != 0) {
-            cell.value = saved_value;
+        if (!loaded_state.isGiven(row, col) && saved_value != 0) {
+            loaded_state.setValue(row, col, saved_value);
         }
     });
 
     // Restore notes
     if (!saved_game.notes.empty()) {
         core::forEachCell([&](size_t row, size_t col) {
-            if (row < saved_game.notes.size() && col < saved_game.notes[row].size()) {
-                loaded_state.getCell(row, col).notes = saved_game.notes[row][col];
-            }
+            loaded_state.setNotes({.row = row, .col = col}, saved_game.notes[row][col]);
         });
     }
 
     // Restore hint-revealed cells
     if (!saved_game.hint_revealed_cells.empty()) {
         core::forEachCell([&](size_t row, size_t col) {
-            if (row < saved_game.hint_revealed_cells.size() && col < saved_game.hint_revealed_cells[row].size()) {
-                loaded_state.getCell(row, col).is_hint_revealed = saved_game.hint_revealed_cells[row][col];
-            }
+            loaded_state.setHintRevealed({.row = row, .col = col}, saved_game.hint_revealed_cells.get(row, col));
         });
     }
 
@@ -323,14 +316,11 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
     saved_game.created_time = std::chrono::system_clock::now();
 
     // Extract notes
-    saved_game.notes.resize(core::BOARD_SIZE, std::vector<std::vector<int>>(core::BOARD_SIZE));
-    core::forEachCell(
-        [&](size_t row, size_t col) { saved_game.notes[row][col] = current_state.getCell(row, col).notes; });
+    core::forEachCell([&](size_t row, size_t col) { saved_game.notes[row][col] = current_state.getNotes(row, col); });
 
     // Extract hint-revealed cells
-    saved_game.hint_revealed_cells.resize(core::BOARD_SIZE, std::vector<bool>(core::BOARD_SIZE, false));
     core::forEachCell([&](size_t row, size_t col) {
-        saved_game.hint_revealed_cells[row][col] = current_state.getCell(row, col).is_hint_revealed;
+        saved_game.hint_revealed_cells.set(row, col, current_state.isCellHintRevealed({.row = row, .col = col}));
     });
 
     // Persist auto-notes preference
@@ -375,14 +365,13 @@ void GameViewModel::autoSave() {
         }
 
         // Extract notes
-        auto_save_game.notes.resize(core::BOARD_SIZE, std::vector<std::vector<int>>(core::BOARD_SIZE));
         core::forEachCell(
-            [&](size_t row, size_t col) { auto_save_game.notes[row][col] = current_state.getCell(row, col).notes; });
+            [&](size_t row, size_t col) { auto_save_game.notes[row][col] = current_state.getNotes(row, col); });
 
         // Extract hint-revealed cells
-        auto_save_game.hint_revealed_cells.resize(core::BOARD_SIZE, std::vector<bool>(core::BOARD_SIZE, false));
         core::forEachCell([&](size_t row, size_t col) {
-            auto_save_game.hint_revealed_cells[row][col] = current_state.getCell(row, col).is_hint_revealed;
+            auto_save_game.hint_revealed_cells.set(row, col,
+                                                   current_state.isCellHintRevealed({.row = row, .col = col}));
         });
 
         auto auto_save_result = save_manager_->autoSave(auto_save_game);

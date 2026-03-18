@@ -42,7 +42,7 @@ namespace sudoku::core {
 ///   - All base cells must be covered; eliminate D from cover cells outside base
 class FrankenFishStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         return findFrankenFish(board, candidates);
     }
@@ -74,9 +74,8 @@ private:
     };
 
     /// Get the cell mask (bitmask over 81 cells) for a unit where digit D is a candidate.
-    [[nodiscard]] static uint16_t getCellsInUnit(const std::vector<std::vector<int>>& board,
-                                                 const CandidateGrid& candidates, const Unit& unit, int digit,
-                                                 std::vector<size_t>& out_cells) {
+    [[nodiscard]] static uint16_t getCellsInUnit(const BoardData& board, const CandidateGrid& candidates,
+                                                 const Unit& unit, int digit, std::vector<size_t>& out_cells) {
         uint16_t count = 0;
         out_cells.clear();
         switch (unit.type) {
@@ -130,7 +129,7 @@ private:
 
     /// Main search function.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — digit×size×base/cover combination search; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findFrankenFish(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findFrankenFish(const BoardData& board,
                                                                   const CandidateGrid& candidates) {
         for (int digit = MIN_VALUE; digit <= MAX_VALUE; ++digit) {
             // Try rows+boxes as base, cols as cover
@@ -157,9 +156,8 @@ private:
     /// @param row_base If true: base = {rows ∪ boxes}, cover = {cols}
     ///                 If false: base = {cols ∪ boxes}, cover = {rows}
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — base/cover enumeration; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> tryFrankenFishOrientation(const std::vector<std::vector<int>>& board,
-                                                                            const CandidateGrid& candidates, int digit,
-                                                                            bool row_base) {
+    [[nodiscard]] static std::optional<SolveStep>
+    tryFrankenFishOrientation(const BoardData& board, const CandidateGrid& candidates, int digit, bool row_base) {
         // Base candidates: lines + boxes
         std::vector<UnitCells> base_units;
         for (size_t i = 0; i < BOARD_SIZE; ++i) {
@@ -207,7 +205,7 @@ private:
     /// Recursively enumerate base combinations of given size.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — recursive combination enumeration with cover matching; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
-    enumerateBaseCombinations(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int digit,
+    enumerateBaseCombinations(const BoardData& board, const CandidateGrid& candidates, int digit,
                               const std::vector<struct UnitCells>& base_units,
                               const std::vector<struct UnitCells>& cover_units, size_t target_size, size_t start_idx,
                               std::vector<size_t> chosen_bases, std::vector<size_t> all_base_cells) {
@@ -260,7 +258,7 @@ private:
     /// Find N cover units that cover all base cells, then eliminate.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — cover combination search with elimination; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
-    findCoverAndEliminate(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int digit,
+    findCoverAndEliminate(const BoardData& board, const CandidateGrid& candidates, int digit,
                           const std::vector<struct UnitCells>& base_units,
                           const std::vector<struct UnitCells>& cover_units, const std::vector<size_t>& chosen_bases,
                           const std::vector<size_t>& base_cells, size_t target_size) {
@@ -282,7 +280,7 @@ private:
     /// Recursively enumerate cover combinations.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — recursive cover enumeration with elimination check; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
-    enumerateCoverCombinations(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int digit,
+    enumerateCoverCombinations(const BoardData& board, const CandidateGrid& candidates, int digit,
                                const std::vector<struct UnitCells>& base_units,
                                const std::vector<struct UnitCells>& cover_units,
                                const std::vector<size_t>& chosen_bases, const std::vector<size_t>& base_cells,
@@ -319,7 +317,7 @@ private:
 
     /// Compute eliminations for a valid Franken Fish.
     [[nodiscard]] static std::optional<SolveStep>
-    computeEliminations(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int digit,
+    computeEliminations(const BoardData& board, const CandidateGrid& candidates, int digit,
                         const std::vector<struct UnitCells>& base_units,
                         const std::vector<struct UnitCells>& cover_units, const std::vector<size_t>& chosen_bases,
                         const std::vector<size_t>& base_cells, const std::vector<size_t>& chosen_covers) {

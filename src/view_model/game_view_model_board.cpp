@@ -63,7 +63,7 @@ void GameViewModel::enterNumber(int number) {
     const auto& pos = pos_opt.value();
 
     // Don't allow editing given numbers
-    if (current_state.getCell(pos.row, pos.col).is_given) {
+    if (current_state.isGiven(pos)) {
         return;
     }
 
@@ -75,15 +75,14 @@ void GameViewModel::enterNumber(int number) {
     move.timestamp = std::chrono::steady_clock::now();
 
     // Capture previous state for undo
-    const auto& cell = current_state.getCell(pos);
-    move.previous_value = cell.value;
-    move.previous_notes = cell.notes;
-    move.previous_hint_revealed = cell.is_hint_revealed;
+    move.previous_value = current_state.getValue(pos);
+    move.previous_notes = current_state.getNotes(pos);
+    move.previous_hint_revealed = current_state.isCellHintRevealed(pos);
 
     // Check against solution board to detect mistakes (not just conflicts)
     bool is_mistake = false;
-    const auto& solution = current_state.getSolutionBoard();
-    if (!solution.empty()) {
+    if (current_state.hasSolution()) {
+        const auto& solution = current_state.getSolutionBoard();
         is_mistake = (solution[pos.row][pos.col] != number);
     } else {
         // Fallback: conflict-only check if no solution available (e.g. loaded save)
@@ -121,13 +120,12 @@ void GameViewModel::enterNote(int number) {
     const auto& pos = pos_opt.value();
 
     // Don't allow notes on given numbers or filled cells
-    const auto& cell = current_state.getCell(pos.row, pos.col);
-    if (cell.is_given || cell.value != 0) {
+    if (current_state.isGiven(pos) || current_state.getValue(pos) != 0) {
         return;
     }
 
     // Check if note already exists to determine move type
-    bool note_exists = std::ranges::contains(cell.notes, number);
+    bool note_exists = current_state.getNotes(pos).contains(number);
 
     // Create move for undo/redo support
     core::Move move;
@@ -138,9 +136,9 @@ void GameViewModel::enterNote(int number) {
     move.timestamp = std::chrono::steady_clock::now();
 
     // Capture previous state for undo
-    move.previous_value = cell.value;
-    move.previous_notes = cell.notes;
-    move.previous_hint_revealed = cell.is_hint_revealed;
+    move.previous_value = current_state.getValue(pos);
+    move.previous_notes = current_state.getNotes(pos);
+    move.previous_hint_revealed = current_state.isCellHintRevealed(pos);
 
     // Apply move
     applyMove(move);
@@ -167,13 +165,12 @@ void GameViewModel::clearSelectedCell() {
     const auto& pos = pos_opt.value();
 
     // Don't allow clearing given numbers
-    const auto& cell = current_state.getCell(pos.row, pos.col);
-    if (cell.is_given) {
+    if (current_state.isGiven(pos)) {
         return;
     }
 
     // Only create move if there's something to clear
-    if (cell.value == 0 && cell.notes.empty()) {
+    if (current_state.getValue(pos) == 0 && current_state.getNotes(pos).empty()) {
         return;  // Nothing to clear
     }
 
@@ -185,9 +182,9 @@ void GameViewModel::clearSelectedCell() {
     move.timestamp = std::chrono::steady_clock::now();
 
     // Capture previous state for undo
-    move.previous_value = cell.value;
-    move.previous_notes = cell.notes;
-    move.previous_hint_revealed = cell.is_hint_revealed;
+    move.previous_value = current_state.getValue(pos);
+    move.previous_notes = current_state.getNotes(pos);
+    move.previous_hint_revealed = current_state.isCellHintRevealed(pos);
 
     // Apply move
     applyMove(move);
@@ -201,11 +198,16 @@ void GameViewModel::recomputeAutoNotes() {
     gameState.update([this](model::GameState& state) {
         auto board = state.extractNumbers();
         core::forEachCell([&](size_t row, size_t col) {
-            auto& cell = state.getCell(row, col);
-            if (cell.value == 0 && !cell.is_given) {
-                cell.notes = validator_->getPossibleValues(board, {.row = row, .col = col});
+            core::Position pos{.row = row, .col = col};
+            if (state.getValue(row, col) == 0 && !state.isGiven(row, col)) {
+                auto possible = validator_->getPossibleValues(board, pos);
+                core::CellNotes notes;
+                for (int val : possible) {
+                    notes.add(val);
+                }
+                state.setNotes(pos, notes);
             } else {
-                cell.notes.clear();
+                state.clearNotes(pos);
             }
         });
     });
@@ -221,11 +223,11 @@ bool GameViewModel::hasBoardErrors() const {
     }
 
     // Check placed values against solution board
-    const auto& solution = state.getSolutionBoard();
-    if (!solution.empty()) {
+    if (state.hasSolution()) {
+        const auto& solution = state.getSolutionBoard();
         bool has_wrong = false;
         core::forEachCell([&](size_t row, size_t col) {
-            if (board[row][col] != 0 && !state.getCell(row, col).is_given && board[row][col] != solution[row][col]) {
+            if (board[row][col] != 0 && !state.isGiven(row, col) && board[row][col] != solution[row][col]) {
                 has_wrong = true;
             }
         });
@@ -247,21 +249,15 @@ void GameViewModel::cleanupConflictingNotes(model::GameState& state, const core:
 
     // Same row
     for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
-        if (col != pos.col) {  // Don't modify the cell we just placed the number in
-            auto& cell = state.getCell(pos.row, col);
-            if (cell.value == 0) {  // Only modify empty cells
-                state.removeNote({.row = pos.row, .col = col}, number);
-            }
+        if (col != pos.col && state.getValue(pos.row, col) == 0) {
+            state.removeNote({.row = pos.row, .col = col}, number);
         }
     }
 
     // Same column
     for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
-        if (row != pos.row) {  // Don't modify the cell we just placed the number in
-            auto& cell = state.getCell(row, pos.col);
-            if (cell.value == 0) {  // Only modify empty cells
-                state.removeNote({.row = row, .col = pos.col}, number);
-            }
+        if (row != pos.row && state.getValue(row, pos.col) == 0) {
+            state.removeNote({.row = row, .col = pos.col}, number);
         }
     }
 
@@ -270,11 +266,8 @@ void GameViewModel::cleanupConflictingNotes(model::GameState& state, const core:
     size_t box_start_col = (pos.col / core::BOX_SIZE) * core::BOX_SIZE;
     for (size_t row = box_start_row; row < box_start_row + core::BOX_SIZE; ++row) {
         for (size_t col = box_start_col; col < box_start_col + core::BOX_SIZE; ++col) {
-            if (row != pos.row || col != pos.col) {  // Don't modify the cell we just placed the number in
-                auto& cell = state.getCell(row, col);
-                if (cell.value == 0) {  // Only modify empty cells
-                    state.removeNote({.row = row, .col = col}, number);
-                }
+            if ((row != pos.row || col != pos.col) && state.getValue(row, col) == 0) {
+                state.removeNote({.row = row, .col = col}, number);
             }
         }
     }
@@ -319,21 +312,15 @@ void GameViewModel::restoreConflictingNotes(model::GameState& state, const core:
 
     // Same row
     for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
-        if (col != pos.col) {
-            auto& cell = state.getCell(pos.row, col);
-            if (cell.value == 0 && canBeNote({.row = pos.row, .col = col}, number)) {
-                state.addNote({.row = pos.row, .col = col}, number);
-            }
+        if (col != pos.col && state.getValue(pos.row, col) == 0 && canBeNote({.row = pos.row, .col = col}, number)) {
+            state.addNote({.row = pos.row, .col = col}, number);
         }
     }
 
     // Same column
     for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
-        if (row != pos.row) {
-            auto& cell = state.getCell(row, pos.col);
-            if (cell.value == 0 && canBeNote({.row = row, .col = pos.col}, number)) {
-                state.addNote({.row = row, .col = pos.col}, number);
-            }
+        if (row != pos.row && state.getValue(row, pos.col) == 0 && canBeNote({.row = row, .col = pos.col}, number)) {
+            state.addNote({.row = row, .col = pos.col}, number);
         }
     }
 
@@ -342,11 +329,9 @@ void GameViewModel::restoreConflictingNotes(model::GameState& state, const core:
     size_t box_start_col = (pos.col / core::BOX_SIZE) * core::BOX_SIZE;
     for (size_t row = box_start_row; row < box_start_row + core::BOX_SIZE; ++row) {
         for (size_t col = box_start_col; col < box_start_col + core::BOX_SIZE; ++col) {
-            if (row != pos.row || col != pos.col) {
-                auto& cell = state.getCell(row, col);
-                if (cell.value == 0 && canBeNote({.row = row, .col = col}, number)) {
-                    state.addNote({.row = row, .col = col}, number);
-                }
+            if ((row != pos.row || col != pos.col) && state.getValue(row, col) == 0 &&
+                canBeNote({.row = row, .col = col}, number)) {
+                state.addNote({.row = row, .col = col}, number);
             }
         }
     }

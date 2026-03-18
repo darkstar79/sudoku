@@ -26,21 +26,19 @@ using namespace sudoku::core;
 namespace {
 
 // Test helper: Create an easy puzzle with only naked singles
-std::vector<std::vector<int>> createEasyPuzzle() {
+BoardData createEasyPuzzle() {
     // Near-complete board with one naked single
-    std::vector<std::vector<int>> board = {{0, 3, 4, 6, 7, 8, 9, 1, 2},  // R1C1 must be 5
-                                           {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1},
-                                           {7, 1, 3, 9, 2, 4, 8, 5, 6}, {9, 6, 1, 5, 3, 7, 2, 8, 4},
-                                           {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{0, 3, 4, 6, 7, 8, 9, 1, 2},  // R1C1 must be 5
+                       {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7}, {8, 5, 9, 7, 6, 1, 4, 2, 3},
+                       {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6}, {9, 6, 1, 5, 3, 7, 2, 8, 4},
+                       {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     return board;
 }
 
-std::vector<std::vector<int>> createCompleteBoard() {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+BoardData createCompleteBoard() {
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     return board;
 }
 
@@ -190,12 +188,11 @@ TEST_CASE("SudokuSolver - solvePuzzle with unsolvable board returns error", "[su
 
     // cell(0,0) must be 9 (row 0 has 1-8), but col 0 already has 9 (row 1),
     // and box(0) already has 9 (row 1). No valid value for cell(0,0).
-    std::vector<std::vector<int>> unsolvable = {{0, 1, 2, 3, 4, 5, 6, 7, 8},  // row 0: needs 9 for (0,0)
-                                                {9, 0, 0, 0, 0, 0, 0, 0, 0},  // row 1: 9 in col 0 → blocks (0,0)
-                                                {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                                {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                                {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                                {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    BoardData unsolvable = {{0, 1, 2, 3, 4, 5, 6, 7, 8},  // row 0: needs 9 for (0,0)
+                            {9, 0, 0, 0, 0, 0, 0, 0, 0},  // row 1: 9 in col 0 → blocks (0,0)
+                            {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                            {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                            {0, 0, 0, 0, 0, 0, 0, 0, 0}};
 
     // solvePuzzle should fail: no strategy can place (0,0), backtracker also fails
     // This covers line 144: return std::unexpected(SolverError::Unsolvable)

@@ -35,8 +35,7 @@ namespace sudoku::core {
 /// all other cells in that region.
 class NakedPairStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
-                                                    const CandidateGrid& state) const override {
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board, const CandidateGrid& state) const override {
         // Check all regions (rows, columns, boxes)
         for (auto region_type : {RegionType::Row, RegionType::Col, RegionType::Box}) {
             for (size_t region_idx = 0; region_idx < BOARD_SIZE; ++region_idx) {
@@ -63,7 +62,7 @@ public:
     }
 
 private:
-    [[nodiscard]] static std::optional<SolveStep> findNakedPairInRegion(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findNakedPairInRegion(const BoardData& board,
                                                                         const CandidateGrid& state,
                                                                         RegionType region_type, size_t region_idx) {
         // Get empty cells in region
@@ -122,7 +121,7 @@ private:
     }
 
     [[nodiscard]] static std::vector<Elimination>
-    createEliminationsForPair(const std::vector<std::vector<int>>& /* board */, const CandidateGrid& state,
+    createEliminationsForPair(const BoardData& /* board */, const CandidateGrid& state,
                               const std::vector<Position>& region_cells, const Position& pair_pos1,
                               const Position& pair_pos2, const std::vector<int>& pair_values) {
         std::vector<Elimination> eliminations;

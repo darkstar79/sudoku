@@ -88,30 +88,30 @@ findTwoEmptyCellsInBox(const model::GameState& state);
 /// Get a deterministic easy puzzle with known patterns
 /// This puzzle is designed for testing and has predictable empty cells
 /// @return 9x9 board with zeros for empty cells
-[[nodiscard]] std::vector<std::vector<int>> getEasyPuzzleWithPatterns();
+[[nodiscard]] core::BoardData getEasyPuzzleWithPatterns();
 
 /// Get a puzzle specifically designed for note restoration testing
 /// Has multiple empty cells in same row/column/box for comprehensive testing
 /// @return 9x9 board with zeros for empty cells
-[[nodiscard]] std::vector<std::vector<int>> getNoteRestorationPuzzle();
+[[nodiscard]] core::BoardData getNoteRestorationPuzzle();
 
 /// Get a puzzle specifically designed for undo/redo testing
 /// Has predictable empty cells for deterministic command testing
 /// @return 9x9 board with zeros for empty cells
-[[nodiscard]] std::vector<std::vector<int>> getUndoTestPuzzle();
+[[nodiscard]] core::BoardData getUndoTestPuzzle();
 
 /// Get a medium difficulty puzzle for general testing
 /// @return 9x9 board with zeros for empty cells
-[[nodiscard]] std::vector<std::vector<int>> getMediumPuzzle();
+[[nodiscard]] core::BoardData getMediumPuzzle();
 
 /// Get a nearly complete puzzle (1-2 empty cells) for completion testing
 /// @return 9x9 board with zeros for empty cells
-[[nodiscard]] std::vector<std::vector<int>> getNearlyCompletePuzzle();
+[[nodiscard]] core::BoardData getNearlyCompletePuzzle();
 
 /// Get the complete solution for any test puzzle
 /// @param puzzle The puzzle to solve
 /// @return 9x9 board with complete solution
-[[nodiscard]] std::vector<std::vector<int>> getSolution(const std::vector<std::vector<int>>& puzzle);
+[[nodiscard]] core::BoardData getSolution(const core::BoardData& puzzle);
 
 // ============================================================================
 // Board Comparison and Validation
@@ -119,15 +119,15 @@ findTwoEmptyCellsInBox(const model::GameState& state);
 
 /// Compare two boards for equality
 /// @return true if boards are identical, false otherwise
-[[nodiscard]] bool boardsEqual(const std::vector<std::vector<int>>& a, const std::vector<std::vector<int>>& b);
+[[nodiscard]] bool boardsEqual(const core::BoardData& a, const core::BoardData& b);
 
 /// Check if a board is valid (no conflicts)
 /// @return true if board has no row/column/box conflicts
-[[nodiscard]] bool isBoardValid(const std::vector<std::vector<int>>& board);
+[[nodiscard]] bool isBoardValid(const core::BoardData& board);
 
 /// Count empty cells (zeros) in a board
 /// @return Number of empty cells
-[[nodiscard]] size_t countEmptyCells(const std::vector<std::vector<int>>& board);
+[[nodiscard]] size_t countEmptyCells(const core::BoardData& board);
 
 // ============================================================================
 // Test Data Builders
@@ -155,15 +155,15 @@ findTwoEmptyCellsInBox(const model::GameState& state);
 
 /// Fill a board with a valid complete solution
 /// @param board Board to fill (modified in-place)
-void fillBoardWithSolution(std::vector<std::vector<int>>& board);
+void fillBoardWithSolution(core::BoardData& board);
 
 /// Create an empty 9x9 board (all zeros)
 /// @return 9x9 board filled with zeros
-[[nodiscard]] std::vector<std::vector<int>> createEmptyBoard();
+[[nodiscard]] core::BoardData createEmptyBoard();
 
 /// Create empty notes structure (9x9x9 all zeros)
 /// @return 3D vector for notes (row, col, value)
-[[nodiscard]] std::vector<std::vector<std::vector<int>>> createEmptyNotes();
+[[nodiscard]] core::NotesData createEmptyNotes();
 
 // ============================================================================
 // Strategy Testing Board Builders
@@ -172,25 +172,25 @@ void fillBoardWithSolution(std::vector<std::vector<int>>& board);
 /// Create a board with a hidden pair pattern
 /// Hidden pair: values 4 and 5 only possible in two cells of row 0
 /// @return 9x9 board designed to test hidden pair detection
-[[nodiscard]] std::vector<std::vector<int>> createBoardWithHiddenPair();
+[[nodiscard]] core::BoardData createBoardWithHiddenPair();
 
 /// Create a board with a hidden triple pattern
 /// Hidden triple: values 3, 6, and 9 only possible in three cells of a region
 /// @return 9x9 board designed to test hidden triple detection
-[[nodiscard]] std::vector<std::vector<int>> createBoardWithHiddenTriple();
+[[nodiscard]] core::BoardData createBoardWithHiddenTriple();
 
 /// Create a board with a naked pair pattern
 /// Naked pair: two cells in row/column/box with only same two candidates
 /// @return 9x9 board designed to test naked pair detection
-[[nodiscard]] std::vector<std::vector<int>> createBoardWithNakedPair();
+[[nodiscard]] core::BoardData createBoardWithNakedPair();
 
 /// Create a board with a naked triple pattern
 /// Naked triple: three cells with only same three candidates
 /// @return 9x9 board designed to test naked triple detection
-[[nodiscard]] std::vector<std::vector<int>> createBoardWithNakedTriple();
+[[nodiscard]] core::BoardData createBoardWithNakedTriple();
 
 /// Create a simple board with no advanced patterns (for negative tests)
 /// @return 9x9 partially filled board with no hidden/naked sets
-[[nodiscard]] std::vector<std::vector<int>> createSimpleBoard();
+[[nodiscard]] core::BoardData createSimpleBoard();
 
 }  // namespace sudoku::test

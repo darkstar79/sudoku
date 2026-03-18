@@ -23,8 +23,8 @@ using namespace sudoku::core;
 
 namespace {
 
-[[nodiscard]] std::vector<std::vector<int>> createEmptyBoard() {
-    return std::vector<std::vector<int>>(9, std::vector<int>(9, 0));
+[[nodiscard]] BoardData createEmptyBoard() {
+    return BoardData{};
 }
 
 /// Helper: keep only specified candidates for a cell

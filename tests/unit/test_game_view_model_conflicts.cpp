@@ -201,8 +201,8 @@ TEST_CASE("GameViewModel - Mistake Counter", "[game_view_model][mistakes]") {
 
     SECTION("Mistake count increments when placing wrong number") {
         const auto& state = fixture.view_model->gameState.get();
+        REQUIRE(state.hasSolution());
         const auto& solution = state.getSolutionBoard();
-        REQUIRE(!solution.empty());
 
         REQUIRE(fixture.view_model->getMistakeCount() == 0);
 
@@ -235,8 +235,8 @@ TEST_CASE("GameViewModel - Mistake Counter", "[game_view_model][mistakes]") {
 
     SECTION("Mistake count does not increment for valid placements") {
         const auto& state = fixture.view_model->gameState.get();
+        REQUIRE(state.hasSolution());
         const auto& solution = state.getSolutionBoard();
-        REQUIRE(!solution.empty());
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (size_t col = 0; col < BOARD_SIZE; ++col) {
                 if (state.getCell(row, col).value == 0) {
@@ -254,8 +254,8 @@ TEST_CASE("GameViewModel - Mistake Counter", "[game_view_model][mistakes]") {
 
     SECTION("Undoing a mistake does not decrement mistake count") {
         const auto& state = fixture.view_model->gameState.get();
+        REQUIRE(state.hasSolution());
         const auto& solution = state.getSolutionBoard();
-        REQUIRE(!solution.empty());
 
         // Find an empty cell and place a wrong value
         for (size_t row = 0; row < BOARD_SIZE; ++row) {

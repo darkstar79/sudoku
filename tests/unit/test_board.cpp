@@ -79,31 +79,31 @@ TEST_CASE("Board - operator[] access", "[board]") {
     }
 }
 
-TEST_CASE("Board - fromVectors and toVectors", "[board]") {
+TEST_CASE("Board - fromBoardData and toBoardData", "[board]") {
     SECTION("Round-trip preserves all values") {
-        std::vector<std::vector<int>> original(BOARD_SIZE, std::vector<int>(BOARD_SIZE, 0));
+        BoardData original;
         original[0][0] = 5;
         original[3][7] = 2;
         original[8][8] = 9;
         original[4][4] = 1;
 
-        Board board = Board::fromVectors(original);
-        auto result = board.toVectors();
+        Board board = Board::fromBoardData(original);
+        auto result = board.toBoardData();
 
         REQUIRE(result == original);
     }
 
-    SECTION("fromVectors sets correct flat indices") {
-        std::vector<std::vector<int>> vec(BOARD_SIZE, std::vector<int>(BOARD_SIZE, 0));
+    SECTION("fromBoardData sets correct flat indices") {
+        BoardData vec;
         vec[1][2] = 7;
 
-        Board board = Board::fromVectors(vec);
+        Board board = Board::fromBoardData(vec);
         REQUIRE(board.cells[(1 * BOARD_SIZE) + 2] == 7);
     }
 
-    SECTION("Padding cells remain zero after fromVectors") {
-        std::vector<std::vector<int>> vec(BOARD_SIZE, std::vector<int>(BOARD_SIZE, 5));
-        Board board = Board::fromVectors(vec);
+    SECTION("Padding cells remain zero after fromBoardData") {
+        BoardData vec = BoardData::filled(5);
+        Board board = Board::fromBoardData(vec);
 
         for (size_t i = TOTAL_CELLS; i < PADDED_CELLS; ++i) {
             REQUIRE(board.cells[i] == 0);
@@ -111,14 +111,14 @@ TEST_CASE("Board - fromVectors and toVectors", "[board]") {
     }
 
     SECTION("Full board round-trip") {
-        std::vector<std::vector<int>> full_board = {
+        BoardData full_board = {
             {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
             {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
             {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9},
         };
 
-        Board board = Board::fromVectors(full_board);
-        auto result = board.toVectors();
+        Board board = Board::fromBoardData(full_board);
+        auto result = board.toBoardData();
 
         REQUIRE(result == full_board);
     }

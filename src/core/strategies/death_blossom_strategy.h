@@ -40,7 +40,7 @@ namespace sudoku::core {
 ///     cells seeing all Z-cells in all petals
 class DeathBlossomStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         return findDeathBlossom(board, candidates);
     }
@@ -60,7 +60,7 @@ public:
 private:
     /// Main search: find stem cells and matching petals.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — stem+petal enumeration; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findDeathBlossom(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findDeathBlossom(const BoardData& board,
                                                                    const CandidateGrid& candidates) {
         auto all_als = ALSHelpers::enumerateALSs(board, candidates);
         if (all_als.size() < 2) {
@@ -92,7 +92,7 @@ private:
 
     /// Try to find petals for a given stem cell.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — petal combination search; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> tryStemmWithPetals(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> tryStemmWithPetals(const BoardData& board,
                                                                      const CandidateGrid& candidates,
                                                                      const Position& stem, uint16_t stem_mask,
                                                                      const std::vector<ALS>& all_als) {
@@ -161,9 +161,9 @@ private:
     /// Try 2-petal combinations.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — 2-petal combination search; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
-    tryPetalCombination2(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                         const Position& stem, uint16_t stem_mask, const std::vector<ALS>& all_als,
-                         const std::vector<int>& stem_cands, const std::vector<std::vector<size_t>>& petals_by_cand) {
+    tryPetalCombination2(const BoardData& board, const CandidateGrid& candidates, const Position& stem,
+                         uint16_t stem_mask, const std::vector<ALS>& all_als, const std::vector<int>& stem_cands,
+                         const std::vector<std::vector<size_t>>& petals_by_cand) {
         for (size_t p0 : petals_by_cand[0]) {
             for (size_t p1 : petals_by_cand[1]) {
                 if (p0 == p1 || ALSHelpers::sharesCells(all_als[p0], all_als[p1])) {
@@ -182,9 +182,9 @@ private:
     /// Try 3-petal combinations.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — 3-petal combination search; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
-    tryPetalCombination3(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                         const Position& stem, uint16_t stem_mask, const std::vector<ALS>& all_als,
-                         const std::vector<int>& stem_cands, const std::vector<std::vector<size_t>>& petals_by_cand) {
+    tryPetalCombination3(const BoardData& board, const CandidateGrid& candidates, const Position& stem,
+                         uint16_t stem_mask, const std::vector<ALS>& all_als, const std::vector<int>& stem_cands,
+                         const std::vector<std::vector<size_t>>& petals_by_cand) {
         for (size_t p0 : petals_by_cand[0]) {
             for (size_t p1 : petals_by_cand[1]) {
                 if (p0 == p1 || ALSHelpers::sharesCells(all_als[p0], all_als[p1])) {
@@ -209,7 +209,7 @@ private:
 
     /// Check for common value Z across all petals and compute eliminations.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — Z-value search + elimination check; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> checkCommonElimination(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> checkCommonElimination(const BoardData& board,
                                                                          const CandidateGrid& candidates,
                                                                          const Position& stem, uint16_t stem_mask,
                                                                          const std::vector<const ALS*>& petals,

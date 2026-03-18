@@ -35,7 +35,7 @@ namespace sudoku::core {
 /// Value C can be eliminated from any cell that sees both wings.
 class XYWingStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // Find all bi-value cells (cells with exactly 2 candidates)
         std::vector<Position> bi_value_cells;
@@ -72,8 +72,8 @@ public:
 
 private:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — XY candidate matching across wing pairs; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> tryPivot(const std::vector<std::vector<int>>& board,
-                                                           const CandidateGrid& candidates, const Position& pivot,
+    [[nodiscard]] static std::optional<SolveStep> tryPivot(const BoardData& board, const CandidateGrid& candidates,
+                                                           const Position& pivot,
                                                            const std::vector<Position>& bi_value_cells) {
         auto pivot_cands = getCandidates(candidates, pivot.row, pivot.col);
         int val_a = pivot_cands[0];

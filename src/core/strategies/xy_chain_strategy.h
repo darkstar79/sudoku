@@ -35,7 +35,7 @@ namespace sudoku::core {
 /// eliminated from cells seeing both endpoints.
 class XYChainStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // CPD-OFF — bivalue cell collection pattern shared with remote_pairs
         // Collect all bivalue cells
@@ -90,8 +90,7 @@ public:
 private:
     static constexpr int MAX_DEPTH = 8;
 
-    [[nodiscard]] static std::optional<SolveStep> dfs(const std::vector<std::vector<int>>& board,
-                                                      const CandidateGrid& candidates,
+    [[nodiscard]] static std::optional<SolveStep> dfs(const BoardData& board, const CandidateGrid& candidates,
                                                       const std::vector<Position>& bivalue_cells, const Position& start,
                                                       const Position& current, int elim_x, int outgoing,
                                                       std::vector<bool>& visited, int depth) {
@@ -137,7 +136,7 @@ private:
         return std::nullopt;
     }
 
-    [[nodiscard]] static std::optional<SolveStep> findEliminations(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findEliminations(const BoardData& board,
                                                                    const CandidateGrid& candidates,
                                                                    const Position& start, const Position& end,
                                                                    int elim_x, int chain_length) {

@@ -8,9 +8,6 @@
 
 #include "test_fixture.h"
 #include "view/main_window.h"
-#include "view/sudoku_board_widget.h"
-
-#include <algorithm>
 
 #include <QTest>
 
@@ -120,8 +117,7 @@ void TestKeyboardHandling::numberKeySinglePressEntersNote() {
     // Single press should enter a note (not a value), unless auto-notes is on
     if (!ctx_->game_vm->isAutoNotesEnabled()) {
         QCOMPARE(cell.value, 0);
-        bool has_note = std::ranges::find(cell.notes, 3) != cell.notes.end();
-        QVERIFY(has_note);
+        QVERIFY(cell.notes.contains(3));
     }
 }
 

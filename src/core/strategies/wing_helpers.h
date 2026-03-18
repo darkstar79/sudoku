@@ -41,9 +41,8 @@ public:
     }
 
     /// Find empty cells with candidate count in [min_count, max_count].
-    [[nodiscard]] static std::vector<Position> findCellsByCandidateCount(const std::vector<std::vector<int>>& board,
-                                                                         const CandidateGrid& candidates, int min_count,
-                                                                         int max_count) {
+    [[nodiscard]] static std::vector<Position>
+    findCellsByCandidateCount(const BoardData& board, const CandidateGrid& candidates, int min_count, int max_count) {
         std::vector<Position> result;
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (size_t col = 0; col < BOARD_SIZE; ++col) {

@@ -23,8 +23,8 @@ using namespace sudoku::core;
 
 namespace {
 
-[[nodiscard]] std::vector<std::vector<int>> createEmptyBoard() {
-    return std::vector<std::vector<int>>(9, std::vector<int>(9, 0));
+[[nodiscard]] BoardData createEmptyBoard() {
+    return BoardData{};
 }
 
 /// Helper: keep only specified candidates for a cell
@@ -47,10 +47,9 @@ TEST_CASE("ThreeDMedusaStrategy - Metadata", "[three_d_medusa]") {
 }
 
 TEST_CASE("ThreeDMedusaStrategy - Returns nullopt for complete board", "[three_d_medusa]") {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     ThreeDMedusaStrategy strategy;
 
@@ -235,10 +234,9 @@ TEST_CASE("ThreeDMedusaStrategy - Rule 6: sees both colors for same digit", "[th
 
 TEST_CASE("ThreeDMedusaStrategy - No pattern with single candidate cells", "[three_d_medusa]") {
     // Board nearly solved — single candidates everywhere, no coloring graph
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 0}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 0}};
     CandidateGrid state(board);
     ThreeDMedusaStrategy strategy;
 

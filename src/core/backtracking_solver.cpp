@@ -31,14 +31,13 @@ namespace sudoku::core {
 BacktrackingSolver::BacktrackingSolver(std::shared_ptr<IGameValidator> validator) : validator_(std::move(validator)) {
 }
 
-bool BacktrackingSolver::solve(std::vector<std::vector<int>>& board, ValueSelectionStrategy strategy,
-                               std::mt19937* rng) const {
+bool BacktrackingSolver::solve(BoardData& board, ValueSelectionStrategy strategy, std::mt19937* rng) const {
     // Legacy path: convert to Board, solve, convert back
-    auto board_flat = Board::fromVectors(board);
+    auto board_flat = Board::fromBoardData(board);
     bool result = solve(board_flat, strategy, rng);
     if (result) {
         // Copy solution back to original vector
-        board = board_flat.toVectors();
+        board = board_flat.toBoardData();
     }
     return result;
 }

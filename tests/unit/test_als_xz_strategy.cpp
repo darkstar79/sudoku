@@ -42,10 +42,9 @@ TEST_CASE("ALSxZStrategy - Metadata", "[als_xz]") {
 }
 
 TEST_CASE("ALSxZStrategy - Returns nullopt for complete board", "[als_xz]") {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     ALSxZStrategy strategy;
 
@@ -63,7 +62,7 @@ TEST_CASE("ALSxZStrategy - Detects ALS-XZ with two 2-cell ALSs", "[als_xz]") {
     // Z=3: A's cells with 3 = {(0,1)}, B's cells with 3 = {(2,1)}.
     //   Eliminate 3 from cells outside both ALSs that see (0,1) and (2,1).
     //   Target (1,1): sees (0,1) via col 1, sees (2,1) via col 1. In box 0. Has candidate 3.
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));  // all filled
+    auto board = BoardData::filled(5);  // all filled
 
     board[0][0] = 0;
     board[0][1] = 0;
@@ -97,7 +96,7 @@ TEST_CASE("ALSxZStrategy - Detects ALS-XZ with two 2-cell ALSs", "[als_xz]") {
 }
 
 TEST_CASE("ALSxZStrategy - Explanation contains technique name", "[als_xz]") {
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
     board[0][0] = 0;
     board[0][1] = 0;
     board[2][0] = 0;
@@ -121,7 +120,7 @@ TEST_CASE("ALSxZStrategy - Explanation contains technique name", "[als_xz]") {
 
 TEST_CASE("ALSxZStrategy - Returns nullopt when no restricted common", "[als_xz]") {
     // Two ALSs with common candidates but X-cells don't all see each other
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
     board[0][0] = 0;
     board[0][1] = 0;
     board[8][7] = 0;  // Far away — won't see ALS A cells
@@ -153,7 +152,7 @@ TEST_CASE("ALSxZStrategy - Detects ALS-XZ with 3-cell ALS", "[als_xz]") {
     // Z=4: A's 4-cells = {(0,2)}, B's 4-cells = {(2,1)}
     //   Eliminate 4 from cells seeing (0,2) and (2,1)
     //   Target (1,2): sees (0,2) via col 2 ✓, sees (2,1) via box 0 ✓. Has candidate 4. ✓
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
     board[0][0] = 0;
     board[0][1] = 0;
     board[0][2] = 0;
@@ -197,7 +196,7 @@ TEST_CASE("ALSxZStrategy - Detects column-based ALSs", "[als_xz]") {
     // Z=2: A's 2-cells = {(0,0),(3,0)}, B's 2-cells = {(0,1)}
     //   Eliminate 2 from cells seeing (0,0),(3,0),(0,1)
     //   Target (1,0): sees (0,0) col 0 ✓, (3,0) col 0 ✓, (0,1) box 0 ✓. ✓
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
     board[0][0] = 0;
     board[3][0] = 0;
     board[0][1] = 0;
@@ -238,7 +237,7 @@ TEST_CASE("ALSxZStrategy - Detects box-based ALSs", "[als_xz]") {
     // Z=2: A's 2-cells = {(0,0),(1,1)}, B's 2-cells = {(0,3)}
     //   Eliminate 2 from cells seeing (0,0),(1,1),(0,3)
     //   Target (0,1): sees (0,0) row ✓, sees (1,1) box 0 ✓, sees (0,3) row ✓. Has 2. ✓
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
     board[0][0] = 0;
     board[1][1] = 0;
     board[0][3] = 0;
@@ -269,7 +268,7 @@ TEST_CASE("ALSxZStrategy - Detects box-based ALSs", "[als_xz]") {
 
 TEST_CASE("ALSxZStrategy - Returns nullopt when ALSs share cells", "[als_xz]") {
     // Two ALS candidates that share cell (0,1) — should be rejected
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
     board[0][0] = 0;
     board[0][1] = 0;  // shared
     board[0][2] = 0;
@@ -304,7 +303,7 @@ TEST_CASE("ALSxZStrategy - Returns nullopt when valid pair but no targets", "[al
     //   Box: (0,1) in box 0, (0,8) in box 2 — no external cell is in both.
     //   Row 0: cells (0,2)-(0,6) see both via row, but are they empty and have candidate 3?
     //   We'll fill them to prevent any targets.
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
     board[0][0] = 0;
     board[0][1] = 0;
     board[0][7] = 0;
@@ -335,7 +334,7 @@ TEST_CASE("ALSxZStrategy - Multiple elimination targets", "[als_xz]") {
     //   Box 0 has rows 0-2, col 1 → (0,1) is in ALS, (1,1) target, (2,1) in ALS.
     //   Use target in same col but different box won't see both.
     //   Actually any cell in col 1 sees both: (3,1),(4,1),...,(8,1)
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
     board[0][0] = 0;
     board[0][1] = 0;
     board[2][0] = 0;
@@ -374,7 +373,7 @@ TEST_CASE("ALSxZStrategy - Multiple elimination targets", "[als_xz]") {
 
 TEST_CASE("ALSxZStrategy - Explanation data has correct roles", "[als_xz]") {
     // Reuse the basic 2-cell ALS test setup
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
     board[0][0] = 0;
     board[0][1] = 0;
     board[2][0] = 0;
@@ -412,10 +411,9 @@ TEST_CASE("ALSxZStrategy - Can be used through ISolvingStrategy interface", "[al
     REQUIRE(strategy->getName() == "ALS-XZ");
     REQUIRE(strategy->getDifficultyPoints() == 500);
 
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     auto result = strategy->findStep(board, state);
     REQUIRE_FALSE(result.has_value());

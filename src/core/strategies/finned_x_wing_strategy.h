@@ -34,7 +34,7 @@ namespace sudoku::core {
 /// Eliminations are restricted to cells in the base columns (or rows) that also share the fin's box.
 class FinnedXWingStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         auto result = findRowBased(board, candidates);
         if (result.has_value()) {
@@ -60,7 +60,7 @@ private:
     /// Row A has value in exactly 2 cols (base). Row B has value in exactly 3 cols,
     /// 2 of which match Row A's cols (the 3rd is the fin).
     /// Also checks reversed: Row A has 3 (finned), Row B has 2 (base).
-    [[nodiscard]] static std::optional<SolveStep> findRowBased(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findRowBased(const BoardData& board,
                                                                const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             auto rows_cols = FishHelpers::collectCandidatePositions(board, candidates, value, true);
@@ -86,8 +86,8 @@ private:
     }
 
     /// Try a specific row pair where base_row has 2 positions and fin_row has 3.
-    [[nodiscard]] static std::optional<SolveStep> tryRowPair(const std::vector<std::vector<int>>& board,
-                                                             const CandidateGrid& candidates, int value,
+    [[nodiscard]] static std::optional<SolveStep> tryRowPair(const BoardData& board, const CandidateGrid& candidates,
+                                                             int value,
                                                              const std::vector<std::vector<size_t>>& rows_cols,
                                                              size_t row1, size_t row2, size_t base_row,
                                                              size_t fin_row) {
@@ -160,7 +160,7 @@ private:
     }
 
     /// Column-based Finned X-Wing (mirror of row-based).
-    [[nodiscard]] static std::optional<SolveStep> findColBased(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findColBased(const BoardData& board,
                                                                const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             auto cols_rows = FishHelpers::collectCandidatePositions(board, candidates, value, false);
@@ -181,8 +181,8 @@ private:
         return std::nullopt;
     }
 
-    [[nodiscard]] static std::optional<SolveStep> tryColPair(const std::vector<std::vector<int>>& board,
-                                                             const CandidateGrid& candidates, int value,
+    [[nodiscard]] static std::optional<SolveStep> tryColPair(const BoardData& board, const CandidateGrid& candidates,
+                                                             int value,
                                                              const std::vector<std::vector<size_t>>& cols_rows,
                                                              size_t col1, size_t col2, size_t base_col,
                                                              size_t fin_col) {

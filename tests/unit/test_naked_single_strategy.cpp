@@ -24,43 +24,39 @@ using namespace sudoku::core;
 namespace {
 
 // Test helper: Create a board with a naked single at specified position
-std::vector<std::vector<int>> createBoardWithNakedSingle() {
+BoardData createBoardWithNakedSingle() {
     // Board with R1C1 having only candidate 5
-    std::vector<std::vector<int>> board = {{0, 1, 2, 3, 4, 6, 7, 8, 9},  // R1: only 5 missing, must go in C1
-                                           {3, 0, 0, 0, 0, 0, 0, 0, 0}, {4, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {6, 0, 0, 0, 0, 0, 0, 0, 0}, {7, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {8, 0, 0, 0, 0, 0, 0, 0, 0}, {9, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    BoardData board = {{0, 1, 2, 3, 4, 6, 7, 8, 9},  // R1: only 5 missing, must go in C1
+                       {3, 0, 0, 0, 0, 0, 0, 0, 0}, {4, 0, 0, 0, 0, 0, 0, 0, 0}, {6, 0, 0, 0, 0, 0, 0, 0, 0},
+                       {7, 0, 0, 0, 0, 0, 0, 0, 0}, {8, 0, 0, 0, 0, 0, 0, 0, 0}, {9, 0, 0, 0, 0, 0, 0, 0, 0},
+                       {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
     return board;
 }
 
-std::vector<std::vector<int>> createBoardWithMultipleNakedSingles() {
+BoardData createBoardWithMultipleNakedSingles() {
     // Board with multiple cells having only one candidate
-    std::vector<std::vector<int>> board = {{0, 1, 2, 3, 4, 6, 7, 8, 9},  // R1C1: only 5 possible
-                                           {3, 0, 0, 0, 0, 0, 0, 0, 0},  // R2C2: multiple candidates
-                                           {4, 0, 0, 0, 0, 0, 0, 0, 0}, {6, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {7, 0, 0, 0, 0, 0, 0, 0, 0}, {8, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {9, 0, 0, 0, 0, 0, 0, 0, 0}, {2, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    BoardData board = {{0, 1, 2, 3, 4, 6, 7, 8, 9},  // R1C1: only 5 possible
+                       {3, 0, 0, 0, 0, 0, 0, 0, 0},  // R2C2: multiple candidates
+                       {4, 0, 0, 0, 0, 0, 0, 0, 0}, {6, 0, 0, 0, 0, 0, 0, 0, 0}, {7, 0, 0, 0, 0, 0, 0, 0, 0},
+                       {8, 0, 0, 0, 0, 0, 0, 0, 0}, {9, 0, 0, 0, 0, 0, 0, 0, 0}, {2, 0, 0, 0, 0, 0, 0, 0, 0},
+                       {0, 0, 0, 0, 0, 0, 0, 0, 0}};
     return board;
 }
 
-std::vector<std::vector<int>> createBoardWithoutNakedSingles() {
+BoardData createBoardWithoutNakedSingles() {
     // Board where all empty cells have multiple candidates
-    std::vector<std::vector<int>> board = {{0, 0, 3, 4, 5, 6, 7, 8, 9},  // R1C1 and R1C2: both have {1, 2}
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    BoardData board = {{0, 0, 3, 4, 5, 6, 7, 8, 9},  // R1C1 and R1C2: both have {1, 2}
+                       {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                       {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                       {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
     return board;
 }
 
-std::vector<std::vector<int>> createCompleteBoard() {
+BoardData createCompleteBoard() {
     // Fully solved board (no empty cells)
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     return board;
 }
 
@@ -135,7 +131,7 @@ TEST_CASE("NakedSingleStrategy - No Naked Single Found", "[naked_single]") {
     }
 
     SECTION("Returns nullopt for empty board") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         CandidateGrid state(board);
 
         auto step = strategy.findStep(board, state);
@@ -176,11 +172,10 @@ TEST_CASE("NakedSingleStrategy - Edge Cases", "[naked_single]") {
 
     SECTION("Handles board with conflicts gracefully") {
         // Board with duplicate values (invalid but shouldn't crash)
-        std::vector<std::vector<int>> board = {{1, 1, 0, 0, 0, 0, 0, 0, 0},  // Duplicate 1s in row
-                                               {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                               {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                               {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                                               {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+        BoardData board = {{1, 1, 0, 0, 0, 0, 0, 0, 0},  // Duplicate 1s in row
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                           {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
         CandidateGrid state(board);
 
         // Should not crash, may or may not find step

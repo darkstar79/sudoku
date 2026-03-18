@@ -87,7 +87,7 @@ std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(const Gen
         // Generate complete solution
         spdlog::debug("Attempt {}/{}: Generating complete solution...", attempt + 1, settings.max_attempts);
         auto solution = generateCompleteSolution(rng);
-        if (solution.empty()) {
+        if (!solution.has_value()) {
             spdlog::error("Failed to generate complete solution on attempt {}", attempt + 1);
             continue;  // Try again
         }
@@ -96,17 +96,17 @@ std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(const Gen
         // Remove clues to create puzzle
         // Use iterative deepening for Expert, standard greedy for others
         spdlog::debug("Removing clues to create puzzle...");
-        auto puzzle_board = removeCluesToCreatePuzzleIterative(solution, settings, rng);
-        if (puzzle_board.empty()) {
+        auto puzzle_board = removeCluesToCreatePuzzleIterative(*solution, settings, rng);
+        if (!puzzle_board.has_value()) {
             spdlog::error("Failed to remove clues to create puzzle on attempt {}", attempt + 1);
             continue;  // Try again
         }
-        int final_clue_count = countClues(puzzle_board);
+        int final_clue_count = countClues(*puzzle_board);
         spdlog::debug("Clues removed successfully, final clue count: {}, checking unique solution...",
                       final_clue_count);
 
         // Verify unique solution if required
-        if (settings.ensure_unique && !hasUniqueSolution(puzzle_board)) {
+        if (settings.ensure_unique && !hasUniqueSolution(*puzzle_board)) {
             spdlog::debug("Generated puzzle does not have unique solution (final clue count: {}), retrying...",
                           final_clue_count);
             continue;  // Try again
@@ -115,8 +115,8 @@ std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(const Gen
         // Success! Create puzzle result
         spdlog::info("Successfully generated puzzle on attempt {}/{}", attempt + 1, settings.max_attempts);
         Puzzle result;
-        result.board = std::move(puzzle_board);
-        result.solution = std::move(solution);
+        result.board = *puzzle_board;
+        result.solution = *solution;
         result.difficulty = settings.difficulty;
         result.seed = settings.seed;
         result.clue_count = countClues(result.board);
@@ -168,8 +168,7 @@ std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(Difficult
     return generatePuzzle(settings);
 }
 
-std::expected<std::vector<std::vector<int>>, GenerationError>
-PuzzleGenerator::solvePuzzle(const std::vector<std::vector<int>>& board) const {
+std::expected<BoardData, GenerationError> PuzzleGenerator::solvePuzzle(const BoardData& board) const {
     if (!validatePuzzle(board)) {
         return std::unexpected(GenerationError::GenerationFailed);
     }
@@ -182,13 +181,13 @@ PuzzleGenerator::solvePuzzle(const std::vector<std::vector<int>>& board) const {
     return std::unexpected(GenerationError::GenerationFailed);
 }
 
-bool PuzzleGenerator::hasUniqueSolution(const std::vector<std::vector<int>>& board) const {
+bool PuzzleGenerator::hasUniqueSolution(const BoardData& board) const {
     // Phase 3: Propagation integration removed - creates too much overhead
     // The existing solver already applies hidden singles and naked singles efficiently
     return solution_counter_.hasUniqueSolution(board);
 }
 
-int PuzzleGenerator::countClues(const std::vector<std::vector<int>>& board) const {
+int PuzzleGenerator::countClues(const BoardData& board) const {
     int count = 0;
     for (const auto& row : board) {
         for (int cell : row) {
@@ -200,17 +199,7 @@ int PuzzleGenerator::countClues(const std::vector<std::vector<int>>& board) cons
     return count;
 }
 
-bool PuzzleGenerator::validatePuzzle(const std::vector<std::vector<int>>& board) const {
-    // Check board dimensions
-    if (board.size() != 9) {
-        return false;
-    }
-    for (const auto& row : board) {
-        if (row.size() != 9) {
-            return false;
-        }
-    }
-
+bool PuzzleGenerator::validatePuzzle(const BoardData& board) const {
     // Check that all values are 0-9
     for (const auto& row : board) {
         for (int cell : row) {
@@ -224,7 +213,7 @@ bool PuzzleGenerator::validatePuzzle(const std::vector<std::vector<int>>& board)
     return validator_.validateBoard(board);
 }
 
-std::vector<std::vector<int>> PuzzleGenerator::generateCompleteSolution(std::mt19937& rng) const {
+std::optional<BoardData> PuzzleGenerator::generateCompleteSolution(std::mt19937& rng) const {
     auto board = createEmptyBoard();
 
     if (fillBoardRecursively(board, rng)) {
@@ -234,9 +223,8 @@ std::vector<std::vector<int>> PuzzleGenerator::generateCompleteSolution(std::mt1
     return {};  // Return empty board if generation failed
 }
 
-int PuzzleGenerator::runRemovalOrdering(std::vector<std::vector<int>>& puzzle,
-                                        const std::vector<std::pair<size_t, size_t>>& positions, bool ensure_unique,
-                                        int min_clues, int /*max_clues*/) const {
+int PuzzleGenerator::runRemovalOrdering(BoardData& puzzle, const std::vector<std::pair<size_t, size_t>>& positions,
+                                        bool ensure_unique, int min_clues, int /*max_clues*/) const {
     for (const auto& [row, col] : positions) {
         if (puzzle[row][col] == 0) {
             continue;  // Already empty
@@ -259,12 +247,12 @@ int PuzzleGenerator::runRemovalOrdering(std::vector<std::vector<int>>& puzzle,
     return countClues(puzzle);
 }
 
-void PuzzleGenerator::runRecompletionPhase(std::vector<std::vector<int>>& best_puzzle, int& best_clue_count,
+void PuzzleGenerator::runRecompletionPhase(BoardData& best_puzzle, int& best_clue_count,
                                            std::vector<std::pair<size_t, size_t>>& positions, bool ensure_unique,
                                            int min_clues, int max_clues, int num_orderings, std::mt19937& rng) const {
     constexpr int MAX_RECOMPLETIONS = 5;
 
-    auto tryOrdering = [&](const std::vector<std::vector<int>>& start) {
+    auto tryOrdering = [&](const BoardData& start) {
         auto puzzle = start;
         std::shuffle(positions.begin(), positions.end(), rng);
         int final_clues = runRemovalOrdering(puzzle, positions, ensure_unique, min_clues, max_clues);
@@ -302,9 +290,9 @@ void PuzzleGenerator::runRecompletionPhase(std::vector<std::vector<int>>& best_p
     }
 }
 
-std::vector<std::vector<int>> PuzzleGenerator::removeCluesToCreatePuzzle(const std::vector<std::vector<int>>& solution,
-                                                                         const GenerationSettings& settings,
-                                                                         std::mt19937& rng) const {
+std::optional<BoardData> PuzzleGenerator::removeCluesToCreatePuzzle(const BoardData& solution,
+                                                                    const GenerationSettings& settings,
+                                                                    std::mt19937& rng) const {
     auto [min_clues, max_clues] = getClueRange(settings.difficulty);
 
     // Determine number of removal orderings based on difficulty
@@ -317,7 +305,7 @@ std::vector<std::vector<int>> PuzzleGenerator::removeCluesToCreatePuzzle(const s
         num_orderings = 3;
     }
 
-    std::vector<std::vector<int>> best_puzzle = solution;
+    BoardData best_puzzle = solution;
     int best_clue_count = BOARD_SIZE * BOARD_SIZE;  // Start at 81
 
     // Build position list once; re-shuffle each ordering iteration
@@ -326,7 +314,7 @@ std::vector<std::vector<int>> PuzzleGenerator::removeCluesToCreatePuzzle(const s
     forEachCell([&](size_t row, size_t col) { positions.emplace_back(row, col); });
 
     // Runs one ordering from a given solution; updates best_puzzle/best_clue_count
-    auto tryOrdering = [&](const std::vector<std::vector<int>>& start) {
+    auto tryOrdering = [&](const BoardData& start) {
         auto puzzle = start;
         std::shuffle(positions.begin(), positions.end(), rng);
         int final_clues = runRemovalOrdering(puzzle, positions, settings.ensure_unique, min_clues, max_clues);
@@ -366,9 +354,8 @@ std::vector<std::vector<int>> PuzzleGenerator::removeCluesToCreatePuzzle(const s
 // Phase 1: Iterative Deepening Implementation
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — iterative clue removal with uniqueness checking; branching is inherent to puzzle generation
-std::vector<std::vector<int>> PuzzleGenerator::removeCluesToTarget(const std::vector<std::vector<int>>& solution,
-                                                                   int target_clues, int max_attempts,
-                                                                   std::mt19937& rng) const {
+std::optional<BoardData> PuzzleGenerator::removeCluesToTarget(const BoardData& solution, int target_clues,
+                                                              int max_attempts, std::mt19937& rng) const {
     // Early exit: if target equals current clues, return solution
     int current_clues = countClues(solution);
     if (current_clues == target_clues) {
@@ -454,12 +441,12 @@ std::vector<std::vector<int>> PuzzleGenerator::removeCluesToTarget(const std::ve
     // Failed to reach exact target
     spdlog::debug("removeCluesToTarget: Failed to reach {} clues after {} attempts (best: {})", target_clues,
                   max_attempts, best_clue_count);
-    return createEmptyBoard();  // Return empty board to indicate failure
+    return std::nullopt;
 }
 
-std::vector<std::vector<int>>
-PuzzleGenerator::removeCluesToCreatePuzzleIterative(const std::vector<std::vector<int>>& solution,
-                                                    const GenerationSettings& settings, std::mt19937& rng) const {
+std::optional<BoardData> PuzzleGenerator::removeCluesToCreatePuzzleIterative(const BoardData& solution,
+                                                                             const GenerationSettings& settings,
+                                                                             std::mt19937& rng) const {
     // All difficulties use standard greedy algorithm with multiple orderings + re-completion.
     // Iterative deepening was removed: it optimized for minimum clue count, which does NOT
     // correlate with difficulty. A 17-clue puzzle solvable by naked/hidden singles is Easy,
@@ -472,7 +459,7 @@ PuzzleGenerator::removeCluesToCreatePuzzleIterative(const std::vector<std::vecto
 // Phase 2: Intelligent Clue Dropping (for improved re-completion strategy)
 // ============================================================================
 
-std::vector<ClueAnalysis> PuzzleGenerator::analyzeClueConstraints(const std::vector<std::vector<int>>& board) {
+std::vector<ClueAnalysis> PuzzleGenerator::analyzeClueConstraints(const BoardData& board) {
     std::vector<ClueAnalysis> analysis;
     analysis.reserve(BOARD_SIZE * BOARD_SIZE);  // Reserve max possible
 
@@ -524,7 +511,7 @@ std::vector<ClueAnalysis> PuzzleGenerator::analyzeClueConstraints(const std::vec
     return analysis;
 }
 
-std::vector<Position> PuzzleGenerator::selectCluesForDropping(const std::vector<std::vector<int>>& board, int num_clues,
+std::vector<Position> PuzzleGenerator::selectCluesForDropping(const BoardData& board, int num_clues,
                                                               std::mt19937& rng) {
     // Handle edge cases
     if (num_clues <= 0) {
@@ -571,14 +558,14 @@ std::vector<Position> PuzzleGenerator::selectCluesForDropping(const std::vector<
     return selected;
 }
 
-bool PuzzleGenerator::solvePuzzleBacktrack(std::vector<std::vector<int>>& board) const {
+bool PuzzleGenerator::solvePuzzleBacktrack(BoardData& board) const {
     // Use unified BacktrackingSolver with sequential strategy (deterministic)
     auto validator_ptr = std::make_shared<GameValidator>(validator_);
     BacktrackingSolver solver(validator_ptr);
     return solver.solve(board, ValueSelectionStrategy::Sequential);
 }
 
-bool PuzzleGenerator::fillBoardRecursively(std::vector<std::vector<int>>& board, std::mt19937& rng) const {
+bool PuzzleGenerator::fillBoardRecursively(BoardData& board, std::mt19937& rng) const {
     // Use unified BacktrackingSolver with randomized strategy (for puzzle generation)
     auto validator_ptr = std::make_shared<GameValidator>(validator_);
     BacktrackingSolver solver(validator_ptr);
@@ -602,8 +589,7 @@ std::pair<int, int> PuzzleGenerator::getClueRange(Difficulty difficulty) {
     }
 }
 
-std::optional<Position> PuzzleGenerator::findEmptyPosition(const std::vector<std::vector<int>>& board,
-                                                           bool use_mcv_heuristic) const {
+std::optional<Position> PuzzleGenerator::findEmptyPosition(const BoardData& board, bool use_mcv_heuristic) const {
     if (!use_mcv_heuristic) {
         // Sequential scan: Returns first empty cell (backward compatible)
         std::optional<Position> result = std::nullopt;
@@ -670,7 +656,7 @@ std::optional<Position> PuzzleGenerator::findEmptyPosition(const Board& board, b
     }
 
     // MCV heuristic requires validator API (vector<vector<int>>), delegate
-    auto vec = board.toVectors();
+    auto vec = board.toBoardData();
     return findEmptyPosition(vec, true);
 }
 
@@ -684,8 +670,8 @@ std::vector<int> PuzzleGenerator::getShuffledNumbers(std::mt19937& rng) {
     return numbers;
 }
 
-std::vector<std::vector<int>> PuzzleGenerator::createEmptyBoard() {
-    return std::vector<std::vector<int>>(BOARD_SIZE, std::vector<int>(BOARD_SIZE, 0));
+BoardData PuzzleGenerator::createEmptyBoard() {
+    return BoardData{};
 }
 
 }  // namespace sudoku::core

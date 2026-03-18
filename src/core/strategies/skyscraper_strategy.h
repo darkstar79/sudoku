@@ -34,7 +34,7 @@ namespace sudoku::core {
 /// can eliminate the candidate from any cell that sees both of them.
 class SkyscraperStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         auto row_result = findRowBasedSkyscraper(board, candidates);
         if (row_result.has_value()) {
@@ -63,7 +63,7 @@ private:
     };
 
     /// Row-based: find rows with exactly 2 candidate positions, sharing one column
-    [[nodiscard]] static std::optional<SolveStep> findRowBasedSkyscraper(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findRowBasedSkyscraper(const BoardData& board,
                                                                          const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             std::vector<ConjugatePair> pairs;
@@ -90,7 +90,7 @@ private:
     }
 
     /// Column-based: find columns with exactly 2 candidate positions, sharing one row
-    [[nodiscard]] static std::optional<SolveStep> findColBasedSkyscraper(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findColBasedSkyscraper(const BoardData& board,
                                                                          const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             std::vector<ConjugatePair> pairs;
@@ -117,7 +117,7 @@ private:
     }
 
     /// Given conjugate pairs, find two that share one endpoint and produce eliminations.
-    [[nodiscard]] static std::optional<SolveStep> findSkyscraperFromPairs(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findSkyscraperFromPairs(const BoardData& board,
                                                                           const CandidateGrid& candidates,
                                                                           const std::vector<ConjugatePair>& pairs,
                                                                           int value, RegionType region_type) {
@@ -155,10 +155,9 @@ private:
     /// Check if shared_a and shared_b share a row/col (the "base"), and if so,
     /// eliminate value from cells that see both non_shared_a and non_shared_b.
     [[nodiscard]] static std::optional<SolveStep>
-    tryEndpointMatch(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                     const ConjugatePair& pair_a, const ConjugatePair& pair_b, const Position& shared_a,
-                     const Position& non_shared_a, const Position& shared_b, const Position& non_shared_b, int value,
-                     RegionType region_type) {
+    tryEndpointMatch(const BoardData& board, const CandidateGrid& candidates, const ConjugatePair& pair_a,
+                     const ConjugatePair& pair_b, const Position& shared_a, const Position& non_shared_a,
+                     const Position& shared_b, const Position& non_shared_b, int value, RegionType region_type) {
         // For row-based: shared endpoints must be in the same column
         // For col-based: shared endpoints must be in the same row
         bool endpoints_share =

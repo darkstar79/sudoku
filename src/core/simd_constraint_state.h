@@ -169,7 +169,7 @@ struct alignas(SIMD_ALIGNMENT) SIMDConstraintState {
      * @brief Initialize from existing board state.
      * @param board 9x9 Sudoku board (0 = empty, 1-9 = filled)
      */
-    void initFromBoard(const std::vector<std::vector<int>>& board);
+    void initFromBoard(const BoardData& board);
 
     /// Initialize from Board (flat array, more efficient)
     void initFromBoard(const Board& board);
@@ -313,7 +313,7 @@ struct alignas(SIMD_ALIGNMENT) SIMDConstraintState {
      * @param board Current board state (0 = empty)
      * @return Cell index with naked single, or -1 if none found
      */
-    [[nodiscard]] int findNakedSingle(const std::vector<std::vector<int>>& board) const;
+    [[nodiscard]] int findNakedSingle(const BoardData& board) const;
 
     /// Find naked single (Board overload, uses flat indexing)
     [[nodiscard]] int findNakedSingle(const Board& board) const;
@@ -329,7 +329,7 @@ struct alignas(SIMD_ALIGNMENT) SIMDConstraintState {
      * @param board Current board state (0 = empty)
      * @return Pair of (cell_index, digit) if hidden single found, or (-1, 0) if none
      */
-    [[nodiscard]] std::pair<int, int> findHiddenSingle(const std::vector<std::vector<int>>& board) const;
+    [[nodiscard]] std::pair<int, int> findHiddenSingle(const BoardData& board) const;
 
     /// Find hidden single (Board overload)
     [[nodiscard]] std::pair<int, int> findHiddenSingle(const Board& board) const;

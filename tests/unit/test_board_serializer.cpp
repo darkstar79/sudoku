@@ -23,8 +23,8 @@
 using namespace sudoku::core;
 
 // Helper: build a full 9x9 int board with ascending values
-static std::vector<std::vector<int>> makeIntBoard() {
-    std::vector<std::vector<int>> board(BOARD_SIZE, std::vector<int>(BOARD_SIZE, 0));
+static BoardData makeIntBoard() {
+    BoardData board;
     for (size_t r = 0; r < BOARD_SIZE; ++r) {
         for (size_t c = 0; c < BOARD_SIZE; ++c) {
             board[r][c] = static_cast<int>((r * BOARD_SIZE + c) % 9 + 1);
@@ -34,21 +34,21 @@ static std::vector<std::vector<int>> makeIntBoard() {
 }
 
 // Helper: build a full 9x9 bool board (alternating true/false)
-static std::vector<std::vector<bool>> makeBoolBoard() {
-    std::vector<std::vector<bool>> board(BOARD_SIZE, std::vector<bool>(BOARD_SIZE, false));
+static HintMaskData makeBoolBoard() {
+    HintMaskData board;
     for (size_t r = 0; r < BOARD_SIZE; ++r) {
         for (size_t c = 0; c < BOARD_SIZE; ++c) {
-            board[r][c] = ((r + c) % 2 == 0);
+            board.set(r, c, ((r + c) % 2 == 0));
         }
     }
     return board;
 }
 
 // Helper: build a notes grid — only cell (0,0) and (4,4) have notes
-static std::vector<std::vector<std::vector<int>>> makeNotes() {
-    std::vector<std::vector<std::vector<int>>> notes(BOARD_SIZE, std::vector<std::vector<int>>(BOARD_SIZE));
-    notes[0][0] = {1, 2, 3};
-    notes[4][4] = {5, 9};
+static NotesData makeNotes() {
+    NotesData notes;
+    notes[0][0] = CellNotes{1, 2, 3};
+    notes[4][4] = CellNotes{5, 9};
     return notes;
 }
 
@@ -57,12 +57,11 @@ TEST_CASE("BoardSerializer - serializeIntBoard / deserializeIntBoard", "[board_s
         auto original = makeIntBoard();
         YAML::Node node = BoardSerializer::serializeIntBoard(original);
 
-        std::vector<std::vector<int>> result;
+        BoardData result;
         BoardSerializer::deserializeIntBoard(node, result);
 
         REQUIRE(result.size() == BOARD_SIZE);
         for (size_t r = 0; r < BOARD_SIZE; ++r) {
-            REQUIRE(result[r].size() == BOARD_SIZE);
             for (size_t c = 0; c < BOARD_SIZE; ++c) {
                 REQUIRE(result[r][c] == original[r][c]);
             }
@@ -78,7 +77,7 @@ TEST_CASE("BoardSerializer - serializeIntBoard / deserializeIntBoard", "[board_s
             }
         }
 
-        std::vector<std::vector<int>> result;
+        BoardData result;
         BoardSerializer::deserializeIntBoard(node, result);
 
         REQUIRE(result.size() == BOARD_SIZE);
@@ -105,7 +104,7 @@ TEST_CASE("BoardSerializer - serializeIntBoard / deserializeIntBoard", "[board_s
             }
         }
 
-        std::vector<std::vector<int>> result;
+        BoardData result;
         BoardSerializer::deserializeIntBoard(node, result);
 
         REQUIRE(result.size() == BOARD_SIZE);
@@ -127,14 +126,13 @@ TEST_CASE("BoardSerializer - serializeBoolBoard / deserializeBoolBoard", "[board
         auto original = makeBoolBoard();
         YAML::Node node = BoardSerializer::serializeBoolBoard(original);
 
-        std::vector<std::vector<bool>> result;
+        HintMaskData result;
         BoardSerializer::deserializeBoolBoard(node, result);
 
         REQUIRE(result.size() == BOARD_SIZE);
         for (size_t r = 0; r < BOARD_SIZE; ++r) {
-            REQUIRE(result[r].size() == BOARD_SIZE);
             for (size_t c = 0; c < BOARD_SIZE; ++c) {
-                REQUIRE(result[r][c] == original[r][c]);
+                REQUIRE(result.get(r, c) == original.get(r, c));
             }
         }
     }
@@ -147,18 +145,18 @@ TEST_CASE("BoardSerializer - serializeBoolBoard / deserializeBoolBoard", "[board
             }
         }
 
-        std::vector<std::vector<bool>> result;
+        HintMaskData result;
         BoardSerializer::deserializeBoolBoard(node, result);
 
         REQUIRE(result.size() == BOARD_SIZE);
         for (int r = 0; r < 2; ++r) {
             for (int c = 0; c < 9; ++c) {
-                REQUIRE(result[r][c] == true);
+                REQUIRE(result.get(r, c) == true);
             }
         }
         for (size_t r = 2; r < BOARD_SIZE; ++r) {
             for (size_t c = 0; c < BOARD_SIZE; ++c) {
-                REQUIRE(result[r][c] == false);
+                REQUIRE(result.get(r, c) == false);
             }
         }
     }
@@ -171,15 +169,15 @@ TEST_CASE("BoardSerializer - serializeBoolBoard / deserializeBoolBoard", "[board
             }
         }
 
-        std::vector<std::vector<bool>> result;
+        HintMaskData result;
         BoardSerializer::deserializeBoolBoard(node, result);
 
         for (size_t r = 0; r < BOARD_SIZE; ++r) {
             for (int c = 0; c < 4; ++c) {
-                REQUIRE(result[r][c] == true);
+                REQUIRE(result.get(r, c) == true);
             }
             for (size_t c = 4; c < BOARD_SIZE; ++c) {
-                REQUIRE(result[r][c] == false);
+                REQUIRE(result.get(r, c) == false);
             }
         }
     }
@@ -190,12 +188,12 @@ TEST_CASE("BoardSerializer - serializeNotes / deserializeNotes", "[board_seriali
         auto original = makeNotes();
         YAML::Node node = BoardSerializer::serializeNotes(original);
 
-        std::vector<std::vector<std::vector<int>>> result;
+        NotesData result;
         BoardSerializer::deserializeNotes(node, result);
 
         REQUIRE(result.size() == BOARD_SIZE);
-        REQUIRE(result[0][0] == std::vector<int>({1, 2, 3}));
-        REQUIRE(result[4][4] == std::vector<int>({5, 9}));
+        REQUIRE(result[0][0] == CellNotes{1, 2, 3});
+        REQUIRE(result[4][4] == CellNotes{5, 9});
         // Empty cells
         REQUIRE(result[1][1].empty());
         REQUIRE(result[8][8].empty());
@@ -206,11 +204,11 @@ TEST_CASE("BoardSerializer - serializeNotes / deserializeNotes", "[board_seriali
         YAML::Node node;
         node[0][0].push_back(7);
 
-        std::vector<std::vector<std::vector<int>>> result;
+        NotesData result;
         BoardSerializer::deserializeNotes(node, result);
 
         REQUIRE(result.size() == BOARD_SIZE);
-        REQUIRE(result[0][0] == std::vector<int>({7}));
+        REQUIRE(result[0][0] == CellNotes{7});
         // Rows 1-8 are missing entirely from YAML — should be empty
         for (size_t r = 1; r < BOARD_SIZE; ++r) {
             for (size_t c = 0; c < BOARD_SIZE; ++c) {
@@ -225,18 +223,18 @@ TEST_CASE("BoardSerializer - serializeNotes / deserializeNotes", "[board_seriali
         node[0][0].push_back(3);
         // node[0][1] not set
 
-        std::vector<std::vector<std::vector<int>>> result;
+        NotesData result;
         BoardSerializer::deserializeNotes(node, result);
 
-        REQUIRE(result[0][0] == std::vector<int>({3}));
+        REQUIRE(result[0][0] == CellNotes{3});
         REQUIRE(result[0][1].empty());
     }
 
     SECTION("All-empty notes — all cells have empty vectors") {
-        std::vector<std::vector<std::vector<int>>> empty_notes(BOARD_SIZE, std::vector<std::vector<int>>(BOARD_SIZE));
+        NotesData empty_notes;
         YAML::Node node = BoardSerializer::serializeNotes(empty_notes);
 
-        std::vector<std::vector<std::vector<int>>> result;
+        NotesData result;
         BoardSerializer::deserializeNotes(node, result);
 
         REQUIRE(result.size() == BOARD_SIZE);

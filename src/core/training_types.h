@@ -67,7 +67,7 @@ using TrainingBoard = std::array<std::array<TrainingCellState, 9>, 9>;
 
 /// A single training exercise: board state + expected solution step
 struct TrainingExercise {
-    std::vector<std::vector<int>> board;       ///< 9x9 board state at exercise point
+    BoardData board;                           ///< 9x9 board state at exercise point
     std::vector<uint16_t> candidate_masks;     ///< 81 entries: per-cell candidate bitmasks
     SolveStep expected_step;                   ///< The step the player must find
     SolvingTechnique technique;                ///< Technique being practiced

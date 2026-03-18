@@ -42,10 +42,9 @@ TEST_CASE("SueDeCoqStrategy - Metadata", "[sue_de_coq]") {
 }
 
 TEST_CASE("SueDeCoqStrategy - Returns nullopt for complete board", "[sue_de_coq]") {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     SueDeCoqStrategy strategy;
 
@@ -63,7 +62,7 @@ TEST_CASE("SueDeCoqStrategy - Detects Sue de Coq pattern", "[sue_de_coq]") {
     // Need ALS in line remainder covering {1}: cell with candidates {1, X} (N=1, N+1=2)
     // Need ALS in box remainder covering {2,3}: two cells with union {2,3,X} (N=2, N+1=3)
 
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));  // all filled
+    auto board = BoardData::filled(5);  // all filled
 
     // Intersection cells
     board[0][0] = 0;
@@ -106,7 +105,7 @@ TEST_CASE("SueDeCoqStrategy - Detects Sue de Coq pattern", "[sue_de_coq]") {
 }
 
 TEST_CASE("SueDeCoqStrategy - Returns nullopt when intersection has < 3 candidates", "[sue_de_coq]") {
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
 
     board[0][0] = 0;
     board[0][1] = 0;
@@ -126,10 +125,9 @@ TEST_CASE("SueDeCoqStrategy - Does not eliminate correct value (regression)", "[
     // Root cause: (1) findCoveringALS didn't verify that ALS extra candidates are disjoint
     // from the intersection's candidate set, and (2) eliminations included ALS cells.
     // Board state from diagnostic puzzle seed #160, step #31.
-    std::vector<std::vector<int>> board = {
-        {3, 0, 7, 8, 6, 0, 4, 0, 0}, {4, 0, 0, 7, 3, 0, 0, 0, 0}, {6, 0, 0, 2, 0, 4, 3, 0, 0},
-        {2, 5, 3, 4, 0, 0, 6, 9, 8}, {8, 9, 1, 6, 5, 2, 7, 3, 4}, {7, 6, 4, 9, 8, 3, 0, 0, 0},
-        {0, 3, 6, 5, 2, 0, 8, 4, 0}, {0, 0, 8, 1, 0, 6, 2, 0, 3}, {0, 0, 2, 3, 0, 8, 0, 0, 0}};
+    BoardData board = {{3, 0, 7, 8, 6, 0, 4, 0, 0}, {4, 0, 0, 7, 3, 0, 0, 0, 0}, {6, 0, 0, 2, 0, 4, 3, 0, 0},
+                       {2, 5, 3, 4, 0, 0, 6, 9, 8}, {8, 9, 1, 6, 5, 2, 7, 3, 4}, {7, 6, 4, 9, 8, 3, 0, 0, 0},
+                       {0, 3, 6, 5, 2, 0, 8, 4, 0}, {0, 0, 8, 1, 0, 6, 2, 0, 3}, {0, 0, 2, 3, 0, 8, 0, 0, 0}};
     // Ground truth: R1C6=9 (0-indexed: row=1, col=5)
     constexpr int CORRECT_R1C6 = 9;
 
@@ -140,10 +138,9 @@ TEST_CASE("SueDeCoqStrategy - Does not eliminate correct value (regression)", "[
 
     // If Sue de Coq finds a step, it must not eliminate the correct value from any cell
     if (result.has_value()) {
-        std::vector<std::vector<int>> truth = {
-            {3, 1, 7, 8, 6, 5, 4, 2, 9}, {4, 2, 5, 7, 3, 9, 1, 8, 6}, {6, 8, 9, 2, 1, 4, 3, 5, 7},
-            {2, 5, 3, 4, 7, 1, 6, 9, 8}, {8, 9, 1, 6, 5, 2, 7, 3, 4}, {7, 6, 4, 9, 8, 3, 5, 1, 2},
-            {9, 3, 6, 5, 2, 7, 8, 4, 1}, {5, 4, 8, 1, 9, 6, 2, 7, 3}, {1, 7, 2, 3, 4, 8, 9, 6, 5}};
+        BoardData truth = {{3, 1, 7, 8, 6, 5, 4, 2, 9}, {4, 2, 5, 7, 3, 9, 1, 8, 6}, {6, 8, 9, 2, 1, 4, 3, 5, 7},
+                           {2, 5, 3, 4, 7, 1, 6, 9, 8}, {8, 9, 1, 6, 5, 2, 7, 3, 4}, {7, 6, 4, 9, 8, 3, 5, 1, 2},
+                           {9, 3, 6, 5, 2, 7, 8, 4, 1}, {5, 4, 8, 1, 9, 6, 2, 7, 3}, {1, 7, 2, 3, 4, 8, 9, 6, 5}};
 
         for (const auto& elim : result->eliminations) {
             int correct = truth[elim.position.row][elim.position.col];
@@ -163,7 +160,7 @@ TEST_CASE("SueDeCoqStrategy - ALS extra candidates must not overlap intersection
     // is also in the intersection's candidate set.
     // Setup: intersection {1,2,3}, partition L={1}, B={2,3}
     // Line ALS covers {1} with extra candidate 2 — but 2 is in inter_mask! Should be rejected.
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
 
     board[0][0] = 0;
     board[0][1] = 0;
@@ -194,10 +191,9 @@ TEST_CASE("SueDeCoqStrategy - Can be used through ISolvingStrategy interface", "
     REQUIRE(strategy->getName() == "Sue de Coq");
     REQUIRE(strategy->getDifficultyPoints() == 500);
 
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     auto result = strategy->findStep(board, state);
     REQUIRE_FALSE(result.has_value());

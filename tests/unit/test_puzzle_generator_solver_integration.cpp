@@ -41,14 +41,14 @@
 using namespace sudoku::core;
 
 // Helper: Create Medium difficulty puzzle (known to have unique solution)
-static std::vector<std::vector<int>> createMediumPuzzle() {
+static BoardData createMediumPuzzle() {
     return {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
             {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
             {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 }
 
 // Helper: Create Hard difficulty puzzle with many cascading singles
-static std::vector<std::vector<int>> createHardPuzzle() {
+static BoardData createHardPuzzle() {
     // This puzzle has multiple forced moves that cascade
     return {{0, 0, 0, 0, 0, 0, 6, 8, 0}, {0, 0, 0, 0, 7, 3, 0, 0, 9}, {3, 0, 9, 0, 0, 0, 0, 4, 5},
             {4, 9, 0, 0, 0, 0, 0, 0, 0}, {8, 0, 3, 0, 5, 0, 9, 0, 2}, {0, 0, 0, 0, 0, 0, 0, 3, 6},
@@ -56,7 +56,7 @@ static std::vector<std::vector<int>> createHardPuzzle() {
 }
 
 // Helper: Create nearly-solved puzzle (only a few cells empty)
-static std::vector<std::vector<int>> createNearlySolvedPuzzle() {
+static BoardData createNearlySolvedPuzzle() {
     return {{5, 3, 0, 6, 7, 8, 9, 1, 2},  // (0,2) = 4
             {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7}, {8, 5, 9, 7, 6, 1, 4, 2, 3},
             {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6}, {9, 6, 1, 5, 3, 7, 2, 8, 4},
@@ -113,7 +113,7 @@ TEST_CASE("PuzzleGenerator - Solver with Propagation Correctness", "[puzzle_gene
 
     SECTION("hasUniqueSolution correctly identifies multiple solutions") {
         // Create puzzle with only a few clues (multiple solutions)
-        std::vector<std::vector<int>> multi_solution_puzzle(9, std::vector<int>(9, 0));
+        BoardData multi_solution_puzzle;
         multi_solution_puzzle[0][0] = 5;
         multi_solution_puzzle[1][1] = 3;
 
@@ -141,7 +141,7 @@ TEST_CASE("PuzzleGenerator - Solver SIMD/Scalar Consistency", "[puzzle_generator
     }
 
     SECTION("Both solvers agree on multiple solution detection") {
-        std::vector<std::vector<int>> multi_solution_puzzle(9, std::vector<int>(9, 0));
+        BoardData multi_solution_puzzle;
         multi_solution_puzzle[0][0] = 5;
 
         bool unique = generator.hasUniqueSolution(multi_solution_puzzle);
@@ -191,7 +191,7 @@ TEST_CASE("PuzzleGenerator - Propagation Edge Cases in Solver", "[puzzle_generat
     PuzzleGenerator generator;
 
     SECTION("Solver handles empty board") {
-        std::vector<std::vector<int>> empty_board(9, std::vector<int>(9, 0));
+        BoardData empty_board;
 
         // Empty board has many solutions (not unique)
         bool unique = generator.hasUniqueSolution(empty_board);
@@ -200,7 +200,7 @@ TEST_CASE("PuzzleGenerator - Propagation Edge Cases in Solver", "[puzzle_generat
     }
 
     SECTION("Solver handles complete board") {
-        std::vector<std::vector<int>> complete_board = {
+        BoardData complete_board = {
             {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
             {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
             {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
@@ -212,7 +212,7 @@ TEST_CASE("PuzzleGenerator - Propagation Edge Cases in Solver", "[puzzle_generat
 
     SECTION("Solver handles contradictory board") {
         // Create board with contradiction (two 5's in same row)
-        std::vector<std::vector<int>> invalid_board(9, std::vector<int>(9, 0));
+        BoardData invalid_board;
         invalid_board[0][0] = 5;
         invalid_board[0][1] = 5;  // Contradiction!
 

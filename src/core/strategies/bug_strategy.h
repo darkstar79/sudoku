@@ -35,7 +35,7 @@ namespace sudoku::core {
 /// This produces a Placement, not an Elimination.
 class BUGStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         Position trivalue_cell{};
         int trivalue_count = 0;
@@ -98,9 +98,8 @@ public:
 
 private:
     /// Find the candidate that appears an odd number of times in the cell's row, col, or box.
-    [[nodiscard]] static int findOddCandidate(const std::vector<std::vector<int>>& board,
-                                              const CandidateGrid& candidates, const Position& cell,
-                                              const std::vector<int>& cands) {
+    [[nodiscard]] static int findOddCandidate(const BoardData& board, const CandidateGrid& candidates,
+                                              const Position& cell, const std::vector<int>& cands) {
         for (int val : cands) {
             // Count occurrences of val in the row
             int row_count = 0;

@@ -35,7 +35,7 @@ namespace sudoku::core {
 class TwoStringKiteStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×row×col conjugate pair matching; nesting is inherent to 2-string kite search
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             // Find row conjugate pairs (rows with exactly 2 candidate positions)
@@ -113,9 +113,8 @@ private:
     /// Try connecting row_connected (from row pair) and col_connected (from col pair) via shared box.
     /// If they share a box, eliminate value from cells seeing both row_other and col_other.
     [[nodiscard]] static std::optional<SolveStep>
-    tryConnection(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                  const Position& row_connected, const Position& row_other, const Position& col_connected,
-                  const Position& col_other, int value) {
+    tryConnection(const BoardData& board, const CandidateGrid& candidates, const Position& row_connected,
+                  const Position& row_other, const Position& col_connected, const Position& col_other, int value) {
         if (!sameBox(row_connected, col_connected)) {
             return std::nullopt;
         }

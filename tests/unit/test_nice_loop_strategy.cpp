@@ -42,10 +42,9 @@ TEST_CASE("NiceLoopStrategy - Metadata", "[nice_loop]") {
 }
 
 TEST_CASE("NiceLoopStrategy - Returns nullopt for complete board", "[nice_loop]") {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     NiceLoopStrategy strategy;
 
@@ -75,7 +74,7 @@ TEST_CASE("NiceLoopStrategy - Detects AIC elimination", "[nice_loop]") {
     // Target: (0,6) if it has candidate 1 and sees both endpoints.
     // (0,6) sees (0,0) via row and (3,6) via column. Yes!
 
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
 
     // Empty cells for the chain nodes
     board[0][0] = 0;  // Chain start: digit 1
@@ -115,7 +114,7 @@ TEST_CASE("NiceLoopStrategy - Detects AIC elimination", "[nice_loop]") {
 }
 
 TEST_CASE("NiceLoopStrategy - Explanation contains technique name", "[nice_loop]") {
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
 
     board[0][0] = 0;
     board[0][3] = 0;
@@ -147,10 +146,9 @@ TEST_CASE("NiceLoopStrategy - Can be used through ISolvingStrategy interface", "
     REQUIRE(strategy->getName() == "Nice Loop");
     REQUIRE(strategy->getDifficultyPoints() == 600);
 
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     auto result = strategy->findStep(board, state);
     REQUIRE_FALSE(result.has_value());

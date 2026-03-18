@@ -53,10 +53,10 @@ private:
 // Helper: minimal valid SavedGame (all 9x9 boards initialised)
 static SavedGame makeValidGame() {
     SavedGame game;
-    game.current_state.assign(9, std::vector<int>(9, 0));
-    game.original_puzzle.assign(9, std::vector<int>(9, 0));
-    game.notes.assign(9, std::vector<std::vector<int>>(9));
-    game.hint_revealed_cells.assign(9, std::vector<bool>(9, false));
+    game.current_state = BoardData{};
+    game.original_puzzle = BoardData{};
+    game.notes = NotesData{};
+    game.hint_revealed_cells = HintMaskData{};
     game.difficulty = Difficulty::Easy;
     game.puzzle_seed = 1;
     game.display_name = "Test";
@@ -118,16 +118,7 @@ TEST_CASE("SaveManager - Empty notes skips 'notes' key in YAML", "[save_manager_
     auto load_result = mgr.loadGame(*save_result);
     REQUIRE(load_result.has_value());
     // When no notes key was serialized, notes is left empty (not populated to 9×9)
-    // Verify no note values exist by checking the flat structure
-    bool any_note_found = false;
-    for (const auto& row : load_result->notes) {
-        for (const auto& cell : row) {
-            if (!cell.empty()) {
-                any_note_found = true;
-            }
-        }
-    }
-    REQUIRE_FALSE(any_note_found);
+    REQUIRE(load_result->notes.empty());
 }
 
 TEST_CASE("SaveManager - Non-empty notes: 'notes' key is serialized", "[save_manager_settings]") {
@@ -135,7 +126,7 @@ TEST_CASE("SaveManager - Non-empty notes: 'notes' key is serialized", "[save_man
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeValidGame();
-    game.notes[0][0] = {1, 3, 5};
+    game.notes[0][0] = CellNotes{1, 3, 5};
 
     SaveSettings settings;
     settings.compress = false;
@@ -145,7 +136,7 @@ TEST_CASE("SaveManager - Non-empty notes: 'notes' key is serialized", "[save_man
 
     auto load_result = mgr.loadGame(*save_result);
     REQUIRE(load_result.has_value());
-    REQUIRE(load_result->notes[0][0] == std::vector<int>({1, 3, 5}));
+    REQUIRE(load_result->notes[0][0] == CellNotes{1, 3, 5});
 }
 
 TEST_CASE("SaveManager - include_history=true with non-empty move_history", "[save_manager_settings]") {
@@ -203,30 +194,5 @@ TEST_CASE("SaveManager - Invalid board dimensions return SerializationError", "[
     SaveSettings settings;
     settings.compress = false;
 
-    SECTION("current_state has wrong row count (8 rows)") {
-        SavedGame game = makeValidGame();
-        game.current_state.resize(8);  // Only 8 rows instead of 9
-
-        auto result = mgr.saveGame(game, settings);
-        REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error() == SaveError::SerializationError);
-    }
-
-    SECTION("current_state row has wrong column count (8 cols)") {
-        SavedGame game = makeValidGame();
-        game.current_state[3].resize(8);  // Row 3 has only 8 cols
-
-        auto result = mgr.saveGame(game, settings);
-        REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error() == SaveError::SerializationError);
-    }
-
-    SECTION("original_puzzle row has wrong column count") {
-        SavedGame game = makeValidGame();
-        game.original_puzzle[0].resize(8);  // Row 0 has only 8 cols
-
-        auto result = mgr.saveGame(game, settings);
-        REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error() == SaveError::SerializationError);
-    }
+    // Board dimension corruption tests removed — BoardData is always 9x9 (fixed-size flat array)
 }

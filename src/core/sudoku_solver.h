@@ -36,21 +36,18 @@ public:
     /// @param validator Validator for checking board conflicts
     explicit SudokuSolver(std::shared_ptr<IGameValidator> validator);
 
-    [[nodiscard]] std::expected<SolveStep, SolverError>
-    findNextStep(const std::vector<std::vector<int>>& board) const override;
+    [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const BoardData& board) const override;
 
     /// Find next step with givens information for Avoidable Rectangle support.
     /// @param board Current board state
     /// @param original_puzzle Original puzzle (non-zero cells are givens)
     /// @return Next SolveStep or error
-    [[nodiscard]] std::expected<SolveStep, SolverError>
-    findNextStep(const std::vector<std::vector<int>>& board,
-                 const std::vector<std::vector<int>>& original_puzzle) const override;
+    [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const BoardData& board,
+                                                                     const BoardData& original_puzzle) const override;
 
-    [[nodiscard]] std::expected<SolverResult, SolverError>
-    solvePuzzle(const std::vector<std::vector<int>>& board) const override;
+    [[nodiscard]] std::expected<SolverResult, SolverError> solvePuzzle(const BoardData& board) const override;
 
-    [[nodiscard]] bool applyStep(std::vector<std::vector<int>>& board, const SolveStep& step) const override;
+    [[nodiscard]] bool applyStep(BoardData& board, const SolveStep& step) const override;
 
 private:
     std::shared_ptr<IGameValidator> validator_;
@@ -60,21 +57,20 @@ private:
     void initializeStrategies();
 
     /// Checks if board is complete (no empty cells)
-    [[nodiscard]] static bool isComplete(const std::vector<std::vector<int>>& board);
+    [[nodiscard]] static bool isComplete(const BoardData& board);
 
     /// Finds next logical step using an existing CandidateGrid (for internal solving loop)
-    [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const BoardData& board,
                                                                      const CandidateGrid& candidates) const;
 
     /// Applies step to both board and candidate grid (for internal solving loop)
-    [[nodiscard]] static bool applyStep(std::vector<std::vector<int>>& board, CandidateGrid& candidates,
-                                        const SolveStep& step);
+    [[nodiscard]] static bool applyStep(BoardData& board, CandidateGrid& candidates, const SolveStep& step);
 
     /// Solves puzzle using simple backtracking (no circular dependency on generator)
     /// Uses unified BacktrackingSolver with MostConstrained strategy
     /// @param board Board to solve (modified in-place)
     /// @return true if solution found, false if unsolvable
-    bool solveWithBacktracking(std::vector<std::vector<int>>& board) const;
+    bool solveWithBacktracking(BoardData& board) const;
 };
 
 }  // namespace sudoku::core

@@ -122,7 +122,7 @@ void SudokuSolver::initializeStrategies() {
     strategies_.push_back(std::make_unique<NiceLoopStrategy>());
 }
 
-std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const std::vector<std::vector<int>>& board) const {
+std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const BoardData& board) const {
     // Public API: creates a fresh CandidateGrid (stateless, for hints)
     if (isComplete(board)) {
         return std::unexpected(SolverError::Unsolvable);
@@ -132,9 +132,8 @@ std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const std::vect
     return findNextStep(board, candidates);
 }
 
-std::expected<SolveStep, SolverError>
-SudokuSolver::findNextStep(const std::vector<std::vector<int>>& board,
-                           const std::vector<std::vector<int>>& original_puzzle) const {
+std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const BoardData& board,
+                                                                 const BoardData& original_puzzle) const {
     // Public API with givens info: creates CandidateGrid with givens mask for Avoidable Rectangle
     if (isComplete(board)) {
         return std::unexpected(SolverError::Unsolvable);
@@ -145,7 +144,7 @@ SudokuSolver::findNextStep(const std::vector<std::vector<int>>& board,
     return findNextStep(board, candidates);
 }
 
-std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const std::vector<std::vector<int>>& board,
+std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const BoardData& board,
                                                                  const CandidateGrid& candidates) const {
     // Internal: uses existing CandidateGrid with accumulated eliminations
     if (isComplete(board)) {
@@ -162,7 +161,7 @@ std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const std::vect
     return std::unexpected(SolverError::Unsolvable);
 }
 
-std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const std::vector<std::vector<int>>& board) const {
+std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardData& board) const {
     if (isComplete(board)) {
         return SolverResult{.solution = board, .solve_path = {}, .used_backtracking = false};
     }
@@ -206,7 +205,7 @@ std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const std::ve
     return SolverResult{.solution = working_board, .solve_path = solve_path, .used_backtracking = used_backtracking};
 }
 
-bool SudokuSolver::applyStep(std::vector<std::vector<int>>& board, const SolveStep& step) const {
+bool SudokuSolver::applyStep(BoardData& board, const SolveStep& step) const {
     // Public API: only handles placements (for backward compatibility)
     if (step.type == SolveStepType::Placement) {
         board[step.position.row][step.position.col] = step.value;
@@ -217,7 +216,7 @@ bool SudokuSolver::applyStep(std::vector<std::vector<int>>& board, const SolveSt
     return true;
 }
 
-bool SudokuSolver::applyStep(std::vector<std::vector<int>>& board, CandidateGrid& candidates, const SolveStep& step) {
+bool SudokuSolver::applyStep(BoardData& board, CandidateGrid& candidates, const SolveStep& step) {
     // Internal: updates both board and candidate grid
     if (step.type == SolveStepType::Placement) {
         board[step.position.row][step.position.col] = step.value;
@@ -232,7 +231,7 @@ bool SudokuSolver::applyStep(std::vector<std::vector<int>>& board, CandidateGrid
     return true;
 }
 
-bool SudokuSolver::isComplete(const std::vector<std::vector<int>>& board) {
+bool SudokuSolver::isComplete(const BoardData& board) {
     for (size_t row = 0; row < 9; ++row) {
         for (size_t col = 0; col < 9; ++col) {
             if (board[row][col] == 0) {
@@ -243,7 +242,7 @@ bool SudokuSolver::isComplete(const std::vector<std::vector<int>>& board) {
     return true;
 }
 
-bool SudokuSolver::solveWithBacktracking(std::vector<std::vector<int>>& board) const {
+bool SudokuSolver::solveWithBacktracking(BoardData& board) const {
     BacktrackingSolver solver(validator_);
     return solver.solve(board, ValueSelectionStrategy::MostConstrained);
 }

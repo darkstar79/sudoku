@@ -50,7 +50,7 @@ public:
      * @brief Construct ConstraintState from current board state.
      * @param board 9x9 Sudoku board (0 = empty, 1-9 = filled)
      */
-    explicit ConstraintState(const std::vector<std::vector<int>>& board);
+    explicit ConstraintState(const BoardData& board);
 
     /// Construct from flat Board representation
     explicit ConstraintState(const Board& board);
@@ -113,8 +113,7 @@ public:
      * @return Optional (col, value) if hidden single found, nullopt otherwise
      * @complexity O(81) - 9 values × 9 cells worst case
      */
-    [[nodiscard]] std::optional<std::pair<size_t, int>>
-    findHiddenSingleInRow(size_t row, const std::vector<std::vector<int>>& board) const;
+    [[nodiscard]] std::optional<std::pair<size_t, int>> findHiddenSingleInRow(size_t row, const BoardData& board) const;
 
     /**
      * @brief Find a hidden single in the given column.
@@ -124,8 +123,7 @@ public:
      * @return Optional (row, value) if hidden single found, nullopt otherwise
      * @complexity O(81) - 9 values × 9 cells worst case
      */
-    [[nodiscard]] std::optional<std::pair<size_t, int>>
-    findHiddenSingleInCol(size_t col, const std::vector<std::vector<int>>& board) const;
+    [[nodiscard]] std::optional<std::pair<size_t, int>> findHiddenSingleInCol(size_t col, const BoardData& board) const;
 
     /**
      * @brief Find a hidden single in the given 3x3 box.
@@ -135,8 +133,8 @@ public:
      * @return Optional (Position{row, col}, value) if hidden single found
      * @complexity O(81) - 9 values × 9 cells worst case
      */
-    [[nodiscard]] std::optional<std::pair<Position, int>>
-    findHiddenSingleInBox(size_t box, const std::vector<std::vector<int>>& board) const;
+    [[nodiscard]] std::optional<std::pair<Position, int>> findHiddenSingleInBox(size_t box,
+                                                                                const BoardData& board) const;
 
     /**
      * @brief Find any hidden single on the board.
@@ -148,8 +146,7 @@ public:
      * @return Optional (Position, value) if any hidden single found
      * @complexity O(2187) worst case - 27 regions × 81 checks each
      */
-    [[nodiscard]] std::optional<std::pair<Position, int>>
-    findHiddenSingle(const std::vector<std::vector<int>>& board) const;
+    [[nodiscard]] std::optional<std::pair<Position, int>> findHiddenSingle(const BoardData& board) const;
 
     /// Find any hidden single on the board (Board overload)
     [[nodiscard]] std::optional<std::pair<Position, int>> findHiddenSingle(const Board& board) const;

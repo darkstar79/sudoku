@@ -108,8 +108,8 @@ TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
             auto& state_with_notes = view_model->gameState.get();
             const auto& sr_pos = same_row_cell.value();
             const auto& sc_pos = same_col_cell.value();
-            auto& row_notes = state_with_notes.getCell(sr_pos.row, sr_pos.col).notes;
-            auto& col_notes = state_with_notes.getCell(sc_pos.row, sc_pos.col).notes;
+            auto row_notes = state_with_notes.getCell(sr_pos.row, sr_pos.col).notes;
+            auto col_notes = state_with_notes.getCell(sc_pos.row, sc_pos.col).notes;
             REQUIRE(std::find(row_notes.begin(), row_notes.end(), test_number) != row_notes.end());
             REQUIRE(std::find(col_notes.begin(), col_notes.end(), test_number) != col_notes.end());
 
@@ -123,8 +123,8 @@ TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
             REQUIRE(final_state.getCell(tc_pos.row, tc_pos.col).value == test_number);
 
             // The conflicting notes should have been removed
-            auto& final_row_notes = final_state.getCell(sr_pos.row, sr_pos.col).notes;
-            auto& final_col_notes = final_state.getCell(sc_pos.row, sc_pos.col).notes;
+            auto final_row_notes = final_state.getCell(sr_pos.row, sr_pos.col).notes;
+            auto final_col_notes = final_state.getCell(sc_pos.row, sc_pos.col).notes;
             REQUIRE(std::find(final_row_notes.begin(), final_row_notes.end(), test_number) == final_row_notes.end());
             REQUIRE(std::find(final_col_notes.begin(), final_col_notes.end(), test_number) == final_col_notes.end());
         } else {
@@ -178,7 +178,7 @@ TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
             // Verify both notes are present
             auto& state_with_notes = view_model->gameState.get();
             const auto& tc_pos = test_cell.value();
-            auto& test_notes = state_with_notes.getCell(tc_pos.row, tc_pos.col).notes;
+            auto test_notes = state_with_notes.getCell(tc_pos.row, tc_pos.col).notes;
             REQUIRE(std::find(test_notes.begin(), test_notes.end(), number_to_place) != test_notes.end());
             REQUIRE(std::find(test_notes.begin(), test_notes.end(), other_note) != test_notes.end());
 
@@ -190,7 +190,7 @@ TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
             auto& final_state = view_model->gameState.get();
             const auto& tgt_pos = target_cell.value();
             REQUIRE(final_state.getCell(tgt_pos.row, tgt_pos.col).value == number_to_place);
-            auto& final_test_notes = final_state.getCell(tc_pos.row, tc_pos.col).notes;
+            auto final_test_notes = final_state.getCell(tc_pos.row, tc_pos.col).notes;
             REQUIRE(std::find(final_test_notes.begin(), final_test_notes.end(), number_to_place) ==
                     final_test_notes.end());
             REQUIRE(std::find(final_test_notes.begin(), final_test_notes.end(), other_note) !=

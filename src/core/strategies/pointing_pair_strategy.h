@@ -33,7 +33,7 @@ namespace sudoku::core {
 /// that value can be eliminated from other cells in that row/column outside the box.
 class PointingPairStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // Check each box
         for (size_t box = 0; box < BOARD_SIZE; ++box) {
@@ -79,7 +79,7 @@ public:
 private:
     /// Check if all cells with this value in the box lie in a single row
     [[nodiscard]] static std::optional<SolveStep> checkPointingInRow(const CandidateGrid& candidates,
-                                                                     const std::vector<std::vector<int>>& board,
+                                                                     const BoardData& board,
                                                                      const std::vector<Position>& cells_in_box,
                                                                      int value, size_t box) {
         // Check if all cells are in the same row
@@ -126,7 +126,7 @@ private:
 
     /// Check if all cells with this value in the box lie in a single column
     [[nodiscard]] static std::optional<SolveStep> checkPointingInCol(const CandidateGrid& candidates,
-                                                                     const std::vector<std::vector<int>>& board,
+                                                                     const BoardData& board,
                                                                      const std::vector<Position>& cells_in_box,
                                                                      int value, size_t box) {
         size_t col = cells_in_box[0].col;

@@ -77,7 +77,7 @@ inline __m256i popcnt_epi16(__m256i v) {
 
 }  // anonymous namespace
 
-void SIMDConstraintState::initFromBoard(const std::vector<std::vector<int>>& board) {
+void SIMDConstraintState::initFromBoard(const BoardData& board) {
     // Reset all cells to all candidates
     for (size_t i = 0; i < BOARD_SIZE * BOARD_SIZE; ++i) {
         candidates[i] = ALL_CANDIDATES_MASK;
@@ -214,7 +214,7 @@ int SIMDConstraintState::getSolvedDigit(size_t cell) const {
     return std::countr_zero(static_cast<unsigned>(cands)) + 1;
 }
 
-int SIMDConstraintState::findNakedSingle(const std::vector<std::vector<int>>& board) const {
+int SIMDConstraintState::findNakedSingle(const BoardData& board) const {
     // Find cells with exactly 1 candidate that haven't been placed on the board
     for (size_t cell = 0; cell < BOARD_SIZE * BOARD_SIZE; ++cell) {
         size_t row = cellRow(cell);
@@ -374,7 +374,7 @@ std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl(const BoardT& boar
     return {-1, 0};  // No hidden single found
 }
 
-std::pair<int, int> SIMDConstraintState::findHiddenSingle(const std::vector<std::vector<int>>& board) const {
+std::pair<int, int> SIMDConstraintState::findHiddenSingle(const BoardData& board) const {
     return findHiddenSingleImpl(board);
 }
 
@@ -494,8 +494,7 @@ std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl(const BoardT& boar
 }
 
 // Explicit template instantiations
-template std::pair<int, int>
-SIMDConstraintState::findHiddenSingleImpl<std::vector<std::vector<int>>>(const std::vector<std::vector<int>>&) const;
+template std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl<BoardData>(const BoardData&) const;
 template std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl<Board>(const Board&) const;
 template std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl<Board>(const Board&, uint32_t) const;
 // CPD-ON

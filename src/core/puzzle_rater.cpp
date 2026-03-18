@@ -31,7 +31,7 @@ namespace sudoku::core {
 PuzzleRater::PuzzleRater(std::shared_ptr<ISudokuSolver> solver) : solver_(std::move(solver)) {
 }
 
-std::expected<PuzzleRating, RatingError> PuzzleRater::ratePuzzle(const std::vector<std::vector<int>>& board) const {
+std::expected<PuzzleRating, RatingError> PuzzleRater::ratePuzzle(const BoardData& board) const {
     // Solve puzzle using logical techniques
     auto result = solver_->solvePuzzle(board);
 

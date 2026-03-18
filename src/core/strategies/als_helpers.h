@@ -37,8 +37,7 @@ struct ALS {
 class ALSHelpers : protected StrategyBase {
 public:
     /// Enumerate all ALSs (2-cell and 3-cell) across all 27 regions.
-    [[nodiscard]] static std::vector<ALS> enumerateALSs(const std::vector<std::vector<int>>& board,
-                                                        const CandidateGrid& candidates) {
+    [[nodiscard]] static std::vector<ALS> enumerateALSs(const BoardData& board, const CandidateGrid& candidates) {
         std::vector<ALS> result;
 
         for (size_t row = 0; row < BOARD_SIZE; ++row) {

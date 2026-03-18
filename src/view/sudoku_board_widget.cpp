@@ -97,7 +97,7 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
 
     for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
         for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
-            const auto& cell = game_state.getBoard()[row][col];
+            const auto cell = game_state.getCell(row, col);
             bool is_selected =
                 selected_pos_opt.has_value() && selected_pos_opt->row == row && selected_pos_opt->col == col;
             paintCell(painter, cell, row, col, origin, cs, is_selected);

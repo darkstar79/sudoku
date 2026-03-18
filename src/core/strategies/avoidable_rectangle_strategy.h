@@ -36,7 +36,7 @@ namespace sudoku::core {
 /// Requires givens info from CandidateGrid::setGivensFromPuzzle().
 class AvoidableRectangleStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         if (!candidates.hasGivensInfo()) {
             return std::nullopt;
@@ -61,7 +61,7 @@ private:
     // CPD-OFF — rectangle-based strategy structurally similar to UR but with solver-placed cell semantics
     /// Search for Avoidable Rectangle patterns.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — rectangle enumeration with solver-placed value checks; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findAvoidableRectangle(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findAvoidableRectangle(const BoardData& board,
                                                                          const CandidateGrid& candidates) {
         // Find all solver-placed cells (filled but not given)
         std::vector<Position> placed_cells;
@@ -129,7 +129,7 @@ private:
     }
 
     /// Try to complete rectangle from two cells in the same row.
-    [[nodiscard]] static std::optional<SolveStep> tryRectangleCompletion(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> tryRectangleCompletion(const BoardData& board,
                                                                          const CandidateGrid& candidates,
                                                                          const Position& c1, const Position& c2,
                                                                          int val_a, int val_b) {
@@ -148,7 +148,7 @@ private:
     }
 
     /// Try to complete rectangle from two cells in the same column.
-    [[nodiscard]] static std::optional<SolveStep> tryRectangleCompletionCol(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> tryRectangleCompletionCol(const BoardData& board,
                                                                             const CandidateGrid& candidates,
                                                                             const Position& c1, const Position& c2,
                                                                             int val_a, int val_b) {
@@ -169,7 +169,7 @@ private:
     /// Check if 4 cells form a valid Avoidable Rectangle.
     /// c1 and c2 are solver-placed with values {A,B}. Check c3 and c4.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — checks 3 placed + 1 unsolved corner patterns; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> checkRectangle(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> checkRectangle(const BoardData& board,
                                                                  const CandidateGrid& candidates, const Position& c1,
                                                                  const Position& c2, const Position& c3,
                                                                  const Position& c4, int val_a, int val_b) {

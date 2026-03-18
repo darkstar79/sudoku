@@ -53,7 +53,7 @@ TEST_CASE("GameValidator - Conflict Detection", "[game_validator]") {
     GameValidator validator;
 
     // Create test board with some conflicts
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+    BoardData board;
 
     SECTION("Row conflicts") {
         board[0][0] = 5;
@@ -85,7 +85,7 @@ TEST_CASE("GameValidator - Conflict Detection", "[game_validator]") {
 
 TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
     GameValidator validator;
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+    BoardData board;
 
     SECTION("Valid moves") {
         Move move{.position = {.row = 0, .col = 0},
@@ -204,7 +204,7 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
 
     SECTION("Game already complete") {
         // Create a complete valid board
-        std::vector<std::vector<int>> complete_board = {
+        BoardData complete_board = {
             {1, 2, 3, 4, 5, 6, 7, 8, 9}, {4, 5, 6, 7, 8, 9, 1, 2, 3}, {7, 8, 9, 1, 2, 3, 4, 5, 6},
             {2, 3, 4, 5, 6, 7, 8, 9, 1}, {5, 6, 7, 8, 9, 1, 2, 3, 4}, {8, 9, 1, 2, 3, 4, 5, 6, 7},
             {3, 4, 5, 6, 7, 8, 9, 1, 2}, {6, 7, 8, 9, 1, 2, 3, 4, 5}, {9, 1, 2, 3, 4, 5, 6, 7, 8}};
@@ -226,24 +226,23 @@ TEST_CASE("GameValidator - Board Completion", "[game_validator]") {
     GameValidator validator;
 
     SECTION("Incomplete board") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 1;  // Only one cell filled
         REQUIRE_FALSE(validator.isComplete(board));
     }
 
     SECTION("Complete valid board") {
         // Simple valid complete board (not a real Sudoku solution, but valid for this test)
-        std::vector<std::vector<int>> board = {
-            {1, 2, 3, 4, 5, 6, 7, 8, 9}, {4, 5, 6, 7, 8, 9, 1, 2, 3}, {7, 8, 9, 1, 2, 3, 4, 5, 6},
-            {2, 3, 4, 5, 6, 7, 8, 9, 1}, {5, 6, 7, 8, 9, 1, 2, 3, 4}, {8, 9, 1, 2, 3, 4, 5, 6, 7},
-            {3, 4, 5, 6, 7, 8, 9, 1, 2}, {6, 7, 8, 9, 1, 2, 3, 4, 5}, {9, 1, 2, 3, 4, 5, 6, 7, 8}};
+        BoardData board = {{1, 2, 3, 4, 5, 6, 7, 8, 9}, {4, 5, 6, 7, 8, 9, 1, 2, 3}, {7, 8, 9, 1, 2, 3, 4, 5, 6},
+                           {2, 3, 4, 5, 6, 7, 8, 9, 1}, {5, 6, 7, 8, 9, 1, 2, 3, 4}, {8, 9, 1, 2, 3, 4, 5, 6, 7},
+                           {3, 4, 5, 6, 7, 8, 9, 1, 2}, {6, 7, 8, 9, 1, 2, 3, 4, 5}, {9, 1, 2, 3, 4, 5, 6, 7, 8}};
         REQUIRE(validator.isComplete(board));
     }
 }
 
 TEST_CASE("GameValidator - Possible Values", "[game_validator]") {
     GameValidator validator;
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+    BoardData board;
 
     SECTION("Empty board - all values possible") {
         auto possible = validator.getPossibleValues(board, {.row = 0, .col = 0});
@@ -284,7 +283,7 @@ TEST_CASE("GameValidator - Possible Values", "[game_validator]") {
 
 TEST_CASE("GameValidator - Naked Singles Detection", "[game_validator][constraint_propagation]") {
     GameValidator validator;
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+    BoardData board;
 
     SECTION("Naked single in constrained position") {
         // Fill row 0 with values 1-8, position (0,8) can only be 9

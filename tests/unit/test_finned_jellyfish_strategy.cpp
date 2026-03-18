@@ -23,8 +23,8 @@ using namespace sudoku::core;
 
 namespace {
 
-[[nodiscard]] std::vector<std::vector<int>> createEmptyBoard() {
-    return std::vector<std::vector<int>>(9, std::vector<int>(9, 0));
+[[nodiscard]] BoardData createEmptyBoard() {
+    return BoardData{};
 }
 
 void keepOnly(CandidateGrid& grid, size_t row, size_t col, const std::vector<int>& keep) {
@@ -46,10 +46,9 @@ TEST_CASE("FinnedJellyfishStrategy - Metadata", "[finned_jellyfish]") {
 }
 
 TEST_CASE("FinnedJellyfishStrategy - Returns nullopt for complete board", "[finned_jellyfish]") {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     FinnedJellyfishStrategy strategy;
 
@@ -61,7 +60,7 @@ TEST_CASE("FinnedJellyfishStrategy - Detects row-based finned jellyfish", "[finn
     // Row-based finned jellyfish for value 1:
     // 4 rows with value 1 candidates, union of columns = 5 (4 base + 1 fin)
     // Rows 0, 2, 4, 6. Base cols: 0, 3, 6, 8. Fin col: 1 (only in row 0).
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 0));
+    auto board = BoardData{};
     CandidateGrid state(board);
 
     // Remove value 1 from all cells first
@@ -78,7 +77,7 @@ TEST_CASE("FinnedJellyfishStrategy - Detects row-based finned jellyfish", "[finn
     // Use keepOnly on cells to set specific candidates including value 1.
 
     // Actually, let's use a fresh approach: mark most cells as filled.
-    auto board2 = std::vector<std::vector<int>>(9, std::vector<int>(9, 2));  // All filled with 2
+    auto board2 = BoardData::filled(2);  // All filled with 2
 
     // Leave specific cells empty for the pattern
     // Row 0: empty at cols 0, 1 (fin col)
@@ -180,10 +179,9 @@ TEST_CASE("FinnedJellyfishStrategy - Can be used through ISolvingStrategy interf
     REQUIRE(strategy->getName() == "Finned Jellyfish");
     REQUIRE(strategy->getDifficultyPoints() == 450);
 
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     auto result = strategy->findStep(board, state);
     REQUIRE_FALSE(result.has_value());

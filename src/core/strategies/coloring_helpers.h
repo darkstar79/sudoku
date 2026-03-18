@@ -37,7 +37,7 @@ public:
     /// Build adjacency list of conjugate pairs for a single value.
     /// Two cells are linked if they are the only two candidates for `value` in a row, column, or box.
     [[nodiscard]] static std::array<std::vector<size_t>, TOTAL_CELLS>
-    buildConjugatePairGraph(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int value) {
+    buildConjugatePairGraph(const BoardData& board, const CandidateGrid& candidates, int value) {
         std::array<std::vector<size_t>, TOTAL_CELLS> adj{};
 
         auto hasCandidate = [&board, &candidates, value](size_t r, size_t c) {

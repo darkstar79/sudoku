@@ -73,13 +73,10 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
 
         // Verify notes were added
         const auto& cell_with_notes = view_model.gameState.get().getCell(empty_cell);
-        REQUIRE(cell_with_notes.notes.size() == 3);
-        REQUIRE(std::find(cell_with_notes.notes.begin(), cell_with_notes.notes.end(), 1) !=
-                cell_with_notes.notes.end());
-        REQUIRE(std::find(cell_with_notes.notes.begin(), cell_with_notes.notes.end(), 2) !=
-                cell_with_notes.notes.end());
-        REQUIRE(std::find(cell_with_notes.notes.begin(), cell_with_notes.notes.end(), 3) !=
-                cell_with_notes.notes.end());
+        REQUIRE(cell_with_notes.notes.count() == 3);
+        REQUIRE(cell_with_notes.notes.contains(1));
+        REQUIRE(cell_with_notes.notes.contains(2));
+        REQUIRE(cell_with_notes.notes.contains(3));
         REQUIRE(cell_with_notes.value == 0);
 
         // Place a number (this should clear notes)
@@ -96,13 +93,10 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
         // Verify notes were restored
         const auto& cell_after_undo = view_model.gameState.get().getCell(empty_cell);
         REQUIRE(cell_after_undo.value == 0);
-        REQUIRE(cell_after_undo.notes.size() == 3);
-        REQUIRE(std::find(cell_after_undo.notes.begin(), cell_after_undo.notes.end(), 1) !=
-                cell_after_undo.notes.end());
-        REQUIRE(std::find(cell_after_undo.notes.begin(), cell_after_undo.notes.end(), 2) !=
-                cell_after_undo.notes.end());
-        REQUIRE(std::find(cell_after_undo.notes.begin(), cell_after_undo.notes.end(), 3) !=
-                cell_after_undo.notes.end());
+        REQUIRE(cell_after_undo.notes.count() == 3);
+        REQUIRE(cell_after_undo.notes.contains(1));
+        REQUIRE(cell_after_undo.notes.contains(2));
+        REQUIRE(cell_after_undo.notes.contains(3));
     }
 
     SECTION("Clearing cell preserves notes on undo") {
@@ -181,7 +175,7 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
 
         // Verify notes
         const auto& cell = view_model.gameState.get().getCell(empty_cell);
-        REQUIRE(cell.notes.size() == 2);
+        REQUIRE(cell.notes.count() == 2);
 
         // Place number
         view_model.enterNumber(9);
@@ -192,7 +186,7 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
         view_model.undo();
         const auto& after_first_undo = view_model.gameState.get().getCell(empty_cell);
         REQUIRE(after_first_undo.value == 0);
-        REQUIRE(after_first_undo.notes.size() == 2);
+        REQUIRE(after_first_undo.notes.count() == 2);
 
         // Redo
         view_model.redo();
@@ -204,10 +198,8 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
         view_model.undo();
         const auto& after_second_undo = view_model.gameState.get().getCell(empty_cell);
         REQUIRE(after_second_undo.value == 0);
-        REQUIRE(after_second_undo.notes.size() == 2);
-        REQUIRE(std::find(after_second_undo.notes.begin(), after_second_undo.notes.end(), 4) !=
-                after_second_undo.notes.end());
-        REQUIRE(std::find(after_second_undo.notes.begin(), after_second_undo.notes.end(), 5) !=
-                after_second_undo.notes.end());
+        REQUIRE(after_second_undo.notes.count() == 2);
+        REQUIRE(after_second_undo.notes.contains(4));
+        REQUIRE(after_second_undo.notes.contains(5));
     }
 }

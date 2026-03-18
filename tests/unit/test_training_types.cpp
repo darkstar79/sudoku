@@ -95,7 +95,7 @@ TEST_CASE("TrainingExercise - Default Construction", "[training_types]") {
     SECTION("Default exercise has empty board and candidates") {
         TrainingExercise exercise;
 
-        REQUIRE(exercise.board.empty());
+        REQUIRE(exercise.board == BoardData{});
         REQUIRE(exercise.candidate_masks.empty());
         REQUIRE(exercise.is_guided_coloring == false);
     }

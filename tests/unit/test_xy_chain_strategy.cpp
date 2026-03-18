@@ -42,10 +42,9 @@ TEST_CASE("XYChainStrategy - Metadata", "[xy_chain]") {
 }
 
 TEST_CASE("XYChainStrategy - Returns nullopt for complete board", "[xy_chain]") {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     XYChainStrategy strategy;
 
@@ -59,7 +58,7 @@ TEST_CASE("XYChainStrategy - Detects 4-cell XY-Chain", "[xy_chain]") {
     // Start with X=1: outgoing=2, next has 2→3, next has 3→4, next has 4→1=X. Chain of 4.
     // Eliminate 1 from cells seeing both (0,0) and (0,8).
     // Target: any cell in row 0 (between them) with candidate 1.
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));  // All filled
+    auto board = BoardData::filled(5);  // All filled
 
     board[0][0] = 0;
     board[0][3] = 0;
@@ -94,7 +93,7 @@ TEST_CASE("XYChainStrategy - Detects 4-cell XY-Chain", "[xy_chain]") {
 
 TEST_CASE("XYChainStrategy - Returns nullopt for 3-cell chain (covered by XY-Wing)", "[xy_chain]") {
     // 3-cell chain should NOT be detected (min length = 4, depth >= 3)
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
 
     board[0][0] = 0;
     board[0][3] = 0;
@@ -120,7 +119,7 @@ TEST_CASE("XYChainStrategy - Returns nullopt for 3-cell chain (covered by XY-Win
 }
 
 TEST_CASE("XYChainStrategy - Explanation contains technique name", "[xy_chain]") {
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
 
     board[0][0] = 0;
     board[0][3] = 0;
@@ -150,10 +149,9 @@ TEST_CASE("XYChainStrategy - Can be used through ISolvingStrategy interface", "[
     REQUIRE(strategy->getName() == "XY-Chain");
     REQUIRE(strategy->getDifficultyPoints() == 450);
 
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     auto result = strategy->findStep(board, state);
     REQUIRE_FALSE(result.has_value());

@@ -26,21 +26,19 @@ using namespace sudoku::core;
 namespace {
 
 // Test helper: Create an easy puzzle with only naked singles
-std::vector<std::vector<int>> createEasyPuzzle() {
+BoardData createEasyPuzzle() {
     // Near-complete board with one naked single
-    std::vector<std::vector<int>> board = {{0, 3, 4, 6, 7, 8, 9, 1, 2},  // R1C1 must be 5
-                                           {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1},
-                                           {7, 1, 3, 9, 2, 4, 8, 5, 6}, {9, 6, 1, 5, 3, 7, 2, 8, 4},
-                                           {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{0, 3, 4, 6, 7, 8, 9, 1, 2},  // R1C1 must be 5
+                       {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7}, {8, 5, 9, 7, 6, 1, 4, 2, 3},
+                       {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6}, {9, 6, 1, 5, 3, 7, 2, 8, 4},
+                       {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     return board;
 }
 
-std::vector<std::vector<int>> createCompleteBoard() {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+BoardData createCompleteBoard() {
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     return board;
 }
 
@@ -205,16 +203,16 @@ public:
     }
 
     [[nodiscard]] std::expected<SolveStep, SolverError>
-    findNextStep([[maybe_unused]] const std::vector<std::vector<int>>& board) const override {
+    findNextStep([[maybe_unused]] const BoardData& board) const override {
         return std::unexpected(error_);
     }
 
     [[nodiscard]] std::expected<SolverResult, SolverError>
-    solvePuzzle([[maybe_unused]] const std::vector<std::vector<int>>& board) const override {
+    solvePuzzle([[maybe_unused]] const BoardData& board) const override {
         return std::unexpected(error_);
     }
 
-    [[nodiscard]] bool applyStep([[maybe_unused]] std::vector<std::vector<int>>& board,
+    [[nodiscard]] bool applyStep([[maybe_unused]] BoardData& board,
                                  [[maybe_unused]] const SolveStep& step) const override {
         return false;
     }

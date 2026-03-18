@@ -36,7 +36,7 @@ namespace sudoku::core {
 /// (Also checks column-based Swordfish: 3 columns with same 3 rows.)
 class SwordfishStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         auto row_result = findRowBasedSwordfish(board, candidates);
         if (row_result.has_value()) {
@@ -61,7 +61,7 @@ private:
     /// Row-based Swordfish: candidate in 2-3 cols in each of 3 rows, union of cols = 3
     /// → eliminate from those cols in all other rows
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×row1×row2×row3 search; nesting is inherent to fish algorithms
-    [[nodiscard]] static std::optional<SolveStep> findRowBasedSwordfish(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findRowBasedSwordfish(const BoardData& board,
                                                                         const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             // For each row, find columns where this value is a candidate
@@ -144,7 +144,7 @@ private:
     /// Column-based Swordfish: candidate in 2-3 rows in each of 3 cols, union of rows = 3
     /// → eliminate from those rows in all other cols
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×col1×col2×col3 search; nesting is inherent to fish algorithms
-    [[nodiscard]] static std::optional<SolveStep> findColBasedSwordfish(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findColBasedSwordfish(const BoardData& board,
                                                                         const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             // For each column, find rows where this value is a candidate

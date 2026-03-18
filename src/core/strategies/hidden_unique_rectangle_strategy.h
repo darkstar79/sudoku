@@ -37,7 +37,7 @@ namespace sudoku::core {
 /// from that corner to avoid a deadly pattern.
 class HiddenUniqueRectangleStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         for (int p = MIN_VALUE; p <= MAX_VALUE; ++p) {
             for (int q = p + 1; q <= MAX_VALUE; ++q) {
@@ -65,8 +65,8 @@ public:
 private:
     /// Search for Hidden UR pattern for a specific value pair {p, q}.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — rectangle enumeration with value pairs and corner checks; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findHiddenUR(const std::vector<std::vector<int>>& board,
-                                                               const CandidateGrid& candidates, int val_p, int val_q) {
+    [[nodiscard]] static std::optional<SolveStep> findHiddenUR(const BoardData& board, const CandidateGrid& candidates,
+                                                               int val_p, int val_q) {
         // Collect columns containing both p and q, grouped by row
         std::array<std::vector<size_t>, BOARD_SIZE> cols_by_row;
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
@@ -123,7 +123,7 @@ private:
     }
 
     /// Try each corner of the rectangle as a Hidden UR target.
-    [[nodiscard]] static std::optional<SolveStep> checkAllCorners(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> checkAllCorners(const BoardData& board,
                                                                   const CandidateGrid& candidates, const Position& a,
                                                                   const Position& b, const Position& c,
                                                                   const Position& d, int val_p, int val_q) {
@@ -159,10 +159,10 @@ private:
     /// AND the diagonal partner must be forced to take elim_val (to complete the deadly pattern).
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — multiple conjugate pair checks with diagonal partner validation; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
-    checkSingleCorner(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, const Position& a,
-                      const Position& b, const Position& c, const Position& d, const Position& target,
-                      const Position& row_partner, const Position& col_partner, const Position& diag_partner,
-                      size_t target_idx, int val_p, int val_q) {
+    checkSingleCorner(const BoardData& board, const CandidateGrid& candidates, const Position& a, const Position& b,
+                      const Position& c, const Position& d, const Position& target, const Position& row_partner,
+                      const Position& col_partner, const Position& diag_partner, size_t target_idx, int val_p,
+                      int val_q) {
         for (int strong_val : {val_p, val_q}) {
             int elim_val = (strong_val == val_p) ? val_q : val_p;
 
@@ -231,8 +231,8 @@ private:
     /// Checks if val appears in exactly 2 empty cells in the given row or column.
     /// @param idx Row index (if is_row) or column index (if !is_row)
     /// @param is_row true for row check, false for column check
-    [[nodiscard]] static bool isConjugatePairInUnit(const std::vector<std::vector<int>>& board,
-                                                    const CandidateGrid& candidates, size_t idx, bool is_row, int val) {
+    [[nodiscard]] static bool isConjugatePairInUnit(const BoardData& board, const CandidateGrid& candidates, size_t idx,
+                                                    bool is_row, int val) {
         int count = 0;
         for (size_t i = 0; i < BOARD_SIZE; ++i) {
             size_t row = is_row ? idx : i;
@@ -248,8 +248,8 @@ private:
     }
 
     /// Checks if a cell has exactly 2 candidates: val_p and val_q.
-    [[nodiscard]] static bool isBivalue(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                                        const Position& pos, int val_p, int val_q) {
+    [[nodiscard]] static bool isBivalue(const BoardData& board, const CandidateGrid& candidates, const Position& pos,
+                                        int val_p, int val_q) {
         if (board[pos.row][pos.col] != EMPTY_CELL) {
             return false;
         }
@@ -272,10 +272,9 @@ private:
     ///   (a) diag_partner is bivalue {val_p, val_q}
     ///   (b) elim_val is conjugate in diag_partner's row (between diag and col_partner)
     ///   (c) elim_val is conjugate in diag_partner's column (between diag and row_partner)
-    [[nodiscard]] static bool isDiagPartnerForced(const std::vector<std::vector<int>>& board,
-                                                  const CandidateGrid& candidates, const Position& diag_partner,
-                                                  const Position& row_partner, const Position& col_partner,
-                                                  int elim_val, int val_p, int val_q) {
+    [[nodiscard]] static bool isDiagPartnerForced(const BoardData& board, const CandidateGrid& candidates,
+                                                  const Position& diag_partner, const Position& row_partner,
+                                                  const Position& col_partner, int elim_val, int val_p, int val_q) {
         // (a) diag_partner is bivalue {val_p, val_q}
         if (isBivalue(board, candidates, diag_partner, val_p, val_q)) {
             return true;

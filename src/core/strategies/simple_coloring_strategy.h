@@ -40,7 +40,7 @@ namespace sudoku::core {
 ///         the value from that cell.
 class SimpleColoringStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             auto result = findColoringForValue(board, candidates, value);
@@ -79,7 +79,7 @@ private:
 
     /// Build conjugate pair graph and try coloring for a single value
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — BFS coloring + contradiction/exclusion rule scanning; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findColoringForValue(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findColoringForValue(const BoardData& board,
                                                                        const CandidateGrid& candidates, int value) {
         // Build adjacency list: edges between cells that form conjugate pairs
         auto adj = ColoringHelpers::buildConjugatePairGraph(board, candidates, value);
@@ -144,7 +144,7 @@ private:
 
     /// Rule 1: If two cells of the same color see each other, that color is false.
     /// Eliminate value from all cells of that color.
-    [[nodiscard]] static std::optional<SolveStep> checkContradiction(const std::vector<std::vector<int>>& /*board*/,
+    [[nodiscard]] static std::optional<SolveStep> checkContradiction(const BoardData& /*board*/,
                                                                      const CandidateGrid& candidates, int value,
                                                                      const std::vector<size_t>& color_a_cells,
                                                                      const std::vector<size_t>& color_b_cells,
@@ -213,7 +213,7 @@ private:
 
     /// Rule 2: An outside cell that sees cells of both colors can have the value eliminated.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — scans all uncolored cells for color exclusion; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> checkExclusion(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> checkExclusion(const BoardData& board,
                                                                  const CandidateGrid& candidates, int value,
                                                                  const std::vector<size_t>& color_a_cells,
                                                                  const std::vector<size_t>& color_b_cells,

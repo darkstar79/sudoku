@@ -71,7 +71,7 @@ struct BenchmarkResult {
 };
 
 /// Helper: Count non-zero cells in board (clue count)
-[[nodiscard]] int countClues(const std::vector<std::vector<int>>& board);
+[[nodiscard]] int countClues(const core::BoardData& board);
 
 /// Run puzzle generation benchmark with given config
 /// Template allows working with any IPuzzleGenerator implementation

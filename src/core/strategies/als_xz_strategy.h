@@ -36,7 +36,7 @@ namespace sudoku::core {
 /// from cells seeing all Z-cells in both ALSs.
 class ALSxZStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         auto als_list = ALSHelpers::enumerateALSs(board, candidates);
         if (als_list.size() < 2) {
@@ -60,8 +60,7 @@ public:
 
 private:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — ALS pair enumeration with X/Z restricted-common matching; nesting is inherent to the algorithm
-    [[nodiscard]] static std::optional<SolveStep> findALSPairs(const std::vector<std::vector<int>>& board,
-                                                               const CandidateGrid& candidates,
+    [[nodiscard]] static std::optional<SolveStep> findALSPairs(const BoardData& board, const CandidateGrid& candidates,
                                                                const std::vector<ALS>& als_list) {
         for (size_t i = 0; i < als_list.size(); ++i) {
             for (size_t j = i + 1; j < als_list.size(); ++j) {

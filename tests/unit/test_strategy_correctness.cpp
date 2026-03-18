@@ -64,6 +64,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <span>
 #include <string>
 
 #include <catch2/catch_test_macros.hpp>
@@ -74,18 +75,19 @@ using namespace sudoku::core;
 
 namespace {
 
-std::string boardToString(const std::vector<std::vector<int>>& board) {
+std::string boardToString(const BoardData& board) {
     std::string result;
     for (size_t row = 0; row < 9; ++row) {
-        result += fmt::format("{}\n", fmt::join(board[row], " "));
+        auto row_span = board[row];
+        result += fmt::format("{}\n", fmt::join(row_span, " "));
     }
     return result;
 }
 
 /// Replay the solve_path step-by-step and find the first wrong deduction.
 /// Returns the technique name of the first wrong step, or empty string if all correct.
-std::string replayAndCapture(const std::vector<std::vector<int>>& puzzle, const std::vector<std::vector<int>>& truth,
-                             const std::vector<SolveStep>& solve_path, int puzzle_index) {
+std::string replayAndCapture(const BoardData& puzzle, const BoardData& truth, const std::vector<SolveStep>& solve_path,
+                             int puzzle_index) {
     auto working = puzzle;
     CandidateGrid candidates(working);
 
@@ -140,7 +142,7 @@ std::string replayAndCapture(const std::vector<std::vector<int>>& puzzle, const 
     return "";
 }
 
-bool isBoardComplete(const std::vector<std::vector<int>>& board) {
+bool isBoardComplete(const BoardData& board) {
     for (size_t row = 0; row < 9; ++row) {
         for (size_t col = 0; col < 9; ++col) {
             if (board[row][col] == 0) {
@@ -151,9 +153,8 @@ bool isBoardComplete(const std::vector<std::vector<int>>& board) {
     return true;
 }
 
-std::string checkPlacement(const SolveStep& step, const std::vector<std::vector<int>>& working,
-                           const std::vector<std::vector<int>>& truth, const std::vector<std::vector<int>>& puzzle,
-                           const std::string& technique_name, int puzzle_index, int step_idx) {
+std::string checkPlacement(const SolveStep& step, const BoardData& working, const BoardData& truth,
+                           const BoardData& puzzle, const std::string& technique_name, int puzzle_index, int step_idx) {
     int correct = truth[step.position.row][step.position.col];
     if (step.value != correct) {
         std::cerr << "\n=== WRONG PLACEMENT (step-by-step) at puzzle #" << puzzle_index << ", step #" << step_idx
@@ -171,9 +172,9 @@ std::string checkPlacement(const SolveStep& step, const std::vector<std::vector<
     return "";
 }
 
-std::string checkEliminations(const SolveStep& step, const std::vector<std::vector<int>>& working,
-                              const std::vector<std::vector<int>>& truth, const std::vector<std::vector<int>>& puzzle,
-                              const std::string& technique_name, int puzzle_index, int step_idx) {
+std::string checkEliminations(const SolveStep& step, const BoardData& working, const BoardData& truth,
+                              const BoardData& puzzle, const std::string& technique_name, int puzzle_index,
+                              int step_idx) {
     for (const auto& elim : step.eliminations) {
         int correct = truth[elim.position.row][elim.position.col];
         if (elim.value == correct) {
@@ -242,8 +243,7 @@ std::vector<std::unique_ptr<ISolvingStrategy>> createStrategyChain() {
 
 /// Replicate the solver's internal loop with persistent CandidateGrid.
 /// This catches bugs that only manifest with accumulated eliminations.
-std::string persistentCandidateReplay(const std::vector<std::vector<int>>& puzzle,
-                                      const std::vector<std::vector<int>>& truth, int puzzle_index) {
+std::string persistentCandidateReplay(const BoardData& puzzle, const BoardData& truth, int puzzle_index) {
     auto strategies = createStrategyChain();
     auto working = puzzle;
     CandidateGrid candidates(working);

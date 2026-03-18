@@ -38,7 +38,7 @@ namespace sudoku::core {
 /// Same Type 1/2/3 rules as X-Cycles.
 class GroupedXCyclesStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         for (int digit = MIN_VALUE; digit <= MAX_VALUE; ++digit) {
             auto result = findGroupedXCycle(board, candidates, digit);
@@ -110,7 +110,7 @@ private:
 
     /// Build nodes and links, then search for cycles.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — node enumeration + link building + DFS; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findGroupedXCycle(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findGroupedXCycle(const BoardData& board,
                                                                     const CandidateGrid& candidates, int digit) {
         // Collect candidate cells for this digit
         std::vector<size_t> cand_cells;
@@ -218,8 +218,8 @@ private:
 
     /// Build strong and weak links between nodes.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — unit-based link enumeration; nesting is inherent
-    static void buildLinks(const std::vector<std::vector<int>>& /*board*/, const CandidateGrid& /*candidates*/,
-                           int /*digit*/, const std::vector<GNode>& nodes, const std::vector<size_t>& cand_cells,
+    static void buildLinks(const BoardData& /*board*/, const CandidateGrid& /*candidates*/, int /*digit*/,
+                           const std::vector<GNode>& nodes, const std::vector<size_t>& cand_cells,
                            std::vector<std::vector<size_t>>& strong_adj, std::vector<std::vector<size_t>>& weak_adj) {
         size_t n = nodes.size();
 
@@ -308,11 +308,12 @@ private:
 
     /// Recursive DFS with alternating links.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — recursive DFS with cycle detection; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep>
-    dfs(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int digit,
-        const std::vector<GNode>& nodes, size_t start, bool first_link_strong, std::vector<size_t>& chain,
-        std::vector<bool>& visited, bool last_was_strong, const std::vector<std::vector<size_t>>& strong_adj,
-        const std::vector<std::vector<size_t>>& weak_adj) {
+    [[nodiscard]] static std::optional<SolveStep> dfs(const BoardData& board, const CandidateGrid& candidates,
+                                                      int digit, const std::vector<GNode>& nodes, size_t start,
+                                                      bool first_link_strong, std::vector<size_t>& chain,
+                                                      std::vector<bool>& visited, bool last_was_strong,
+                                                      const std::vector<std::vector<size_t>>& strong_adj,
+                                                      const std::vector<std::vector<size_t>>& weak_adj) {
         size_t current = chain.back();
         bool next_strong = !last_was_strong;
 
@@ -361,8 +362,8 @@ private:
 
     /// Type 1: Continuous nice loop — eliminate from cells seeing weak link endpoints.
     [[nodiscard]] static std::optional<SolveStep>
-    buildType1Step(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int digit,
-                   const std::vector<GNode>& nodes, const std::vector<size_t>& chain, bool first_link_strong) {
+    buildType1Step(const BoardData& board, const CandidateGrid& candidates, int digit, const std::vector<GNode>& nodes,
+                   const std::vector<size_t>& chain, bool first_link_strong) {
         size_t cn = chain.size();
 
         // Identify weak links

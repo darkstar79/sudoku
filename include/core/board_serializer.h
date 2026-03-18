@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "core/board_data.h"
+
 #include <vector>
 
 #include <yaml-cpp/yaml.h>
@@ -38,7 +40,7 @@ public:
      * @param board 9x9 integer board
      * @return YAML node representing the board
      */
-    [[nodiscard]] static YAML::Node serializeIntBoard(const std::vector<std::vector<int>>& board);
+    [[nodiscard]] static YAML::Node serializeIntBoard(const BoardData& board);
 
     /**
      * @brief Deserialize a 2D integer board from YAML.
@@ -46,7 +48,7 @@ public:
      * @param node YAML node containing board data
      * @param board Output 9x9 integer board (will be resized)
      */
-    static void deserializeIntBoard(const YAML::Node& node, std::vector<std::vector<int>>& board);
+    static void deserializeIntBoard(const YAML::Node& node, BoardData& board);
 
     /**
      * @brief Serialize a 2D boolean board to YAML.
@@ -54,7 +56,7 @@ public:
      * @param board 9x9 boolean board
      * @return YAML node representing the board
      */
-    [[nodiscard]] static YAML::Node serializeBoolBoard(const std::vector<std::vector<bool>>& board);
+    [[nodiscard]] static YAML::Node serializeBoolBoard(const HintMaskData& board);
 
     /**
      * @brief Deserialize a 2D boolean board from YAML.
@@ -62,7 +64,7 @@ public:
      * @param node YAML node containing board data
      * @param board Output 9x9 boolean board (will be resized)
      */
-    static void deserializeBoolBoard(const YAML::Node& node, std::vector<std::vector<bool>>& board);
+    static void deserializeBoolBoard(const YAML::Node& node, HintMaskData& board);
 
     /**
      * @brief Serialize a 3D notes array to YAML.
@@ -70,7 +72,7 @@ public:
      * @param notes 9x9xN notes array (each cell has variable-length notes)
      * @return YAML node representing the notes
      */
-    [[nodiscard]] static YAML::Node serializeNotes(const std::vector<std::vector<std::vector<int>>>& notes);
+    [[nodiscard]] static YAML::Node serializeNotes(const NotesData& notes);
 
     /**
      * @brief Deserialize a 3D notes array from YAML.
@@ -78,7 +80,7 @@ public:
      * @param node YAML node containing notes data
      * @param notes Output 9x9xN notes array (will be resized)
      */
-    static void deserializeNotes(const YAML::Node& node, std::vector<std::vector<std::vector<int>>>& notes);
+    static void deserializeNotes(const YAML::Node& node, NotesData& notes);
 };
 
 }  // namespace sudoku::core

@@ -33,8 +33,7 @@ public:
     /// @param solver Solver for determining required techniques
     explicit PuzzleRater(std::shared_ptr<ISudokuSolver> solver);
 
-    [[nodiscard]] std::expected<PuzzleRating, RatingError>
-    ratePuzzle(const std::vector<std::vector<int>>& board) const override;
+    [[nodiscard]] std::expected<PuzzleRating, RatingError> ratePuzzle(const BoardData& board) const override;
 
 private:
     std::shared_ptr<ISudokuSolver> solver_;

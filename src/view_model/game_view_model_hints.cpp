@@ -57,14 +57,13 @@ void GameViewModel::getHint() {
     }
 
     const auto& pos = *pos_opt;
-    const auto& cell = state.getCell(pos);
 
-    if (cell.is_given) {
+    if (state.isGiven(pos)) {
         errorMessage.set(loc(core::StringKeys::HintCannotRevealGiven));
         return;  // Don't consume hint
     }
 
-    if (cell.value != 0) {
+    if (state.getValue(pos) != 0) {
         errorMessage.set(loc(core::StringKeys::HintCellHasValue));
         return;  // Don't consume hint
     }
@@ -93,16 +92,15 @@ void GameViewModel::getHint() {
     // If the step reveals a placement, apply it to the board
     if (step.type == core::SolveStepType::Placement) {
         const auto& current_state = gameState.get();
-        const auto& hint_cell = current_state.getCell(step.position);
 
         core::Move hint_move;
         hint_move.position = step.position;
         hint_move.value = step.value;
         hint_move.move_type = core::MoveType::PlaceHint;
         hint_move.timestamp = std::chrono::steady_clock::now();
-        hint_move.previous_value = hint_cell.value;
-        hint_move.previous_hint_revealed = hint_cell.is_hint_revealed;
-        hint_move.previous_notes = hint_cell.notes;
+        hint_move.previous_value = current_state.getValue(step.position);
+        hint_move.previous_hint_revealed = current_state.isCellHintRevealed(step.position);
+        hint_move.previous_notes = current_state.getNotes(step.position);
 
         applyMove(hint_move);
         recordMove(hint_move, false);

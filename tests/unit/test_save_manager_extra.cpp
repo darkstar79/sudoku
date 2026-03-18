@@ -58,10 +58,10 @@ private:
 
 SavedGame makeGame() {
     SavedGame game;
-    game.current_state.assign(9, std::vector<int>(9, 0));
-    game.original_puzzle.assign(9, std::vector<int>(9, 0));
-    game.notes.assign(9, std::vector<std::vector<int>>(9));
-    game.hint_revealed_cells.assign(9, std::vector<bool>(9, false));
+    game.current_state = BoardData{};
+    game.original_puzzle = BoardData{};
+    game.notes = NotesData{};
+    game.hint_revealed_cells = HintMaskData{};
     game.difficulty = Difficulty::Easy;
     game.puzzle_seed = 1;
     game.display_name = "Test Game";

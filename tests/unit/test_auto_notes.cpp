@@ -62,7 +62,8 @@ struct AutoNotesFixture {
     [[nodiscard]] size_t countTotalNotes() const {
         size_t count = 0;
         const auto& state = view_model->gameState.get();
-        core::forEachCell([&](size_t row, size_t col) { count += state.getCell(row, col).notes.size(); });
+        core::forEachCell(
+            [&](size_t row, size_t col) { count += static_cast<size_t>(state.getCell(row, col).notes.count()); });
         return count;
     }
 
@@ -74,7 +75,12 @@ struct AutoNotesFixture {
         core::forEachCell([&](size_t row, size_t col) {
             const auto& cell = state.getCell(row, col);
             auto expected = validator->getPossibleValues(board, {.row = row, .col = col});
-            if (cell.notes != expected) {
+            // Convert expected vector to CellNotes for comparison
+            core::CellNotes expected_notes;
+            for (int v : expected) {
+                expected_notes.add(v);
+            }
+            if (cell.notes != expected_notes) {
                 all_match = false;
             }
         });

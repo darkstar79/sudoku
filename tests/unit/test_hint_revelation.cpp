@@ -167,7 +167,6 @@ TEST_CASE("Hint Revelation - Basic Functionality", "[hint][revelation]") {
 
         const auto& solution = state.getSolutionBoard();
         REQUIRE(solution.size() == BOARD_SIZE);
-        REQUIRE(solution[0].size() == BOARD_SIZE);
 
         // Verify solution is valid (all cells filled)
         for (const auto& row : solution) {

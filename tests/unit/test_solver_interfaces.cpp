@@ -25,8 +25,7 @@ using namespace sudoku::core;
 // Mock implementation for testing interface contracts
 class MockStrategy : public ISolvingStrategy {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>&,
-                                                    const CandidateGrid&) const override {
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData&, const CandidateGrid&) const override {
         return std::nullopt;
     }
 
@@ -45,25 +44,22 @@ public:
 
 class MockSolver : public ISudokuSolver {
 public:
-    [[nodiscard]] std::expected<SolveStep, SolverError>
-    findNextStep(const std::vector<std::vector<int>>&) const override {
+    [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const BoardData&) const override {
         return std::unexpected(SolverError::Unsolvable);
     }
 
-    [[nodiscard]] std::expected<SolverResult, SolverError>
-    solvePuzzle(const std::vector<std::vector<int>>&) const override {
+    [[nodiscard]] std::expected<SolverResult, SolverError> solvePuzzle(const BoardData&) const override {
         return std::unexpected(SolverError::Unsolvable);
     }
 
-    [[nodiscard]] bool applyStep(std::vector<std::vector<int>>&, const SolveStep&) const override {
+    [[nodiscard]] bool applyStep(BoardData&, const SolveStep&) const override {
         return false;
     }
 };
 
 class MockRater : public IPuzzleRater {
 public:
-    [[nodiscard]] std::expected<PuzzleRating, RatingError>
-    ratePuzzle(const std::vector<std::vector<int>>&) const override {
+    [[nodiscard]] std::expected<PuzzleRating, RatingError> ratePuzzle(const BoardData&) const override {
         return std::unexpected(RatingError::Unsolvable);
     }
 };
@@ -79,7 +75,7 @@ TEST_CASE("ISolvingStrategy - Interface Contract", "[solver_interfaces]") {
 
     SECTION("findStep returns optional") {
         MockStrategy strategy;
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         CandidateGrid state(board);
 
         auto result = strategy.findStep(board, state);
@@ -99,7 +95,7 @@ TEST_CASE("ISudokuSolver - Interface Contract", "[solver_interfaces]") {
     SECTION("Can instantiate mock implementation") {
         MockSolver solver;
 
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         auto result = solver.findNextStep(board);
 
         REQUIRE_FALSE(result.has_value());
@@ -108,7 +104,7 @@ TEST_CASE("ISudokuSolver - Interface Contract", "[solver_interfaces]") {
 
     SECTION("solvePuzzle returns expected") {
         MockSolver solver;
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
 
         auto result = solver.solvePuzzle(board);
 
@@ -118,7 +114,7 @@ TEST_CASE("ISudokuSolver - Interface Contract", "[solver_interfaces]") {
 
     SECTION("applyStep returns bool") {
         MockSolver solver;
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         SolveStep step{.type = SolveStepType::Placement,
                        .technique = SolvingTechnique::NakedSingle,
                        .position = Position{.row = 0, .col = 0},
@@ -136,7 +132,7 @@ TEST_CASE("ISudokuSolver - Interface Contract", "[solver_interfaces]") {
     SECTION("Can use polymorphically") {
         std::unique_ptr<ISudokuSolver> solver = std::make_unique<MockSolver>();
 
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         auto result = solver->findNextStep(board);
 
         REQUIRE_FALSE(result.has_value());
@@ -147,7 +143,7 @@ TEST_CASE("IPuzzleRater - Interface Contract", "[solver_interfaces]") {
     SECTION("Can instantiate mock implementation") {
         MockRater rater;
 
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         auto result = rater.ratePuzzle(board);
 
         REQUIRE_FALSE(result.has_value());
@@ -157,7 +153,7 @@ TEST_CASE("IPuzzleRater - Interface Contract", "[solver_interfaces]") {
     SECTION("Can use polymorphically") {
         std::unique_ptr<IPuzzleRater> rater = std::make_unique<MockRater>();
 
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         auto result = rater->ratePuzzle(board);
 
         REQUIRE_FALSE(result.has_value());
@@ -199,7 +195,7 @@ TEST_CASE("RatingError - Enum Values", "[solver_interfaces]") {
 
 TEST_CASE("SolverResult - Construction and Equality", "[solver_interfaces]") {
     SECTION("Creates solver result with all fields") {
-        std::vector<std::vector<int>> solution(9, std::vector<int>(9, 1));
+        BoardData solution = BoardData::filled(1);
         std::vector<SolveStep> solve_path = {{.type = SolveStepType::Placement,
                                               .technique = SolvingTechnique::NakedSingle,
                                               .position = Position{.row = 0, .col = 0},
@@ -217,7 +213,7 @@ TEST_CASE("SolverResult - Construction and Equality", "[solver_interfaces]") {
     }
 
     SECTION("Equal results are equal") {
-        std::vector<std::vector<int>> solution(9, std::vector<int>(9, 1));
+        BoardData solution = BoardData::filled(1);
 
         SolverResult result1{.solution = solution, .solve_path = {}, .used_backtracking = false};
         SolverResult result2{.solution = solution, .solve_path = {}, .used_backtracking = false};
@@ -226,7 +222,7 @@ TEST_CASE("SolverResult - Construction and Equality", "[solver_interfaces]") {
     }
 
     SECTION("Different backtracking flag makes results not equal") {
-        std::vector<std::vector<int>> solution(9, std::vector<int>(9, 1));
+        BoardData solution = BoardData::filled(1);
 
         SolverResult result1{.solution = solution, .solve_path = {}, .used_backtracking = false};
         SolverResult result2{.solution = solution, .solve_path = {}, .used_backtracking = true};

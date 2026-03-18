@@ -26,14 +26,13 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <vector>
 
 namespace sudoku::model {
 
 /// Represents a single cell on the Sudoku board
 struct Cell {
     int value{0};                  // 0 = empty, 1-9 = filled
-    std::vector<int> notes;        // Pencil marks/notes (1-9)
+    core::CellNotes notes;         // Pencil marks/notes (1-9) as bitmask
     bool is_given{false};          // True if this was part of original puzzle
     bool is_hint_revealed{false};  // True if value was revealed by hint
     bool has_conflict{false};      // True if this cell has a conflict
@@ -53,26 +52,20 @@ public:
     GameState(GameState&&) = default;
     GameState& operator=(GameState&&) = default;
 
-    // Board access
-    [[nodiscard]] const std::vector<std::vector<Cell>>& getBoard() const {
-        return board_;
-    }
-    [[nodiscard]] std::vector<std::vector<Cell>>& getBoard() {
-        return board_;
-    }
-
-    [[nodiscard]] Cell& getCell(size_t row, size_t col) {
-        return board_[row][col];
-    }
-    [[nodiscard]] const Cell& getCell(size_t row, size_t col) const {
-        return board_[row][col];
+    // Board access (read-only snapshot assembled from flat arrays)
+    [[nodiscard]] Cell getCell(size_t row, size_t col) const {
+        return Cell{
+            .value = values_[row][col],
+            .notes = notes_data_[row][col],
+            .is_given = givens_(row, col),
+            .is_hint_revealed = hints_revealed_(row, col),
+            .has_conflict = conflicts_(row, col),
+            .is_highlighted = highlights_(row, col),
+        };
     }
 
-    [[nodiscard]] Cell& getCell(const core::Position& pos) {
-        return board_[pos.row][pos.col];
-    }
-    [[nodiscard]] const Cell& getCell(const core::Position& pos) const {
-        return board_[pos.row][pos.col];
+    [[nodiscard]] Cell getCell(const core::Position& pos) const {
+        return getCell(pos.row, pos.col);
     }
 
     // Game metadata
@@ -124,9 +117,28 @@ public:
 
     // Board operations
     void clearBoard();
-    void loadPuzzle(const std::vector<std::vector<int>>& puzzle);
-    [[nodiscard]] std::vector<std::vector<int>> extractNumbers() const;
-    [[nodiscard]] std::vector<std::vector<int>> extractGivenNumbers() const;
+    void loadPuzzle(const core::BoardData& puzzle);
+    [[nodiscard]] core::BoardData extractNumbers() const;
+    [[nodiscard]] core::BoardData extractGivenNumbers() const;
+
+    // Per-cell value access
+    void setValue(size_t row, size_t col, int value);
+    void setValue(const core::Position& pos, int value);
+    [[nodiscard]] int getValue(size_t row, size_t col) const;
+    [[nodiscard]] int getValue(const core::Position& pos) const;
+
+    // Per-cell flag access
+    [[nodiscard]] bool isGiven(size_t row, size_t col) const;
+    [[nodiscard]] bool isGiven(const core::Position& pos) const;
+    void setGiven(const core::Position& pos, bool given);
+    void setConflict(const core::Position& pos, bool conflict);
+    void setHighlighted(const core::Position& pos, bool highlighted);
+    void setHintRevealed(const core::Position& pos, bool revealed);
+
+    // Per-cell notes access
+    void setNotes(const core::Position& pos, const core::CellNotes& notes);
+    [[nodiscard]] const core::CellNotes& getNotes(size_t row, size_t col) const;
+    [[nodiscard]] const core::CellNotes& getNotes(const core::Position& pos) const;
 
     // Conflict tracking
     void updateConflicts(const std::vector<core::Position>& conflicts);
@@ -155,12 +167,12 @@ public:
     }
 
     // Solution access
-    void setSolutionBoard(const std::vector<std::vector<int>>& solution);
-    [[nodiscard]] const std::vector<std::vector<int>>& getSolutionBoard() const {
-        return solution_board_;
+    void setSolutionBoard(const core::BoardData& solution);
+    [[nodiscard]] const core::BoardData& getSolutionBoard() const {
+        return solution_board_.value();
     }
     [[nodiscard]] bool hasSolution() const {
-        return !solution_board_.empty();
+        return solution_board_.has_value();
     }
 
     // Dirty flag for auto-save optimization
@@ -184,9 +196,14 @@ private:
     // Dependencies (must be initialized first)
     std::shared_ptr<core::ITimeProvider> time_provider_;
 
-    // Board data
-    std::vector<std::vector<Cell>> board_;
-    std::vector<std::vector<int>> solution_board_;  // Complete solution for hints
+    // Board data (flat arrays — no heap allocations)
+    core::BoardData values_;
+    core::NotesData notes_data_;
+    core::CellFlags givens_;
+    core::CellFlags hints_revealed_;
+    core::CellFlags conflicts_;
+    core::CellFlags highlights_;
+    std::optional<core::BoardData> solution_board_;  // Complete solution for hints
 
     // Game metadata
     core::Difficulty difficulty_{core::Difficulty::Medium};
@@ -208,8 +225,6 @@ private:
 
     // Auto-save optimization
     bool is_dirty_{false};  // Tracks if state changed since last save
-
-    void initializeBoard();
 };
 
 }  // namespace sudoku::model

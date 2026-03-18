@@ -24,7 +24,7 @@
 using namespace sudoku::core;
 
 // Helper function to create a partially filled board for testing
-static std::vector<std::vector<int>> createPartialBoard() {
+static BoardData createPartialBoard() {
     // Create a valid partial board with varying constraint levels
     return {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
             {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
@@ -32,7 +32,7 @@ static std::vector<std::vector<int>> createPartialBoard() {
 }
 
 // Helper function to create a highly constrained board
-static std::vector<std::vector<int>> createHighlyConstrainedBoard() {
+static BoardData createHighlyConstrainedBoard() {
     // Board with many filled cells (few alternatives for remaining cells)
     return {
         {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8},
@@ -102,7 +102,7 @@ TEST_CASE("PuzzleGenerator - Intelligent Clue Dropping - analyzeClueConstraints"
     }
 
     SECTION("Empty board returns empty analysis") {
-        std::vector<std::vector<int>> empty_board(9, std::vector<int>(9, 0));
+        BoardData empty_board;
         auto analysis = generator.analyzeClueConstraints(empty_board);
 
         REQUIRE(analysis.empty());
@@ -254,7 +254,7 @@ TEST_CASE("PuzzleGenerator - Intelligent Clue Dropping - Edge Cases", "[puzzle_g
     std::mt19937 rng(77777);
 
     SECTION("analyzeClueConstraints handles single clue") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[0][0] = 5;
 
         auto analysis = generator.analyzeClueConstraints(board);
@@ -269,7 +269,7 @@ TEST_CASE("PuzzleGenerator - Intelligent Clue Dropping - Edge Cases", "[puzzle_g
     }
 
     SECTION("selectCluesForDropping handles board with one clue") {
-        std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+        BoardData board;
         board[4][4] = 9;
 
         auto selected = generator.selectCluesForDropping(board, 1, rng);
@@ -280,7 +280,7 @@ TEST_CASE("PuzzleGenerator - Intelligent Clue Dropping - Edge Cases", "[puzzle_g
 
     SECTION("analyzeClueConstraints handles board with conflicts") {
         // Create a board with duplicate values (invalid Sudoku)
-        std::vector<std::vector<int>> invalid_board(9, std::vector<int>(9, 0));
+        BoardData invalid_board;
         invalid_board[0][0] = 5;
         invalid_board[0][1] = 5;  // Conflict in same row
 

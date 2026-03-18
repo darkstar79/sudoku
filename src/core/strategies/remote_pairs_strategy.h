@@ -35,7 +35,7 @@ namespace sudoku::core {
 /// from cells that see both the start and end of the chain.
 class RemotePairsStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // CPD-OFF — bivalue cell collection pattern shared with UR and w_wing
         // Collect all bivalue cells, grouped by candidate pair
@@ -77,8 +77,7 @@ public:
 
 private:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — BFS over bivalue chain with pair-mask checking; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> bfsFromCell(const std::vector<std::vector<int>>& board,
-                                                              const CandidateGrid& candidates,
+    [[nodiscard]] static std::optional<SolveStep> bfsFromCell(const BoardData& board, const CandidateGrid& candidates,
                                                               const std::vector<Position>& bivalue_cells,
                                                               size_t start_idx, uint16_t pair_mask) {
         // Extract values A and B
@@ -136,7 +135,7 @@ private:
         return std::nullopt;
     }
 
-    [[nodiscard]] static std::optional<SolveStep> checkEliminations(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> checkEliminations(const BoardData& board,
                                                                     const CandidateGrid& candidates,
                                                                     const Position& start, const Position& end,
                                                                     int val_a, int val_b, int chain_length) {

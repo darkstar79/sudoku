@@ -23,7 +23,7 @@
 using namespace sudoku::core;
 
 // Helper function to generate a complete solution (simulates private generateCompleteSolution)
-static std::vector<std::vector<int>> generateTestSolution(PuzzleGenerator& generator) {
+static BoardData generateTestSolution(PuzzleGenerator& generator) {
     // Generate an Easy puzzle and extract its solution
     GenerationSettings settings;
     settings.difficulty = Difficulty::Easy;
@@ -52,13 +52,14 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - removeCluesToTarget", "[puzzl
 
         // Target: 30 clues
         auto result = generator.removeCluesToTarget(solution, 30, 50, rng);
+        REQUIRE(result.has_value());
 
         // Should have exactly 30 clues
-        int clue_count = generator.countClues(result);
+        int clue_count = generator.countClues(*result);
         REQUIRE(clue_count == 30);
 
         // Should have unique solution
-        REQUIRE(generator.hasUniqueSolution(result));
+        REQUIRE(generator.hasUniqueSolution(*result));
     }
 
     SECTION("Reaches harder target - 25 clues") {
@@ -66,12 +67,12 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - removeCluesToTarget", "[puzzl
 
         auto result = generator.removeCluesToTarget(solution, 25, 100, rng);
 
-        int clue_count = generator.countClues(result);
         // May not always reach exact target due to local maxima, but should be close or exact
-        if (clue_count > 0) {
+        if (result.has_value()) {
+            int clue_count = generator.countClues(*result);
             REQUIRE(clue_count >= 24);  // Within 1 of target
             REQUIRE(clue_count <= 26);
-            REQUIRE(generator.hasUniqueSolution(result));
+            REQUIRE(generator.hasUniqueSolution(*result));
         }
     }
 
@@ -81,24 +82,10 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - removeCluesToTarget", "[puzzl
         // Try to reach very difficult target with very few attempts
         auto result = generator.removeCluesToTarget(solution, 17, 1, rng);
 
-        // Should return empty board (failure indicator)
-        bool is_empty = true;
-        for (const auto& row : result) {
-            for (int val : row) {
-                if (val != 0) {
-                    is_empty = false;
-                    break;
-                }
-            }
-            if (!is_empty) {
-                break;
-            }
-        }
-
-        // May succeed or fail depending on RNG, but if non-empty should have exactly 17 clues
-        if (!is_empty) {
-            REQUIRE(generator.countClues(result) == 17);
-            REQUIRE(generator.hasUniqueSolution(result));
+        // May succeed or fail depending on RNG
+        if (result.has_value()) {
+            REQUIRE(generator.countClues(*result) == 17);
+            REQUIRE(generator.hasUniqueSolution(*result));
         }
     }
 
@@ -108,18 +95,19 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - removeCluesToTarget", "[puzzl
         auto puzzle_30 = generator.removeCluesToTarget(solution, 30, 50, rng);
         auto puzzle_28 = generator.removeCluesToTarget(solution, 28, 50, rng);
 
+        REQUIRE(puzzle_30.has_value());
+        REQUIRE(puzzle_28.has_value());
+
         // 30 clues is easier target
-        REQUIRE(generator.countClues(puzzle_30) == 30);
+        REQUIRE(generator.countClues(*puzzle_30) == 30);
 
         // 28 clues may be close to target
-        int clue_count_28 = generator.countClues(puzzle_28);
-        if (clue_count_28 > 0) {
-            REQUIRE(clue_count_28 >= 27);
-            REQUIRE(clue_count_28 <= 29);
-        }
+        int clue_count_28 = generator.countClues(*puzzle_28);
+        REQUIRE(clue_count_28 >= 27);
+        REQUIRE(clue_count_28 <= 29);
 
-        // Should have different clue counts (or one succeeded and other failed)
-        REQUIRE(generator.countClues(puzzle_30) != generator.countClues(puzzle_28));
+        // Should have different clue counts
+        REQUIRE(generator.countClues(*puzzle_30) != generator.countClues(*puzzle_28));
     }
 }
 
@@ -141,11 +129,11 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - removeCluesToCreatePuzzleIter
 
         // Greedy algorithm may get stuck slightly above target range for some seeds.
         // The production path (generatePuzzle) retries; this tests the single-shot result.
-        int clue_count = generator.countClues(result);
-        if (clue_count > 0) {
+        if (result.has_value()) {
+            int clue_count = generator.countClues(*result);
             REQUIRE(clue_count >= 17);
             REQUIRE(clue_count <= 30);  // Greedy can get stuck above target
-            REQUIRE(generator.hasUniqueSolution(result));
+            REQUIRE(generator.hasUniqueSolution(*result));
         }
     }
 
@@ -160,8 +148,8 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - removeCluesToCreatePuzzleIter
 
         auto result = generator.removeCluesToCreatePuzzleIterative(solution, settings, rng);
 
-        int clue_count = generator.countClues(result);
-        if (clue_count > 0) {
+        if (result.has_value()) {
+            int clue_count = generator.countClues(*result);
             // Hard should have 22-28 clues (relaxed from 27 for local maxima tolerance)
             REQUIRE(clue_count >= 22);
             REQUIRE(clue_count <= 28);
@@ -255,8 +243,8 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - Performance",
         // Should complete in less than 5 seconds for target=30
         REQUIRE(duration.count() < 5000);
 
-        if (generator.countClues(result) > 0) {
-            REQUIRE(generator.countClues(result) == 30);
+        if (generator.countClues(*result) > 0) {
+            REQUIRE(generator.countClues(*result) == 30);
         }
     }
 
@@ -291,7 +279,7 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - Edge Cases", "[puzzle_generat
         auto result = generator.removeCluesToTarget(solution, current_clues, 10, rng);
 
         // Should return quickly with original board
-        REQUIRE(generator.countClues(result) == current_clues);
+        REQUIRE(generator.countClues(*result) == current_clues);
     }
 
     SECTION("Target clue count very low (17) - hardest case") {
@@ -300,12 +288,12 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - Edge Cases", "[puzzle_generat
         // Try to reach minimum (17 clues) - may fail
         auto result = generator.removeCluesToTarget(solution, 17, 100, rng);
 
-        int clue_count = generator.countClues(result);
+        int clue_count = generator.countClues(*result);
 
         // If successful, must have exactly 17
         if (clue_count > 0) {
             REQUIRE(clue_count == 17);
-            REQUIRE(generator.hasUniqueSolution(result));
+            REQUIRE(generator.hasUniqueSolution(*result));
         }
     }
 
@@ -315,7 +303,7 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - Edge Cases", "[puzzle_generat
         auto result = generator.removeCluesToTarget(solution, 25, 0, rng);
 
         // With 0 attempts, should return empty board
-        int clue_count = generator.countClues(result);
+        int clue_count = generator.countClues(*result);
         REQUIRE(clue_count == 0);
     }
 }

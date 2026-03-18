@@ -36,7 +36,7 @@ class TrainingAnswerValidator {
 public:
     /// Check if a placement is a valid instance of the given technique at this board state.
     /// @return The matching SolveStep if valid, nullopt if not
-    [[nodiscard]] static std::optional<SolveStep> validatePlacement(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> validatePlacement(const BoardData& board,
                                                                     const CandidateGrid& candidates,
                                                                     SolvingTechnique technique, Position position,
                                                                     int value);
@@ -44,17 +44,15 @@ public:
     /// Check if an elimination set matches any valid instance of the technique.
     /// @return The matching SolveStep if valid, nullopt if not
     [[nodiscard]] static std::optional<SolveStep>
-    validateElimination(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates,
-                        SolvingTechnique technique,
+    validateElimination(const BoardData& board, const CandidateGrid& candidates, SolvingTechnique technique,
                         const std::set<std::tuple<size_t, size_t, int>>& player_eliminations);
 
     /// Find all valid steps for a technique at the given board state.
-    [[nodiscard]] static std::vector<SolveStep> findAllSteps(const std::vector<std::vector<int>>& board,
-                                                             const CandidateGrid& candidates,
+    [[nodiscard]] static std::vector<SolveStep> findAllSteps(const BoardData& board, const CandidateGrid& candidates,
                                                              SolvingTechnique technique);
 
     /// Reconstruct a CandidateGrid from stored board + candidate masks.
-    [[nodiscard]] static CandidateGrid reconstructCandidates(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static CandidateGrid reconstructCandidates(const BoardData& board,
                                                              const std::vector<uint16_t>& candidate_masks);
 
     /// Create a strategy instance for the given technique.

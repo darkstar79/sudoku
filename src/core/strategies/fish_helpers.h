@@ -36,8 +36,7 @@ public:
     /// For each row (by_row=true) or column (by_row=false), collect the column/row indices
     /// where `value` is a candidate. Returns a vector of 9 vectors indexed by row/col.
     [[nodiscard]] static std::vector<std::vector<size_t>>
-    collectCandidatePositions(const std::vector<std::vector<int>>& board, const CandidateGrid& candidates, int value,
-                              bool by_row) {
+    collectCandidatePositions(const BoardData& board, const CandidateGrid& candidates, int value, bool by_row) {
         std::vector<std::vector<size_t>> positions(BOARD_SIZE);
         for (size_t primary = 0; primary < BOARD_SIZE; ++primary) {
             for (size_t secondary = 0; secondary < BOARD_SIZE; ++secondary) {
@@ -123,7 +122,7 @@ public:
 
     /// Builds eliminations for a finned fish pattern.
     /// Eliminates value from cells in base_secondaries × non-pattern primaries, restricted to fin's box.
-    [[nodiscard]] static std::vector<Elimination> buildFinnedEliminations(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::vector<Elimination> buildFinnedEliminations(const BoardData& board,
                                                                           const CandidateGrid& candidates, int value,
                                                                           std::span<const size_t> base_primaries,
                                                                           const std::vector<size_t>& base_secondaries,

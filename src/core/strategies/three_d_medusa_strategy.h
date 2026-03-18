@@ -45,7 +45,7 @@ namespace sudoku::core {
 ///   Rule 6: Uncolored candidate sees both colors for same digit → eliminate
 class ThreeDMedusaStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         return findMedusa(board, candidates);
     }
@@ -91,8 +91,7 @@ private:
 
     /// Build the 3D Medusa graph and search for eliminations.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — multi-digit coloring graph + 6 rules; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> findMedusa(const std::vector<std::vector<int>>& board,
-                                                             const CandidateGrid& candidates) {
+    [[nodiscard]] static std::optional<SolveStep> findMedusa(const BoardData& board, const CandidateGrid& candidates) {
         // Build adjacency list on (cell, digit) nodes — strong links only
         std::array<std::vector<size_t>, TOTAL_NODES> adj{};
 
@@ -314,11 +313,9 @@ private:
 
     /// Check elimination rules 3-6 for uncolored candidates.
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — rules 3-6 checking uncolored candidates; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> checkEliminations(const std::vector<std::vector<int>>& board,
-                                                                    const CandidateGrid& candidates,
-                                                                    const std::vector<size_t>& color_a_nodes,
-                                                                    const std::vector<size_t>& color_b_nodes,
-                                                                    const std::array<int8_t, TOTAL_NODES>& color) {
+    [[nodiscard]] static std::optional<SolveStep>
+    checkEliminations(const BoardData& board, const CandidateGrid& candidates, const std::vector<size_t>& color_a_nodes,
+                      const std::vector<size_t>& color_b_nodes, const std::array<int8_t, TOTAL_NODES>& color) {
         std::vector<Elimination> eliminations;
 
         for (size_t row = 0; row < BOARD_SIZE; ++row) {

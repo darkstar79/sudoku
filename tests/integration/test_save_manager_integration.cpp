@@ -48,8 +48,8 @@ public:
                               {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
                               {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
         game.original_puzzle = game.current_state;
-        game.notes.resize(9, std::vector<std::vector<int>>(9));
-        game.hint_revealed_cells.resize(9, std::vector<bool>(9, false));
+        game.notes = NotesData{};
+        game.hint_revealed_cells = HintMaskData{};
         game.difficulty = diff;
         game.elapsed_time = std::chrono::milliseconds(12345);
         game.created_time = std::chrono::system_clock::now();
@@ -484,26 +484,26 @@ TEST_CASE("SaveManager - Filesystem Error Paths", "[save_manager][integration][e
         REQUIRE(result.error() == SaveError::SerializationError);
     }
 
-    SECTION("Empty original_puzzle causes serialization failure") {
+    SECTION("All-zeros original_puzzle serializes successfully") {
         SaveManagerTestFixture fixture;
 
-        // Create SavedGame with empty original_puzzle (reproduces January 2026 bug)
+        // With fixed-size BoardData, "empty" boards are always valid 9x9 all-zeros.
+        // The January 2026 bug (empty vector<vector<int>>) is structurally impossible now.
         SavedGame game;
         game.current_state = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
                               {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
                               {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
-        game.original_puzzle = {};  // EMPTY! Will crash in BoardSerializer
-        game.notes.resize(9, std::vector<std::vector<int>>(9));
-        game.hint_revealed_cells.resize(9, std::vector<bool>(9, false));
+        game.original_puzzle = {};  // All zeros — valid 9x9 board
+        game.notes = NotesData{};
+        game.hint_revealed_cells = HintMaskData{};
         game.difficulty = Difficulty::Easy;
 
         SaveSettings settings;
 
         auto result = fixture.save_manager_.saveGame(game, settings);
 
-        // Should fail gracefully, not crash
-        REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error() == SaveError::SerializationError);
+        // Should succeed — all-zeros is a valid (if useless) board
+        REQUIRE(result.has_value());
     }
 
     SECTION("Corrupted zlib data fails decompression") {

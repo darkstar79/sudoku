@@ -42,10 +42,9 @@ TEST_CASE("ForcingChainStrategy - Metadata", "[forcing_chain]") {
 }
 
 TEST_CASE("ForcingChainStrategy - Returns nullopt for complete board", "[forcing_chain]") {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     ForcingChainStrategy strategy;
 
@@ -61,7 +60,7 @@ TEST_CASE("ForcingChainStrategy - Detects forcing chain elimination", "[forcing_
     //
     // Board: mostly filled, with a few empty cells crafted so that placing
     // either candidate in (0,0) forces the same elimination at (0,8).
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
 
     // Row 0: empty cells form a propagation chain
     board[0][0] = 0;  // Source: bivalue {1,2}
@@ -94,7 +93,7 @@ TEST_CASE("ForcingChainStrategy - Detects contradiction forcing chain", "[forcin
     // Setup: Bivalue cell where one candidate leads to contradiction.
     // Cell (0,0) has {1,2}. If we assume 1, propagation reveals no candidates
     // for some cell → contradiction. Therefore (0,0) must be 2.
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
 
     board[0][0] = 0;  // Source: bivalue {1,2}
     board[0][1] = 0;  // Will become empty after (0,0)=1
@@ -122,7 +121,7 @@ TEST_CASE("ForcingChainStrategy - Detects contradiction forcing chain", "[forcin
 }
 
 TEST_CASE("ForcingChainStrategy - Explanation contains technique name", "[forcing_chain]") {
-    auto board = std::vector<std::vector<int>>(9, std::vector<int>(9, 5));
+    auto board = BoardData::filled(5);
 
     board[0][0] = 0;
     board[0][1] = 0;
@@ -150,10 +149,9 @@ TEST_CASE("ForcingChainStrategy - Can be used through ISolvingStrategy interface
     REQUIRE(strategy->getName() == "Forcing Chain");
     REQUIRE(strategy->getDifficultyPoints() == 550);
 
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     auto result = strategy->findStep(board, state);
     REQUIRE_FALSE(result.has_value());

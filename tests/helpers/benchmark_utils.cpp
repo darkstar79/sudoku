@@ -29,7 +29,7 @@
 
 namespace sudoku::testing {
 
-int countClues(const std::vector<std::vector<int>>& board) {
+int countClues(const core::BoardData& board) {
     int count = 0;
     for (const auto& row : board) {
         for (int cell : row) {

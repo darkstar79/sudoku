@@ -23,7 +23,7 @@
 
 namespace sudoku::core {
 
-ConstraintState::ConstraintState(const std::vector<std::vector<int>>& board) : row_used_{}, col_used_{}, box_used_{} {
+ConstraintState::ConstraintState(const BoardData& board) : row_used_{}, col_used_{}, box_used_{} {
     // Build constraint bitmasks from current board state
     forEachCell([&](size_t row, size_t col) {
         int value = board[row][col];
@@ -89,8 +89,7 @@ int ConstraintState::countPossibleValues(size_t row, size_t col) const {
     return std::popcount(possible_mask);
 }
 
-std::optional<std::pair<size_t, int>>
-ConstraintState::findHiddenSingleInRow(size_t row, const std::vector<std::vector<int>>& board) const {
+std::optional<std::pair<size_t, int>> ConstraintState::findHiddenSingleInRow(size_t row, const BoardData& board) const {
     // Delegate to template-based implementation
     auto result = findHiddenSingleInRegion<Region::Row>(row, board);
     if (!result.has_value()) {
@@ -100,8 +99,7 @@ ConstraintState::findHiddenSingleInRow(size_t row, const std::vector<std::vector
     return std::make_pair(result->first.col, result->second);
 }
 
-std::optional<std::pair<size_t, int>>
-ConstraintState::findHiddenSingleInCol(size_t col, const std::vector<std::vector<int>>& board) const {
+std::optional<std::pair<size_t, int>> ConstraintState::findHiddenSingleInCol(size_t col, const BoardData& board) const {
     // Delegate to template-based implementation
     auto result = findHiddenSingleInRegion<Region::Col>(col, board);
     if (!result.has_value()) {
@@ -111,14 +109,13 @@ ConstraintState::findHiddenSingleInCol(size_t col, const std::vector<std::vector
     return std::make_pair(result->first.row, result->second);
 }
 
-std::optional<std::pair<Position, int>>
-ConstraintState::findHiddenSingleInBox(size_t box, const std::vector<std::vector<int>>& board) const {
+std::optional<std::pair<Position, int>> ConstraintState::findHiddenSingleInBox(size_t box,
+                                                                               const BoardData& board) const {
     // Delegate to template-based implementation (Box already returns Position)
     return findHiddenSingleInRegion<Region::Box>(box, board);
 }
 
-std::optional<std::pair<Position, int>>
-ConstraintState::findHiddenSingle(const std::vector<std::vector<int>>& board) const {
+std::optional<std::pair<Position, int>> ConstraintState::findHiddenSingle(const BoardData& board) const {
     // Check all rows first
     for (size_t row = 0; row < BOARD_SIZE; ++row) {
         auto result = findHiddenSingleInRow(row, board);
@@ -171,7 +168,7 @@ std::optional<std::pair<Position, int>> ConstraintState::findHiddenSingle(const 
 }
 
 // Template-based hidden single search (consolidates Row/Col/Box logic)
-// BoardT can be std::vector<std::vector<int>> or Board — both support board[row][col]
+// BoardT can be BoardData or Board — both support board[row][col]
 template <ConstraintState::Region R, typename BoardT>
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — if constexpr branches are compile-time selection, not runtime branching; clang-tidy over-counts them
 std::optional<std::pair<Position, int>> ConstraintState::findHiddenSingleInRegion(size_t region_index,
@@ -256,14 +253,11 @@ std::optional<std::pair<Position, int>> ConstraintState::findHiddenSingleInRegio
 
 // Explicit template instantiations for vector<vector<int>>
 template std::optional<std::pair<Position, int>>
-ConstraintState::findHiddenSingleInRegion<ConstraintState::Region::Row, std::vector<std::vector<int>>>(
-    size_t, const std::vector<std::vector<int>>&) const;
+ConstraintState::findHiddenSingleInRegion<ConstraintState::Region::Row, BoardData>(size_t, const BoardData&) const;
 template std::optional<std::pair<Position, int>>
-ConstraintState::findHiddenSingleInRegion<ConstraintState::Region::Col, std::vector<std::vector<int>>>(
-    size_t, const std::vector<std::vector<int>>&) const;
+ConstraintState::findHiddenSingleInRegion<ConstraintState::Region::Col, BoardData>(size_t, const BoardData&) const;
 template std::optional<std::pair<Position, int>>
-ConstraintState::findHiddenSingleInRegion<ConstraintState::Region::Box, std::vector<std::vector<int>>>(
-    size_t, const std::vector<std::vector<int>>&) const;
+ConstraintState::findHiddenSingleInRegion<ConstraintState::Region::Box, BoardData>(size_t, const BoardData&) const;
 
 // Explicit template instantiations for Board
 template std::optional<std::pair<Position, int>>

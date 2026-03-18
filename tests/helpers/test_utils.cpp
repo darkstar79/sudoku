@@ -139,7 +139,7 @@ std::optional<std::pair<core::Position, core::Position>> findTwoEmptyCellsInBox(
 // Deterministic Puzzle Fixtures
 // ============================================================================
 
-std::vector<std::vector<int>> getEasyPuzzleWithPatterns() {
+core::BoardData getEasyPuzzleWithPatterns() {
     // Deterministic easy puzzle with predictable structure
     // Empty cells at specific locations for testing
     return {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
@@ -147,7 +147,7 @@ std::vector<std::vector<int>> getEasyPuzzleWithPatterns() {
             {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
 }
 
-std::vector<std::vector<int>> getNoteRestorationPuzzle() {
+core::BoardData getNoteRestorationPuzzle() {
     // Puzzle with multiple empty cells in same row/column/box
     // Designed for comprehensive note restoration testing
     return {
@@ -159,7 +159,7 @@ std::vector<std::vector<int>> getNoteRestorationPuzzle() {
     };
 }
 
-std::vector<std::vector<int>> getUndoTestPuzzle() {
+core::BoardData getUndoTestPuzzle() {
     // Puzzle with predictable empty cells for undo/redo command testing
     return {
         {0, 2, 3, 4, 5, 6, 7, 8, 9},  // First cell empty for easy testing
@@ -171,13 +171,13 @@ std::vector<std::vector<int>> getUndoTestPuzzle() {
     };
 }
 
-std::vector<std::vector<int>> getMediumPuzzle() {
+core::BoardData getMediumPuzzle() {
     return {{0, 0, 0, 2, 6, 0, 7, 0, 1}, {6, 8, 0, 0, 7, 0, 0, 9, 0}, {1, 9, 0, 0, 0, 4, 5, 0, 0},
             {8, 2, 0, 1, 0, 0, 0, 4, 0}, {0, 0, 4, 6, 0, 2, 9, 0, 0}, {0, 5, 0, 0, 0, 3, 0, 2, 8},
             {0, 0, 9, 3, 0, 0, 0, 7, 4}, {0, 4, 0, 0, 5, 0, 0, 3, 6}, {7, 0, 3, 0, 1, 8, 0, 0, 0}};
 }
 
-std::vector<std::vector<int>> getNearlyCompletePuzzle() {
+core::BoardData getNearlyCompletePuzzle() {
     // Only two empty cells for completion testing
     return {
         {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8},
@@ -188,7 +188,7 @@ std::vector<std::vector<int>> getNearlyCompletePuzzle() {
     };
 }
 
-std::vector<std::vector<int>> getSolution(const std::vector<std::vector<int>>& puzzle) {
+core::BoardData getSolution(const core::BoardData& puzzle) {
     // Use PuzzleGenerator's solver to get solution
     core::PuzzleGenerator generator;
     auto solution = puzzle;  // Copy puzzle
@@ -206,34 +206,19 @@ std::vector<std::vector<int>> getSolution(const std::vector<std::vector<int>>& p
 // Board Comparison and Validation
 // ============================================================================
 
-bool boardsEqual(const std::vector<std::vector<int>>& a, const std::vector<std::vector<int>>& b) {
-    if (a.size() != b.size()) {
-        return false;
-    }
-
-    for (size_t row = 0; row < a.size(); ++row) {
-        if (a[row].size() != b[row].size()) {
-            return false;
-        }
-        for (size_t col = 0; col < a[row].size(); ++col) {
-            if (a[row][col] != b[row][col]) {
-                return false;
-            }
-        }
-    }
-
-    return true;
+bool boardsEqual(const core::BoardData& a, const core::BoardData& b) {
+    return a == b;
 }
 
-bool isBoardValid(const std::vector<std::vector<int>>& board) {
+bool isBoardValid(const core::BoardData& board) {
     core::GameValidator validator;
     return validator.validateBoard(board);
 }
 
-size_t countEmptyCells(const std::vector<std::vector<int>>& board) {
+size_t countEmptyCells(const core::BoardData& board) {
     size_t count = 0;
     for (const auto& row : board) {
-        count += std::count(row.begin(), row.end(), 0);
+        count += static_cast<size_t>(std::count(row.begin(), row.end(), 0));
     }
     return count;
 }
@@ -244,7 +229,7 @@ size_t countEmptyCells(const std::vector<std::vector<int>>& board) {
 
 core::SavedGame createTestSavedGame(core::Difficulty difficulty) {
     // Get a deterministic puzzle based on difficulty
-    std::vector<std::vector<int>> puzzle;
+    core::BoardData puzzle;
     switch (difficulty) {
         case core::Difficulty::Easy:
             puzzle = getEasyPuzzleWithPatterns();
@@ -267,8 +252,7 @@ core::SavedGame createTestSavedGame(core::Difficulty difficulty) {
     game.original_puzzle = puzzle;
     game.current_state = puzzle;
     game.notes = createEmptyNotes();
-    game.hint_revealed_cells =
-        std::vector<std::vector<bool>>(core::BOARD_SIZE, std::vector<bool>(core::BOARD_SIZE, false));
+    game.hint_revealed_cells = core::HintMaskData{};
     game.difficulty = difficulty;
     game.puzzle_seed = 42;
     game.elapsed_time = std::chrono::milliseconds(0);
@@ -295,8 +279,7 @@ core::SavedGame createCompleteSavedGame() {
     game.original_puzzle = getEasyPuzzleWithPatterns();
     game.current_state = solution;
     game.notes = createEmptyNotes();
-    game.hint_revealed_cells =
-        std::vector<std::vector<bool>>(core::BOARD_SIZE, std::vector<bool>(core::BOARD_SIZE, false));
+    game.hint_revealed_cells = core::HintMaskData{};
     game.difficulty = core::Difficulty::Easy;
     game.puzzle_seed = 42;
     game.elapsed_time = std::chrono::milliseconds(300000);  // 5 minutes
@@ -331,7 +314,7 @@ core::GameStats createTestGameStats(core::Difficulty difficulty, bool completed)
 // Board Manipulation Helpers
 // ============================================================================
 
-void fillBoardWithSolution(std::vector<std::vector<int>>& board) {
+void fillBoardWithSolution(core::BoardData& board) {
     core::PuzzleGenerator generator;
     auto result = generator.solvePuzzle(board);
     if (result.has_value()) {
@@ -339,20 +322,19 @@ void fillBoardWithSolution(std::vector<std::vector<int>>& board) {
     }
 }
 
-std::vector<std::vector<int>> createEmptyBoard() {
-    return std::vector<std::vector<int>>(core::BOARD_SIZE, std::vector<int>(core::BOARD_SIZE, 0));
+core::BoardData createEmptyBoard() {
+    return core::BoardData{};
 }
 
-std::vector<std::vector<std::vector<int>>> createEmptyNotes() {
-    return std::vector<std::vector<std::vector<int>>>(
-        core::BOARD_SIZE, std::vector<std::vector<int>>(core::BOARD_SIZE, std::vector<int>()));
+core::NotesData createEmptyNotes() {
+    return core::NotesData{};
 }
 
 // ============================================================================
 // Strategy Testing Board Builders
 // ============================================================================
 
-std::vector<std::vector<int>> createBoardWithHiddenPair() {
+core::BoardData createBoardWithHiddenPair() {
     /*
      * Row 0 will have a hidden pair for values 4 and 5
      * Row 0: [1, 2, 3, _, 6, 7, 8, 9, _]
@@ -371,7 +353,7 @@ std::vector<std::vector<int>> createBoardWithHiddenPair() {
      * are also candidates due to box/column constraints, but values 4 and 5
      * can ONLY go in these two cells in row 0.
      */
-    std::vector<std::vector<int>> board = {
+    core::BoardData board = {
         {0, 0, 1, 2, 6, 7, 8, 9, 3},  // Row 0: cells (0,0) and (0,1) empty
         {4, 3, 2, 1, 9, 8, 7, 6, 5},  // Row 1: complete (blocks 4 from col 0, 3 from col 1)
         {5, 6, 7, 8, 3, 4, 9, 1, 2},  // Row 2: complete (blocks 5 from col 0, 6 from col 1)
@@ -413,19 +395,18 @@ std::vector<std::vector<int>> createBoardWithHiddenPair() {
     return board;
 }
 
-std::vector<std::vector<int>> createBoardWithHiddenTriple() {
+core::BoardData createBoardWithHiddenTriple() {
     /*
      * Create a board where values 3, 6, and 9 can only go in three specific cells
      * in a row, but those cells have other candidates too.
      */
-    std::vector<std::vector<int>> board = {
-        {0, 0, 0, 1, 2, 4, 5, 7, 8},  // Row 0: first three cells empty, missing 3,6,9
-        {1, 2, 4, 5, 7, 8, 3, 6, 9},  // Row 1: complete
-        {5, 7, 8, 3, 6, 9, 1, 2, 4},  // Row 2: complete
-        {2, 3, 1, 6, 5, 7, 4, 8, 9},  // Rows 3-8: fill to avoid interference
-        {4, 5, 6, 8, 9, 2, 7, 1, 3}, {7, 8, 9, 4, 1, 3, 2, 5, 6},
-        {3, 1, 2, 7, 4, 5, 6, 9, 0},  // Some variety with empty cells
-        {6, 4, 5, 9, 8, 1, 0, 3, 2}, {8, 9, 7, 2, 3, 6, 0, 4, 1}};
+    core::BoardData board = {{0, 0, 0, 1, 2, 4, 5, 7, 8},  // Row 0: first three cells empty, missing 3,6,9
+                             {1, 2, 4, 5, 7, 8, 3, 6, 9},  // Row 1: complete
+                             {5, 7, 8, 3, 6, 9, 1, 2, 4},  // Row 2: complete
+                             {2, 3, 1, 6, 5, 7, 4, 8, 9},  // Rows 3-8: fill to avoid interference
+                             {4, 5, 6, 8, 9, 2, 7, 1, 3}, {7, 8, 9, 4, 1, 3, 2, 5, 6},
+                             {3, 1, 2, 7, 4, 5, 6, 9, 0},  // Some variety with empty cells
+                             {6, 4, 5, 9, 8, 1, 0, 3, 2}, {8, 9, 7, 2, 3, 6, 0, 4, 1}};
 
     // Row 0: cells (0,0), (0,1), (0,2) are empty
     // Missing values in row 0: 3, 6, 9
@@ -434,12 +415,12 @@ std::vector<std::vector<int>> createBoardWithHiddenTriple() {
     return board;
 }
 
-std::vector<std::vector<int>> createBoardWithNakedPair() {
+core::BoardData createBoardWithNakedPair() {
     /*
      * Create a board where two cells have only the same two candidates (naked pair)
      * For example, cells (0,0) and (0,1) can only contain {2, 5}
      */
-    std::vector<std::vector<int>> board = {
+    core::BoardData board = {
         {0, 0, 1, 3, 4, 6, 7, 8, 9},  // Row 0: first two cells empty
         {3, 1, 2, 5, 6, 7, 8, 9, 4},  // Row 1: complete
         {4, 6, 7, 8, 9, 1, 2, 3, 5},  // Row 2: complete
@@ -469,15 +450,14 @@ std::vector<std::vector<int>> createBoardWithNakedPair() {
     return board;
 }
 
-std::vector<std::vector<int>> createBoardWithNakedTriple() {
+core::BoardData createBoardWithNakedTriple() {
     /*
      * Create a board where three cells have only the same three candidates
      */
-    std::vector<std::vector<int>> board = {{0, 0, 0, 4, 5, 6, 7, 8, 9},  // Row 0: first three cells empty
-                                           {4, 5, 6, 7, 8, 9, 1, 2, 3}, {7, 8, 9, 1, 2, 3, 4, 5, 6},
-                                           {2, 1, 4, 5, 6, 7, 8, 9, 0}, {5, 6, 7, 8, 9, 1, 2, 3, 4},
-                                           {8, 9, 3, 2, 4, 5, 6, 7, 1}, {3, 2, 1, 6, 7, 4, 9, 0, 5},
-                                           {6, 4, 5, 9, 1, 8, 3, 0, 7}, {9, 7, 8, 3, 0, 2, 5, 6, 0}};
+    core::BoardData board = {{0, 0, 0, 4, 5, 6, 7, 8, 9},  // Row 0: first three cells empty
+                             {4, 5, 6, 7, 8, 9, 1, 2, 3}, {7, 8, 9, 1, 2, 3, 4, 5, 6}, {2, 1, 4, 5, 6, 7, 8, 9, 0},
+                             {5, 6, 7, 8, 9, 1, 2, 3, 4}, {8, 9, 3, 2, 4, 5, 6, 7, 1}, {3, 2, 1, 6, 7, 4, 9, 0, 5},
+                             {6, 4, 5, 9, 1, 8, 3, 0, 7}, {9, 7, 8, 3, 0, 2, 5, 6, 0}};
 
     // Row 0: cells (0,0), (0,1), (0,2) empty → missing values: 1, 2, 3
     // These three cells can only contain {1, 2, 3} → naked triple
@@ -485,7 +465,7 @@ std::vector<std::vector<int>> createBoardWithNakedTriple() {
     return board;
 }
 
-std::vector<std::vector<int>> createSimpleBoard() {
+core::BoardData createSimpleBoard() {
     // A simple partially filled board with no advanced patterns
     // Just enough to be valid but not trigger hidden/naked set detection
     return {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},

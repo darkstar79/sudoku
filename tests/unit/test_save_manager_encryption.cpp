@@ -60,12 +60,12 @@ SavedGame createTestGame() {
 
     game.original_puzzle = game.current_state;
 
-    game.notes = std::vector<std::vector<std::vector<int>>>(9, std::vector<std::vector<int>>(9, std::vector<int>()));
+    game.notes = NotesData{};
     game.notes[0][2] = {1, 2, 4};
     game.notes[1][1] = {2, 4, 7};
 
-    game.hint_revealed_cells = std::vector<std::vector<bool>>(9, std::vector<bool>(9, false));
-    game.hint_revealed_cells[0][3] = true;
+    game.hint_revealed_cells = HintMaskData{};
+    game.hint_revealed_cells.set(0, 3, true);
 
     game.difficulty = Difficulty::Medium;
     game.puzzle_seed = 42;

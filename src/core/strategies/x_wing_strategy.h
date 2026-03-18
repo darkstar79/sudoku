@@ -36,7 +36,7 @@ namespace sudoku::core {
 /// (Also checks column-based X-Wings: 2 columns with same 2 rows.)
 class XWingStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // Check row-based X-Wings
         auto row_result = findRowBasedXWing(board, candidates);
@@ -64,7 +64,7 @@ private:
     /// Row-based X-Wing: candidate in exactly 2 cols in each of 2 rows (same cols)
     /// → eliminate from those cols in all other rows
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×row1×row2 search; nesting is inherent to fish algorithms
-    [[nodiscard]] static std::optional<SolveStep> findRowBasedXWing(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findRowBasedXWing(const BoardData& board,
                                                                     const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             // For each row, find columns where this value is a candidate
@@ -131,7 +131,7 @@ private:
     /// Column-based X-Wing: candidate in exactly 2 rows in each of 2 cols (same rows)
     /// → eliminate from those rows in all other cols
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — value×col1×col2 search; nesting is inherent to fish algorithms
-    [[nodiscard]] static std::optional<SolveStep> findColBasedXWing(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] static std::optional<SolveStep> findColBasedXWing(const BoardData& board,
                                                                     const CandidateGrid& candidates) {
         for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
             // For each column, find rows where this value is a candidate

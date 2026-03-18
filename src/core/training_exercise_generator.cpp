@@ -97,7 +97,7 @@ TrainingExerciseGenerator::generateExercises(SolvingTechnique technique, int cou
                 (interaction_mode == TrainingInteractionMode::Coloring) && (static_cast<int>(exercises.size()) < 2);
 
             exercises.push_back(TrainingExercise{
-                .board = std::move(snapshot->board),
+                .board = snapshot->board,
                 .candidate_masks = std::move(snapshot->candidate_masks),
                 .expected_step = path[i],
                 .technique = technique,
@@ -179,8 +179,8 @@ TrainingInteractionMode TrainingExerciseGenerator::getInteractionMode(SolvingTec
 }
 
 std::optional<TrainingExerciseGenerator::BoardSnapshot>
-TrainingExerciseGenerator::walkForward(const std::vector<std::vector<int>>& initial_board,
-                                       const std::vector<SolveStep>& solve_path, size_t target_index) {
+TrainingExerciseGenerator::walkForward(const BoardData& initial_board, const std::vector<SolveStep>& solve_path,
+                                       size_t target_index) {
     auto board = initial_board;
     CandidateGrid candidates(board);
 

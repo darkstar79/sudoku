@@ -42,10 +42,9 @@ TEST_CASE("BUGStrategy - Metadata", "[bug]") {
 }
 
 TEST_CASE("BUGStrategy - Returns nullopt for complete board", "[bug]") {
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     BUGStrategy strategy;
 
@@ -57,7 +56,7 @@ TEST_CASE("BUGStrategy - Detects BUG+1 and produces placement", "[bug]") {
     // BUG+1: all empty cells bivalue except exactly one trivalue.
     // Use empty board + keepOnly to set up candidates, then mark cells as filled in board.
     // This avoids CandidateGrid constraint propagation issues.
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 0));
+    BoardData board;
     CandidateGrid state(board);
 
     // Mark all cells as filled except 5 target cells
@@ -111,7 +110,7 @@ TEST_CASE("BUGStrategy - Detects BUG+1 and produces placement", "[bug]") {
 }
 
 TEST_CASE("BUGStrategy - Returns nullopt when multiple trivalue cells", "[bug]") {
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 1));  // all filled
+    BoardData board = BoardData::filled(1);  // all filled
     // Leave 4 cells empty — 2 bivalue, 2 trivalue
     board[0][0] = 0;
     board[0][3] = 0;
@@ -131,7 +130,7 @@ TEST_CASE("BUGStrategy - Returns nullopt when multiple trivalue cells", "[bug]")
 }
 
 TEST_CASE("BUGStrategy - Explanation contains relevant info", "[bug]") {
-    std::vector<std::vector<int>> board(9, std::vector<int>(9, 1));  // all filled
+    BoardData board = BoardData::filled(1);  // all filled
     board[0][0] = 0;
     board[0][3] = 0;
     board[3][0] = 0;
@@ -160,10 +159,9 @@ TEST_CASE("BUGStrategy - Can be used through ISolvingStrategy interface", "[bug]
     REQUIRE(strategy->getName() == "BUG");
     REQUIRE(strategy->getDifficultyPoints() == 350);
 
-    std::vector<std::vector<int>> board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
     CandidateGrid state(board);
     auto result = strategy->findStep(board, state);
     REQUIRE_FALSE(result.has_value());

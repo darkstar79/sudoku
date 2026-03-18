@@ -65,27 +65,6 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
                                                             const std::filesystem::path& file_path,
                                                             const SaveSettings& settings) {
     try {
-        // Validate board dimensions before serialization
-        if (game.current_state.size() != BOARD_SIZE || game.original_puzzle.size() != BOARD_SIZE) {
-            spdlog::error("Invalid board dimensions: current_state size={}, original_puzzle size={}",
-                          game.current_state.size(), game.original_puzzle.size());
-            return std::unexpected(SaveError::SerializationError);
-        }
-
-        for (const auto& row : game.current_state) {
-            if (row.size() != BOARD_SIZE) {
-                spdlog::error("Invalid board row size: {}", row.size());
-                return std::unexpected(SaveError::SerializationError);
-            }
-        }
-
-        for (const auto& row : game.original_puzzle) {
-            if (row.size() != BOARD_SIZE) {
-                spdlog::error("Invalid board row size in original_puzzle: {}", row.size());
-                return std::unexpected(SaveError::SerializationError);
-            }
-        }
-
         YAML::Node root;
 
         // Metadata
@@ -109,20 +88,7 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
         puzzle_data["current_state"] = BoardSerializer::serializeIntBoard(game.current_state);
 
         // Notes (if not empty)
-        bool has_notes = false;
-        for (const auto& row : game.notes) {
-            for (const auto& cell_notes : row) {
-                if (!cell_notes.empty()) {
-                    has_notes = true;
-                    break;
-                }
-            }
-            if (has_notes) {
-                break;
-            }
-        }
-
-        if (has_notes) {
+        if (!game.notes.empty()) {
             puzzle_data["notes"] = BoardSerializer::serializeNotes(game.notes);
         }
 
@@ -355,10 +321,8 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
         // Hint-revealed cells (with backward compatibility)
         if (puzzle_data["hint_revealed_cells"]) {
             BoardSerializer::deserializeBoolBoard(puzzle_data["hint_revealed_cells"], game.hint_revealed_cells);
-        } else {
-            // Backward compatibility: old saves don't have this field
-            game.hint_revealed_cells.resize(BOARD_SIZE, std::vector<bool>(BOARD_SIZE, false));
         }
+        // Backward compatibility: old saves without this field get default (all false)
 
         // Game progress
         if (root["progress"]) {

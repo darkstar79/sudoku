@@ -36,7 +36,7 @@ namespace sudoku::core {
 /// This extends XY-Wing where the pivot has only 2 candidates.
 class XYZWingStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
         // Find all trivalue cells (potential pivots) and bivalue cells (potential wings)
         std::vector<Position> trivalue_cells;
@@ -80,8 +80,8 @@ public:
 
 private:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity) — XYZ candidate matching with wing pairs; nesting is inherent
-    [[nodiscard]] static std::optional<SolveStep> tryPivot(const std::vector<std::vector<int>>& board,
-                                                           const CandidateGrid& candidates, const Position& pivot,
+    [[nodiscard]] static std::optional<SolveStep> tryPivot(const BoardData& board, const CandidateGrid& candidates,
+                                                           const Position& pivot,
                                                            const std::vector<Position>& bivalue_cells) {
         auto pivot_cands = getCandidates(candidates, pivot.row, pivot.col);
         // pivot_cands has exactly 3 values: {A, B, C}

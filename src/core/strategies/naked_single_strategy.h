@@ -32,8 +32,7 @@ namespace sudoku::core {
 /// This is the simplest and most fundamental Sudoku solving technique
 class NakedSingleStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
-    [[nodiscard]] std::optional<SolveStep> findStep(const std::vector<std::vector<int>>& board,
-                                                    const CandidateGrid& state) const override {
+    [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board, const CandidateGrid& state) const override {
         // Scan all cells in row-major order
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (size_t col = 0; col < BOARD_SIZE; ++col) {

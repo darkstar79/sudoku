@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "core/board_data.h"
 #include "puzzle_rating.h"
 
 #include <cstdint>
@@ -42,8 +43,7 @@ public:
     /// @return PuzzleRating with score, solve path, and estimated difficulty
     /// @note Rating = sum of technique points (excludes backtracking points)
     /// @note Performance target: < 100ms per puzzle for real-time generation
-    [[nodiscard]] virtual std::expected<PuzzleRating, RatingError>
-    ratePuzzle(const std::vector<std::vector<int>>& board) const = 0;
+    [[nodiscard]] virtual std::expected<PuzzleRating, RatingError> ratePuzzle(const BoardData& board) const = 0;
 
 protected:
     // Protected special member functions to prevent slicing while allowing derived classes

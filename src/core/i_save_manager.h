@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "core/board_data.h"
 #include "i_game_validator.h"
 #include "i_puzzle_generator.h"
 
@@ -36,10 +37,10 @@ struct SavedGame {
     std::chrono::system_clock::time_point last_modified;
 
     // Puzzle data
-    std::vector<std::vector<int>> original_puzzle;       // Initial puzzle with clues
-    std::vector<std::vector<int>> current_state;         // Current board state
-    std::vector<std::vector<std::vector<int>>> notes;    // 9x9 grid of note vectors
-    std::vector<std::vector<bool>> hint_revealed_cells;  // 9x9 grid of hint-revealed flags
+    BoardData original_puzzle;         // Initial puzzle with clues
+    BoardData current_state;           // Current board state
+    NotesData notes;                   // 9x9 grid of note vectors
+    HintMaskData hint_revealed_cells;  // 9x9 grid of hint-revealed flags
     Difficulty difficulty{};
     uint32_t puzzle_seed{};
 
