@@ -243,7 +243,7 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - Performance",
         // Should complete in less than 5 seconds for target=30
         REQUIRE(duration.count() < 5000);
 
-        if (generator.countClues(*result) > 0) {
+        if (result.has_value() && generator.countClues(*result) > 0) {
             REQUIRE(generator.countClues(*result) == 30);
         }
     }
@@ -288,10 +288,9 @@ TEST_CASE("PuzzleGenerator - Iterative Deepening - Edge Cases", "[puzzle_generat
         // Try to reach minimum (17 clues) - may fail
         auto result = generator.removeCluesToTarget(solution, 17, 100, rng);
 
-        int clue_count = generator.countClues(*result);
-
-        // If successful, must have exactly 17
-        if (clue_count > 0) {
+        // May succeed or fail depending on RNG and solver path
+        if (result.has_value()) {
+            int clue_count = generator.countClues(*result);
             REQUIRE(clue_count == 17);
             REQUIRE(generator.hasUniqueSolution(*result));
         }
