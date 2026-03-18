@@ -187,3 +187,202 @@ jobs:
           fi
           echo "Running: $INTEGRATION_TESTS"
           "$INTEGRATION_TESTS"
+
+  clang-tidy:
+    name: clang-tidy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for recent changes
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger — running unconditionally"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$(git log --since='24 hours ago' --oneline)" ]; then
+            echo "No commits in the last 24 hours — skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Recent commits found — running"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install system dependencies
+        if: steps.check.outputs.skip != 'true'
+        uses: ./.github/actions/install-qt-deps
+
+      - name: Install clang-tidy
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          if sudo apt-get install -y clang-tidy-19; then
+            sudo ln -sf /usr/bin/clang-tidy-19 /usr/local/bin/clang-tidy
+          else
+            sudo apt-get install -y clang-tidy
+          fi
+
+      - name: Install Conan
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          pip3 install conan
+          conan profile detect --force
+
+      - name: Cache Conan packages
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-relwithdebinfo-
+
+      - name: Cache ccache
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-relwithdebinfo-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-relwithdebinfo-
+
+      - name: Configure ccache
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          ccache --set-config=max_size=500M
+          ccache --zero-stats
+
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: conan install . --build=missing -s build_type=RelWithDebInfo -s compiler.cppstd=gnu23
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          cmake --preset conan-relwithdebinfo
+          cmake --build --preset conan-relwithdebinfo
+
+      - name: Show ccache stats
+        if: steps.check.outputs.skip != 'true'
+        run: ccache --show-stats
+
+      - name: Run clang-tidy
+        if: steps.check.outputs.skip != 'true'
+        run: ./scripts/tidy.sh check
+
+  cppcheck:
+    name: Cppcheck
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for recent changes
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger — running unconditionally"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$(git log --since='24 hours ago' --oneline)" ]; then
+            echo "No commits in the last 24 hours — skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Recent commits found — running"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install system dependencies
+        if: steps.check.outputs.skip != 'true'
+        uses: ./.github/actions/install-qt-deps
+
+      - name: Install cppcheck and Conan
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          sudo apt-get install -y cppcheck
+          pip3 install conan
+          conan profile detect --force
+
+      - name: Cache Conan packages
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-release-
+
+      - name: Cache ccache
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-cppcheck-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-cppcheck-
+
+      - name: Configure ccache
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          ccache --set-config=max_size=500M
+          ccache --zero-stats
+
+      - name: Build for compile database
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          conan install . --build=missing -s build_type=Release -s compiler.cppstd=gnu23
+          cmake --preset conan-release
+          cmake --build --preset conan-release
+
+      - name: Run cppcheck
+        if: steps.check.outputs.skip != 'true'
+        run: ./scripts/cppcheck.sh
+
+  cpd:
+    name: Copy-Paste Detection
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for recent changes
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger — running unconditionally"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$(git log --since='24 hours ago' --oneline)" ]; then
+            echo "No commits in the last 24 hours — skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Recent commits found — running"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Java
+        if: steps.check.outputs.skip != 'true'
+        run: sudo apt-get install -y default-jre-headless
+
+      - name: Install PMD
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          PMD_VERSION="7.21.0"
+          curl -sL "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-dist-${PMD_VERSION}-bin.zip" -o /tmp/pmd.zip
+          mkdir -p "$HOME/.local/share/pmd"
+          unzip -q /tmp/pmd.zip -d "$HOME/.local/share/pmd"
+          rm /tmp/pmd.zip
+
+      - name: Run CPD
+        if: steps.check.outputs.skip != 'true'
+        run: ./scripts/cpd.sh
