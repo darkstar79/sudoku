@@ -100,7 +100,7 @@ Training Mode operates as a 5-phase state machine managed by `TrainingViewModel`
 | Phase | UI Page | User Actions |
 |-------|---------|-------------|
 | TechniqueSelection | Scrollable list of 42 techniques grouped into 9 categories | Click a technique button |
-| TheoryReview | Title, difficulty points, "What It Is", "What to Look For" | Start Exercises / Back |
+| TheoryReview | Title, SE difficulty rating, "What It Is", "What to Look For" | Start Exercises / Back |
 | Exercise | Interactive board + number pad + hint/skip/quit buttons | Interact with board, Submit, Hint, Skip |
 | Feedback | Result (Correct/Partial/Incorrect), explanation, score | Next Exercise / Retry / Quit |
 | LessonComplete | Final score, verdict message (Excellent/Good/Keep Practicing) | Try Again / Pick Technique / Return to Game |
@@ -137,7 +137,7 @@ For coloring techniques, the first 2 exercises are "guided" (`is_guided_coloring
 
 `TrainingExerciseGenerator` creates exercises by:
 
-1. **Generate a puzzle** at appropriate difficulty (based on technique points)
+1. **Generate a puzzle** at appropriate difficulty (based on SE rating)
 2. **Solve it completely** to get the full `solve_path` (vector of `SolveStep`)
 3. **Scan the path** for steps using the target technique
 4. **Walk forward** from the initial board, applying all steps before the target to snapshot the exact board state and candidate masks
@@ -225,7 +225,7 @@ The technique selection page organizes all 42 techniques into 9 groups:
 | Chains & Set Logic | XY-Chain, ALS-XZ, Sue de Coq |
 | Inference Engines | Forcing Chain, Nice Loop |
 
-Each button displays the technique name and difficulty points (e.g., "X-Wing (200 pts)").
+Each button displays the technique name and Sudoku Explainer (SE) difficulty rating (e.g., "X-Wing (SE 3.2)"). Ratings follow the [SE scale](https://github.com/SudokuMonster/SukakuExplainer/wiki/Difficulty-ratings-in-Sudoku-Explainer-v1.2.1) by Nicolas Juillerat, the only generally accepted difficulty standard in the Sudoku community. A puzzle's difficulty equals the hardest technique required to solve it.
 
 ---
 

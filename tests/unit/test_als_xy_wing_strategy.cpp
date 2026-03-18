@@ -42,7 +42,7 @@ TEST_CASE("ALSXYWingStrategy - Metadata", "[als_xy_wing]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::ALSXYWing);
     REQUIRE(strategy.getName() == "ALS-XY-Wing");
-    REQUIRE(strategy.getDifficultyPoints() == 550);
+    REQUIRE(strategy.getDifficultyRating() == 7.8);
 }
 
 TEST_CASE("ALSXYWingStrategy - Returns nullopt for complete board", "[als_xy_wing]") {
@@ -103,7 +103,7 @@ TEST_CASE("ALSXYWingStrategy - Finds ALS-XY-Wing pattern", "[als_xy_wing]") {
     // The strategy should find the ALS-XY-Wing
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::ALSXYWing);
-        REQUIRE(result->points == 550);
+        REQUIRE(result->rating == 7.8);
         REQUIRE_FALSE(result->eliminations.empty());
         for (const auto& elim : result->eliminations) {
             REQUIRE(elim.value == 3);

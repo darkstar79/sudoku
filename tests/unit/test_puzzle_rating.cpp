@@ -31,7 +31,7 @@ TEST_CASE("PuzzleRating - Construction", "[puzzle_rating]") {
                                               .value = 5,
                                               .eliminations = {},
                                               .explanation = "Test",
-                                              .points = 10,
+                                              .rating = 2.3,
                                               .explanation_data = {}},
                                              {.type = SolveStepType::Placement,
                                               .technique = SolvingTechnique::HiddenSingle,
@@ -39,40 +39,40 @@ TEST_CASE("PuzzleRating - Construction", "[puzzle_rating]") {
                                               .value = 3,
                                               .eliminations = {},
                                               .explanation = "Test",
-                                              .points = 15,
+                                              .rating = 1.5,
                                               .explanation_data = {}}};
 
-        PuzzleRating rating{.total_score = 25,
+        PuzzleRating rating{.se_rating = 2.3,
                             .solve_path = solve_path,
                             .requires_backtracking = false,
                             .estimated_difficulty = Difficulty::Easy};
 
-        REQUIRE(rating.total_score == 25);
+        REQUIRE(rating.se_rating == 2.3);
         REQUIRE(rating.solve_path.size() == 2);
         REQUIRE_FALSE(rating.requires_backtracking);
         REQUIRE(rating.estimated_difficulty == Difficulty::Easy);
     }
 
     SECTION("Creates rating with backtracking") {
-        PuzzleRating rating{.total_score = 1250,
+        PuzzleRating rating{.se_rating = 7.5,
                             .solve_path = {},
                             .requires_backtracking = true,
-                            .estimated_difficulty = Difficulty::Expert};
+                            .estimated_difficulty = Difficulty::Master};
 
-        REQUIRE(rating.total_score == 1250);
+        REQUIRE(rating.se_rating == 7.5);
         REQUIRE(rating.requires_backtracking);
-        REQUIRE(rating.estimated_difficulty == Difficulty::Expert);
+        REQUIRE(rating.estimated_difficulty == Difficulty::Master);
     }
 }
 
 TEST_CASE("PuzzleRating - Equality Comparison", "[puzzle_rating]") {
     SECTION("Equal ratings are equal") {
-        PuzzleRating rating1{.total_score = 100,
+        PuzzleRating rating1{.se_rating = 3.0,
                              .solve_path = {},
                              .requires_backtracking = false,
                              .estimated_difficulty = Difficulty::Medium};
 
-        PuzzleRating rating2{.total_score = 100,
+        PuzzleRating rating2{.se_rating = 3.0,
                              .solve_path = {},
                              .requires_backtracking = false,
                              .estimated_difficulty = Difficulty::Medium};
@@ -81,11 +81,11 @@ TEST_CASE("PuzzleRating - Equality Comparison", "[puzzle_rating]") {
     }
 
     SECTION("Different scores are not equal") {
-        PuzzleRating rating1{.total_score = 100,
+        PuzzleRating rating1{.se_rating = 3.0,
                              .solve_path = {},
                              .requires_backtracking = false,
                              .estimated_difficulty = Difficulty::Medium};
-        PuzzleRating rating2{.total_score = 200,
+        PuzzleRating rating2{.se_rating = 4.2,
                              .solve_path = {},
                              .requires_backtracking = false,
                              .estimated_difficulty = Difficulty::Medium};
@@ -94,84 +94,85 @@ TEST_CASE("PuzzleRating - Equality Comparison", "[puzzle_rating]") {
     }
 }
 
-TEST_CASE("ratingToDifficulty - Converts rating to difficulty", "[puzzle_rating]") {
-    SECTION("Easy range (0-750)") {
-        REQUIRE(ratingToDifficulty(0) == Difficulty::Easy);
-        REQUIRE(ratingToDifficulty(375) == Difficulty::Easy);
-        REQUIRE(ratingToDifficulty(749) == Difficulty::Easy);
+TEST_CASE("ratingToDifficulty - Converts SE rating to difficulty", "[puzzle_rating]") {
+    SECTION("Easy range (0.0-2.5)") {
+        REQUIRE(ratingToDifficulty(0.0) == Difficulty::Easy);
+        REQUIRE(ratingToDifficulty(1.5) == Difficulty::Easy);
+        REQUIRE(ratingToDifficulty(2.3) == Difficulty::Easy);
+        REQUIRE(ratingToDifficulty(2.4) == Difficulty::Easy);
     }
 
-    SECTION("Medium range (750-1250)") {
-        REQUIRE(ratingToDifficulty(750) == Difficulty::Medium);
-        REQUIRE(ratingToDifficulty(1000) == Difficulty::Medium);
-        REQUIRE(ratingToDifficulty(1249) == Difficulty::Medium);
+    SECTION("Medium range (2.5-3.8)") {
+        REQUIRE(ratingToDifficulty(2.5) == Difficulty::Medium);
+        REQUIRE(ratingToDifficulty(3.0) == Difficulty::Medium);
+        REQUIRE(ratingToDifficulty(3.7) == Difficulty::Medium);
     }
 
-    SECTION("Hard range (1250-1750)") {
-        REQUIRE(ratingToDifficulty(1250) == Difficulty::Hard);
-        REQUIRE(ratingToDifficulty(1500) == Difficulty::Hard);
-        REQUIRE(ratingToDifficulty(1749) == Difficulty::Hard);
+    SECTION("Hard range (3.8-5.5)") {
+        REQUIRE(ratingToDifficulty(3.8) == Difficulty::Hard);
+        REQUIRE(ratingToDifficulty(4.5) == Difficulty::Hard);
+        REQUIRE(ratingToDifficulty(5.4) == Difficulty::Hard);
     }
 
-    SECTION("Expert range (1750-2250)") {
-        REQUIRE(ratingToDifficulty(1750) == Difficulty::Expert);
-        REQUIRE(ratingToDifficulty(2000) == Difficulty::Expert);
-        REQUIRE(ratingToDifficulty(2249) == Difficulty::Expert);
+    SECTION("Expert range (5.5-7.5)") {
+        REQUIRE(ratingToDifficulty(5.5) == Difficulty::Expert);
+        REQUIRE(ratingToDifficulty(6.6) == Difficulty::Expert);
+        REQUIRE(ratingToDifficulty(7.4) == Difficulty::Expert);
     }
 
-    SECTION("Master range (2250+)") {
-        REQUIRE(ratingToDifficulty(2250) == Difficulty::Master);
-        REQUIRE(ratingToDifficulty(3000) == Difficulty::Master);
-        REQUIRE(ratingToDifficulty(5000) == Difficulty::Master);
+    SECTION("Master range (7.5+)") {
+        REQUIRE(ratingToDifficulty(7.5) == Difficulty::Master);
+        REQUIRE(ratingToDifficulty(8.2) == Difficulty::Master);
+        REQUIRE(ratingToDifficulty(12.0) == Difficulty::Master);
     }
 
     SECTION("Boundary values") {
-        REQUIRE(ratingToDifficulty(0) == Difficulty::Easy);
-        REQUIRE(ratingToDifficulty(750) == Difficulty::Medium);
-        REQUIRE(ratingToDifficulty(1250) == Difficulty::Hard);
-        REQUIRE(ratingToDifficulty(1750) == Difficulty::Expert);
-        REQUIRE(ratingToDifficulty(2250) == Difficulty::Master);
+        REQUIRE(ratingToDifficulty(0.0) == Difficulty::Easy);
+        REQUIRE(ratingToDifficulty(2.5) == Difficulty::Medium);
+        REQUIRE(ratingToDifficulty(3.8) == Difficulty::Hard);
+        REQUIRE(ratingToDifficulty(5.5) == Difficulty::Expert);
+        REQUIRE(ratingToDifficulty(7.5) == Difficulty::Master);
     }
 }
 
-TEST_CASE("getDifficultyRatingRange - Returns min/max rating for difficulty", "[puzzle_rating]") {
+TEST_CASE("getDifficultyRatingRange - Returns min/max SE rating for difficulty", "[puzzle_rating]") {
     SECTION("Easy difficulty range") {
         auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Easy);
 
-        REQUIRE(min_rating == 0);
-        REQUIRE(max_rating == 750);
+        REQUIRE(min_rating == 0.0);
+        REQUIRE(max_rating == 2.5);
         REQUIRE(min_rating < max_rating);
     }
 
     SECTION("Medium difficulty range") {
         auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Medium);
 
-        REQUIRE(min_rating == 750);
-        REQUIRE(max_rating == 1250);
+        REQUIRE(min_rating == 2.5);
+        REQUIRE(max_rating == 3.8);
         REQUIRE(min_rating < max_rating);
     }
 
     SECTION("Hard difficulty range") {
         auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Hard);
 
-        REQUIRE(min_rating == 1250);
-        REQUIRE(max_rating == 1750);
+        REQUIRE(min_rating == 3.8);
+        REQUIRE(max_rating == 5.5);
         REQUIRE(min_rating < max_rating);
     }
 
     SECTION("Expert difficulty range") {
         auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Expert);
 
-        REQUIRE(min_rating == 1750);
-        REQUIRE(max_rating == 2250);
+        REQUIRE(min_rating == 5.5);
+        REQUIRE(max_rating == 7.5);
         REQUIRE(min_rating < max_rating);
     }
 
     SECTION("Master difficulty range") {
         auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Master);
 
-        REQUIRE(min_rating == 2250);
-        REQUIRE(max_rating == std::numeric_limits<int>::max());
+        REQUIRE(min_rating == 7.5);
+        REQUIRE(max_rating == std::numeric_limits<double>::max());
         REQUIRE(min_rating < max_rating);
     }
 }
@@ -192,35 +193,27 @@ TEST_CASE("getDifficultyRatingRange - Range boundaries are consistent", "[puzzle
     }
 
     SECTION("Rating to difficulty conversion is consistent with ranges") {
-        // Test all difficulty levels
         for (auto difficulty :
              {Difficulty::Easy, Difficulty::Medium, Difficulty::Hard, Difficulty::Expert, Difficulty::Master}) {
             auto [min_rating, max_rating] = getDifficultyRatingRange(difficulty);
 
             // A rating at the minimum should map to this difficulty
             REQUIRE(ratingToDifficulty(min_rating) == difficulty);
-
-            // A rating just below max should map to this difficulty
-            if (max_rating > 0) {
-                REQUIRE(ratingToDifficulty(max_rating - 1) == difficulty);
-            }
         }
     }
 }
 
 TEST_CASE("ratingToDifficulty - Round-trip consistency", "[puzzle_rating]") {
     SECTION("Rating within range maps back to same difficulty") {
-        // Test representative ratings for each difficulty
         struct TestCase {
-            int rating;
+            double rating;
             Difficulty expected_difficulty;
         };
 
-        std::vector<TestCase> test_cases = {{100, Difficulty::Easy},    {400, Difficulty::Easy},
-                                            {800, Difficulty::Medium},  {1100, Difficulty::Medium},
-                                            {1300, Difficulty::Hard},   {1500, Difficulty::Hard},
-                                            {1800, Difficulty::Expert}, {2100, Difficulty::Expert},
-                                            {2300, Difficulty::Master}, {3000, Difficulty::Master}};
+        std::vector<TestCase> test_cases = {
+            {1.0, Difficulty::Easy},   {2.3, Difficulty::Easy},  {2.8, Difficulty::Medium}, {3.4, Difficulty::Medium},
+            {4.0, Difficulty::Hard},   {5.0, Difficulty::Hard},  {6.0, Difficulty::Expert}, {7.0, Difficulty::Expert},
+            {7.5, Difficulty::Master}, {9.0, Difficulty::Master}};
 
         for (const auto& test_case : test_cases) {
             auto difficulty = ratingToDifficulty(test_case.rating);
@@ -234,15 +227,15 @@ TEST_CASE("ratingToDifficulty - Round-trip consistency", "[puzzle_rating]") {
     }
 }
 
-TEST_CASE("PuzzleRating - Score Calculation", "[puzzle_rating]") {
-    SECTION("Total score is sum of technique points") {
+TEST_CASE("PuzzleRating - SE Rating is max technique", "[puzzle_rating]") {
+    SECTION("SE rating equals max technique rating in solve path") {
         std::vector<SolveStep> solve_path = {{.type = SolveStepType::Placement,
                                               .technique = SolvingTechnique::NakedSingle,
                                               .position = {},
                                               .value = 1,
                                               .eliminations = {},
                                               .explanation = "",
-                                              .points = 10,
+                                              .rating = 2.3,
                                               .explanation_data = {}},
                                              {.type = SolveStepType::Placement,
                                               .technique = SolvingTechnique::NakedSingle,
@@ -250,7 +243,7 @@ TEST_CASE("PuzzleRating - Score Calculation", "[puzzle_rating]") {
                                               .value = 2,
                                               .eliminations = {},
                                               .explanation = "",
-                                              .points = 10,
+                                              .rating = 2.3,
                                               .explanation_data = {}},
                                              {.type = SolveStepType::Placement,
                                               .technique = SolvingTechnique::HiddenSingle,
@@ -258,40 +251,40 @@ TEST_CASE("PuzzleRating - Score Calculation", "[puzzle_rating]") {
                                               .value = 3,
                                               .eliminations = {},
                                               .explanation = "",
-                                              .points = 15,
+                                              .rating = 1.5,
                                               .explanation_data = {}},
-                                             {.type = SolveStepType::Placement,
+                                             {.type = SolveStepType::Elimination,
                                               .technique = SolvingTechnique::NakedPair,
                                               .position = {},
-                                              .value = 4,
+                                              .value = 0,
                                               .eliminations = {},
                                               .explanation = "",
-                                              .points = 50,
+                                              .rating = 3.0,
                                               .explanation_data = {}}};
 
-        // Sum: 10 + 10 + 15 + 50 = 85
-        PuzzleRating rating{.total_score = 85,
+        // Max: 3.0 (NakedPair)
+        PuzzleRating rating{.se_rating = 3.0,
                             .solve_path = solve_path,
                             .requires_backtracking = false,
-                            .estimated_difficulty = Difficulty::Easy};
+                            .estimated_difficulty = Difficulty::Medium};
 
-        // Verify sum matches total_score
-        int calculated_sum = 0;
+        // Verify max matches se_rating
+        double max_rating = 0.0;
         for (const auto& step : rating.solve_path) {
-            calculated_sum += step.points;
+            max_rating = std::max(max_rating, step.rating);
         }
 
-        REQUIRE(rating.total_score == calculated_sum);
+        REQUIRE(rating.se_rating == max_rating);
     }
 
-    SECTION("Backtracking step has 750 points but is excluded from rating score") {
+    SECTION("Backtracking step has SE 12.0 but is excluded from puzzle rating") {
         std::vector<SolveStep> solve_path = {{.type = SolveStepType::Placement,
                                               .technique = SolvingTechnique::NakedSingle,
                                               .position = {},
                                               .value = 1,
                                               .eliminations = {},
                                               .explanation = "",
-                                              .points = 10,
+                                              .rating = 2.3,
                                               .explanation_data = {}},
                                              {.type = SolveStepType::Placement,
                                               .technique = SolvingTechnique::Backtracking,
@@ -299,18 +292,18 @@ TEST_CASE("PuzzleRating - Score Calculation", "[puzzle_rating]") {
                                               .value = 2,
                                               .eliminations = {},
                                               .explanation = "",
-                                              .points = 750,
+                                              .rating = 12.0,
                                               .explanation_data = {}}};
 
-        // Rater excludes backtracking from total_score (only logical techniques count)
-        PuzzleRating rating{.total_score = 10,
+        // Rater excludes backtracking from se_rating (only logical techniques count)
+        PuzzleRating rating{.se_rating = 2.3,
                             .solve_path = solve_path,
                             .requires_backtracking = true,
-                            .estimated_difficulty = Difficulty::Expert};
+                            .estimated_difficulty = Difficulty::Easy};
 
-        // Step itself has 750 points, but rating total excludes it
-        REQUIRE(solve_path[1].points == 750);
-        REQUIRE(rating.total_score == 10);
+        // Step itself has SE 12.0, but puzzle rating excludes it
+        REQUIRE(solve_path[1].rating == 12.0);
+        REQUIRE(rating.se_rating == 2.3);
         REQUIRE(rating.requires_backtracking);
     }
 }

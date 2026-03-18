@@ -134,7 +134,7 @@ strings:
   hint.suggestion_place: "Vorschlag: Setze {0} bei R{1}C{2}"
 
   # ViewModel — Technikformatierung
-  technique.points_fmt: "{0} ({1} Pkt.)"
+  technique.points_fmt: "{0} (SE {1})"
   technique.backtracking: "Backtracking (Versuch und Irrtum)"
 
   # ViewModel — Statistikfehler

@@ -43,7 +43,7 @@ TEST_CASE("WWingStrategy - Metadata", "[w_wing]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::WWing);
     REQUIRE(strategy.getName() == "W-Wing");
-    REQUIRE(strategy.getDifficultyPoints() == 300);
+    REQUIRE(strategy.getDifficultyRating() == 4.4);
 }
 
 TEST_CASE("WWingStrategy - Returns nullopt for complete board", "[w_wing]") {
@@ -110,7 +110,7 @@ TEST_CASE("WWingStrategy - W-Wing detection with row strong link", "[w_wing]") {
 
     if (result.has_value() && result->technique == SolvingTechnique::WWing) {
         REQUIRE(result->type == SolveStepType::Elimination);
-        REQUIRE(result->points == 300);
+        REQUIRE(result->rating == 4.4);
         REQUIRE_FALSE(result->eliminations.empty());
 
         // Eliminated value should be 2 (the non-link value)
@@ -128,7 +128,7 @@ TEST_CASE("WWingStrategy - Can be used through ISolvingStrategy interface", "[w_
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::WWing);
     REQUIRE(strategy->getName() == "W-Wing");
-    REQUIRE(strategy->getDifficultyPoints() == 300);
+    REQUIRE(strategy->getDifficultyRating() == 4.4);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

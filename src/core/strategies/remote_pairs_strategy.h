@@ -71,8 +71,8 @@ public:
         return "Remote Pairs";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::RemotePairs);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::RemotePairs);
     }
 
 private:
@@ -180,7 +180,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::RemotePairs),
+                         .rating = getTechniqueRating(SolvingTechnique::RemotePairs),
                          .explanation_data = {.positions = {start, end},
                                               .values = {val_a, val_b, chain_length},
                                               .position_roles = {CellRole::ChainA, CellRole::ChainB}}};

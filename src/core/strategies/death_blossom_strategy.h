@@ -53,8 +53,8 @@ public:
         return "Death Blossom";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::DeathBlossom);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::DeathBlossom);
     }
 
 private:
@@ -327,7 +327,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::DeathBlossom),
+            .rating = getTechniqueRating(SolvingTechnique::DeathBlossom),
             .explanation_data = {.positions = positions, .values = values, .position_roles = std::move(roles)}};
     }
 };

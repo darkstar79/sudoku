@@ -34,7 +34,7 @@ TEST_CASE("FrankenFishStrategy - Metadata", "[franken_fish]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::FrankenFish);
     REQUIRE(strategy.getName() == "Franken Fish");
-    REQUIRE(strategy.getDifficultyPoints() == 450);
+    REQUIRE(strategy.getDifficultyRating() == 4.2);
 }
 
 TEST_CASE("FrankenFishStrategy - Returns nullopt for complete board", "[franken_fish]") {
@@ -141,7 +141,7 @@ TEST_CASE("FrankenFishStrategy - Finds Franken Swordfish", "[franken_fish]") {
     // The strategy should find a Franken Fish pattern
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::FrankenFish);
-        REQUIRE(result->points == 450);
+        REQUIRE(result->rating == 4.2);
         REQUIRE_FALSE(result->eliminations.empty());
         for (const auto& elim : result->eliminations) {
             REQUIRE(elim.value == 5);

@@ -55,8 +55,8 @@ public:
         return "Franken Fish";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::FrankenFish);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::FrankenFish);
     }
 
 private:
@@ -385,7 +385,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::FrankenFish),
+            .rating = getTechniqueRating(SolvingTechnique::FrankenFish),
             .explanation_data = {.positions = positions,
                                  .values = {digit},
                                  .position_roles = std::vector<CellRole>(positions.size(), CellRole::Pattern)}};

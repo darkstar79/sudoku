@@ -38,7 +38,7 @@ TEST_CASE("MultiColoringStrategy - Metadata", "[multi_coloring]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::MultiColoring);
     REQUIRE(strategy.getName() == "Multi-Coloring");
-    REQUIRE(strategy.getDifficultyPoints() == 400);
+    REQUIRE(strategy.getDifficultyRating() == 4.2);
 }
 
 TEST_CASE("MultiColoringStrategy - Returns nullopt for complete board", "[multi_coloring]") {
@@ -129,7 +129,7 @@ TEST_CASE("MultiColoringStrategy - Rule 4 (Wrap) detection", "[multi_coloring]")
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::MultiColoring);
         REQUIRE(result->type == SolveStepType::Elimination);
-        REQUIRE(result->points == 400);
+        REQUIRE(result->rating == 4.2);
         REQUIRE(result->explanation.find("Multi-Coloring") != std::string::npos);
     }
 }
@@ -139,7 +139,7 @@ TEST_CASE("MultiColoringStrategy - Can be used through ISolvingStrategy interfac
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::MultiColoring);
     REQUIRE(strategy->getName() == "Multi-Coloring");
-    REQUIRE(strategy->getDifficultyPoints() == 400);
+    REQUIRE(strategy->getDifficultyRating() == 4.2);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

@@ -110,7 +110,7 @@ void GameViewModel::getHint() {
     std::string hint_text = formatHintExplanation(step);
     hintMessage.set(hint_text);
 
-    spdlog::info("Hint provided: {} ({})", core::getTechniqueName(step.technique), step.points);
+    spdlog::info("Hint provided: {} (SE {:.1f})", core::getTechniqueName(step.technique), step.rating);
 }
 
 std::string GameViewModel::formatHintExplanation(const core::SolveStep& step) const {

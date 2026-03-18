@@ -70,7 +70,7 @@ SolveStep makePlacementStep(SolvingTechnique tech, Position pos, int value) {
         .value = value,
         .eliminations = {},
         .explanation = "Test explanation",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {.positions = {pos}, .values = {value}, .region_type = RegionType::Row, .region_index = 0},
     };
 }
@@ -91,7 +91,7 @@ SolveStep makeEliminationStep(SolvingTechnique tech, std::vector<Elimination> el
         .value = 0,
         .eliminations = elims,
         .explanation = "Test elimination",
-        .points = 50,
+        .rating = 50,
         .explanation_data = data,
     };
 }

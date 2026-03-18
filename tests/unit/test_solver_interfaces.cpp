@@ -37,8 +37,8 @@ public:
         return "Mock Strategy";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return 10;
+    [[nodiscard]] double getDifficultyRating() const override {
+        return 2.3;
     }
 };
 
@@ -70,7 +70,7 @@ TEST_CASE("ISolvingStrategy - Interface Contract", "[solver_interfaces]") {
 
         REQUIRE(strategy.getTechnique() == SolvingTechnique::NakedSingle);
         REQUIRE(strategy.getName() == "Mock Strategy");
-        REQUIRE(strategy.getDifficultyPoints() == 10);
+        REQUIRE(strategy.getDifficultyRating() == 2.3);
     }
 
     SECTION("findStep returns optional") {
@@ -87,7 +87,7 @@ TEST_CASE("ISolvingStrategy - Interface Contract", "[solver_interfaces]") {
         std::unique_ptr<ISolvingStrategy> strategy = std::make_unique<MockStrategy>();
 
         REQUIRE(strategy->getTechnique() == SolvingTechnique::NakedSingle);
-        REQUIRE(strategy->getDifficultyPoints() == 10);
+        REQUIRE(strategy->getDifficultyRating() == 2.3);
     }
 }
 
@@ -121,7 +121,7 @@ TEST_CASE("ISudokuSolver - Interface Contract", "[solver_interfaces]") {
                        .value = 5,
                        .eliminations = {},
                        .explanation = "Test",
-                       .points = 10,
+                       .rating = 10,
                        .explanation_data = {}};
 
         bool result = solver.applyStep(board, step);
@@ -202,7 +202,7 @@ TEST_CASE("SolverResult - Construction and Equality", "[solver_interfaces]") {
                                               .value = 5,
                                               .eliminations = {},
                                               .explanation = "Test",
-                                              .points = 10,
+                                              .rating = 10,
                                               .explanation_data = {}}};
 
         SolverResult result{.solution = solution, .solve_path = solve_path, .used_backtracking = false};

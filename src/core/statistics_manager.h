@@ -44,7 +44,7 @@ public:
 
     // Game session management
     std::expected<uint64_t, StatisticsError> startGame(Difficulty difficulty, uint32_t puzzle_seed,
-                                                       int puzzle_rating = 0) override;
+                                                       double puzzle_rating = 0.0) override;
 
     std::expected<void, StatisticsError> recordMove(uint64_t game_id, bool is_mistake) override;
 

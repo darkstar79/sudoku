@@ -34,7 +34,7 @@ TEST_CASE("FinnedSwordfishStrategy - Metadata", "[finned_swordfish]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::FinnedSwordfish);
     REQUIRE(strategy.getName() == "Finned Swordfish");
-    REQUIRE(strategy.getDifficultyPoints() == 400);
+    REQUIRE(strategy.getDifficultyRating() == 4.0);
 }
 
 TEST_CASE("FinnedSwordfishStrategy - Returns nullopt for complete board", "[finned_swordfish]") {
@@ -97,7 +97,7 @@ TEST_CASE("FinnedSwordfishStrategy - Row-based finned Swordfish detection", "[fi
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::FinnedSwordfish);
-    REQUIRE(result->points == 400);
+    REQUIRE(result->rating == 4.0);
 
     // All eliminations must be value 5, in fin's box (box 8)
     for (const auto& elim : result->eliminations) {
@@ -186,7 +186,7 @@ TEST_CASE("FinnedSwordfishStrategy - Can be used through ISolvingStrategy interf
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::FinnedSwordfish);
     REQUIRE(strategy->getName() == "Finned Swordfish");
-    REQUIRE(strategy->getDifficultyPoints() == 400);
+    REQUIRE(strategy->getDifficultyRating() == 4.0);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

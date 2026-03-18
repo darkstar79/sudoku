@@ -141,13 +141,14 @@ TEST_CASE("arePrerequisitesMet — unlocks after reaching Intermediate", "[Learn
     cleanupTempDir(tmp);
 }
 
-TEST_CASE("getRecommendedTechnique — fresh stats recommends NakedSingle", "[LearningPath]") {
+TEST_CASE("getRecommendedTechnique — fresh stats recommends HiddenSingle", "[LearningPath]") {
     auto tmp = createTempDir();
     TrainingStatisticsManager mgr(tmp);
 
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
-    CHECK(*recommended == SolvingTechnique::NakedSingle);
+    // HiddenSingle (SE 1.5) is the easiest technique in SE scale
+    CHECK(*recommended == SolvingTechnique::HiddenSingle);
 
     cleanupTempDir(tmp);
 }
@@ -156,11 +157,12 @@ TEST_CASE("getRecommendedTechnique — advances after mastering", "[LearningPath
     auto tmp = createTempDir();
     TrainingStatisticsManager mgr(tmp);
 
-    masterTechnique(mgr, SolvingTechnique::NakedSingle);
+    masterTechnique(mgr, SolvingTechnique::HiddenSingle);
 
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
-    CHECK(*recommended == SolvingTechnique::HiddenSingle);
+    // After mastering HiddenSingle (SE 1.5), NakedSingle (SE 2.3) is next
+    CHECK(*recommended == SolvingTechnique::NakedSingle);
 
     cleanupTempDir(tmp);
 }
@@ -169,14 +171,15 @@ TEST_CASE("getRecommendedTechnique — skips techniques with unmet prerequisites
     auto tmp = createTempDir();
     TrainingStatisticsManager mgr(tmp);
 
-    // Master NakedSingle and HiddenSingle
-    masterTechnique(mgr, SolvingTechnique::NakedSingle);
+    // Master HiddenSingle and NakedSingle
     masterTechnique(mgr, SolvingTechnique::HiddenSingle);
+    masterTechnique(mgr, SolvingTechnique::NakedSingle);
 
-    // Next should be NakedPair (50 pts), not NakedTriple (60 pts, needs NakedPair)
+    // Next should be PointingPair (SE 2.6) — it requires HiddenSingle (mastered)
+    // NakedPair (SE 3.0) is higher and comes later
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
-    CHECK(*recommended == SolvingTechnique::NakedPair);
+    CHECK(*recommended == SolvingTechnique::PointingPair);
 
     cleanupTempDir(tmp);
 }
@@ -194,19 +197,11 @@ TEST_CASE("getRecommendedTechnique — prefers least recently practiced at same 
     masterTechnique(mgr, SolvingTechnique::HiddenPair);
     masterTechnique(mgr, SolvingTechnique::HiddenTriple);
 
-    // Now both PointingPair and BoxLineReduction are at 100 pts
-    // Practice PointingPair (making it more recently practiced)
-    TrainingLessonResult result;
-    result.technique = SolvingTechnique::PointingPair;
-    result.correct_count = 2;
-    result.total_exercises = 5;
-    result.hints_used = 5;
-    REQUIRE(mgr.recordLesson(result).has_value());
-
+    // PointingPair (SE 2.6) comes before BoxLineReduction (SE 2.8)
+    // Since they have different SE ratings, PointingPair is recommended first
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
-    // BoxLineReduction should be recommended (less recently practiced)
-    CHECK(*recommended == SolvingTechnique::BoxLineReduction);
+    CHECK(*recommended == SolvingTechnique::PointingPair);
 
     cleanupTempDir(tmp);
 }

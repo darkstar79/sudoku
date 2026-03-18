@@ -72,8 +72,8 @@ public:
         return "Pointing Pair";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::PointingPair);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::PointingPair);
     }
 
 private:
@@ -112,7 +112,7 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::PointingPair),
+                             .rating = getTechniqueRating(SolvingTechnique::PointingPair),
                              .explanation_data = {.positions = {cells_in_box.begin(), cells_in_box.end()},
                                                   .values = {value},
                                                   .region_type = RegionType::Box,
@@ -156,7 +156,7 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::PointingPair),
+                             .rating = getTechniqueRating(SolvingTechnique::PointingPair),
                              .explanation_data = {.positions = {cells_in_box.begin(), cells_in_box.end()},
                                                   .values = {value},
                                                   .region_type = RegionType::Box,

@@ -20,9 +20,9 @@
 
 #include <array>
 #include <chrono>
-#include <climits>
 #include <cstdint>
 #include <expected>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -31,7 +31,7 @@ namespace sudoku::core {
 /// Statistics for a single game session
 struct GameStats {
     Difficulty difficulty{Difficulty::Medium};
-    int puzzle_rating{0};  // Sudoku Explainer rating (0-2000+)
+    double puzzle_rating{0.0};  // Sudoku Explainer rating (SE 1.0-12.0 scale)
     std::chrono::milliseconds time_played{0};
     std::chrono::system_clock::time_point start_time;
     std::chrono::system_clock::time_point end_time;
@@ -54,10 +54,12 @@ struct AggregateStats {
                                                            std::chrono::milliseconds{0}, std::chrono::milliseconds{0},
                                                            std::chrono::milliseconds{0}};
 
-    // Rating statistics per difficulty
-    std::array<int, 5> average_ratings{0, 0, 0, 0, 0};  // Average puzzle rating
-    std::array<int, 5> min_ratings{INT_MAX, INT_MAX, INT_MAX, INT_MAX, INT_MAX};
-    std::array<int, 5> max_ratings{0, 0, 0, 0, 0};
+    // Rating statistics per difficulty (SE scale)
+    std::array<double, 5> average_ratings{0.0, 0.0, 0.0, 0.0, 0.0};
+    std::array<double, 5> min_ratings{std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
+                                      std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
+                                      std::numeric_limits<double>::max()};
+    std::array<double, 5> max_ratings{0.0, 0.0, 0.0, 0.0, 0.0};
 
     // Overall stats
     int total_games{0};
@@ -94,10 +96,10 @@ public:
     /// Starts tracking a new game session
     /// @param difficulty Difficulty level of the game
     /// @param puzzle_seed Seed used to generate the puzzle
-    /// @param puzzle_rating Sudoku Explainer rating (0-2000+)
+    /// @param puzzle_rating Sudoku Explainer rating (SE 1.0-12.0 scale)
     /// @return Game session ID or error
     [[nodiscard]] virtual std::expected<uint64_t, StatisticsError>
-    startGame(Difficulty difficulty, uint32_t puzzle_seed, int puzzle_rating = 0) = 0;
+    startGame(Difficulty difficulty, uint32_t puzzle_seed, double puzzle_rating = 0.0) = 0;
 
     /// Records a move made during the game
     /// @param game_id Active game session ID

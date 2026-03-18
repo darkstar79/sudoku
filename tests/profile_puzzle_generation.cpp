@@ -104,7 +104,7 @@ static void profilePuzzle(PuzzleGenerator& generator, PuzzleRater& rater, Diffic
 
     if (rating.has_value()) {
         std::cout << "  Rating:          " << std::fixed << std::setprecision(1) << rate_ms << "ms (score "
-                  << rating->total_score << ", " << difficultyName(rating->estimated_difficulty)
+                  << rating->se_rating << ", " << difficultyName(rating->estimated_difficulty)
                   << (rating->requires_backtracking ? ", backtracking" : "") << ")\n";
     } else {
         std::cout << "  Rating:          " << std::fixed << std::setprecision(1) << rate_ms << "ms (FAILED)\n";

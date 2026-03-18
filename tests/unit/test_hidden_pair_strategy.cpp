@@ -36,9 +36,9 @@ TEST_CASE("HiddenPairStrategy - Interface Implementation", "[hidden_pair]") {
         REQUIRE(strategy.getName() == "Hidden Pair");
     }
 
-    SECTION("getDifficultyPoints returns 70") {
-        REQUIRE(strategy.getDifficultyPoints() == 70);
-        REQUIRE(strategy.getDifficultyPoints() == getTechniquePoints(SolvingTechnique::HiddenPair));
+    SECTION("getDifficultyRating returns 70") {
+        REQUIRE(strategy.getDifficultyRating() == 3.4);
+        REQUIRE(strategy.getDifficultyRating() == getTechniqueRating(SolvingTechnique::HiddenPair));
     }
 }
 
@@ -56,7 +56,7 @@ TEST_CASE("HiddenPairStrategy - Finds Hidden Pair", "[hidden_pair]") {
         if (step.has_value()) {
             REQUIRE(step->type == SolveStepType::Elimination);
             REQUIRE(step->technique == SolvingTechnique::HiddenPair);
-            REQUIRE(step->points == 70);
+            REQUIRE(step->rating == 3.4);
             REQUIRE_FALSE(step->explanation.empty());
             REQUIRE_FALSE(step->eliminations.empty());
         }
@@ -76,7 +76,7 @@ TEST_CASE("HiddenPairStrategy - Board Analysis", "[hidden_pair]") {
         if (step.has_value()) {
             REQUIRE(step->type == SolveStepType::Elimination);
             REQUIRE(step->technique == SolvingTechnique::HiddenPair);
-            REQUIRE(step->points == 70);
+            REQUIRE(step->rating == 3.4);
             REQUIRE_FALSE(step->explanation.empty());
         }
         // Test passes whether pattern found or not - key is algorithm executed
@@ -103,7 +103,7 @@ TEST_CASE("HiddenPairStrategy - Polymorphic Usage", "[hidden_pair]") {
         auto step = strategy->findStep(board, state);
 
         REQUIRE(strategy->getTechnique() == SolvingTechnique::HiddenPair);
-        REQUIRE(strategy->getDifficultyPoints() == 70);
+        REQUIRE(strategy->getDifficultyRating() == 3.4);
     }
 }
 

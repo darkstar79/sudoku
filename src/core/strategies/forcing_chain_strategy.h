@@ -73,8 +73,8 @@ public:
         return "Forcing Chain";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::ForcingChain);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::ForcingChain);
     }
 
 private:
@@ -529,7 +529,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::ForcingChain),
+            .rating = getTechniqueRating(SolvingTechnique::ForcingChain),
             .explanation_data = {.positions = {source, eliminations[0].position}, .values = {eliminations[0].value}}};
     }
 
@@ -546,7 +546,7 @@ private:
                          .value = value,
                          .eliminations = {},
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::ForcingChain),
+                         .rating = getTechniqueRating(SolvingTechnique::ForcingChain),
                          .explanation_data = {.positions = {source, target}, .values = {value}}};
     }
 };

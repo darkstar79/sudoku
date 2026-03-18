@@ -34,7 +34,7 @@ TEST_CASE("EmptyRectangleStrategy - Metadata", "[empty_rectangle]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::EmptyRectangle);
     REQUIRE(strategy.getName() == "Empty Rectangle");
-    REQUIRE(strategy.getDifficultyPoints() == 400);
+    REQUIRE(strategy.getDifficultyRating() == 4.5);
 }
 
 TEST_CASE("EmptyRectangleStrategy - Returns nullopt for complete board", "[empty_rectangle]") {
@@ -86,7 +86,7 @@ TEST_CASE("EmptyRectangleStrategy - Row conjugate pair detection", "[empty_recta
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::EmptyRectangle);
-    REQUIRE(result->points == 400);
+    REQUIRE(result->rating == 4.5);
     REQUIRE(result->eliminations.size() == 1);
     REQUIRE(result->eliminations[0].value == 5);
 }
@@ -190,7 +190,7 @@ TEST_CASE("EmptyRectangleStrategy - Col conjugate pair detection", "[empty_recta
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::EmptyRectangle);
-    REQUIRE(result->points == 400);
+    REQUIRE(result->rating == 4.5);
     REQUIRE(result->explanation_data.region_type == RegionType::Col);
     REQUIRE(result->eliminations.size() == 1);
     REQUIRE(result->eliminations[0].value == 5);
@@ -201,7 +201,7 @@ TEST_CASE("EmptyRectangleStrategy - Can be used through ISolvingStrategy interfa
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::EmptyRectangle);
     REQUIRE(strategy->getName() == "Empty Rectangle");
-    REQUIRE(strategy->getDifficultyPoints() == 400);
+    REQUIRE(strategy->getDifficultyRating() == 4.5);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

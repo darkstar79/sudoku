@@ -21,12 +21,12 @@
 #include "core/i_statistics_manager.h"
 
 #include <array>
-#include <climits>
 #include <cstdint>
 #include <ctime>
 #include <exception>
 #include <fstream>
 #include <iomanip>
+#include <limits>
 #include <string_view>
 
 #include <fmt/base.h>
@@ -128,13 +128,13 @@ deserializeStatsFromYaml(const std::filesystem::path& file_path) {
                         stats.average_times[i] = std::chrono::milliseconds(diff_node["average_time"].as<long long>());
                     }
                     if (diff_node["average_rating"]) {
-                        stats.average_ratings[i] = diff_node["average_rating"].as<int>();
+                        stats.average_ratings[i] = diff_node["average_rating"].as<double>();
                     }
                     if (diff_node["min_rating"]) {
-                        stats.min_ratings[i] = diff_node["min_rating"].as<int>();
+                        stats.min_ratings[i] = diff_node["min_rating"].as<double>();
                     }
                     if (diff_node["max_rating"]) {
-                        stats.max_ratings[i] = diff_node["max_rating"].as<int>();
+                        stats.max_ratings[i] = diff_node["max_rating"].as<double>();
                     }
                 }
             }
@@ -247,7 +247,7 @@ deserializeGameStatsFromYaml(const std::filesystem::path& file_path) {
                 stats.difficulty = static_cast<Difficulty>(session_node["difficulty"].as<int>());
             }
             if (session_node["puzzle_rating"]) {
-                stats.puzzle_rating = session_node["puzzle_rating"].as<int>();
+                stats.puzzle_rating = session_node["puzzle_rating"].as<double>();
             }
             if (session_node["start_time"]) {
                 auto seconds = session_node["start_time"].as<long long>();
@@ -330,7 +330,7 @@ std::expected<void, StatisticsError> exportAggregateStatsCsv(const AggregateStat
 
             // Rating statistics
             file << stats.average_ratings[i] << ",";
-            file << (stats.min_ratings[i] == INT_MAX ? 0 : stats.min_ratings[i]) << ",";
+            file << (stats.min_ratings[i] >= std::numeric_limits<double>::max() ? 0.0 : stats.min_ratings[i]) << ",";
             file << stats.max_ratings[i] << "\n";
         }
 

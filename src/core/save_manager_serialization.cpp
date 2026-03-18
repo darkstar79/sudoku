@@ -385,7 +385,7 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
 
         // Puzzle rating (backward-compatible: defaults to 0/empty if missing)
         if (root["puzzle_rating"]) {
-            game.puzzle_rating = root["puzzle_rating"].as<int>();
+            game.puzzle_rating = root["puzzle_rating"].as<double>();
         }
         if (root["puzzle_requires_backtracking"]) {
             game.puzzle_requires_backtracking = root["puzzle_requires_backtracking"].as<bool>();

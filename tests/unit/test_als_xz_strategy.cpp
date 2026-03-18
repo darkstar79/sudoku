@@ -38,7 +38,7 @@ TEST_CASE("ALSxZStrategy - Metadata", "[als_xz]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::ALSxZ);
     REQUIRE(strategy.getName() == "ALS-XZ");
-    REQUIRE(strategy.getDifficultyPoints() == 500);
+    REQUIRE(strategy.getDifficultyRating() == 7.5);
 }
 
 TEST_CASE("ALSxZStrategy - Returns nullopt for complete board", "[als_xz]") {
@@ -83,7 +83,7 @@ TEST_CASE("ALSxZStrategy - Detects ALS-XZ with two 2-cell ALSs", "[als_xz]") {
     REQUIRE(result.has_value());
     REQUIRE(result->technique == SolvingTechnique::ALSxZ);
     REQUIRE(result->type == SolveStepType::Elimination);
-    REQUIRE(result->points == 500);
+    REQUIRE(result->rating == 7.5);
 
     bool found_target = false;
     for (const auto& elim : result->eliminations) {
@@ -409,7 +409,7 @@ TEST_CASE("ALSxZStrategy - Can be used through ISolvingStrategy interface", "[al
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::ALSxZ);
     REQUIRE(strategy->getName() == "ALS-XZ");
-    REQUIRE(strategy->getDifficultyPoints() == 500);
+    REQUIRE(strategy->getDifficultyRating() == 7.5);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

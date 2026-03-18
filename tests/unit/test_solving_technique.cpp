@@ -96,60 +96,56 @@ TEST_CASE("SolvingTechnique - getTechniqueName()", "[solving_technique]") {
     }
 }
 
-TEST_CASE("SolvingTechnique - getTechniquePoints()", "[solving_technique]") {
-    SECTION("Returns correct Sudoku Explainer point values") {
-        // All technique point values (per Sudoku Explainer scale)
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedSingle) == 10);
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenSingle) == 15);
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedPair) == 50);
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedTriple) == 60);
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenPair) == 70);
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenTriple) == 90);
-        REQUIRE(getTechniquePoints(SolvingTechnique::PointingPair) == 100);
-        REQUIRE(getTechniquePoints(SolvingTechnique::BoxLineReduction) == 100);
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedQuad) == 120);
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenQuad) == 150);
-        REQUIRE(getTechniquePoints(SolvingTechnique::XWing) == 200);
-        REQUIRE(getTechniquePoints(SolvingTechnique::XYWing) == 200);
+TEST_CASE("SolvingTechnique - getTechniqueRating()", "[solving_technique]") {
+    SECTION("Returns correct Sudoku Explainer ratings") {
+        // SE ratings (per Sudoku Explainer v1.2.1 scale)
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenSingle) == 1.5);
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedSingle) == 2.3);
+        REQUIRE(getTechniqueRating(SolvingTechnique::PointingPair) == 2.6);
+        REQUIRE(getTechniqueRating(SolvingTechnique::BoxLineReduction) == 2.8);
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedPair) == 3.0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::XWing) == 3.2);
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedTriple) == 3.6);
+        REQUIRE(getTechniqueRating(SolvingTechnique::Swordfish) == 3.8);
+        REQUIRE(getTechniqueRating(SolvingTechnique::XYWing) == 4.2);
+        REQUIRE(getTechniqueRating(SolvingTechnique::XYZWing) == 4.4);
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedQuad) == 5.0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenQuad) == 5.4);
+        REQUIRE(getTechniqueRating(SolvingTechnique::BUG) == 5.6);
+        REQUIRE(getTechniqueRating(SolvingTechnique::ForcingChain) == 7.5);
     }
 
     SECTION("Backtracking is rated as harder than logical strategies") {
-        // Backtracking means no logical technique could solve this step
-        REQUIRE(getTechniquePoints(SolvingTechnique::Backtracking) == 750);
+        REQUIRE(getTechniqueRating(SolvingTechnique::Backtracking) == 12.0);
     }
 
-    SECTION("Point values are ordered by difficulty") {
-        // Verify techniques are ordered easiest to hardest
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedSingle) < getTechniquePoints(SolvingTechnique::HiddenSingle));
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenSingle) < getTechniquePoints(SolvingTechnique::NakedPair));
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedPair) < getTechniquePoints(SolvingTechnique::NakedTriple));
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedTriple) < getTechniquePoints(SolvingTechnique::HiddenPair));
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenPair) < getTechniquePoints(SolvingTechnique::HiddenTriple));
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenTriple) <
-                getTechniquePoints(SolvingTechnique::PointingPair));
-        REQUIRE(getTechniquePoints(SolvingTechnique::PointingPair) ==
-                getTechniquePoints(SolvingTechnique::BoxLineReduction));
-        REQUIRE(getTechniquePoints(SolvingTechnique::BoxLineReduction) <
-                getTechniquePoints(SolvingTechnique::NakedQuad));
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedQuad) < getTechniquePoints(SolvingTechnique::HiddenQuad));
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenQuad) < getTechniquePoints(SolvingTechnique::XWing));
-        REQUIRE(getTechniquePoints(SolvingTechnique::XWing) == getTechniquePoints(SolvingTechnique::XYWing));
+    SECTION("SE ratings follow expected ordering for basic techniques") {
+        // SE ordering differs from the old points — HiddenSingle is easier than NakedSingle
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenSingle) < getTechniqueRating(SolvingTechnique::NakedSingle));
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedSingle) < getTechniqueRating(SolvingTechnique::PointingPair));
+        REQUIRE(getTechniqueRating(SolvingTechnique::PointingPair) <
+                getTechniqueRating(SolvingTechnique::BoxLineReduction));
+        REQUIRE(getTechniqueRating(SolvingTechnique::BoxLineReduction) <
+                getTechniqueRating(SolvingTechnique::NakedPair));
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedPair) < getTechniqueRating(SolvingTechnique::XWing));
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedQuad) < getTechniqueRating(SolvingTechnique::HiddenQuad));
+        REQUIRE(getTechniqueRating(SolvingTechnique::XWing) < getTechniqueRating(SolvingTechnique::XYWing));
     }
 
     SECTION("All point values are non-negative") {
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedSingle) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenSingle) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedPair) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedTriple) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenPair) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenTriple) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::PointingPair) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::BoxLineReduction) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::NakedQuad) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::HiddenQuad) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::XWing) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::XYWing) >= 0);
-        REQUIRE(getTechniquePoints(SolvingTechnique::Backtracking) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedSingle) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenSingle) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedPair) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedTriple) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenPair) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenTriple) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::PointingPair) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::BoxLineReduction) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedQuad) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenQuad) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::XWing) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::XYWing) >= 0);
+        REQUIRE(getTechniqueRating(SolvingTechnique::Backtracking) >= 0);
     }
 }
 
@@ -160,9 +156,9 @@ TEST_CASE("SolvingTechnique - Helper Functions are Constexpr", "[solving_techniq
         REQUIRE(name == "Naked Single");
     }
 
-    SECTION("getTechniquePoints() is constexpr") {
+    SECTION("getTechniqueRating() is constexpr") {
         // Verify function can be evaluated at compile time
-        constexpr int points = getTechniquePoints(SolvingTechnique::NakedSingle);
-        REQUIRE(points == 10);
+        constexpr double rating = getTechniqueRating(SolvingTechnique::NakedSingle);
+        REQUIRE(rating == 2.3);
     }
 }

@@ -59,8 +59,8 @@ public:
         return "WXYZ-Wing";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::WXYZWing);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::WXYZWing);
     }
 
 private:
@@ -166,7 +166,7 @@ private:
                                          .value = 0,
                                          .eliminations = eliminations,
                                          .explanation = explanation,
-                                         .points = getTechniquePoints(SolvingTechnique::WXYZWing),
+                                         .rating = getTechniqueRating(SolvingTechnique::WXYZWing),
                                          .explanation_data = {.positions = {pivot, w1, w2, w3},
                                                               .values = {z_value},
                                                               .position_roles = {CellRole::Pivot, CellRole::Wing,

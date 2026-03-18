@@ -24,52 +24,52 @@
 
 namespace sudoku::core {
 
-/// Sudoku solving techniques ordered by difficulty
-/// Points based on Sudoku Explainer rating scale
+/// Sudoku solving techniques ordered by difficulty.
+/// Ratings based on the Sudoku Explainer (SE) scale by Nicolas Juillerat.
 enum class SolvingTechnique : uint8_t {
-    NakedSingle = 0,       ///< Only one candidate in cell (10 points)
-    HiddenSingle = 1,      ///< Value can only appear in one cell in region (15 points)
-    NakedPair = 2,         ///< Two cells with same two candidates (50 points)
-    NakedTriple = 3,       ///< Three cells with same three candidates (60 points)
-    HiddenPair = 4,        ///< Two values confined to two cells in region (70 points)
-    HiddenTriple = 5,      ///< Three values confined to three cells in region (90 points)
-    PointingPair = 6,      ///< Candidate in box confined to one row/col → eliminate from rest of row/col (100 points)
-    BoxLineReduction = 7,  ///< Candidate in row/col confined to one box → eliminate from rest of box (100 points)
-    NakedQuad = 8,         ///< Four cells with same four candidates (120 points)
-    HiddenQuad = 9,        ///< Four values confined to four cells in region (150 points)
-    XWing = 10,            ///< Candidate in 2 rows appears in same 2 cols → eliminate from cols (200 points)
-    XYWing = 11,           ///< Pivot+wings pattern eliminates shared candidate (200 points)
-    Swordfish = 12,        ///< Candidate in 3 rows appears in same 3 cols → eliminate from cols (250 points)
-    Skyscraper = 13,       ///< Two conjugate pairs sharing one endpoint (250 points)
-    TwoStringKite = 14,    ///< Row+column conjugate pairs connected through box (250 points)
-    XYZWing = 15,          ///< Pivot(3 cands)+wings eliminate shared candidate (280 points)
-    UniqueRectangle = 16,  ///< Avoid deadly pattern in rectangle across 2 boxes (300 points)
-    WWing = 17,            ///< Two same bivalue cells connected by strong link (300 points)
-    SimpleColoring = 18,   ///< Single-digit conjugate chain coloring (350 points)
-    FinnedXWing = 19,      ///< X-Wing with extra candidate cell (fin) (350 points)
-    RemotePairs = 20,      ///< Chain of bivalue cells with same pair (350 points)
-    BUG = 21,              ///< Bivalue Universal Grave — single trivalue cell placement (350 points)
-    Jellyfish = 22,        ///< 4x4 fish pattern (400 points)
-    FinnedSwordfish = 23,  ///< Swordfish with extra candidate cell (fin) (400 points)
-    EmptyRectangle = 24,   ///< Single-digit chain through box intersection (400 points)
-    WXYZWing = 25,         ///< 4-cell wing pattern eliminating shared candidate (400 points)
-    FinnedJellyfish = 26,  ///< 4x4 fish with extra fin candidate (450 points)
-    XYChain = 27,          ///< Chain of bivalue cells with alternating shared values (450 points)
-    MultiColoring = 28,    ///< Cross-cluster single-digit coloring (400 points)
-    ALSxZ = 29,            ///< Almost Locked Set XZ-rule (500 points)
-    SueDeCoq = 30,         ///< Two-Sector Disjoint Subset (500 points)
-    ForcingChain = 31,     ///< Cell forcing chains — assume each candidate, propagate (550 points)
-    NiceLoop = 32,         ///< Alternating Inference Chains (600 points)
-    XCycles = 33,          ///< Single-digit alternating chain cycles (350 points)
-    ThreeDMedusa = 34,     ///< Multi-digit coloring on (cell,digit) pairs (400 points)
-    HiddenUniqueRectangle = 35,  ///< Hidden deadly pattern in rectangle (350 points)
-    AvoidableRectangle = 36,     ///< Deadly pattern using given/solved distinction (350 points)
-    ALSXYWing = 37,              ///< Three ALSs linked by two restricted commons (550 points)
-    DeathBlossom = 38,           ///< Stem cell + petal ALSs with common elimination (550 points)
-    VWXYZWing = 39,              ///< 5-cell wing pattern with 5 candidate values (450 points)
-    FrankenFish = 40,            ///< Fish patterns with mixed row/col/box base+cover sets (450 points)
-    GroupedXCycles = 41,         ///< X-Cycles with grouped nodes (pointing pairs) (450 points)
-    Backtracking = 255           ///< Not a logical technique - fallback solver (0 points)
+    NakedSingle = 0,             ///< Only one candidate in cell (SE 2.3)
+    HiddenSingle = 1,            ///< Value can only appear in one cell in region (SE 1.5)
+    NakedPair = 2,               ///< Two cells with same two candidates (SE 3.0)
+    NakedTriple = 3,             ///< Three cells with same three candidates (SE 3.6)
+    HiddenPair = 4,              ///< Two values confined to two cells in region (SE 3.4)
+    HiddenTriple = 5,            ///< Three values confined to three cells in region (SE 4.0)
+    PointingPair = 6,            ///< Candidate in box confined to one row/col → eliminate from rest of row/col (SE 2.6)
+    BoxLineReduction = 7,        ///< Candidate in row/col confined to one box → eliminate from rest of box (SE 2.8)
+    NakedQuad = 8,               ///< Four cells with same four candidates (SE 5.0)
+    HiddenQuad = 9,              ///< Four values confined to four cells in region (SE 5.4)
+    XWing = 10,                  ///< Candidate in 2 rows appears in same 2 cols → eliminate from cols (SE 3.2)
+    XYWing = 11,                 ///< Pivot+wings pattern eliminates shared candidate (SE 4.2)
+    Swordfish = 12,              ///< Candidate in 3 rows appears in same 3 cols → eliminate from cols (SE 3.8)
+    Skyscraper = 13,             ///< Two conjugate pairs sharing one endpoint (SE 4.0)
+    TwoStringKite = 14,          ///< Row+column conjugate pairs connected through box (SE 4.1)
+    XYZWing = 15,                ///< Pivot(3 cands)+wings eliminate shared candidate (SE 4.4)
+    UniqueRectangle = 16,        ///< Avoid deadly pattern in rectangle across 2 boxes (SE 4.5)
+    WWing = 17,                  ///< Two same bivalue cells connected by strong link (SE 4.4)
+    SimpleColoring = 18,         ///< Single-digit conjugate chain coloring (SE 4.0)
+    FinnedXWing = 19,            ///< X-Wing with extra candidate cell (fin) (SE 3.4)
+    RemotePairs = 20,            ///< Chain of bivalue cells with same pair (SE 4.5)
+    BUG = 21,                    ///< Bivalue Universal Grave — single trivalue cell placement (SE 5.6)
+    Jellyfish = 22,              ///< 4x4 fish pattern (SE 5.2)
+    FinnedSwordfish = 23,        ///< Swordfish with extra candidate cell (fin) (SE 4.0)
+    EmptyRectangle = 24,         ///< Single-digit chain through box intersection (SE 4.5)
+    WXYZWing = 25,               ///< 4-cell wing pattern eliminating shared candidate (SE 4.6)
+    FinnedJellyfish = 26,        ///< 4x4 fish with extra fin candidate (SE 5.4)
+    XYChain = 27,                ///< Chain of bivalue cells with alternating shared values (SE 6.6)
+    MultiColoring = 28,          ///< Cross-cluster single-digit coloring (SE 4.2)
+    ALSxZ = 29,                  ///< Almost Locked Set XZ-rule (SE 7.5)
+    SueDeCoq = 30,               ///< Two-Sector Disjoint Subset (SE 7.5)
+    ForcingChain = 31,           ///< Cell forcing chains — assume each candidate, propagate (SE 7.5)
+    NiceLoop = 32,               ///< Alternating Inference Chains (SE 7.5)
+    XCycles = 33,                ///< Single-digit alternating chain cycles (SE 6.6)
+    ThreeDMedusa = 34,           ///< Multi-digit coloring on (cell,digit) pairs (SE 4.4)
+    HiddenUniqueRectangle = 35,  ///< Hidden deadly pattern in rectangle (SE 4.8)
+    AvoidableRectangle = 36,     ///< Deadly pattern using given/solved distinction (SE 4.5)
+    ALSXYWing = 37,              ///< Three ALSs linked by two restricted commons (SE 7.8)
+    DeathBlossom = 38,           ///< Stem cell + petal ALSs with common elimination (SE 8.2)
+    VWXYZWing = 39,              ///< 5-cell wing pattern with 5 candidate values (SE 4.8)
+    FrankenFish = 40,            ///< Fish patterns with mixed row/col/box base+cover sets (SE 4.2)
+    GroupedXCycles = 41,         ///< X-Cycles with grouped nodes (pointing pairs) (SE 6.8)
+    Backtracking = 255           ///< Not a logical technique - fallback solver (SE 12.0)
 };
 
 /// Returns human-readable name for technique
@@ -168,82 +168,103 @@ enum class SolvingTechnique : uint8_t {
     return "Unknown Technique";
 }
 
-/// Returns Sudoku Explainer difficulty points for technique
+/// Returns Sudoku Explainer (SE) difficulty rating for technique.
+/// Ratings based on the SE scale by Nicolas Juillerat (Sudoku Explainer v1.2.1).
+/// See: https://github.com/SudokuMonster/SukakuExplainer/wiki/Difficulty-ratings-in-Sudoku-Explainer-v1.2.1
+/// Techniques without a direct SE equivalent use ratings consistent with the SE scale.
 /// @param technique The solving technique
-/// @return Difficulty points (0 for Backtracking, >0 for logical techniques)
-[[nodiscard]] constexpr int getTechniquePoints(SolvingTechnique technique) {
+/// @return SE difficulty rating (0.0 for unknown, 1.0-12.0 for known techniques)
+[[nodiscard]] constexpr double getTechniqueRating(SolvingTechnique technique) {
     using enum SolvingTechnique;
     switch (technique) {
-        case NakedSingle:
-            return 10;
         case HiddenSingle:
-            return 15;
-        case NakedPair:
-            return 50;
-        case NakedTriple:
-            return 60;
-        case HiddenPair:
-            return 70;
-        case HiddenTriple:
-            return 90;
+            return 1.5;  // SE: 1.2 (block) / 1.5 (row/col)
+        case NakedSingle:
+            return 2.3;  // SE v1.2.1
         case PointingPair:
+            return 2.6;  // SE "Pointing"
         case BoxLineReduction:
-            return 100;
-        case NakedQuad:
-            return 120;
-        case HiddenQuad:
-            return 150;
+            return 2.8;  // SE "Claiming"
+        case NakedPair:
+            return 3.0;  // SE v1.2.1
         case XWing:
-        case XYWing:
-            return 200;
-        case Swordfish:
-        case Skyscraper:
-        case TwoStringKite:
-            return 250;
-        case XYZWing:
-            return 280;
-        case UniqueRectangle:
-        case WWing:
-            return 300;
-        case SimpleColoring:
+            return 3.2;  // SE v1.2.1
         case FinnedXWing:
-        case RemotePairs:
-        case BUG:
-            return 350;
-        case Jellyfish:
+            return 3.4;  // SE-compatible: X-Wing + fin overhead
+        case HiddenPair:
+            return 3.4;  // SE v1.2.1
+        case NakedTriple:
+            return 3.6;  // SE v1.2.1
+        case Swordfish:
+            return 3.8;  // SE v1.2.1
+        case HiddenTriple:
+            return 4.0;  // SE v1.2.1
+        case SimpleColoring:
+            return 4.0;  // SE-compatible: simple single-digit chain
+        case Skyscraper:
+            return 4.0;  // SE-compatible: Turbot Fish equivalent
         case FinnedSwordfish:
-        case EmptyRectangle:
-        case WXYZWing:
+            return 4.0;  // SE-compatible: Swordfish + fin
+        case TwoStringKite:
+            return 4.1;  // SE-compatible: slightly harder than Skyscraper
         case MultiColoring:
-            return 400;
-        case FinnedJellyfish:
-        case XYChain:
-            return 450;
-        case ALSxZ:
-        case SueDeCoq:
-            return 500;
-        case ForcingChain:
-            return 550;
-        case NiceLoop:
-            return 600;
-        case XCycles:
-            return 350;
-        case ThreeDMedusa:
-            return 400;
-        case HiddenUniqueRectangle:
-        case AvoidableRectangle:
-            return 350;
-        case ALSXYWing:
-        case DeathBlossom:
-            return 550;
-        case VWXYZWing:
+            return 4.2;  // SE-compatible: cross-cluster coloring
         case FrankenFish:
+            return 4.2;  // SE-compatible: mixed base/cover fish
+        case XYWing:
+            return 4.2;  // SE v1.2.1
+        case ThreeDMedusa:
+            return 4.4;  // SE-compatible: multi-digit coloring
+        case WWing:
+            return 4.4;  // SE-compatible: XYZ-Wing equivalent
+        case XYZWing:
+            return 4.4;  // SE v1.2.1
+        case UniqueRectangle:
+            return 4.5;  // SE v1.2.1 (Type 1; Types 2-4 up to 5.0)
+        case AvoidableRectangle:
+            return 4.5;  // SE-compatible: UR Type 1 equivalent
+        case EmptyRectangle:
+            return 4.5;  // SE-compatible: single-digit intersection
+        case RemotePairs:
+            return 4.5;  // SE-compatible: chaining technique
+        case WXYZWing:
+            return 4.6;  // SE-compatible: 4-cell wing
+        case HiddenUniqueRectangle:
+            return 4.8;  // SE-compatible: harder UR variant
+        case VWXYZWing:
+            return 4.8;  // SE-compatible: 5-cell wing
+        case NakedQuad:
+            return 5.0;  // SE v1.2.1
+        case Jellyfish:
+            return 5.2;  // SE v1.2.1
+        case HiddenQuad:
+            return 5.4;  // SE v1.2.1
+        case FinnedJellyfish:
+            return 5.4;  // SE-compatible: Jellyfish + fin
+        case BUG:
+            return 5.6;  // SE v1.2.1
+        case XCycles:
+            return 6.6;  // SE: X-chains/X-cycles (6.5-6.9)
+        case XYChain:
+            return 6.6;  // SE: Y-cycles (6.6-7.0)
         case GroupedXCycles:
-            return 450;
+            return 6.8;  // SE-compatible: grouped nodes add complexity
+        case ALSxZ:
+            return 7.5;  // SE-compatible: forcing chain level
+        case SueDeCoq:
+            return 7.5;  // SE-compatible: complex disjoint subsets
+        case ForcingChain:
+            return 7.5;  // SE v1.2.1 (7.1-7.5 range)
+        case NiceLoop:
+            return 7.5;  // SE-compatible: AIC equivalent
+        case ALSXYWing:
+            return 7.8;  // SE-compatible: three ALS linked
+        case DeathBlossom:
+            return 8.2;  // SE-compatible: region forcing chain level
         case Backtracking:
-            return 750;  // Trial-and-error: harder than all logical strategies
+            return 12.0;  // Maximum: brute force / trial-and-error
     }
-    return 0;
+    return 0.0;
 }
 
 /// Returns localized technique name using the localization manager.

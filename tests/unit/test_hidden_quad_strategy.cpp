@@ -28,7 +28,7 @@ TEST_CASE("HiddenQuadStrategy - Metadata", "[hidden_quad]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::HiddenQuad);
     REQUIRE(strategy.getName() == "Hidden Quad");
-    REQUIRE(strategy.getDifficultyPoints() == 150);
+    REQUIRE(strategy.getDifficultyRating() == 5.4);
 }
 
 TEST_CASE("HiddenQuadStrategy - Returns nullopt for complete board", "[hidden_quad]") {
@@ -83,7 +83,7 @@ TEST_CASE("HiddenQuadStrategy - Finds hidden quad with manual elimination setup"
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::HiddenQuad);
-    REQUIRE(result->points == 150);
+    REQUIRE(result->rating == 5.4);
     REQUIRE_FALSE(result->eliminations.empty());
 
     // All eliminations should remove value 5 from the quad cells (0,0)-(0,3)

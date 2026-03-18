@@ -59,8 +59,8 @@ public:
         return "Naked Triple";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::NakedTriple);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::NakedTriple);
     }
 
 private:
@@ -124,7 +124,7 @@ private:
                                 .value = 0,        // Not used for eliminations
                                 .eliminations = eliminations,
                                 .explanation = explanation,
-                                .points = getTechniquePoints(SolvingTechnique::NakedTriple),
+                                .rating = getTechniqueRating(SolvingTechnique::NakedTriple),
                                 .explanation_data = {.positions = {pos1, pos2, pos3},
                                                      .values = {triple_values[0], triple_values[1], triple_values[2]},
                                                      .region_type = region_type,

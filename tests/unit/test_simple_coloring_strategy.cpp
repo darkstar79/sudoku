@@ -34,7 +34,7 @@ TEST_CASE("SimpleColoringStrategy - Metadata", "[simple_coloring]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::SimpleColoring);
     REQUIRE(strategy.getName() == "Simple Coloring");
-    REQUIRE(strategy.getDifficultyPoints() == 350);
+    REQUIRE(strategy.getDifficultyRating() == 4.0);
 }
 
 TEST_CASE("SimpleColoringStrategy - Returns nullopt for complete board", "[simple_coloring]") {
@@ -129,7 +129,7 @@ TEST_CASE("SimpleColoringStrategy - Rule 2 exclusion detection", "[simple_colori
 
         if (result.has_value() && result->technique == SolvingTechnique::SimpleColoring) {
             REQUIRE(result->type == SolveStepType::Elimination);
-            REQUIRE(result->points == 350);
+            REQUIRE(result->rating == 4.0);
             REQUIRE_FALSE(result->eliminations.empty());
 
             for (const auto& elim : result->eliminations) {
@@ -179,7 +179,7 @@ TEST_CASE("SimpleColoringStrategy - Rule 1 contradiction detection", "[simple_co
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::SimpleColoring);
-    REQUIRE(result->points == 350);
+    REQUIRE(result->rating == 4.0);
     REQUIRE_FALSE(result->eliminations.empty());
     for (const auto& elim : result->eliminations) {
         REQUIRE(elim.value == 5);
@@ -218,7 +218,7 @@ TEST_CASE("SimpleColoringStrategy - Rule 2 exclusion with outside cell", "[simpl
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::SimpleColoring);
-    REQUIRE(result->points == 350);
+    REQUIRE(result->rating == 4.0);
     REQUIRE_FALSE(result->eliminations.empty());
     for (const auto& elim : result->eliminations) {
         REQUIRE(elim.value == 5);
@@ -231,7 +231,7 @@ TEST_CASE("SimpleColoringStrategy - Can be used through ISolvingStrategy interfa
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::SimpleColoring);
     REQUIRE(strategy->getName() == "Simple Coloring");
-    REQUIRE(strategy->getDifficultyPoints() == 350);
+    REQUIRE(strategy->getDifficultyRating() == 4.0);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

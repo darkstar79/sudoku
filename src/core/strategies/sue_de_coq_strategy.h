@@ -69,8 +69,8 @@ public:
         return "Sue de Coq";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::SueDeCoq);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::SueDeCoq);
     }
 
 private:
@@ -242,7 +242,7 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::SueDeCoq),
+                             .rating = getTechniqueRating(SolvingTechnique::SueDeCoq),
                              .explanation_data = {.positions = inter_cells,
                                                   .values = {},
                                                   .region_type = is_row ? RegionType::Row : RegionType::Col,

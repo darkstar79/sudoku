@@ -28,7 +28,7 @@ TEST_CASE("PointingPairStrategy - Metadata", "[pointing_pair]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::PointingPair);
     REQUIRE(strategy.getName() == "Pointing Pair");
-    REQUIRE(strategy.getDifficultyPoints() == 100);
+    REQUIRE(strategy.getDifficultyRating() == 2.6);
 }
 
 TEST_CASE("PointingPairStrategy - Finds pointing pair in row", "[pointing_pair]") {
@@ -56,7 +56,7 @@ TEST_CASE("PointingPairStrategy - Finds pointing pair in row", "[pointing_pair]"
     if (result.has_value()) {
         REQUIRE(result->type == SolveStepType::Elimination);
         REQUIRE(result->technique == SolvingTechnique::PointingPair);
-        REQUIRE(result->points == 100);
+        REQUIRE(result->rating == 2.6);
         REQUIRE_FALSE(result->eliminations.empty());
 
         // All eliminations should be outside the box

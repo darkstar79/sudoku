@@ -59,8 +59,8 @@ public:
         return "Simple Coloring";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::SimpleColoring);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::SimpleColoring);
     }
 
 private:
@@ -203,7 +203,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::SimpleColoring),
+            .rating = getTechniqueRating(SolvingTechnique::SimpleColoring),
             .explanation_data = {.positions = positions,
                                  .values = {value},
                                  .technique_subtype = 0,  // 0 = contradiction
@@ -275,7 +275,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::SimpleColoring),
+                         .rating = getTechniqueRating(SolvingTechnique::SimpleColoring),
                          .explanation_data = {.positions = {eliminations[0].position},
                                               .values = {value},
                                               .technique_subtype = 1,  // 1 = exclusion

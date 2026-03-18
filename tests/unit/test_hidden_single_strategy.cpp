@@ -58,9 +58,9 @@ TEST_CASE("HiddenSingleStrategy - Interface Implementation", "[hidden_single]") 
         REQUIRE(strategy.getName() == "Hidden Single");
     }
 
-    SECTION("getDifficultyPoints returns 15") {
-        REQUIRE(strategy.getDifficultyPoints() == 15);
-        REQUIRE(strategy.getDifficultyPoints() == getTechniquePoints(SolvingTechnique::HiddenSingle));
+    SECTION("getDifficultyRating returns 15") {
+        REQUIRE(strategy.getDifficultyRating() == 1.5);
+        REQUIRE(strategy.getDifficultyRating() == getTechniqueRating(SolvingTechnique::HiddenSingle));
     }
 }
 
@@ -79,7 +79,7 @@ TEST_CASE("HiddenSingleStrategy - Finds Hidden Single", "[hidden_single]") {
         REQUIRE(step->position.row == 0);
         REQUIRE(step->position.col == 0);
         REQUIRE(step->value == 5);
-        REQUIRE(step->points == 15);
+        REQUIRE(step->rating == 1.5);
         REQUIRE_FALSE(step->explanation.empty());
     }
 
@@ -207,7 +207,7 @@ TEST_CASE("HiddenSingleStrategy - Polymorphic Usage", "[hidden_single]") {
 
         REQUIRE(step.has_value());
         REQUIRE(strategy->getTechnique() == SolvingTechnique::HiddenSingle);
-        REQUIRE(strategy->getDifficultyPoints() == 15);
+        REQUIRE(strategy->getDifficultyRating() == 1.5);
     }
 }
 

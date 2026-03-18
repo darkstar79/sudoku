@@ -118,8 +118,8 @@ public:
         return "Unique Rectangle";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::UniqueRectangle);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::UniqueRectangle);
     }
 
 private:
@@ -286,7 +286,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::UniqueRectangle),
+                         .rating = getTechniqueRating(SolvingTechnique::UniqueRectangle),
                          .explanation_data = {.positions = all_positions,
                                               .values = {val_a, val_b},
                                               .position_roles = std::move(ur_roles)}};
@@ -371,7 +371,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::UniqueRectangle),
+                         .rating = getTechniqueRating(SolvingTechnique::UniqueRectangle),
                          .explanation_data = {.positions = all_positions,
                                               .values = {val_a, val_b, val_c},
                                               .secondary_region_type = unit_type,
@@ -473,7 +473,7 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::UniqueRectangle),
+                             .rating = getTechniqueRating(SolvingTechnique::UniqueRectangle),
                              .explanation_data = {.positions = all_positions,
                                                   .values = {val_a, val_b},
                                                   .secondary_region_type = unit_type,
@@ -566,7 +566,7 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::UniqueRectangle),
+                             .rating = getTechniqueRating(SolvingTechnique::UniqueRectangle),
                              .explanation_data = {.positions = all_positions,
                                                   .values = {val_a, val_b, strong_val, other_val},
                                                   .secondary_region_type = unit_type,

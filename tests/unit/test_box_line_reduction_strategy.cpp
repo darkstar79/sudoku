@@ -28,7 +28,7 @@ TEST_CASE("BoxLineReductionStrategy - Metadata", "[box_line_reduction]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::BoxLineReduction);
     REQUIRE(strategy.getName() == "Box/Line Reduction");
-    REQUIRE(strategy.getDifficultyPoints() == 100);
+    REQUIRE(strategy.getDifficultyRating() == 2.8);
 }
 
 TEST_CASE("BoxLineReductionStrategy - Finds box/line reduction in row", "[box_line_reduction]") {
@@ -53,7 +53,7 @@ TEST_CASE("BoxLineReductionStrategy - Finds box/line reduction in row", "[box_li
     if (result.has_value()) {
         REQUIRE(result->type == SolveStepType::Elimination);
         REQUIRE(result->technique == SolvingTechnique::BoxLineReduction);
-        REQUIRE(result->points == 100);
+        REQUIRE(result->rating == 2.8);
         REQUIRE_FALSE(result->eliminations.empty());
 
         // All eliminations should be in the target box but NOT in the source row

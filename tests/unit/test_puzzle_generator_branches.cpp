@@ -32,10 +32,10 @@ using namespace sudoku::core;
 class MockPuzzleRater : public IPuzzleRater {
 public:
     /// Configure mock to return a successful rating
-    void setRating(int score, Difficulty difficulty, bool requires_backtracking = false) {
+    void setRating(double score, Difficulty difficulty, bool requires_backtracking = false) {
         return_error_ = false;
         rating_ = PuzzleRating{
-            .total_score = score,
+            .se_rating = score,
             .solve_path = {},
             .requires_backtracking = requires_backtracking,
             .estimated_difficulty = difficulty,
@@ -705,7 +705,7 @@ TEST_CASE("PuzzleGenerator - Rater Integration", "[puzzle_generator][rater][bran
 
     SECTION("Successful rating sets puzzle score") {
         // Configure mock to return Easy-range rating
-        mock_rater->setRating(250, Difficulty::Easy);
+        mock_rater->setRating(1.5, Difficulty::Easy);
         PuzzleGenerator generator(mock_rater);
 
         auto result = generator.generatePuzzle(Difficulty::Easy);
@@ -714,7 +714,7 @@ TEST_CASE("PuzzleGenerator - Rater Integration", "[puzzle_generator][rater][bran
         // Rater was called at least once
         REQUIRE(mock_rater->getCallCount() >= 1);
         // Rating should be set on the puzzle
-        REQUIRE(result.value().rating == 250);
+        REQUIRE(result.value().rating == 1.5);
     }
 
     SECTION("Rating failure does not reject puzzle") {
@@ -728,7 +728,7 @@ TEST_CASE("PuzzleGenerator - Rater Integration", "[puzzle_generator][rater][bran
         REQUIRE(result.has_value());
         REQUIRE(mock_rater->getCallCount() >= 1);
         // Rating should remain at default (0) since rating failed
-        REQUIRE(result.value().rating == 0);
+        REQUIRE(result.value().rating == 0.0);
     }
 
     SECTION("Rating with InvalidBoard error does not reject puzzle") {
@@ -738,7 +738,7 @@ TEST_CASE("PuzzleGenerator - Rater Integration", "[puzzle_generator][rater][bran
         auto result = generator.generatePuzzle(Difficulty::Easy);
 
         REQUIRE(result.has_value());
-        REQUIRE(result.value().rating == 0);
+        REQUIRE(result.value().rating == 0.0);
     }
 
     SECTION("Rating with Timeout error does not reject puzzle") {
@@ -748,7 +748,7 @@ TEST_CASE("PuzzleGenerator - Rater Integration", "[puzzle_generator][rater][bran
         auto result = generator.generatePuzzle(Difficulty::Easy);
 
         REQUIRE(result.has_value());
-        REQUIRE(result.value().rating == 0);
+        REQUIRE(result.value().rating == 0.0);
     }
 }
 
@@ -757,7 +757,7 @@ TEST_CASE("PuzzleGenerator - Rater Integration (rating validation)", "[puzzle_ge
 
     SECTION("In-range rating accepted") {
         // Easy range is [0, 750), set rating to 250
-        mock_rater->setRating(250, Difficulty::Easy);
+        mock_rater->setRating(1.5, Difficulty::Easy);
         PuzzleGenerator generator(mock_rater);
 
         GenerationSettings settings;
@@ -769,13 +769,13 @@ TEST_CASE("PuzzleGenerator - Rater Integration (rating validation)", "[puzzle_ge
         auto result = generator.generatePuzzle(settings);
 
         REQUIRE(result.has_value());
-        REQUIRE(result.value().rating == 250);
+        REQUIRE(result.value().rating == 1.5);
     }
 
     SECTION("Out-of-range rating rejected causes retry") {
         // Easy range is [0, 750), but return a Hard-range rating (1300)
         // This forces the generator to retry — with only 2 attempts, generation should fail
-        mock_rater->setRating(1300, Difficulty::Hard);
+        mock_rater->setRating(4.5, Difficulty::Hard);
         PuzzleGenerator generator(mock_rater);
 
         GenerationSettings settings;
@@ -794,7 +794,7 @@ TEST_CASE("PuzzleGenerator - Rater Integration (rating validation)", "[puzzle_ge
 
     SECTION("Rating below min rejected") {
         // Medium range is [750, 1250), return rating of 100 (below min)
-        mock_rater->setRating(100, Difficulty::Easy);
+        mock_rater->setRating(1.5, Difficulty::Easy);
         PuzzleGenerator generator(mock_rater);
 
         GenerationSettings settings;
@@ -812,7 +812,7 @@ TEST_CASE("PuzzleGenerator - Rater Integration (rating validation)", "[puzzle_ge
 
     SECTION("Rating at max boundary rejected") {
         // Easy range is [0, 750), return rating exactly at 750 (>= max)
-        mock_rater->setRating(750, Difficulty::Medium);
+        mock_rater->setRating(3.0, Difficulty::Medium);
         PuzzleGenerator generator(mock_rater);
 
         GenerationSettings settings;
@@ -842,7 +842,7 @@ TEST_CASE("PuzzleGenerator - Rater Integration (rating validation)", "[puzzle_ge
 
         // Should succeed: rating failure skips validation
         REQUIRE(result.has_value());
-        REQUIRE(result.value().rating == 0);
+        REQUIRE(result.value().rating == 0.0);
     }
 }
 
@@ -854,7 +854,7 @@ TEST_CASE("PuzzleGenerator - No Rater (null rater)", "[puzzle_generator][rater][
 
         REQUIRE(result.has_value());
         // Rating should be 0 (default, never set)
-        REQUIRE(result.value().rating == 0);
+        REQUIRE(result.value().rating == 0.0);
     }
 }
 

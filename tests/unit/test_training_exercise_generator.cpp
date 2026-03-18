@@ -62,7 +62,7 @@ const std::vector<SolveStep> CANNED_NAKED_SINGLE_PATH = {
         .value = 1,
         .eliminations = {},
         .explanation = "Naked Single: r9c7 = 1",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
     SolveStep{
@@ -72,7 +72,7 @@ const std::vector<SolveStep> CANNED_NAKED_SINGLE_PATH = {
         .value = 7,
         .eliminations = {},
         .explanation = "Naked Single: r9c8 = 7",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
     SolveStep{
@@ -82,7 +82,7 @@ const std::vector<SolveStep> CANNED_NAKED_SINGLE_PATH = {
         .value = 9,
         .eliminations = {},
         .explanation = "Naked Single: r9c9 = 9",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
 };
@@ -135,7 +135,7 @@ const std::vector<SolveStep> CANNED_NAKED_PAIR_PATH = {
                 Elimination{.position = Position{.row = 8, .col = 8}, .value = 9},
             },
         .explanation = "Naked Pair: {7,9} in r9c8,r9c9 => r9c7 <> 9 (mock)",
-        .points = 50,
+        .rating = 50,
         .explanation_data = {},
     },
     SolveStep{
@@ -145,7 +145,7 @@ const std::vector<SolveStep> CANNED_NAKED_PAIR_PATH = {
         .value = 1,
         .eliminations = {},
         .explanation = "Naked Single: r9c7 = 1",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
     SolveStep{
@@ -155,7 +155,7 @@ const std::vector<SolveStep> CANNED_NAKED_PAIR_PATH = {
         .value = 7,
         .eliminations = {},
         .explanation = "Naked Single: r9c8 = 7",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
     SolveStep{
@@ -165,7 +165,7 @@ const std::vector<SolveStep> CANNED_NAKED_PAIR_PATH = {
         .value = 9,
         .eliminations = {},
         .explanation = "Naked Single: r9c9 = 9",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
 };
@@ -184,7 +184,7 @@ const std::vector<SolveStep> CANNED_COLORING_PATH = {
                 Elimination{.position = Position{.row = 8, .col = 8}, .value = 9},
             },
         .explanation = "Simple Coloring: eliminates 9 from r9c9 (mock)",
-        .points = 350,
+        .rating = 350,
         .explanation_data = {},
     },
     SolveStep{
@@ -194,7 +194,7 @@ const std::vector<SolveStep> CANNED_COLORING_PATH = {
         .value = 1,
         .eliminations = {},
         .explanation = "Naked Single: r9c7 = 1",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
     SolveStep{
@@ -204,7 +204,7 @@ const std::vector<SolveStep> CANNED_COLORING_PATH = {
         .value = 7,
         .eliminations = {},
         .explanation = "Naked Single: r9c8 = 7",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
     SolveStep{
@@ -214,7 +214,7 @@ const std::vector<SolveStep> CANNED_COLORING_PATH = {
         .value = 9,
         .eliminations = {},
         .explanation = "Naked Single: r9c9 = 9",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
 };
@@ -228,7 +228,7 @@ const std::vector<SolveStep> CANNED_FORCING_CHAIN_PATH = {
         .value = 1,
         .eliminations = {},
         .explanation = "Forcing Chain: r9c7 = 1",
-        .points = 550,
+        .rating = 550,
         .explanation_data = {},
     },
     SolveStep{
@@ -238,7 +238,7 @@ const std::vector<SolveStep> CANNED_FORCING_CHAIN_PATH = {
         .value = 7,
         .eliminations = {},
         .explanation = "Naked Single: r9c8 = 7",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
     SolveStep{
@@ -248,7 +248,7 @@ const std::vector<SolveStep> CANNED_FORCING_CHAIN_PATH = {
         .value = 9,
         .eliminations = {},
         .explanation = "Naked Single: r9c9 = 9",
-        .points = 10,
+        .rating = 10,
         .explanation_data = {},
     },
 };
@@ -721,7 +721,7 @@ TEST_CASE("TrainingExerciseGenerator - XWing exercises cover Hard difficulty ran
             .value = 0,
             .eliminations = {Elimination{.position = Position{.row = 8, .col = 8}, .value = 9}},
             .explanation = "X-Wing: mock",
-            .points = 200,
+            .rating = 200,
             .explanation_data = {},
         },
         SolveStep{
@@ -731,7 +731,7 @@ TEST_CASE("TrainingExerciseGenerator - XWing exercises cover Hard difficulty ran
             .value = 1,
             .eliminations = {},
             .explanation = "Naked Single: r9c7 = 1",
-            .points = 10,
+            .rating = 10,
             .explanation_data = {},
         },
         SolveStep{
@@ -741,7 +741,7 @@ TEST_CASE("TrainingExerciseGenerator - XWing exercises cover Hard difficulty ran
             .value = 7,
             .eliminations = {},
             .explanation = "Naked Single: r9c8 = 7",
-            .points = 10,
+            .rating = 10,
             .explanation_data = {},
         },
         SolveStep{
@@ -751,7 +751,7 @@ TEST_CASE("TrainingExerciseGenerator - XWing exercises cover Hard difficulty ran
             .value = 9,
             .eliminations = {},
             .explanation = "Naked Single: r9c9 = 9",
-            .points = 10,
+            .rating = 10,
             .explanation_data = {},
         },
     };
@@ -778,7 +778,7 @@ TEST_CASE("TrainingExerciseGenerator - MultiColoring uses Coloring mode", "[trai
             .value = 0,
             .eliminations = {Elimination{.position = Position{.row = 8, .col = 8}, .value = 9}},
             .explanation = "Multi-Coloring: mock",
-            .points = 400,
+            .rating = 400,
             .explanation_data = {},
         },
         SolveStep{
@@ -788,7 +788,7 @@ TEST_CASE("TrainingExerciseGenerator - MultiColoring uses Coloring mode", "[trai
             .value = 1,
             .eliminations = {},
             .explanation = "Naked Single: r9c7 = 1",
-            .points = 10,
+            .rating = 10,
             .explanation_data = {},
         },
         SolveStep{
@@ -798,7 +798,7 @@ TEST_CASE("TrainingExerciseGenerator - MultiColoring uses Coloring mode", "[trai
             .value = 7,
             .eliminations = {},
             .explanation = "Naked Single: r9c8 = 7",
-            .points = 10,
+            .rating = 10,
             .explanation_data = {},
         },
         SolveStep{
@@ -808,7 +808,7 @@ TEST_CASE("TrainingExerciseGenerator - MultiColoring uses Coloring mode", "[trai
             .value = 9,
             .eliminations = {},
             .explanation = "Naked Single: r9c9 = 9",
-            .points = 10,
+            .rating = 10,
             .explanation_data = {},
         },
     };
@@ -875,7 +875,7 @@ TEST_CASE("TrainingExerciseGenerator - Partial exercises triggers warning", "[tr
             .value = 1,
             .eliminations = {},
             .explanation = "Naked Single: r9c7 = 1",
-            .points = 10,
+            .rating = 10,
             .explanation_data = {},
         },
     };

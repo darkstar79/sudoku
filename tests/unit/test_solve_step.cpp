@@ -79,7 +79,7 @@ TEST_CASE("SolveStep - Placement Step Construction", "[solve_step]") {
                        .value = 7,
                        .eliminations = {},
                        .explanation = "Naked Single at R4C6: only value 7 is possible",
-                       .points = 10,
+                       .rating = 2.3,
                        .explanation_data = {}};
 
         REQUIRE(step.type == SolveStepType::Placement);
@@ -89,7 +89,7 @@ TEST_CASE("SolveStep - Placement Step Construction", "[solve_step]") {
         REQUIRE(step.value == 7);
         REQUIRE(step.eliminations.empty());
         REQUIRE(step.explanation == "Naked Single at R4C6: only value 7 is possible");
-        REQUIRE(step.points == 10);
+        REQUIRE(step.rating == 2.3);
     }
 
     SECTION("Placement step points match technique points") {
@@ -99,11 +99,11 @@ TEST_CASE("SolveStep - Placement Step Construction", "[solve_step]") {
                        .value = 1,
                        .eliminations = {},
                        .explanation = "Test explanation",
-                       .points = getTechniquePoints(SolvingTechnique::HiddenSingle),
+                       .rating = getTechniqueRating(SolvingTechnique::HiddenSingle),
                        .explanation_data = {}};
 
-        REQUIRE(step.points == 15);
-        REQUIRE(step.points == getTechniquePoints(step.technique));
+        REQUIRE(step.rating == 1.5);
+        REQUIRE(step.rating == getTechniqueRating(step.technique));
     }
 }
 
@@ -118,7 +118,7 @@ TEST_CASE("SolveStep - Elimination Step Construction", "[solve_step]") {
                        .value = 0,                                // Not used for eliminations
                        .eliminations = eliminations,
                        .explanation = "Naked Pair [4, 7] at R4C3, R4C8 eliminates candidates",
-                       .points = 50,
+                       .rating = 3.0,
                        .explanation_data = {}};
 
         REQUIRE(step.type == SolveStepType::Elimination);
@@ -127,7 +127,7 @@ TEST_CASE("SolveStep - Elimination Step Construction", "[solve_step]") {
         REQUIRE(step.eliminations[0].position.row == 3);
         REQUIRE(step.eliminations[0].value == 4);
         REQUIRE(step.explanation.find("Naked Pair") != std::string::npos);
-        REQUIRE(step.points == 50);
+        REQUIRE(step.rating == 3.0);
     }
 
     SECTION("Elimination step can have empty eliminations list") {
@@ -138,7 +138,7 @@ TEST_CASE("SolveStep - Elimination Step Construction", "[solve_step]") {
                        .value = 0,
                        .eliminations = {},
                        .explanation = "Hidden Pair found but no eliminations needed",
-                       .points = 70,
+                       .rating = 3.4,
                        .explanation_data = {}};
 
         REQUIRE(step.type == SolveStepType::Elimination);
@@ -154,7 +154,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 7,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 10,
+                        .rating = 2.3,
                         .explanation_data = {}};
 
         SolveStep step2{.type = SolveStepType::Placement,
@@ -163,7 +163,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 7,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 10,
+                        .rating = 2.3,
                         .explanation_data = {}};
 
         REQUIRE(step1 == step2);
@@ -176,7 +176,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 7,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 10,
+                        .rating = 2.3,
                         .explanation_data = {}};
 
         SolveStep step2{.type = SolveStepType::Elimination,
@@ -185,7 +185,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 7,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 10,
+                        .rating = 2.3,
                         .explanation_data = {}};
 
         REQUIRE_FALSE(step1 == step2);
@@ -198,7 +198,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 7,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 10,
+                        .rating = 2.3,
                         .explanation_data = {}};
 
         SolveStep step2{.type = SolveStepType::Placement,
@@ -207,7 +207,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 7,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 15,
+                        .rating = 15,
                         .explanation_data = {}};
 
         REQUIRE_FALSE(step1 == step2);
@@ -220,7 +220,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 7,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 10,
+                        .rating = 2.3,
                         .explanation_data = {}};
 
         SolveStep step2{.type = SolveStepType::Placement,
@@ -229,7 +229,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 7,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 10,
+                        .rating = 2.3,
                         .explanation_data = {}};
 
         REQUIRE_FALSE(step1 == step2);
@@ -242,7 +242,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 7,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 10,
+                        .rating = 2.3,
                         .explanation_data = {}};
 
         SolveStep step2{.type = SolveStepType::Placement,
@@ -251,7 +251,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 8,
                         .eliminations = {},
                         .explanation = "Test",
-                        .points = 10,
+                        .rating = 2.3,
                         .explanation_data = {}};
 
         REQUIRE_FALSE(step1 == step2);
@@ -264,7 +264,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 0,
                         .eliminations = {{Position{.row = 1, .col = 2}, 3}},
                         .explanation = "Test",
-                        .points = 50,
+                        .rating = 3.0,
                         .explanation_data = {}};
 
         SolveStep step2{.type = SolveStepType::Elimination,
@@ -273,7 +273,7 @@ TEST_CASE("SolveStep - Equality Comparison", "[solve_step]") {
                         .value = 0,
                         .eliminations = {{Position{.row = 1, .col = 3}, 3}},
                         .explanation = "Test",
-                        .points = 50,
+                        .rating = 3.0,
                         .explanation_data = {}};
 
         REQUIRE_FALSE(step1 == step2);
@@ -288,7 +288,7 @@ TEST_CASE("SolveStep - Explanation Content", "[solve_step]") {
                        .value = 7,
                        .eliminations = {},
                        .explanation = "Naked Single at R4C6: only value 7 is possible",
-                       .points = 10,
+                       .rating = 2.3,
                        .explanation_data = {}};
 
         REQUIRE_FALSE(step.explanation.empty());
@@ -302,7 +302,7 @@ TEST_CASE("SolveStep - Explanation Content", "[solve_step]") {
                        .value = 9,
                        .eliminations = {},
                        .explanation = "Hidden Single at R1C9: value 9 can only appear here in Row 1",
-                       .points = 15,
+                       .rating = 15,
                        .explanation_data = {}};
 
         REQUIRE(step.explanation.find("R1C9") != std::string::npos);
@@ -322,11 +322,11 @@ TEST_CASE("SolveStep - Points Consistency", "[solve_step]") {
                            .value = 1,
                            .eliminations = {},
                            .explanation = "Test",
-                           .points = getTechniquePoints(technique),
+                           .rating = getTechniqueRating(technique),
                            .explanation_data = {}};
 
-            REQUIRE(step.points == getTechniquePoints(technique));
-            REQUIRE(step.points > 0);
+            REQUIRE(step.rating == getTechniqueRating(technique));
+            REQUIRE(step.rating > 0);
         }
     }
 
@@ -337,9 +337,9 @@ TEST_CASE("SolveStep - Points Consistency", "[solve_step]") {
                        .value = 1,
                        .eliminations = {},
                        .explanation = "Backtracking guess",
-                       .points = getTechniquePoints(SolvingTechnique::Backtracking),
+                       .rating = getTechniqueRating(SolvingTechnique::Backtracking),
                        .explanation_data = {}};
 
-        REQUIRE(step.points == 750);
+        REQUIRE(step.rating == 12.0);
     }
 }

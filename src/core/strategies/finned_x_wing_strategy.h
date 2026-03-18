@@ -51,8 +51,8 @@ public:
         return "Finned X-Wing";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::FinnedXWing);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::FinnedXWing);
     }
 
 private:
@@ -147,7 +147,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::FinnedXWing),
+            .rating = getTechniqueRating(SolvingTechnique::FinnedXWing),
             .explanation_data = {.positions = {Position{.row = row1, .col = base_col1},
                                                Position{.row = row1, .col = base_col2},
                                                Position{.row = row2, .col = base_col1},
@@ -239,7 +239,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::FinnedXWing),
+            .rating = getTechniqueRating(SolvingTechnique::FinnedXWing),
             .explanation_data = {.positions = {Position{.row = base_row1, .col = col1},
                                                Position{.row = base_row1, .col = col2},
                                                Position{.row = base_row2, .col = col1},

@@ -80,7 +80,7 @@ public:
                          .value = odd_value,
                          .eliminations = {},
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::BUG),
+                         .rating = getTechniqueRating(SolvingTechnique::BUG),
                          .explanation_data = {.positions = {trivalue_cell}, .values = {odd_value}}};
     }
 
@@ -92,8 +92,8 @@ public:
         return "BUG";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::BUG);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::BUG);
     }
 
 private:

@@ -55,7 +55,7 @@ struct Puzzle {
     Difficulty difficulty{Difficulty::Easy};
     uint32_t seed{0};
     int clue_count{0};
-    int rating{0};                                   // Sudoku Explainer rating (0 = not rated yet)
+    double rating{0.0};                              // Sudoku Explainer rating (0.0 = not rated yet)
     std::set<SolvingTechnique> required_techniques;  // Logical techniques needed to solve
     bool requires_backtracking{false};               // True if logical techniques alone insufficient
 };

@@ -55,8 +55,8 @@ public:
         return "X-Wing";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::XWing);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::XWing);
     }
 
 private:
@@ -110,7 +110,7 @@ private:
                                              .value = 0,
                                              .eliminations = eliminations,
                                              .explanation = explanation,
-                                             .points = getTechniquePoints(SolvingTechnique::XWing),
+                                             .rating = getTechniqueRating(SolvingTechnique::XWing),
                                              .explanation_data = {.positions = {Position{.row = row1, .col = col1},
                                                                                 Position{.row = row1, .col = col2},
                                                                                 Position{.row = row2, .col = col1},
@@ -177,7 +177,7 @@ private:
                                              .value = 0,
                                              .eliminations = eliminations,
                                              .explanation = explanation,
-                                             .points = getTechniquePoints(SolvingTechnique::XWing),
+                                             .rating = getTechniqueRating(SolvingTechnique::XWing),
                                              .explanation_data = {.positions = {Position{.row = row1, .col = col1},
                                                                                 Position{.row = row1, .col = col2},
                                                                                 Position{.row = row2, .col = col1},

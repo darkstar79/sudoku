@@ -253,7 +253,7 @@ static PuzzleAnalysis analyzePuzzle(PuzzleRater& rater, const BoardData& board, 
         return analysis;
     }
 
-    analysis.rating = rating_result->total_score;
+    analysis.rating = rating_result->se_rating;
     analysis.requires_backtracking = rating_result->requires_backtracking;
 
     for (const auto& step : rating_result->solve_path) {

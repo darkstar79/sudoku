@@ -34,7 +34,7 @@ TEST_CASE("SkyscraperStrategy - Metadata", "[skyscraper]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::Skyscraper);
     REQUIRE(strategy.getName() == "Skyscraper");
-    REQUIRE(strategy.getDifficultyPoints() == 250);
+    REQUIRE(strategy.getDifficultyRating() == 4.0);
 }
 
 TEST_CASE("SkyscraperStrategy - Returns nullopt for complete board", "[skyscraper]") {
@@ -122,7 +122,7 @@ TEST_CASE("SkyscraperStrategy - Row-based Skyscraper detection", "[skyscraper]")
         if (result.has_value()) {
             REQUIRE(result->type == SolveStepType::Elimination);
             REQUIRE(result->technique == SolvingTechnique::Skyscraper);
-            REQUIRE(result->points == 250);
+            REQUIRE(result->rating == 4.0);
 
             for (const auto& elim : result->eliminations) {
                 REQUIRE(elim.value == 7);
@@ -139,7 +139,7 @@ TEST_CASE("SkyscraperStrategy - Can be used through ISolvingStrategy interface",
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::Skyscraper);
     REQUIRE(strategy->getName() == "Skyscraper");
-    REQUIRE(strategy->getDifficultyPoints() == 250);
+    REQUIRE(strategy->getDifficultyRating() == 4.0);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

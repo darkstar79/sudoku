@@ -58,8 +58,8 @@ public:
         return "3D Medusa";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::ThreeDMedusa);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::ThreeDMedusa);
     }
 
 private:
@@ -304,7 +304,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::ThreeDMedusa),
+            .rating = getTechniqueRating(SolvingTechnique::ThreeDMedusa),
             .explanation_data = {.positions = positions,
                                  .values = {},
                                  .technique_subtype = 0,  // 0 = contradiction
@@ -391,7 +391,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::ThreeDMedusa),
+                         .rating = getTechniqueRating(SolvingTechnique::ThreeDMedusa),
                          .explanation_data = {.positions = {eliminations[0].position},
                                               .values = {eliminations[0].value},
                                               .technique_subtype = 1,  // 1 = elimination rule

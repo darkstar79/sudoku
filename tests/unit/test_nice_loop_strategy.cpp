@@ -38,7 +38,7 @@ TEST_CASE("NiceLoopStrategy - Metadata", "[nice_loop]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::NiceLoop);
     REQUIRE(strategy.getName() == "Nice Loop");
-    REQUIRE(strategy.getDifficultyPoints() == 600);
+    REQUIRE(strategy.getDifficultyRating() == 7.5);
 }
 
 TEST_CASE("NiceLoopStrategy - Returns nullopt for complete board", "[nice_loop]") {
@@ -109,7 +109,7 @@ TEST_CASE("NiceLoopStrategy - Detects AIC elimination", "[nice_loop]") {
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::NiceLoop);
         REQUIRE(result->type == SolveStepType::Elimination);
-        REQUIRE(result->points == 600);
+        REQUIRE(result->rating == 7.5);
     }
 }
 
@@ -144,7 +144,7 @@ TEST_CASE("NiceLoopStrategy - Can be used through ISolvingStrategy interface", "
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::NiceLoop);
     REQUIRE(strategy->getName() == "Nice Loop");
-    REQUIRE(strategy->getDifficultyPoints() == 600);
+    REQUIRE(strategy->getDifficultyRating() == 7.5);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

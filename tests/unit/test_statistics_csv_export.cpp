@@ -385,7 +385,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Rating statistics ag
 
     // Verify Hard and Expert have no ratings
     REQUIRE(stats.average_ratings[2] == 0);
-    REQUIRE(stats.min_ratings[2] == INT_MAX);
+    REQUIRE(stats.min_ratings[2] == std::numeric_limits<double>::max());
     REQUIRE(stats.max_ratings[2] == 0);
 }
 
@@ -482,6 +482,6 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Zero rating handling
 
     // Verify zero ratings don't affect min/max/average
     REQUIRE(stats.average_ratings[0] == 0);
-    REQUIRE(stats.min_ratings[0] == INT_MAX);  // Not updated
-    REQUIRE(stats.max_ratings[0] == 0);        // Not updated
+    REQUIRE(stats.min_ratings[0] == std::numeric_limits<double>::max());  // Not updated
+    REQUIRE(stats.max_ratings[0] == 0);                                   // Not updated
 }

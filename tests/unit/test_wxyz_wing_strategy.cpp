@@ -42,7 +42,7 @@ TEST_CASE("WXYZWingStrategy - Metadata", "[wxyz_wing]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::WXYZWing);
     REQUIRE(strategy.getName() == "WXYZ-Wing");
-    REQUIRE(strategy.getDifficultyPoints() == 400);
+    REQUIRE(strategy.getDifficultyRating() == 4.6);
 }
 
 TEST_CASE("WXYZWingStrategy - Returns nullopt for complete board", "[wxyz_wing]") {
@@ -137,7 +137,7 @@ TEST_CASE("WXYZWingStrategy - Detects WXYZ-Wing with elimination", "[wxyz_wing]"
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::WXYZWing);
-    REQUIRE(result->points == 400);
+    REQUIRE(result->rating == 4.6);
 
     // Check elimination of value 4 from target (0,1)
     bool found_target = false;
@@ -204,7 +204,7 @@ TEST_CASE("WXYZWingStrategy - Can be used through ISolvingStrategy interface", "
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::WXYZWing);
     REQUIRE(strategy->getName() == "WXYZ-Wing");
-    REQUIRE(strategy->getDifficultyPoints() == 400);
+    REQUIRE(strategy->getDifficultyRating() == 4.6);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

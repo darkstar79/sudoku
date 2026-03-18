@@ -38,7 +38,7 @@ TEST_CASE("XYChainStrategy - Metadata", "[xy_chain]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::XYChain);
     REQUIRE(strategy.getName() == "XY-Chain");
-    REQUIRE(strategy.getDifficultyPoints() == 450);
+    REQUIRE(strategy.getDifficultyRating() == 6.6);
 }
 
 TEST_CASE("XYChainStrategy - Returns nullopt for complete board", "[xy_chain]") {
@@ -79,7 +79,7 @@ TEST_CASE("XYChainStrategy - Detects 4-cell XY-Chain", "[xy_chain]") {
     REQUIRE(result.has_value());
     REQUIRE(result->technique == SolvingTechnique::XYChain);
     REQUIRE(result->type == SolveStepType::Elimination);
-    REQUIRE(result->points == 450);
+    REQUIRE(result->rating == 6.6);
 
     bool found_target = false;
     for (const auto& elim : result->eliminations) {
@@ -147,7 +147,7 @@ TEST_CASE("XYChainStrategy - Can be used through ISolvingStrategy interface", "[
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::XYChain);
     REQUIRE(strategy->getName() == "XY-Chain");
-    REQUIRE(strategy->getDifficultyPoints() == 450);
+    REQUIRE(strategy->getDifficultyRating() == 6.6);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

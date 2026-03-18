@@ -64,7 +64,7 @@ TEST_CASE("PuzzleRater - Rate Easy Puzzle", "[puzzle_rater]") {
         auto result = rater.ratePuzzle(board);
 
         REQUIRE(result.has_value());
-        REQUIRE(result->total_score == 10);  // One naked single (10 points)
+        REQUIRE(result->se_rating == 2.3);  // One naked single (10 points)
         REQUIRE(result->solve_path.size() == 1);
         REQUIRE(result->solve_path[0].technique == SolvingTechnique::NakedSingle);
         REQUIRE_FALSE(result->requires_backtracking);
@@ -84,7 +84,7 @@ TEST_CASE("PuzzleRater - Rate Complete Board", "[puzzle_rater]") {
         auto result = rater.ratePuzzle(board);
 
         REQUIRE(result.has_value());
-        REQUIRE(result->total_score == 0);  // No steps needed
+        REQUIRE(result->se_rating == 0);  // No steps needed
         REQUIRE(result->solve_path.empty());
         REQUIRE_FALSE(result->requires_backtracking);
         REQUIRE(result->estimated_difficulty == Difficulty::Easy);  // 0 < 500
@@ -104,7 +104,7 @@ TEST_CASE("PuzzleRater - Generated Puzzle Rating", "[puzzle_rater]") {
         auto rating = rater.ratePuzzle(puzzle_result->board);
 
         REQUIRE(rating.has_value());
-        REQUIRE(rating->total_score >= 0);          // Any score is valid
+        REQUIRE(rating->se_rating >= 0);            // Any score is valid
         REQUIRE_FALSE(rating->solve_path.empty());  // Generated puzzle requires steps
         // Note: Rating may not match Easy range yet (Phase 6 will add validation)
     }
@@ -116,7 +116,7 @@ TEST_CASE("PuzzleRater - Generated Puzzle Rating", "[puzzle_rater]") {
         auto rating = rater.ratePuzzle(puzzle_result->board);
 
         REQUIRE(rating.has_value());
-        REQUIRE(rating->total_score >= 0);
+        REQUIRE(rating->se_rating >= 0);
         REQUIRE_FALSE(rating->solve_path.empty());
     }
 }
@@ -127,7 +127,7 @@ TEST_CASE("PuzzleRater - Rating Calculation", "[puzzle_rater]") {
     auto solver = std::make_shared<SudokuSolver>(validator);
     PuzzleRater rater(solver);
 
-    SECTION("Rating is sum of technique points") {
+    SECTION("SE rating equals max technique rating") {
         // Generate a puzzle and verify rating calculation
         auto puzzle_result = generator->generatePuzzle({.difficulty = Difficulty::Easy});
         REQUIRE(puzzle_result.has_value());
@@ -137,14 +137,14 @@ TEST_CASE("PuzzleRater - Rating Calculation", "[puzzle_rater]") {
         REQUIRE(rating.has_value());
 
         // Manually sum logical technique points (backtracking excluded from score)
-        int expected_sum = 0;
+        double expected_max = 0.0;
         for (const auto& step : rating->solve_path) {
             if (step.technique != SolvingTechnique::Backtracking) {
-                expected_sum += step.points;
+                expected_max = std::max(expected_max, step.rating);
             }
         }
 
-        REQUIRE(rating->total_score == expected_sum);
+        REQUIRE(rating->se_rating == expected_max);
     }
 }
 
@@ -176,7 +176,7 @@ TEST_CASE("PuzzleRater - Difficulty Estimation", "[puzzle_rater]") {
         auto rating = rater.ratePuzzle(board);
 
         REQUIRE(rating.has_value());
-        REQUIRE(rating->estimated_difficulty == ratingToDifficulty(rating->total_score));
+        REQUIRE(rating->estimated_difficulty == ratingToDifficulty(rating->se_rating));
     }
 }
 
@@ -192,7 +192,7 @@ TEST_CASE("PuzzleRater - Polymorphic Usage", "[puzzle_rater]") {
         auto rating = rater->ratePuzzle(board);
 
         REQUIRE(rating.has_value());
-        REQUIRE(rating->total_score >= 0);
+        REQUIRE(rating->se_rating >= 0);
     }
 }
 

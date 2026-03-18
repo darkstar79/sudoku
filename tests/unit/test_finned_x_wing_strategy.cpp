@@ -34,7 +34,7 @@ TEST_CASE("FinnedXWingStrategy - Metadata", "[finned_x_wing]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::FinnedXWing);
     REQUIRE(strategy.getName() == "Finned X-Wing");
-    REQUIRE(strategy.getDifficultyPoints() == 350);
+    REQUIRE(strategy.getDifficultyRating() == 3.4);
 }
 
 TEST_CASE("FinnedXWingStrategy - Returns nullopt for complete board", "[finned_x_wing]") {
@@ -87,7 +87,7 @@ TEST_CASE("FinnedXWingStrategy - Row-based finned X-Wing detection", "[finned_x_
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::FinnedXWing);
-    REQUIRE(result->points == 350);
+    REQUIRE(result->rating == 3.4);
 
     // All eliminations should be value 5, in fin's box (box 4: rows 3-5, cols 3-5)
     for (const auto& elim : result->eliminations) {
@@ -205,7 +205,7 @@ TEST_CASE("FinnedXWingStrategy - Can be used through ISolvingStrategy interface"
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::FinnedXWing);
     REQUIRE(strategy->getName() == "Finned X-Wing");
-    REQUIRE(strategy->getDifficultyPoints() == 350);
+    REQUIRE(strategy->getDifficultyRating() == 3.4);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

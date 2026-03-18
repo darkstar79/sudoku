@@ -36,9 +36,9 @@ TEST_CASE("HiddenTripleStrategy - Interface Implementation", "[hidden_triple]") 
         REQUIRE(strategy.getName() == "Hidden Triple");
     }
 
-    SECTION("getDifficultyPoints returns 90") {
-        REQUIRE(strategy.getDifficultyPoints() == 90);
-        REQUIRE(strategy.getDifficultyPoints() == getTechniquePoints(SolvingTechnique::HiddenTriple));
+    SECTION("getDifficultyRating returns 90") {
+        REQUIRE(strategy.getDifficultyRating() == 4.0);
+        REQUIRE(strategy.getDifficultyRating() == getTechniqueRating(SolvingTechnique::HiddenTriple));
     }
 }
 
@@ -56,7 +56,7 @@ TEST_CASE("HiddenTripleStrategy - Finds Hidden Triple", "[hidden_triple]") {
         if (step.has_value()) {
             REQUIRE(step->type == SolveStepType::Elimination);
             REQUIRE(step->technique == SolvingTechnique::HiddenTriple);
-            REQUIRE(step->points == 90);
+            REQUIRE(step->rating == 4.0);
             REQUIRE_FALSE(step->explanation.empty());
             REQUIRE_FALSE(step->eliminations.empty());
         }
@@ -76,7 +76,7 @@ TEST_CASE("HiddenTripleStrategy - Board Analysis", "[hidden_triple]") {
         if (step.has_value()) {
             REQUIRE(step->type == SolveStepType::Elimination);
             REQUIRE(step->technique == SolvingTechnique::HiddenTriple);
-            REQUIRE(step->points == 90);
+            REQUIRE(step->rating == 4.0);
             REQUIRE_FALSE(step->explanation.empty());
         }
         // Test passes whether pattern found or not - key is algorithm executed
@@ -103,7 +103,7 @@ TEST_CASE("HiddenTripleStrategy - Polymorphic Usage", "[hidden_triple]") {
         auto step = strategy->findStep(board, state);
 
         REQUIRE(strategy->getTechnique() == SolvingTechnique::HiddenTriple);
-        REQUIRE(strategy->getDifficultyPoints() == 90);
+        REQUIRE(strategy->getDifficultyRating() == 4.0);
     }
 }
 

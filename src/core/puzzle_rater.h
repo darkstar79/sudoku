@@ -25,8 +25,8 @@
 
 namespace sudoku::core {
 
-/// Concrete implementation of puzzle rating
-/// Rates puzzles by solving with logical techniques and summing difficulty points
+/// Concrete implementation of puzzle rating using the Sudoku Explainer (SE) scale.
+/// Rates puzzles by the hardest logical technique required to solve them.
 class PuzzleRater : public IPuzzleRater {
 public:
     /// Constructor with dependency injection
@@ -38,10 +38,10 @@ public:
 private:
     std::shared_ptr<ISudokuSolver> solver_;
 
-    /// Calculates total score from solve path (sums technique points)
+    /// Calculates SE rating from solve path (max technique difficulty)
     /// @param solve_path Steps used to solve puzzle
-    /// @return Sum of technique points (excludes backtracking)
-    [[nodiscard]] static int calculateScore(const std::vector<SolveStep>& solve_path);
+    /// @return Maximum SE difficulty rating across all logical techniques (excludes backtracking)
+    [[nodiscard]] static double calculateRating(const std::vector<SolveStep>& solve_path);
 };
 
 }  // namespace sudoku::core

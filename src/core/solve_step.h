@@ -93,7 +93,7 @@ struct SolveStep {
     int value;                              ///< For placements: value to place; for eliminations: unused
     std::vector<Elimination> eliminations;  ///< For eliminations: candidates to remove
     std::string explanation;                ///< Human-readable explanation of the step
-    int points;                             ///< Difficulty contribution (Sudoku Explainer points)
+    double rating;                          ///< Sudoku Explainer (SE) difficulty rating
     ExplanationData explanation_data;       ///< Structured data for localized explanations
 
     bool operator==(const SolveStep& other) const = default;

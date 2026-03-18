@@ -43,7 +43,7 @@ TEST_CASE("XYZWingStrategy - Metadata", "[xyz_wing]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::XYZWing);
     REQUIRE(strategy.getName() == "XYZ-Wing");
-    REQUIRE(strategy.getDifficultyPoints() == 280);
+    REQUIRE(strategy.getDifficultyRating() == 4.4);
 }
 
 TEST_CASE("XYZWingStrategy - Returns nullopt for complete board", "[xyz_wing]") {
@@ -156,7 +156,7 @@ TEST_CASE("XYZWingStrategy - XYZ-Wing with elimination in shared box", "[xyz_win
 
         if (result.has_value() && result->technique == SolvingTechnique::XYZWing) {
             REQUIRE(result->type == SolveStepType::Elimination);
-            REQUIRE(result->points == 280);
+            REQUIRE(result->rating == 4.4);
             REQUIRE_FALSE(result->eliminations.empty());
 
             // All eliminations should be for value 3 (the common candidate)
@@ -175,7 +175,7 @@ TEST_CASE("XYZWingStrategy - Can be used through ISolvingStrategy interface", "[
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::XYZWing);
     REQUIRE(strategy->getName() == "XYZ-Wing");
-    REQUIRE(strategy->getDifficultyPoints() == 280);
+    REQUIRE(strategy->getDifficultyRating() == 4.4);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

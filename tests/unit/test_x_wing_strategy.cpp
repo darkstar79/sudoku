@@ -28,7 +28,7 @@ TEST_CASE("XWingStrategy - Metadata", "[x_wing]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::XWing);
     REQUIRE(strategy.getName() == "X-Wing");
-    REQUIRE(strategy.getDifficultyPoints() == 200);
+    REQUIRE(strategy.getDifficultyRating() == 3.2);
 }
 
 TEST_CASE("XWingStrategy - Returns nullopt for complete board", "[x_wing]") {
@@ -86,7 +86,7 @@ TEST_CASE("XWingStrategy - Finds row-based X-Wing with manual setup", "[x_wing]"
     if (result.has_value()) {
         REQUIRE(result->type == SolveStepType::Elimination);
         REQUIRE(result->technique == SolvingTechnique::XWing);
-        REQUIRE(result->points == 200);
+        REQUIRE(result->rating == 3.2);
         REQUIRE_FALSE(result->eliminations.empty());
 
         // All eliminations should be for value 5 in cols 0 or 3, not in rows 0 or 4

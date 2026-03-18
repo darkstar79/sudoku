@@ -68,8 +68,8 @@ public:
         return "Box/Line Reduction";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::BoxLineReduction);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::BoxLineReduction);
     }
 
 private:
@@ -114,7 +114,7 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::BoxLineReduction),
+                             .rating = getTechniqueRating(SolvingTechnique::BoxLineReduction),
                              .explanation_data = {.positions = {cells_with_value.begin(), cells_with_value.end()},
                                                   .values = {value},
                                                   .region_type = RegionType::Row,
@@ -163,7 +163,7 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::BoxLineReduction),
+                             .rating = getTechniqueRating(SolvingTechnique::BoxLineReduction),
                              .explanation_data = {.positions = {cells_with_value.begin(), cells_with_value.end()},
                                                   .values = {value},
                                                   .region_type = RegionType::Col,

@@ -57,8 +57,8 @@ public:
         return "Multi-Coloring";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::MultiColoring);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::MultiColoring);
     }
 
 private:
@@ -211,7 +211,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::MultiColoring),
+            .rating = getTechniqueRating(SolvingTechnique::MultiColoring),
             .explanation_data = {.positions = positions,
                                  .values = {value},
                                  .technique_subtype = 0,  // 0 = wrap
@@ -327,7 +327,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::MultiColoring),
+                         .rating = getTechniqueRating(SolvingTechnique::MultiColoring),
                          .explanation_data = {.positions = {eliminations[0].position},
                                               .values = {value},
                                               .technique_subtype = 1}};  // 1 = trap

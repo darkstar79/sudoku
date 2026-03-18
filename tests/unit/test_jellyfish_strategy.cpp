@@ -34,7 +34,7 @@ TEST_CASE("JellyfishStrategy - Metadata", "[jellyfish]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::Jellyfish);
     REQUIRE(strategy.getName() == "Jellyfish");
-    REQUIRE(strategy.getDifficultyPoints() == 400);
+    REQUIRE(strategy.getDifficultyRating() == 5.2);
 }
 
 TEST_CASE("JellyfishStrategy - Returns nullopt for complete board", "[jellyfish]") {
@@ -77,7 +77,7 @@ TEST_CASE("JellyfishStrategy - Row-based Jellyfish detection", "[jellyfish]") {
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::Jellyfish);
-    REQUIRE(result->points == 400);
+    REQUIRE(result->rating == 5.2);
 
     // All eliminations: value 5, in cols 0/2/5/7, NOT in rows 0/2/4/6
     for (const auto& elim : result->eliminations) {
@@ -152,7 +152,7 @@ TEST_CASE("JellyfishStrategy - Can be used through ISolvingStrategy interface", 
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::Jellyfish);
     REQUIRE(strategy->getName() == "Jellyfish");
-    REQUIRE(strategy->getDifficultyPoints() == 400);
+    REQUIRE(strategy->getDifficultyRating() == 5.2);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

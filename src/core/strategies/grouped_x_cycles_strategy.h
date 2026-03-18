@@ -57,8 +57,8 @@ public:
         return "Grouped X-Cycles";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::GroupedXCycles);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::GroupedXCycles);
     }
 
 private:
@@ -415,7 +415,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::GroupedXCycles),
+            .rating = getTechniqueRating(SolvingTechnique::GroupedXCycles),
             .explanation_data = {.positions = positions,
                                  .values = {digit},
                                  .technique_subtype = 0,
@@ -448,7 +448,7 @@ private:
             .value = 0,
             .eliminations = {Elimination{.position = target, .value = digit}},
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::GroupedXCycles),
+            .rating = getTechniqueRating(SolvingTechnique::GroupedXCycles),
             .explanation_data = {.positions = positions,
                                  .values = {digit},
                                  .technique_subtype = 2,

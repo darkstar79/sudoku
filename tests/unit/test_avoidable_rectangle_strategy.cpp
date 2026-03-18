@@ -34,7 +34,7 @@ TEST_CASE("AvoidableRectangleStrategy - Metadata", "[avoidable_rectangle]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::AvoidableRectangle);
     REQUIRE(strategy.getName() == "Avoidable Rectangle");
-    REQUIRE(strategy.getDifficultyPoints() == 350);
+    REQUIRE(strategy.getDifficultyRating() == 4.5);
 }
 
 TEST_CASE("AvoidableRectangleStrategy - Returns nullopt for complete board", "[avoidable_rectangle]") {
@@ -111,7 +111,7 @@ TEST_CASE("AvoidableRectangleStrategy - Detects avoidable rectangle pattern", "[
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::AvoidableRectangle);
-    REQUIRE(result->points == 350);
+    REQUIRE(result->rating == 4.5);
     REQUIRE(result->eliminations.size() == 1);
 
     // c1=1, c2=2, c3=2 (same col as c1, has val_b) → eliminate val_a=1 from c4=(2,3)

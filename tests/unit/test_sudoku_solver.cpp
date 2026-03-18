@@ -67,7 +67,7 @@ TEST_CASE("SudokuSolver - findNextStep", "[sudoku_solver]") {
         REQUIRE(result->position.row == 0);
         REQUIRE(result->position.col == 0);
         REQUIRE(result->value == 5);
-        REQUIRE(result->points == 10);
+        REQUIRE(result->rating == 2.3);
     }
 
     SECTION("Returns error for complete board") {
@@ -126,7 +126,7 @@ TEST_CASE("SudokuSolver - applyStep", "[sudoku_solver]") {
                        .value = 5,
                        .eliminations = {},
                        .explanation = "Test",
-                       .points = 10,
+                       .rating = 10,
                        .explanation_data = {}};
 
         bool success = solver.applyStep(board, step);
@@ -143,7 +143,7 @@ TEST_CASE("SudokuSolver - applyStep", "[sudoku_solver]") {
                        .value = 0,
                        .eliminations = {Elimination{.position = Position{.row = 0, .col = 1}, .value = 3}},
                        .explanation = "Test",
-                       .points = 50,
+                       .rating = 50,
                        .explanation_data = {}};
 
         bool success = solver.applyStep(board, step);

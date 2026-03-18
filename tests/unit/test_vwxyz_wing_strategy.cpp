@@ -42,7 +42,7 @@ TEST_CASE("VWXYZWingStrategy - Metadata", "[vwxyz_wing]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::VWXYZWing);
     REQUIRE(strategy.getName() == "VWXYZ-Wing");
-    REQUIRE(strategy.getDifficultyPoints() == 450);
+    REQUIRE(strategy.getDifficultyRating() == 4.8);
 }
 
 TEST_CASE("VWXYZWingStrategy - Returns nullopt for complete board", "[vwxyz_wing]") {
@@ -332,7 +332,7 @@ TEST_CASE("VWXYZWingStrategy - Detects VWXYZ-Wing with elimination", "[vwxyz_win
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::VWXYZWing);
-    REQUIRE(result->points == 450);
+    REQUIRE(result->rating == 4.8);
 
     // Check that eliminations include value 5
     bool found_target = false;

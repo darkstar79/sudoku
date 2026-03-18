@@ -53,7 +53,7 @@ struct SavedGame {
     bool auto_notes_enabled{false};
 
     // Puzzle rating info
-    int puzzle_rating{0};
+    double puzzle_rating{0.0};
     std::vector<int> puzzle_technique_ids;  // SolvingTechnique enum values (locale-independent)
     bool puzzle_requires_backtracking{false};
 

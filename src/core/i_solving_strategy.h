@@ -49,9 +49,9 @@ public:
     /// @return Strategy name (e.g., "Naked Single Strategy")
     [[nodiscard]] virtual std::string_view getName() const = 0;
 
-    /// Returns difficulty points contributed by this technique
-    /// @return Sudoku Explainer point value
-    [[nodiscard]] virtual int getDifficultyPoints() const = 0;
+    /// Returns Sudoku Explainer (SE) difficulty rating for this technique
+    /// @return SE difficulty rating (1.0-12.0 scale)
+    [[nodiscard]] virtual double getDifficultyRating() const = 0;
 
 protected:
     // Protected special member functions to prevent slicing while allowing derived classes
