@@ -34,7 +34,7 @@ TEST_CASE("TwoStringKiteStrategy - Metadata", "[two_string_kite]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::TwoStringKite);
     REQUIRE(strategy.getName() == "2-String Kite");
-    REQUIRE(strategy.getDifficultyPoints() == 250);
+    REQUIRE(strategy.getDifficultyRating() == 4.1);
 }
 
 TEST_CASE("TwoStringKiteStrategy - Returns nullopt for complete board", "[two_string_kite]") {
@@ -107,7 +107,7 @@ TEST_CASE("TwoStringKiteStrategy - 2-String Kite detection", "[two_string_kite]"
 
         if (result.has_value() && result->technique == SolvingTechnique::TwoStringKite) {
             REQUIRE(result->type == SolveStepType::Elimination);
-            REQUIRE(result->points == 250);
+            REQUIRE(result->rating == 4.1);
             REQUIRE_FALSE(result->eliminations.empty());
 
             for (const auto& elim : result->eliminations) {
@@ -125,7 +125,7 @@ TEST_CASE("TwoStringKiteStrategy - Can be used through ISolvingStrategy interfac
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::TwoStringKite);
     REQUIRE(strategy->getName() == "2-String Kite");
-    REQUIRE(strategy->getDifficultyPoints() == 250);
+    REQUIRE(strategy->getDifficultyRating() == 4.1);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

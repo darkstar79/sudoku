@@ -134,7 +134,7 @@ strings:
   hint.suggestion_place: "Suggestion: Place {0} at R{1}C{2}"
 
   # ViewModel — Technique formatting
-  technique.points_fmt: "{0} ({1} pts)"
+  technique.points_fmt: "{0} (SE {1})"
   technique.backtracking: "Backtracking (trial & error)"
 
   # ViewModel — Statistics error strings

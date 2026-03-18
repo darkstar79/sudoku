@@ -55,8 +55,8 @@ public:
         return "Hidden Quad";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::HiddenQuad);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::HiddenQuad);
     }
 
 private:
@@ -152,7 +152,7 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::HiddenQuad),
+                             .rating = getTechniqueRating(SolvingTechnique::HiddenQuad),
                              .explanation_data = {.positions = {cells_with_values[0], cells_with_values[1],
                                                                 cells_with_values[2], cells_with_values[3]},
                                                   .values = {val1, val2, val3, val4},

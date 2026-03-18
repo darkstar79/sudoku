@@ -57,8 +57,8 @@ public:
         return "Naked Pair";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::NakedPair);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::NakedPair);
     }
 
 private:
@@ -107,7 +107,7 @@ private:
                                          .value = 0,        // Not used for eliminations
                                          .eliminations = eliminations,
                                          .explanation = explanation,
-                                         .points = getTechniquePoints(SolvingTechnique::NakedPair),
+                                         .rating = getTechniqueRating(SolvingTechnique::NakedPair),
                                          .explanation_data = {.positions = {pos1, pos2},
                                                               .values = {cand1[0], cand1[1]},
                                                               .region_type = region_type,

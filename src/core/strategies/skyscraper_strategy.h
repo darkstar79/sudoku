@@ -51,8 +51,8 @@ public:
         return "Skyscraper";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::Skyscraper);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::Skyscraper);
     }
 
 private:
@@ -207,7 +207,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::Skyscraper),
+                         .rating = getTechniqueRating(SolvingTechnique::Skyscraper),
                          .explanation_data = {.positions = {shared_a, non_shared_a, shared_b, non_shared_b},
                                               .values = {value},
                                               .region_type = region_type,

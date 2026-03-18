@@ -43,7 +43,7 @@ TEST_CASE("UniqueRectangleStrategy - Metadata", "[unique_rectangle]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::UniqueRectangle);
     REQUIRE(strategy.getName() == "Unique Rectangle");
-    REQUIRE(strategy.getDifficultyPoints() == 300);
+    REQUIRE(strategy.getDifficultyRating() == 4.5);
 }
 
 TEST_CASE("UniqueRectangleStrategy - Returns nullopt for complete board", "[unique_rectangle]") {
@@ -99,7 +99,7 @@ TEST_CASE("UniqueRectangleStrategy - Type 1 detection across 2 boxes", "[unique_
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::UniqueRectangle);
-    REQUIRE(result->points == 300);
+    REQUIRE(result->rating == 4.5);
     REQUIRE(result->eliminations.size() == 2);
 
     // Should eliminate 1 and 2 from the floor cell (2,3)
@@ -379,7 +379,7 @@ TEST_CASE("UniqueRectangleStrategy - Can be used through ISolvingStrategy interf
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::UniqueRectangle);
     REQUIRE(strategy->getName() == "Unique Rectangle");
-    REQUIRE(strategy->getDifficultyPoints() == 300);
+    REQUIRE(strategy->getDifficultyRating() == 4.5);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

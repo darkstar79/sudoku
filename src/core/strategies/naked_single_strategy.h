@@ -62,7 +62,7 @@ public:
                                      .value = value,
                                      .eliminations = {},
                                      .explanation = explanation,
-                                     .points = getTechniquePoints(SolvingTechnique::NakedSingle),
+                                     .rating = getTechniqueRating(SolvingTechnique::NakedSingle),
                                      .explanation_data = {.positions = {pos}, .values = {value}}};
                 }
             }
@@ -80,8 +80,8 @@ public:
         return "Naked Single";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::NakedSingle);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::NakedSingle);
     }
 };
 

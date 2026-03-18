@@ -42,7 +42,7 @@ TEST_CASE("DeathBlossomStrategy - Metadata", "[death_blossom]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::DeathBlossom);
     REQUIRE(strategy.getName() == "Death Blossom");
-    REQUIRE(strategy.getDifficultyPoints() == 550);
+    REQUIRE(strategy.getDifficultyRating() == 8.2);
 }
 
 TEST_CASE("DeathBlossomStrategy - Returns nullopt for complete board", "[death_blossom]") {
@@ -105,7 +105,7 @@ TEST_CASE("DeathBlossomStrategy - Finds Death Blossom with 2 petals", "[death_bl
 
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::DeathBlossom);
-        REQUIRE(result->points == 550);
+        REQUIRE(result->rating == 8.2);
         REQUIRE_FALSE(result->eliminations.empty());
         for (const auto& elim : result->eliminations) {
             REQUIRE(elim.value == 3);

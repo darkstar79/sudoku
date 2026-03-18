@@ -52,8 +52,8 @@ public:
         return "ALS-XY-Wing";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::ALSXYWing);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::ALSXYWing);
     }
 
 private:
@@ -238,7 +238,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::ALSXYWing),
+                         .rating = getTechniqueRating(SolvingTechnique::ALSXYWing),
                          .explanation_data = {.positions = positions,
                                               .values = {val_x, val_y, val_z},
                                               .position_roles = std::move(roles)}};

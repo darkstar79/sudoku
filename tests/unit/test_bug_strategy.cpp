@@ -38,7 +38,7 @@ TEST_CASE("BUGStrategy - Metadata", "[bug]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::BUG);
     REQUIRE(strategy.getName() == "BUG");
-    REQUIRE(strategy.getDifficultyPoints() == 350);
+    REQUIRE(strategy.getDifficultyRating() == 5.6);
 }
 
 TEST_CASE("BUGStrategy - Returns nullopt for complete board", "[bug]") {
@@ -102,7 +102,7 @@ TEST_CASE("BUGStrategy - Detects BUG+1 and produces placement", "[bug]") {
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Placement);
     REQUIRE(result->technique == SolvingTechnique::BUG);
-    REQUIRE(result->points == 350);
+    REQUIRE(result->rating == 5.6);
     REQUIRE(result->position.row == 6);
     REQUIRE(result->position.col == 6);
     // The odd candidate should be placed
@@ -157,7 +157,7 @@ TEST_CASE("BUGStrategy - Can be used through ISolvingStrategy interface", "[bug]
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::BUG);
     REQUIRE(strategy->getName() == "BUG");
-    REQUIRE(strategy->getDifficultyPoints() == 350);
+    REQUIRE(strategy->getDifficultyRating() == 5.6);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

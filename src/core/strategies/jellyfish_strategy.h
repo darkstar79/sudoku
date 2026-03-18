@@ -51,8 +51,8 @@ public:
         return "Jellyfish";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::Jellyfish);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::Jellyfish);
     }
 
 private:
@@ -123,7 +123,7 @@ private:
                                     .value = 0,
                                     .eliminations = eliminations,
                                     .explanation = explanation,
-                                    .points = getTechniquePoints(SolvingTechnique::Jellyfish),
+                                    .rating = getTechniqueRating(SolvingTechnique::Jellyfish),
                                     .explanation_data = {.positions = positions,
                                                          .values = {value, static_cast<int>(r1 + 1),
                                                                     static_cast<int>(r2 + 1), static_cast<int>(r3 + 1),
@@ -208,7 +208,7 @@ private:
                                     .value = 0,
                                     .eliminations = eliminations,
                                     .explanation = explanation,
-                                    .points = getTechniquePoints(SolvingTechnique::Jellyfish),
+                                    .rating = getTechniqueRating(SolvingTechnique::Jellyfish),
                                     .explanation_data = {.positions = positions,
                                                          .values = {value, static_cast<int>(c1 + 1),
                                                                     static_cast<int>(c2 + 1), static_cast<int>(c3 + 1),

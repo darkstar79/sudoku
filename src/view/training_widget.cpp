@@ -52,7 +52,7 @@ namespace {
 std::string formatTechniqueLabel(sudoku::core::SolvingTechnique technique, sudoku::core::MasteryLevel mastery,
                                  bool is_recommended) {
     auto name = sudoku::core::getTechniqueName(technique);
-    auto points = sudoku::core::getTechniquePoints(technique);
+    auto points = sudoku::core::getTechniqueRating(technique);
 
     std::string badge;
     switch (mastery) {
@@ -174,7 +174,7 @@ void TrainingWidget::buildTechniqueSelectionPage() {
 
         for (auto technique : group.techniques) {
             auto name = core::getTechniqueName(technique);
-            auto points = core::getTechniquePoints(technique);
+            auto points = core::getTechniqueRating(technique);
             auto label = fmt::format("{} ({} pts)", name, points);
 
             auto* btn = new QPushButton(QString::fromStdString(label));
@@ -304,7 +304,7 @@ void TrainingWidget::buildTheoryPage() {
                 }
                 auto desc = training_vm_->currentDescription();
                 const auto& state = training_vm_->trainingState.get();
-                auto points = core::getTechniquePoints(state.current_technique);
+                auto points = core::getTechniqueRating(state.current_technique);
 
                 title_label->setText(QString::fromUtf8(desc.title.data(), static_cast<int>(desc.title.size())));
                 points_label->setText(QString("%1 difficulty points").arg(points));

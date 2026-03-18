@@ -535,13 +535,13 @@ void MainWindow::updateToolBar() {
     hints_label_->setText(QString::number(hint_count));
 
     const auto& ui_state = view_model_->uiState.get();
-    if (ui_state.puzzle_rating > 0) {
+    if (ui_state.puzzle_rating > 0.0) {
         const auto& techniques = ui_state.puzzle_techniques;
         if (!techniques.empty()) {
             rating_btn_->setText(
-                QString("Rating: %1 (%2 techniques)").arg(ui_state.puzzle_rating).arg(techniques.size()));
+                QString("SE %1 (%2 techniques)").arg(ui_state.puzzle_rating, 0, 'f', 1).arg(techniques.size()));
         } else {
-            rating_btn_->setText(QString("Rating: %1").arg(ui_state.puzzle_rating));
+            rating_btn_->setText(QString("SE %1").arg(ui_state.puzzle_rating, 0, 'f', 1));
         }
         rating_action_->setVisible(true);
     } else {
@@ -713,11 +713,11 @@ void MainWindow::showTechniquesDialog() {
     }
 
     const auto& ui_state = view_model_->uiState.get();
-    if (ui_state.puzzle_rating <= 0) {
+    if (ui_state.puzzle_rating <= 0.0) {
         return;
     }
 
-    QString text = QString("Puzzle Rating: %1\n\n").arg(ui_state.puzzle_rating);
+    QString text = QString("Puzzle Rating: SE %1\n\n").arg(ui_state.puzzle_rating, 0, 'f', 1);
 
     const auto& techniques = ui_state.puzzle_techniques;
     if (!techniques.empty()) {

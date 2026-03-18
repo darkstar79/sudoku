@@ -53,8 +53,8 @@ public:
         return "Swordfish";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::Swordfish);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::Swordfish);
     }
 
 private:
@@ -124,7 +124,7 @@ private:
                                 .value = 0,
                                 .eliminations = eliminations,
                                 .explanation = explanation,
-                                .points = getTechniquePoints(SolvingTechnique::Swordfish),
+                                .rating = getTechniqueRating(SolvingTechnique::Swordfish),
                                 .explanation_data = {.positions = positions,
                                                      .values = {value, static_cast<int>(r1 + 1),
                                                                 static_cast<int>(r2 + 1), static_cast<int>(r3 + 1),
@@ -207,7 +207,7 @@ private:
                                 .value = 0,
                                 .eliminations = eliminations,
                                 .explanation = explanation,
-                                .points = getTechniquePoints(SolvingTechnique::Swordfish),
+                                .rating = getTechniqueRating(SolvingTechnique::Swordfish),
                                 .explanation_data = {.positions = positions,
                                                      .values = {value, static_cast<int>(c1 + 1),
                                                                 static_cast<int>(c2 + 1), static_cast<int>(c3 + 1),

@@ -125,7 +125,7 @@ TrainingExerciseGenerator::generateExercises(SolvingTechnique technique, int cou
 }
 
 Difficulty TrainingExerciseGenerator::getDifficultyForTechnique(SolvingTechnique technique) {
-    auto points = getTechniquePoints(technique);
+    auto points = getTechniqueRating(technique);
 
     if (points <= 150) {
         // Foundations, Subset Basics, Intersections & Quads
@@ -144,7 +144,7 @@ Difficulty TrainingExerciseGenerator::getDifficultyForTechnique(SolvingTechnique
 }
 
 int TrainingExerciseGenerator::getRetryBudget(SolvingTechnique technique) {
-    auto points = getTechniquePoints(technique);
+    auto points = getTechniqueRating(technique);
 
     if (points <= 150) {
         return 10;

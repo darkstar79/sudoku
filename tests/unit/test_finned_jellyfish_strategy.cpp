@@ -42,7 +42,7 @@ TEST_CASE("FinnedJellyfishStrategy - Metadata", "[finned_jellyfish]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::FinnedJellyfish);
     REQUIRE(strategy.getName() == "Finned Jellyfish");
-    REQUIRE(strategy.getDifficultyPoints() == 450);
+    REQUIRE(strategy.getDifficultyRating() == 5.4);
 }
 
 TEST_CASE("FinnedJellyfishStrategy - Returns nullopt for complete board", "[finned_jellyfish]") {
@@ -116,7 +116,7 @@ TEST_CASE("FinnedJellyfishStrategy - Detects row-based finned jellyfish", "[finn
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::FinnedJellyfish);
         REQUIRE(result->type == SolveStepType::Elimination);
-        REQUIRE(result->points == 450);
+        REQUIRE(result->rating == 5.4);
 
         for (const auto& elim : result->eliminations) {
             REQUIRE(elim.value == 1);
@@ -177,7 +177,7 @@ TEST_CASE("FinnedJellyfishStrategy - Can be used through ISolvingStrategy interf
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::FinnedJellyfish);
     REQUIRE(strategy->getName() == "Finned Jellyfish");
-    REQUIRE(strategy->getDifficultyPoints() == 450);
+    REQUIRE(strategy->getDifficultyRating() == 5.4);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

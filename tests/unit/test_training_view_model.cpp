@@ -69,7 +69,7 @@ public:
                     .value = 9,
                     .eliminations = {},
                     .explanation = "Naked Single at R2C1: only value 9 is possible",
-                    .points = getTechniquePoints(technique),
+                    .rating = getTechniqueRating(technique),
                     .explanation_data = {.positions = {Position{.row = 1, .col = 0}}, .values = {9}},
                 };
                 ex.interaction_mode = TrainingInteractionMode::Placement;
@@ -81,7 +81,7 @@ public:
                     .value = 0,
                     .eliminations = {{Position{.row = 0, .col = 2}, 1}},
                     .explanation = "Technique eliminates 1 from R1C3",
-                    .points = getTechniquePoints(technique),
+                    .rating = getTechniqueRating(technique),
                     .explanation_data = {.positions = {Position{.row = 0, .col = 2}}, .values = {1}},
                 };
                 ex.interaction_mode = TrainingInteractionMode::Elimination;
@@ -951,7 +951,7 @@ public:
                 .value = 4,
                 .eliminations = {},
                 .explanation = "Naked Single at R1C3: only value 4 is possible",
-                .points = getTechniquePoints(technique),
+                .rating = getTechniqueRating(technique),
                 .explanation_data = {.positions = {Position{.row = 0, .col = 2}}, .values = {4}},
             };
             ex.technique = technique;

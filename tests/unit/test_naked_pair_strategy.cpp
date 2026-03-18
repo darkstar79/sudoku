@@ -36,9 +36,9 @@ TEST_CASE("NakedPairStrategy - Interface Implementation", "[naked_pair]") {
         REQUIRE(strategy.getName() == "Naked Pair");
     }
 
-    SECTION("getDifficultyPoints returns 50") {
-        REQUIRE(strategy.getDifficultyPoints() == 50);
-        REQUIRE(strategy.getDifficultyPoints() == getTechniquePoints(SolvingTechnique::NakedPair));
+    SECTION("getDifficultyRating returns 50") {
+        REQUIRE(strategy.getDifficultyRating() == 3.0);
+        REQUIRE(strategy.getDifficultyRating() == getTechniqueRating(SolvingTechnique::NakedPair));
     }
 }
 
@@ -55,7 +55,7 @@ TEST_CASE("NakedPairStrategy - Board Analysis", "[naked_pair]") {
         if (step.has_value()) {
             REQUIRE(step->type == SolveStepType::Elimination);
             REQUIRE(step->technique == SolvingTechnique::NakedPair);
-            REQUIRE(step->points == 50);
+            REQUIRE(step->rating == 3.0);
             REQUIRE_FALSE(step->explanation.empty());
             REQUIRE(step->eliminations.size() > 0);
         }
@@ -137,6 +137,6 @@ TEST_CASE("NakedPairStrategy - Polymorphic Usage", "[naked_pair]") {
         auto step = strategy->findStep(board, state);
 
         REQUIRE(strategy->getTechnique() == SolvingTechnique::NakedPair);
-        REQUIRE(strategy->getDifficultyPoints() == 50);
+        REQUIRE(strategy->getDifficultyRating() == 3.0);
     }
 }

@@ -83,8 +83,8 @@ public:
         return "XY-Chain";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::XYChain);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::XYChain);
     }
 
 private:
@@ -171,7 +171,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::XYChain),
+                         .rating = getTechniqueRating(SolvingTechnique::XYChain),
                          .explanation_data = {.positions = {start, end},
                                               .values = {elim_x, chain_length},
                                               .position_roles = {CellRole::ChainA, CellRole::ChainB}}};

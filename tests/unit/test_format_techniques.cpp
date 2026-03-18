@@ -65,20 +65,20 @@ TEST_CASE("GameViewModel::formatTechniques - formats technique names for display
         std::set<SolvingTechnique> techniques{SolvingTechnique::NakedSingle};
         auto result = view_model.formatTechniques(techniques, false);
         REQUIRE(result.size() == 1);
-        REQUIRE(result[0] == "Naked Single (10 pts)");
+        REQUIRE(result[0] == "Naked Single (SE 2.3)");
     }
 
-    SECTION("Multiple techniques are sorted by difficulty points ascending") {
+    SECTION("Multiple techniques are sorted by SE rating ascending") {
         std::set<SolvingTechnique> techniques{
-            SolvingTechnique::XWing,        // 200 pts
-            SolvingTechnique::NakedSingle,  // 10 pts
-            SolvingTechnique::HiddenPair,   // 70 pts
+            SolvingTechnique::XWing,        // SE 3.2
+            SolvingTechnique::NakedSingle,  // SE 2.3
+            SolvingTechnique::HiddenPair,   // SE 3.4
         };
         auto result = view_model.formatTechniques(techniques, false);
         REQUIRE(result.size() == 3);
-        REQUIRE(result[0] == "Naked Single (10 pts)");
-        REQUIRE(result[1] == "Hidden Pair (70 pts)");
-        REQUIRE(result[2] == "X-Wing (200 pts)");
+        REQUIRE(result[0] == "Naked Single (SE 2.3)");
+        REQUIRE(result[1] == "X-Wing (SE 3.2)");
+        REQUIRE(result[2] == "Hidden Pair (SE 3.4)");
     }
 
     SECTION("Backtracking only (pure backtracking puzzle)") {
@@ -90,13 +90,13 @@ TEST_CASE("GameViewModel::formatTechniques - formats technique names for display
 
     SECTION("Mixed puzzle: techniques plus backtracking") {
         std::set<SolvingTechnique> techniques{
-            SolvingTechnique::NakedSingle,   // 10 pts
-            SolvingTechnique::HiddenSingle,  // 15 pts
+            SolvingTechnique::NakedSingle,   // SE 2.3
+            SolvingTechnique::HiddenSingle,  // SE 1.5
         };
         auto result = view_model.formatTechniques(techniques, true);
         REQUIRE(result.size() == 3);
-        REQUIRE(result[0] == "Naked Single (10 pts)");
-        REQUIRE(result[1] == "Hidden Single (15 pts)");
+        REQUIRE(result[0] == "Hidden Single (SE 1.5)");  // HiddenSingle < NakedSingle in SE
+        REQUIRE(result[1] == "Naked Single (SE 2.3)");
         REQUIRE(result[2] == "Backtracking (trial & error)");
     }
 
@@ -111,17 +111,18 @@ TEST_CASE("GameViewModel::formatTechniques - formats technique names for display
         };
         auto result = view_model.formatTechniques(techniques, false);
         REQUIRE(result.size() == 12);
-        REQUIRE(result[0] == "Naked Single (10 pts)");
-        REQUIRE(result[11] == "XY-Wing (200 pts)");
+        REQUIRE(result[0] == "Hidden Single (SE 1.5)");  // Easiest in SE scale
+        REQUIRE(result[11] == "Hidden Quad (SE 5.4)");   // Hardest in this set
     }
 
-    SECTION("Techniques with same points maintain stable order") {
+    SECTION("Techniques sorted by SE rating") {
         std::set<SolvingTechnique> techniques{
-            SolvingTechnique::PointingPair,      // 100 pts
-            SolvingTechnique::BoxLineReduction,  // 100 pts
+            SolvingTechnique::PointingPair,      // SE 2.6
+            SolvingTechnique::BoxLineReduction,  // SE 2.8
         };
         auto result = view_model.formatTechniques(techniques, false);
         REQUIRE(result.size() == 2);
-        // Both have 100 pts - stable sort preserves input order
+        REQUIRE(result[0] == "Pointing Pair (SE 2.6)");
+        REQUIRE(result[1] == "Box/Line Reduction (SE 2.8)");
     }
 }

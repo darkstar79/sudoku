@@ -185,10 +185,10 @@ inline constexpr std::array kAllTechniques = {
 /// 4. Returns nullopt if all techniques are Mastered
 [[nodiscard]] inline std::optional<SolvingTechnique>
 getRecommendedTechnique(const ITrainingStatisticsManager& stats_mgr) {
-    // Sort techniques by difficulty points, then by enum order for stability
+    // Sort techniques by SE difficulty rating, then by enum order for stability
     struct TechCandidate {
         SolvingTechnique technique;
-        int points;
+        double rating;
         std::chrono::system_clock::time_point last_practiced;
     };
 
@@ -203,7 +203,7 @@ getRecommendedTechnique(const ITrainingStatisticsManager& stats_mgr) {
             continue;
         }
         auto stats = stats_mgr.getStats(tech);
-        candidates.push_back({tech, getTechniquePoints(tech), stats.last_practiced});
+        candidates.push_back({tech, getTechniqueRating(tech), stats.last_practiced});
     }
 
     if (candidates.empty()) {
@@ -212,8 +212,8 @@ getRecommendedTechnique(const ITrainingStatisticsManager& stats_mgr) {
 
     // Sort by: lowest difficulty first, then least recently practiced
     std::ranges::sort(candidates, [](const TechCandidate& a, const TechCandidate& b) {
-        if (a.points != b.points) {
-            return a.points < b.points;
+        if (a.rating != b.rating) {
+            return a.rating < b.rating;
         }
         return a.last_practiced < b.last_practiced;
     });

@@ -56,8 +56,8 @@ public:
         return "Naked Quad";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::NakedQuad);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::NakedQuad);
     }
 
 private:
@@ -147,7 +147,7 @@ private:
                 .value = 0,
                 .eliminations = eliminations,
                 .explanation = explanation,
-                .points = getTechniquePoints(SolvingTechnique::NakedQuad),
+                .rating = getTechniqueRating(SolvingTechnique::NakedQuad),
                 .explanation_data = {.positions = {pos1, pos2, pos3, pos4},
                                      .values = {quad_values[0], quad_values[1], quad_values[2], quad_values[3]},
                                      .region_type = region_type,

@@ -34,7 +34,7 @@ TEST_CASE("XCyclesStrategy - Metadata", "[x_cycles]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::XCycles);
     REQUIRE(strategy.getName() == "X-Cycles");
-    REQUIRE(strategy.getDifficultyPoints() == 350);
+    REQUIRE(strategy.getDifficultyRating() == 6.6);
 }
 
 TEST_CASE("XCyclesStrategy - Returns nullopt for complete board", "[x_cycles]") {
@@ -83,7 +83,7 @@ TEST_CASE("XCyclesStrategy - Finds X-Cycle with strong link in column", "[x_cycl
     // With a rich candidate graph and a strong link, the strategy should find a pattern
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::XCycles);
-        REQUIRE(result->points == 350);
+        REQUIRE(result->rating == 6.6);
     }
 }
 
@@ -132,7 +132,7 @@ TEST_CASE("XCyclesStrategy - Finds X-Cycle with multiple strong links", "[x_cycl
     // Verify it finds an X-Cycle pattern
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::XCycles);
-        REQUIRE(result->points == 350);
+        REQUIRE(result->rating == 6.6);
     }
 }
 

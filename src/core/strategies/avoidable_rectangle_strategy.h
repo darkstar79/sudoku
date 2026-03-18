@@ -53,8 +53,8 @@ public:
         return "Avoidable Rectangle";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::AvoidableRectangle);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::AvoidableRectangle);
     }
 
 private:
@@ -250,7 +250,7 @@ private:
                          .value = 0,
                          .eliminations = {Elimination{.position = target, .value = elim_val}},
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::AvoidableRectangle),
+                         .rating = getTechniqueRating(SolvingTechnique::AvoidableRectangle),
                          .explanation_data = {.positions = all_positions,
                                               .values = {val_a, val_b, elim_val},
                                               .position_roles = std::move(roles)}};

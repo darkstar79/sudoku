@@ -38,7 +38,7 @@ TEST_CASE("SueDeCoqStrategy - Metadata", "[sue_de_coq]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::SueDeCoq);
     REQUIRE(strategy.getName() == "Sue de Coq");
-    REQUIRE(strategy.getDifficultyPoints() == 500);
+    REQUIRE(strategy.getDifficultyRating() == 7.5);
 }
 
 TEST_CASE("SueDeCoqStrategy - Returns nullopt for complete board", "[sue_de_coq]") {
@@ -98,7 +98,7 @@ TEST_CASE("SueDeCoqStrategy - Detects Sue de Coq pattern", "[sue_de_coq]") {
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::SueDeCoq);
         REQUIRE(result->type == SolveStepType::Elimination);
-        REQUIRE(result->points == 500);
+        REQUIRE(result->rating == 7.5);
         REQUIRE(result->explanation.find("Sue de Coq") != std::string::npos);
         REQUIRE_FALSE(result->eliminations.empty());
     }
@@ -189,7 +189,7 @@ TEST_CASE("SueDeCoqStrategy - Can be used through ISolvingStrategy interface", "
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::SueDeCoq);
     REQUIRE(strategy->getName() == "Sue de Coq");
-    REQUIRE(strategy->getDifficultyPoints() == 500);
+    REQUIRE(strategy->getDifficultyRating() == 7.5);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

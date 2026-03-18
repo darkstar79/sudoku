@@ -75,7 +75,7 @@ struct UIState {
     bool auto_notes_enabled{false};
     std::string status_message;
     std::string time_display;
-    int puzzle_rating{0};                        // Sudoku Explainer rating (0-2000+ scale)
+    double puzzle_rating{0.0};                   // Sudoku Explainer rating (SE 1.0-12.0 scale)
     std::vector<std::string> puzzle_techniques;  // Technique names required to solve puzzle
 
     bool operator==(const UIState& other) const = default;
@@ -213,7 +213,7 @@ private:
     int move_history_index_{-1};
     int last_valid_state_index_{-1};  // Index of last conflict-free board state
     bool auto_save_enabled_{true};
-    int current_puzzle_rating_{0};  // Rating of current puzzle (Sudoku Explainer scale)
+    double current_puzzle_rating_{0.0};  // Rating of current puzzle (SE scale)
     std::set<core::SolvingTechnique> current_puzzle_techniques_;
     bool current_puzzle_requires_backtracking_{false};
 

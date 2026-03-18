@@ -43,7 +43,7 @@ TEST_CASE("HiddenUniqueRectangleStrategy - Metadata", "[hidden_unique_rectangle]
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::HiddenUniqueRectangle);
     REQUIRE(strategy.getName() == "Hidden Unique Rectangle");
-    REQUIRE(strategy.getDifficultyPoints() == 350);
+    REQUIRE(strategy.getDifficultyRating() == 4.8);
 }
 
 TEST_CASE("HiddenUniqueRectangleStrategy - Returns nullopt for complete board", "[hidden_unique_rectangle]") {
@@ -115,7 +115,7 @@ TEST_CASE("HiddenUniqueRectangleStrategy - Detects Hidden UR with conjugate pair
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::HiddenUniqueRectangle);
-    REQUIRE(result->points == 350);
+    REQUIRE(result->rating == 4.8);
     REQUIRE(result->eliminations.size() == 1);
 
     // Should eliminate 2 from target (2,3) since 1 must go there

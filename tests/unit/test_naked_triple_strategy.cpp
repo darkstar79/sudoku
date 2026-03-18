@@ -36,9 +36,9 @@ TEST_CASE("NakedTripleStrategy - Interface Implementation", "[naked_triple]") {
         REQUIRE(strategy.getName() == "Naked Triple");
     }
 
-    SECTION("getDifficultyPoints returns 60") {
-        REQUIRE(strategy.getDifficultyPoints() == 60);
-        REQUIRE(strategy.getDifficultyPoints() == getTechniquePoints(SolvingTechnique::NakedTriple));
+    SECTION("getDifficultyRating returns 60") {
+        REQUIRE(strategy.getDifficultyRating() == 3.6);
+        REQUIRE(strategy.getDifficultyRating() == getTechniqueRating(SolvingTechnique::NakedTriple));
     }
 }
 
@@ -58,7 +58,7 @@ TEST_CASE("NakedTripleStrategy - Finds Naked Triple", "[naked_triple]") {
         if (step.has_value()) {
             REQUIRE(step->type == SolveStepType::Elimination);
             REQUIRE(step->technique == SolvingTechnique::NakedTriple);
-            REQUIRE(step->points == 60);
+            REQUIRE(step->rating == 3.6);
             REQUIRE_FALSE(step->explanation.empty());
             REQUIRE_FALSE(step->eliminations.empty());
         }
@@ -78,7 +78,7 @@ TEST_CASE("NakedTripleStrategy - Board Analysis", "[naked_triple]") {
         if (step.has_value()) {
             REQUIRE(step->type == SolveStepType::Elimination);
             REQUIRE(step->technique == SolvingTechnique::NakedTriple);
-            REQUIRE(step->points == 60);
+            REQUIRE(step->rating == 3.6);
             REQUIRE_FALSE(step->explanation.empty());
         }
         // Test passes whether pattern found or not - key is algorithm executed
@@ -128,7 +128,7 @@ TEST_CASE("NakedTripleStrategy - Polymorphic Usage", "[naked_triple]") {
         auto step = strategy->findStep(board, state);
 
         REQUIRE(strategy->getTechnique() == SolvingTechnique::NakedTriple);
-        REQUIRE(strategy->getDifficultyPoints() == 60);
+        REQUIRE(strategy->getDifficultyRating() == 3.6);
     }
 }
 

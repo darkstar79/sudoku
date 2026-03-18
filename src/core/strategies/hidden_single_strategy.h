@@ -52,7 +52,7 @@ public:
                          .value = value,
                          .eliminations = {},
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::HiddenSingle),
+                         .rating = getTechniqueRating(SolvingTechnique::HiddenSingle),
                          .explanation_data = {.positions = {position}, .values = {value}}};
     }
 
@@ -64,8 +64,8 @@ public:
         return "Hidden Single";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::HiddenSingle);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::HiddenSingle);
     }
 };
 

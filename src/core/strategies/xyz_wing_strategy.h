@@ -74,8 +74,8 @@ public:
         return "XYZ-Wing";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::XYZWing);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::XYZWing);
     }
 
 private:
@@ -172,7 +172,7 @@ private:
                         .value = 0,
                         .eliminations = eliminations,
                         .explanation = explanation,
-                        .points = getTechniquePoints(SolvingTechnique::XYZWing),
+                        .rating = getTechniqueRating(SolvingTechnique::XYZWing),
                         .explanation_data = {.positions = {pivot, wing1, wing2},
                                              .values = {pivot_cands[0], pivot_cands[1], pivot_cands[2]},
                                              .position_roles = {CellRole::Pivot, CellRole::Wing, CellRole::Wing}}};

@@ -58,8 +58,8 @@ public:
         return "X-Cycles";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::XCycles);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::XCycles);
     }
 
 private:
@@ -297,7 +297,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::XCycles),
+            .rating = getTechniqueRating(SolvingTechnique::XCycles),
             .explanation_data = {
                 .positions = positions, .values = {digit}, .technique_subtype = 0, .position_roles = std::move(roles)}};
     }
@@ -332,7 +332,7 @@ private:
             .value = digit,
             .eliminations = {},
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::XCycles),
+            .rating = getTechniqueRating(SolvingTechnique::XCycles),
             .explanation_data = {
                 .positions = positions, .values = {digit}, .technique_subtype = 1, .position_roles = std::move(roles)}};
     }
@@ -370,7 +370,7 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .points = getTechniquePoints(SolvingTechnique::XCycles),
+            .rating = getTechniqueRating(SolvingTechnique::XCycles),
             .explanation_data = {
                 .positions = positions, .values = {digit}, .technique_subtype = 2, .position_roles = std::move(roles)}};
     }

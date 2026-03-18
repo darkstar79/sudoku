@@ -81,7 +81,7 @@ StatisticsManager::~StatisticsManager() {
 }
 
 std::expected<uint64_t, StatisticsError> StatisticsManager::startGame(Difficulty difficulty, uint32_t puzzle_seed,
-                                                                      int puzzle_rating) {
+                                                                      double puzzle_rating) {
     if (!isValidDifficulty(difficulty)) {
         return std::unexpected(StatisticsError::InvalidDifficulty);
     }
@@ -504,7 +504,7 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
     int diff_index = static_cast<int>(completed_game.difficulty);
 
     // Update rating statistics BEFORE incrementing games_played (track for all games, not just completed)
-    if (completed_game.puzzle_rating > 0) {
+    if (completed_game.puzzle_rating > 0.0) {
         // Get count BEFORE incrementing
         auto games_count_before = cached_stats_.games_played[diff_index];
 

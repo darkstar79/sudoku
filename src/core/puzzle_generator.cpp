@@ -125,14 +125,14 @@ std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(const Gen
         if (rater_) {
             auto rating_result = rater_->ratePuzzle(result.board);
             if (rating_result.has_value()) {
-                result.rating = rating_result->total_score;
+                result.rating = rating_result->se_rating;
                 result.requires_backtracking = rating_result->requires_backtracking;
                 for (const auto& step : rating_result->solve_path) {
                     if (step.technique != SolvingTechnique::Backtracking) {
                         result.required_techniques.insert(step.technique);
                     }
                 }
-                spdlog::info("Puzzle rated: {} points (Sudoku Explainer scale)", result.rating);
+                spdlog::info("Puzzle rated: SE {:.1f}", result.rating);
 
                 // Validate rating: reject puzzles outside the expected range for their difficulty
                 {

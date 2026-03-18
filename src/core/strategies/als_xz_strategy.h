@@ -54,8 +54,8 @@ public:
         return "ALS-XZ";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::ALSxZ);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::ALSxZ);
     }
 
 private:
@@ -190,7 +190,7 @@ private:
                                 .value = 0,
                                 .eliminations = eliminations,
                                 .explanation = explanation,
-                                .points = getTechniquePoints(SolvingTechnique::ALSxZ),
+                                .rating = getTechniqueRating(SolvingTechnique::ALSxZ),
                                 .explanation_data = {.positions = all_positions,
                                                      .values = {x, z, static_cast<int>(als_list[i].cells.size()),
                                                                 static_cast<int>(als_list[j].cells.size())},

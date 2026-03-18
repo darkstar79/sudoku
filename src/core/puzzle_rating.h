@@ -25,9 +25,11 @@
 
 namespace sudoku::core {
 
-/// Complete rating information for a Sudoku puzzle
+/// Complete rating information for a Sudoku puzzle.
+/// Rating uses the Sudoku Explainer (SE) scale by Nicolas Juillerat:
+/// the puzzle's difficulty equals the hardest technique required to solve it.
 struct PuzzleRating {
-    int total_score;                    ///< Sum of technique points (Sudoku Explainer scale)
+    double se_rating;                   ///< SE difficulty rating (max technique, 1.0-12.0 scale)
     std::vector<SolveStep> solve_path;  ///< All steps required to solve puzzle
     bool requires_backtracking;         ///< True if logical techniques alone insufficient
     Difficulty estimated_difficulty;    ///< Difficulty level based on rating
@@ -35,30 +37,30 @@ struct PuzzleRating {
     bool operator==(const PuzzleRating& other) const = default;
 };
 
-/// Returns the rating range [min, max) for a difficulty level
+/// Returns the SE rating range [min, max) for a difficulty level
 /// @param difficulty Difficulty level
 /// @return Pair of (min_rating, max_rating) - inclusive min, exclusive max
-/// @note Single source of truth for difficulty thresholds
-[[nodiscard]] constexpr std::pair<int, int> getDifficultyRatingRange(Difficulty difficulty) {
+/// @note Single source of truth for difficulty thresholds on the SE scale
+[[nodiscard]] constexpr std::pair<double, double> getDifficultyRatingRange(Difficulty difficulty) {
     switch (difficulty) {
         case Difficulty::Easy:
-            return {0, 750};
+            return {0.0, 2.5};
         case Difficulty::Medium:
-            return {750, 1250};
+            return {2.5, 3.8};
         case Difficulty::Hard:
-            return {1250, 1750};
+            return {3.8, 5.5};
         case Difficulty::Expert:
-            return {1750, 2250};
+            return {5.5, 7.5};
         case Difficulty::Master:
-            return {2250, std::numeric_limits<int>::max()};
+            return {7.5, std::numeric_limits<double>::max()};
     }
-    return {0, 0};  // Unreachable, but silences compiler warning
+    return {0.0, 0.0};  // Unreachable, but silences compiler warning
 }
 
-/// Converts rating score to difficulty level
-/// @param rating Total Sudoku Explainer rating score
+/// Converts SE rating to difficulty level
+/// @param rating Sudoku Explainer difficulty rating (max technique)
 /// @return Estimated difficulty level
-[[nodiscard]] constexpr Difficulty ratingToDifficulty(int rating) {
+[[nodiscard]] constexpr Difficulty ratingToDifficulty(double rating) {
     if (rating >= getDifficultyRatingRange(Difficulty::Master).first) {
         return Difficulty::Master;
     }

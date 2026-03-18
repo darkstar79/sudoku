@@ -58,8 +58,8 @@ public:
         return "Hidden Unique Rectangle";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::HiddenUniqueRectangle);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::HiddenUniqueRectangle);
     }
 
 private:
@@ -219,7 +219,7 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::HiddenUniqueRectangle),
+                             .rating = getTechniqueRating(SolvingTechnique::HiddenUniqueRectangle),
                              .explanation_data = {.positions = all_positions,
                                                   .values = {val_p, val_q, elim_val},
                                                   .position_roles = std::move(roles)}};

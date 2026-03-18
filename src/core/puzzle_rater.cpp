@@ -47,27 +47,27 @@ std::expected<PuzzleRating, RatingError> PuzzleRater::ratePuzzle(const BoardData
         }
     }
 
-    // Calculate rating from solve path
+    // Calculate SE rating from solve path (max technique difficulty)
     const auto& solver_result = result.value();
-    int total_score = calculateScore(solver_result.solve_path);
+    double se_rating = calculateRating(solver_result.solve_path);
 
-    // Determine difficulty from rating
-    Difficulty estimated_difficulty = ratingToDifficulty(total_score);
+    // Determine difficulty from SE rating
+    Difficulty estimated_difficulty = ratingToDifficulty(se_rating);
 
-    return PuzzleRating{.total_score = total_score,
+    return PuzzleRating{.se_rating = se_rating,
                         .solve_path = solver_result.solve_path,
                         .requires_backtracking = solver_result.used_backtracking,
                         .estimated_difficulty = estimated_difficulty};
 }
 
-int PuzzleRater::calculateScore(const std::vector<SolveStep>& solve_path) {
-    int total = 0;
+double PuzzleRater::calculateRating(const std::vector<SolveStep>& solve_path) {
+    double max_rating = 0.0;
     for (const auto& step : solve_path) {
         if (step.technique != SolvingTechnique::Backtracking) {
-            total += step.points;
+            max_rating = std::max(max_rating, step.rating);
         }
     }
-    return total;
+    return max_rating;
 }
 
 }  // namespace sudoku::core

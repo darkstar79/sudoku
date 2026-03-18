@@ -34,7 +34,7 @@ TEST_CASE("GroupedXCyclesStrategy - Metadata", "[grouped_x_cycles]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::GroupedXCycles);
     REQUIRE(strategy.getName() == "Grouped X-Cycles");
-    REQUIRE(strategy.getDifficultyPoints() == 450);
+    REQUIRE(strategy.getDifficultyRating() == 6.8);
 }
 
 TEST_CASE("GroupedXCyclesStrategy - Returns nullopt for complete board", "[grouped_x_cycles]") {
@@ -113,7 +113,7 @@ TEST_CASE("GroupedXCyclesStrategy - Finds grouped cycle with box group", "[group
     // Should find a grouped X-Cycle pattern
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::GroupedXCycles);
-        REQUIRE(result->points == 450);
+        REQUIRE(result->rating == 6.8);
         REQUIRE_FALSE(result->eliminations.empty());
         for (const auto& elim : result->eliminations) {
             REQUIRE(elim.value == 4);

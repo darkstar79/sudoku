@@ -34,7 +34,7 @@ TEST_CASE("SwordfishStrategy - Metadata", "[swordfish]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::Swordfish);
     REQUIRE(strategy.getName() == "Swordfish");
-    REQUIRE(strategy.getDifficultyPoints() == 250);
+    REQUIRE(strategy.getDifficultyRating() == 3.8);
 }
 
 TEST_CASE("SwordfishStrategy - Returns nullopt for complete board", "[swordfish]") {
@@ -123,7 +123,7 @@ TEST_CASE("SwordfishStrategy - Row-based Swordfish detection", "[swordfish]") {
         REQUIRE(result.has_value());
         REQUIRE(result->type == SolveStepType::Elimination);
         REQUIRE(result->technique == SolvingTechnique::Swordfish);
-        REQUIRE(result->points == 250);
+        REQUIRE(result->rating == 3.8);
         REQUIRE_FALSE(result->eliminations.empty());
 
         // All eliminations should be for value 5
@@ -238,7 +238,7 @@ TEST_CASE("SwordfishStrategy - Can be used through ISolvingStrategy interface", 
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::Swordfish);
     REQUIRE(strategy->getName() == "Swordfish");
-    REQUIRE(strategy->getDifficultyPoints() == 250);
+    REQUIRE(strategy->getDifficultyRating() == 3.8);
 
     // Complete board should return nullopt
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},

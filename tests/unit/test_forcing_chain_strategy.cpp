@@ -38,7 +38,7 @@ TEST_CASE("ForcingChainStrategy - Metadata", "[forcing_chain]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::ForcingChain);
     REQUIRE(strategy.getName() == "Forcing Chain");
-    REQUIRE(strategy.getDifficultyPoints() == 550);
+    REQUIRE(strategy.getDifficultyRating() == 7.5);
 }
 
 TEST_CASE("ForcingChainStrategy - Returns nullopt for complete board", "[forcing_chain]") {
@@ -85,7 +85,7 @@ TEST_CASE("ForcingChainStrategy - Detects forcing chain elimination", "[forcing_
     // depending on propagation paths. If found, verify it's a valid result.
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::ForcingChain);
-        REQUIRE(result->points == 550);
+        REQUIRE(result->rating == 7.5);
     }
 }
 
@@ -147,7 +147,7 @@ TEST_CASE("ForcingChainStrategy - Can be used through ISolvingStrategy interface
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::ForcingChain);
     REQUIRE(strategy->getName() == "Forcing Chain");
-    REQUIRE(strategy->getDifficultyPoints() == 550);
+    REQUIRE(strategy->getDifficultyRating() == 7.5);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

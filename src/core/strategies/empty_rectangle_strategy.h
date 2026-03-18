@@ -56,8 +56,8 @@ public:
         return "Empty Rectangle";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::EmptyRectangle);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::EmptyRectangle);
     }
 
 private:
@@ -195,7 +195,7 @@ private:
                              .value = 0,
                              .eliminations = {Elimination{.position = target, .value = value}},
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::EmptyRectangle),
+                             .rating = getTechniqueRating(SolvingTechnique::EmptyRectangle),
                              .explanation_data = {.positions = {cp_endpoint, target},
                                                   .values = {value, static_cast<int>(box + 1)},
                                                   .region_type = RegionType::Row,
@@ -261,7 +261,7 @@ private:
                              .value = 0,
                              .eliminations = {Elimination{.position = target, .value = value}},
                              .explanation = explanation,
-                             .points = getTechniquePoints(SolvingTechnique::EmptyRectangle),
+                             .rating = getTechniqueRating(SolvingTechnique::EmptyRectangle),
                              .explanation_data = {.positions = {cp_endpoint, target},
                                                   .values = {value, static_cast<int>(box + 1)},
                                                   .region_type = RegionType::Col,

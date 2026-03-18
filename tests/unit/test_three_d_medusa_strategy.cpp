@@ -43,7 +43,7 @@ TEST_CASE("ThreeDMedusaStrategy - Metadata", "[three_d_medusa]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::ThreeDMedusa);
     REQUIRE(strategy.getName() == "3D Medusa");
-    REQUIRE(strategy.getDifficultyPoints() == 400);
+    REQUIRE(strategy.getDifficultyRating() == 4.4);
 }
 
 TEST_CASE("ThreeDMedusaStrategy - Returns nullopt for complete board", "[three_d_medusa]") {
@@ -114,7 +114,7 @@ TEST_CASE("ThreeDMedusaStrategy - Rule 1 contradiction: same color twice in cell
 
     REQUIRE(result.has_value());
     REQUIRE(result->technique == SolvingTechnique::ThreeDMedusa);
-    REQUIRE(result->points == 400);
+    REQUIRE(result->rating == 4.4);
     REQUIRE_FALSE(result->eliminations.empty());
 }
 

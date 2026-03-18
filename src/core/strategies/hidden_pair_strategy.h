@@ -58,8 +58,8 @@ public:
         return "Hidden Pair";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::HiddenPair);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::HiddenPair);
     }
 
 private:
@@ -129,7 +129,7 @@ private:
                                          .value = 0,
                                          .eliminations = eliminations,
                                          .explanation = explanation,
-                                         .points = getTechniquePoints(SolvingTechnique::HiddenPair),
+                                         .rating = getTechniqueRating(SolvingTechnique::HiddenPair),
                                          .explanation_data = {.positions = {pos1, pos2},
                                                               .values = {val1, val2},
                                                               .region_type = region_type,

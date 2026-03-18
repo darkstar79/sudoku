@@ -42,7 +42,7 @@ TEST_CASE("RemotePairsStrategy - Metadata", "[remote_pairs]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::RemotePairs);
     REQUIRE(strategy.getName() == "Remote Pairs");
-    REQUIRE(strategy.getDifficultyPoints() == 350);
+    REQUIRE(strategy.getDifficultyRating() == 4.5);
 }
 
 TEST_CASE("RemotePairsStrategy - Returns nullopt for complete board", "[remote_pairs]") {
@@ -88,7 +88,7 @@ TEST_CASE("RemotePairsStrategy - Even chain length 4 produces eliminations", "[r
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::RemotePairs);
-    REQUIRE(result->points == 350);
+    REQUIRE(result->rating == 4.5);
 
     // All eliminations should be value 3 or 7
     for (const auto& elim : result->eliminations) {
@@ -119,7 +119,7 @@ TEST_CASE("RemotePairsStrategy - Can be used through ISolvingStrategy interface"
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::RemotePairs);
     REQUIRE(strategy->getName() == "Remote Pairs");
-    REQUIRE(strategy->getDifficultyPoints() == 350);
+    REQUIRE(strategy->getDifficultyRating() == 4.5);
 
     BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},

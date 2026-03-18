@@ -56,8 +56,8 @@ public:
         return "Hidden Triple";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::HiddenTriple);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::HiddenTriple);
     }
 
 private:
@@ -137,7 +137,7 @@ private:
                                 .value = 0,
                                 .eliminations = eliminations,
                                 .explanation = explanation,
-                                .points = getTechniquePoints(SolvingTechnique::HiddenTriple),
+                                .rating = getTechniqueRating(SolvingTechnique::HiddenTriple),
                                 .explanation_data = {.positions = {triple_cells[0], triple_cells[1], triple_cells[2]},
                                                      .values = {val1, val2, val3},
                                                      .region_type = region_type,

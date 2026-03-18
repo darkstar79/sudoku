@@ -28,7 +28,7 @@ TEST_CASE("NakedQuadStrategy - Metadata", "[naked_quad]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::NakedQuad);
     REQUIRE(strategy.getName() == "Naked Quad");
-    REQUIRE(strategy.getDifficultyPoints() == 120);
+    REQUIRE(strategy.getDifficultyRating() == 5.0);
 }
 
 TEST_CASE("NakedQuadStrategy - Returns nullopt for complete board", "[naked_quad]") {
@@ -103,7 +103,7 @@ TEST_CASE("NakedQuadStrategy - Finds naked quad with manual elimination setup", 
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::NakedQuad);
-    REQUIRE(result->points == 120);
+    REQUIRE(result->rating == 5.0);
     REQUIRE_FALSE(result->eliminations.empty());
 
     // All eliminations should remove quad values {1,2,3,4} from cell (0,4)

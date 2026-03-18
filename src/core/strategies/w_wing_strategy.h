@@ -90,8 +90,8 @@ public:
         return "W-Wing";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::WWing);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::WWing);
     }
 
 private:
@@ -206,7 +206,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::WWing),
+                         .rating = getTechniqueRating(SolvingTechnique::WWing),
                          .explanation_data = {.positions = {c1, c2, l1, l2},
                                               .values = {link_value, elim_value},
                                               .position_roles = {CellRole::Pattern, CellRole::Pattern,

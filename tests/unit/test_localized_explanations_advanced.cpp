@@ -50,7 +50,7 @@ namespace {
                      .value = data.values.empty() ? 0 : data.values[0],
                      .eliminations = {},
                      .explanation = std::move(fallback),
-                     .points = getTechniquePoints(technique),
+                     .rating = getTechniqueRating(technique),
                      .explanation_data = std::move(data)};
 }
 

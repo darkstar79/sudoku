@@ -56,8 +56,8 @@ public:
         return "Nice Loop";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::NiceLoop);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::NiceLoop);
     }
 
 private:
@@ -402,7 +402,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::NiceLoop),
+                         .rating = getTechniqueRating(SolvingTechnique::NiceLoop),
                          .explanation_data = {.positions = {start_pos, end_pos},
                                               .values = {digit, static_cast<int>(chain.size() + 1)},
                                               .position_roles = {CellRole::ChainA, CellRole::ChainB}}};

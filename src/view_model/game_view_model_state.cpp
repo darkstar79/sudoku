@@ -187,7 +187,7 @@ std::vector<std::string> GameViewModel::formatTechniques(const std::set<core::So
     // Sort by difficulty points (ascending)
     std::vector<core::SolvingTechnique> sorted(techniques.begin(), techniques.end());
     std::ranges::sort(sorted, [](core::SolvingTechnique lhs, core::SolvingTechnique rhs) {
-        return core::getTechniquePoints(lhs) < core::getTechniquePoints(rhs);
+        return core::getTechniqueRating(lhs) < core::getTechniqueRating(rhs);
     });
 
     std::vector<std::string> result;
@@ -195,7 +195,7 @@ std::vector<std::string> GameViewModel::formatTechniques(const std::set<core::So
     for (const auto& tech : sorted) {
         result.push_back(locFormat(core::StringKeys::TechniquePointsFmt,
                                    std::string(core::getLocalizedTechniqueName(*loc_manager_, tech)),
-                                   core::getTechniquePoints(tech)));
+                                   fmt::format("{:.1f}", core::getTechniqueRating(tech))));
     }
 
     if (requires_backtracking) {

@@ -71,9 +71,9 @@ TEST_CASE("NakedSingleStrategy - Interface Implementation", "[naked_single]") {
         REQUIRE(strategy.getName() == "Naked Single");
     }
 
-    SECTION("getDifficultyPoints returns 10") {
-        REQUIRE(strategy.getDifficultyPoints() == 10);
-        REQUIRE(strategy.getDifficultyPoints() == getTechniquePoints(SolvingTechnique::NakedSingle));
+    SECTION("getDifficultyRating returns 10") {
+        REQUIRE(strategy.getDifficultyRating() == 2.3);
+        REQUIRE(strategy.getDifficultyRating() == getTechniqueRating(SolvingTechnique::NakedSingle));
     }
 }
 
@@ -92,7 +92,7 @@ TEST_CASE("NakedSingleStrategy - Finds Naked Single", "[naked_single]") {
         REQUIRE(step->position.row == 0);
         REQUIRE(step->position.col == 0);
         REQUIRE(step->value == 5);
-        REQUIRE(step->points == 10);
+        REQUIRE(step->rating == 2.3);
         REQUIRE_FALSE(step->explanation.empty());
     }
 
@@ -208,7 +208,7 @@ TEST_CASE("NakedSingleStrategy - Polymorphic Usage", "[naked_single]") {
 
         REQUIRE(step.has_value());
         REQUIRE(strategy->getTechnique() == SolvingTechnique::NakedSingle);
-        REQUIRE(strategy->getDifficultyPoints() == 10);
+        REQUIRE(strategy->getDifficultyRating() == 2.3);
     }
 }
 

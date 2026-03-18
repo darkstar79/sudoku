@@ -105,8 +105,8 @@ public:
         return "2-String Kite";
     }
 
-    [[nodiscard]] int getDifficultyPoints() const override {
-        return getTechniquePoints(SolvingTechnique::TwoStringKite);
+    [[nodiscard]] double getDifficultyRating() const override {
+        return getTechniqueRating(SolvingTechnique::TwoStringKite);
     }
 
 private:
@@ -152,7 +152,7 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .points = getTechniquePoints(SolvingTechnique::TwoStringKite),
+                         .rating = getTechniqueRating(SolvingTechnique::TwoStringKite),
                          .explanation_data = {.positions = {row_other, row_connected, col_connected, col_other},
                                               .values = {value},
                                               .position_roles = {CellRole::ChainA, CellRole::LinkEndpoint,
