@@ -26,6 +26,7 @@
 
 #include <chrono>
 #include <compare>
+#include <cstring>
 #include <optional>
 #include <random>
 #include <tuple>
@@ -414,13 +415,9 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
         size_t hs_row = SIMDConstraintState::cellRow(hs_cell_idx);
         size_t hs_col = SIMDConstraintState::cellCol(hs_cell_idx);
 
-        // Save state for backtracking (including region tracking)
-        std::array<uint16_t, 20> hs_saved_peer_candidates{};
-        const auto& hs_peers = PEER_TABLE[hs_cell_idx];
-        for (size_t i = 0; i < 20; ++i) {
-            hs_saved_peer_candidates[i] = state.candidates[hs_peers.peers[i]];
-        }
-        uint16_t hs_saved_cell_candidates = state.getCandidates(hs_cell_idx);
+        // Save full candidates array for backtracking (bulk memcpy: ~6 SIMD stores vs 20 scattered loads)
+        alignas(SIMD_ALIGNMENT) std::array<uint16_t, SIMD_PADDED_CELLS> hs_saved_candidates;
+        std::memcpy(hs_saved_candidates.data(), state.candidates.data(), sizeof(state.candidates));
 
         // Save region tracking state
         uint16_t saved_row_used = state.row_used_[hs_row];
@@ -444,11 +441,8 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
         // Backtrack: restore board
         board[hs_row][hs_col] = 0;
 
-        // Backtrack: restore SIMD state
-        state.candidates[hs_cell_idx] = hs_saved_cell_candidates;
-        for (size_t i = 0; i < 20; ++i) {
-            state.candidates[hs_peers.peers[i]] = hs_saved_peer_candidates[i];
-        }
+        // Backtrack: restore full candidates array
+        std::memcpy(state.candidates.data(), hs_saved_candidates.data(), sizeof(state.candidates));
 
         // Backtrack: restore region tracking
         state.row_used_[hs_row] = saved_row_used;
@@ -477,13 +471,9 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
             return;
         }
 
-        // Save state for backtracking (including region tracking)
-        std::array<uint16_t, 20> ns_saved_peer_candidates{};
-        const auto& ns_peers = PEER_TABLE[ns_cell];
-        for (size_t i = 0; i < 20; ++i) {
-            ns_saved_peer_candidates[i] = state.candidates[ns_peers.peers[i]];
-        }
-        uint16_t ns_saved_cell_candidates = state.getCandidates(ns_cell);
+        // Save full candidates array for backtracking (bulk memcpy)
+        alignas(SIMD_ALIGNMENT) std::array<uint16_t, SIMD_PADDED_CELLS> ns_saved_candidates;
+        std::memcpy(ns_saved_candidates.data(), state.candidates.data(), sizeof(state.candidates));
 
         // Save region tracking state
         uint16_t saved_row_used = state.row_used_[ns_row];
@@ -507,11 +497,8 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
         // Backtrack: restore board
         board[ns_row][ns_col] = 0;
 
-        // Backtrack: restore SIMD state
-        state.candidates[ns_cell] = ns_saved_cell_candidates;
-        for (size_t i = 0; i < 20; ++i) {
-            state.candidates[ns_peers.peers[i]] = ns_saved_peer_candidates[i];
-        }
+        // Backtrack: restore full candidates array
+        std::memcpy(state.candidates.data(), ns_saved_candidates.data(), sizeof(state.candidates));
 
         // Backtrack: restore region tracking
         state.row_used_[ns_row] = saved_row_used;
@@ -563,13 +550,9 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
     // Get candidate bitmask and iterate set bits (faster than 1-9 loop)
     uint16_t candidates = state.getCandidates(static_cast<size_t>(cell));
 
-    // Save state for backtracking (including region tracking)
-    std::array<uint16_t, 20> saved_peer_candidates{};
-    const auto& peers = PEER_TABLE[static_cast<size_t>(cell)];
-    for (size_t i = 0; i < 20; ++i) {
-        saved_peer_candidates[i] = state.candidates[peers.peers[i]];
-    }
-    uint16_t saved_cell_candidates = candidates;
+    // Save full candidates array for backtracking (bulk memcpy)
+    alignas(SIMD_ALIGNMENT) std::array<uint16_t, SIMD_PADDED_CELLS> saved_candidates;
+    std::memcpy(saved_candidates.data(), state.candidates.data(), sizeof(state.candidates));
 
     // Save region tracking state
     uint16_t saved_row_used = state.row_used_[row];
@@ -606,11 +589,8 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
         // Backtrack: restore board
         board[row][col] = 0;
 
-        // Backtrack: restore SIMD state
-        state.candidates[static_cast<size_t>(cell)] = saved_cell_candidates;
-        for (size_t i = 0; i < 20; ++i) {
-            state.candidates[peers.peers[i]] = saved_peer_candidates[i];
-        }
+        // Backtrack: restore full candidates array
+        std::memcpy(state.candidates.data(), saved_candidates.data(), sizeof(state.candidates));
 
         // Backtrack: restore region tracking
         state.row_used_[row] = saved_row_used;

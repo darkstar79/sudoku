@@ -56,6 +56,8 @@ struct PathResult {
     int successes{0};
     double avg_ms{0.0};
     double median_ms{0.0};
+    double p25_ms{0.0};
+    double p75_ms{0.0};
     double min_ms{0.0};
     double max_ms{0.0};
     double std_dev_ms{0.0};
@@ -66,7 +68,9 @@ struct PathResult {
 struct CommandLineArgs {
     Difficulty difficulty{Difficulty::Hard};
     std::string difficulty_name{"Hard"};
-    int iterations{500};
+    int iterations{1000};
+    int warmup{50};
+    int repeats{3};
     bool verbose{false};
     bool show_help{false};
 };
@@ -113,6 +117,18 @@ static CommandLineArgs parseArgs(int argc, char* argv[]) {
                 std::cerr << "Error: Iterations must be positive\n";
                 std::exit(1);
             }
+        } else if (arg == "--warmup" && i + 1 < argc) {
+            args.warmup = std::stoi(argv[++i]);
+            if (args.warmup < 0) {
+                std::cerr << "Error: Warmup must be non-negative\n";
+                std::exit(1);
+            }
+        } else if (arg == "--repeats" && i + 1 < argc) {
+            args.repeats = std::stoi(argv[++i]);
+            if (args.repeats <= 0) {
+                std::cerr << "Error: Repeats must be positive\n";
+                std::exit(1);
+            }
         } else if (arg == "--verbose" || arg == "-v") {
             args.verbose = true;
         } else {
@@ -125,7 +141,7 @@ static CommandLineArgs parseArgs(int argc, char* argv[]) {
 }
 
 static PathResult runPath(PuzzleGenerator& generator, SolverPath path, Difficulty difficulty, int iterations,
-                          bool verbose) {
+                          int warmup, bool verbose) {
     PathResult result;
     result.path = path;
     result.available = isSolverPathAvailable(path);
@@ -136,6 +152,17 @@ static PathResult runPath(PuzzleGenerator& generator, SolverPath path, Difficult
     }
 
     generator.setSolverPath(path);
+
+    // Warmup: generate puzzles without timing to fill caches
+    for (int i = 0; i < warmup; ++i) {
+        GenerationSettings settings;
+        settings.difficulty = difficulty;
+        settings.seed = static_cast<uint32_t>(i + 1);
+        settings.solver_path = path;
+        auto puzzle = generator.generatePuzzle(settings);
+        (void)puzzle;
+    }
+
     result.times.reserve(iterations);
 
     for (int i = 0; i < iterations; ++i) {
@@ -172,6 +199,8 @@ static PathResult runPath(PuzzleGenerator& generator, SolverPath path, Difficult
         std::vector<double> sorted = result.times;
         std::sort(sorted.begin(), sorted.end());
         result.median_ms = sorted[sorted.size() / 2];
+        result.p25_ms = sorted[sorted.size() / 4];
+        result.p75_ms = sorted[(sorted.size() * 3) / 4];
         result.min_ms = sorted.front();
         result.max_ms = sorted.back();
 
@@ -194,7 +223,9 @@ int main(int argc, char* argv[]) {
         std::cout << "Usage: solver_path_benchmark [options]\n\n";
         std::cout << "Options:\n";
         std::cout << "  --difficulty <name>  Easy|Medium|Hard|Expert (default: Hard)\n";
-        std::cout << "  --iterations <n>     Puzzles per path (default: 500)\n";
+        std::cout << "  --iterations <n>     Puzzles per path (default: 1000)\n";
+        std::cout << "  --warmup <n>         Warmup puzzles before timing (default: 50)\n";
+        std::cout << "  --repeats <n>        Repeat full run N times, keep best (default: 3)\n";
         std::cout << "  --verbose, -v        Per-iteration output\n";
         std::cout << "  --help, -h           Show this help\n";
         return 0;
@@ -207,13 +238,13 @@ int main(int argc, char* argv[]) {
               << "  AVX-512BW=" << (cpu.has_avx512bw ? "yes" : "no") << "  POPCNT=" << (cpu.has_popcnt ? "yes" : "no")
               << "\n\n";
 
-    std::cout << "Solver Path Comparison (" << args.difficulty_name << ", " << args.iterations
-              << " iterations per path)\n";
+    std::cout << "Solver Path Comparison (" << args.difficulty_name << ", " << args.iterations << " iterations x "
+              << args.repeats << " repeats, " << args.warmup << " warmup)\n";
     std::cout << "================================================================\n";
 
     PuzzleGenerator generator;
 
-    // Run each path
+    // Run each path with repeats (keep best run to reduce OS scheduler noise)
     constexpr std::array<SolverPath, 3> paths = {SolverPath::Scalar, SolverPath::AVX2, SolverPath::AVX512};
     std::vector<PathResult> results;
 
@@ -229,10 +260,20 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "\n";
 
-        auto result = runPath(generator, path, args.difficulty, args.iterations, args.verbose);
-        results.push_back(result);
+        PathResult best;
+        best.avg_ms = 1e9;
 
-        std::cout << "  Done: " << std::fixed << std::setprecision(1) << result.total_s << "s total, " << result.avg_ms
+        for (int rep = 0; rep < args.repeats; ++rep) {
+            auto result = runPath(generator, path, args.difficulty, args.iterations, args.warmup, args.verbose);
+            std::cout << "  Rep " << (rep + 1) << "/" << args.repeats << ": " << std::fixed << std::setprecision(2)
+                      << result.avg_ms << "ms avg, " << result.median_ms << "ms median\n";
+            if (result.avg_ms < best.avg_ms) {
+                best = result;
+            }
+        }
+
+        results.push_back(best);
+        std::cout << "  Best: " << std::fixed << std::setprecision(2) << best.total_s << "s total, " << best.avg_ms
                   << "ms avg\n";
     }
 
@@ -247,10 +288,10 @@ int main(int argc, char* argv[]) {
 
     // Print summary table
     std::cout << "\n================================================================\n";
-    std::cout << "RESULTS\n";
+    std::cout << "RESULTS (best of " << args.repeats << " repeats)\n";
     std::cout << "================================================================\n";
     std::cout << std::left << std::setw(10) << "Path" << std::right << std::setw(9) << "Avg(ms)" << std::setw(9)
-              << "Median" << std::setw(9) << "Min" << std::setw(9) << "Max" << std::setw(9) << "StdDev" << std::setw(9)
+              << "Median" << std::setw(9) << "P25" << std::setw(9) << "P75" << std::setw(9) << "StdDev" << std::setw(9)
               << "Total(s)" << std::setw(9) << "Speedup"
               << "\n";
     std::cout << "---------- -------- -------- -------- -------- -------- -------- --------\n";
@@ -263,9 +304,9 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        std::cout << std::right << std::fixed << std::setprecision(1) << std::setw(9) << r.avg_ms << std::setw(9)
-                  << r.median_ms << std::setw(9) << r.min_ms << std::setw(9) << r.max_ms << std::setw(9) << r.std_dev_ms
-                  << std::setw(9) << r.total_s;
+        std::cout << std::right << std::fixed << std::setprecision(2) << std::setw(9) << r.avg_ms << std::setw(9)
+                  << r.median_ms << std::setw(9) << r.p25_ms << std::setw(9) << r.p75_ms << std::setw(9) << r.std_dev_ms
+                  << std::setw(9) << std::setprecision(1) << r.total_s;
 
         if (scalar_avg > 0.0 && r.avg_ms > 0.0) {
             std::cout << std::setw(7) << std::setprecision(2) << (scalar_avg / r.avg_ms) << "x";

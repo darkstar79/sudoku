@@ -35,6 +35,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 namespace sudoku::core {
 
@@ -54,6 +55,19 @@ namespace avx512 {
 /// @param board Current board state
 /// @return Cell index with naked single, or -1 if none found
 [[nodiscard]] int findNakedSingle(const std::array<uint16_t, SIMD_PADDED_CELLS_512>& candidates, const Board& board);
+
+/// Find a hidden single by processing all 27 regions (9 rows + 9 cols + 9 boxes) in parallel.
+/// Uses AVX-512 to perform the bit-reduction across all regions simultaneously in 9 SIMD steps.
+/// @param candidates Padded candidate array (96 uint16_t, 64-byte aligned)
+/// @param board Current board state (0 = empty)
+/// @param row_used Values placed in each row (bitmask, bits 0-8 for digits 1-9)
+/// @param col_used Values placed in each column
+/// @param box_used Values placed in each box
+/// @return Pair of (cell_index, digit) if hidden single found, or (-1, 0) if none
+[[nodiscard]] std::pair<int, int> findHiddenSingle(const std::array<uint16_t, SIMD_PADDED_CELLS_512>& candidates,
+                                                   const Board& board, const std::array<uint16_t, 9>& row_used,
+                                                   const std::array<uint16_t, 9>& col_used,
+                                                   const std::array<uint16_t, 9>& box_used);
 
 }  // namespace avx512
 }  // namespace sudoku::core

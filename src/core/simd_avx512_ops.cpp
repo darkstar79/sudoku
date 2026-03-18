@@ -104,4 +104,90 @@ int findNakedSingle(const std::array<uint16_t, SIMD_PADDED_CELLS_512>& candidate
     return -1;
 }
 
+namespace {
+
+/// Precomputed cell indices for each box position (box_index, internal_position) → cell_index.
+/// Box b has top-left at row=(b/3)*3, col=(b%3)*3.
+/// Position s maps to row offset s/3, col offset s%3 within the box.
+[[nodiscard]] constexpr std::array<std::array<uint8_t, BOARD_SIZE>, BOARD_SIZE> generateBoxCellTable() {
+    std::array<std::array<uint8_t, BOARD_SIZE>, BOARD_SIZE> table{};
+    for (size_t b = 0; b < BOARD_SIZE; ++b) {
+        size_t box_row_start = (b / BOX_SIZE) * BOX_SIZE;
+        size_t box_col_start = (b % BOX_SIZE) * BOX_SIZE;
+        for (size_t s = 0; s < BOARD_SIZE; ++s) {
+            size_t row = box_row_start + (s / BOX_SIZE);
+            size_t col = box_col_start + (s % BOX_SIZE);
+            table[b][s] = static_cast<uint8_t>((row * BOARD_SIZE) + col);
+        }
+    }
+    return table;
+}
+
+constexpr auto BOX_CELL_TABLE = generateBoxCellTable();
+
+/// Scan a batch of 9 regions using scalar bit-reduction with branchless candidate masking.
+/// Returns (cell_index, digit) on first hidden single found, or (-1, 0) if none.
+///
+/// Template parameter `GetCell` is a callable: (region_index, position) → cell_index.
+/// Template parameter `GetUsed` is a callable: (region_index) → used_bitmask.
+template <typename GetCell, typename GetUsed>
+[[nodiscard]] std::pair<int, int> scanRegionBatch(const std::array<uint16_t, SIMD_PADDED_CELLS_512>& candidates,
+                                                  const Board& board, GetCell get_cell, GetUsed get_used) {
+    for (size_t region = 0; region < BOARD_SIZE; ++region) {
+        uint16_t at_least_once = 0;
+        uint16_t at_least_twice = 0;
+
+        for (size_t pos = 0; pos < BOARD_SIZE; ++pos) {
+            uint8_t cell_idx = get_cell(region, pos);
+            // Branchless: mask is 0xFFFF when empty, 0x0000 when filled
+            auto empty_mask = static_cast<uint16_t>(-(board.cells[cell_idx] == 0));
+            uint16_t cand = candidates[cell_idx] & empty_mask;
+            at_least_twice |= (at_least_once & cand);
+            at_least_once |= cand;
+        }
+
+        uint16_t exactly_once = at_least_once & ~at_least_twice & ~get_used(region);
+        if (exactly_once != 0) {
+            int digit = std::countr_zero(static_cast<unsigned>(exactly_once)) + 1;
+            auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
+            for (size_t pos = 0; pos < BOARD_SIZE; ++pos) {
+                uint8_t cell_idx = get_cell(region, pos);
+                if (board.cells[cell_idx] == 0 && (candidates[cell_idx] & digit_mask) != 0) {
+                    return {static_cast<int>(cell_idx), digit};
+                }
+            }
+        }
+    }
+    return {-1, 0};
+}
+
+}  // anonymous namespace
+
+std::pair<int, int> findHiddenSingle(const std::array<uint16_t, SIMD_PADDED_CELLS_512>& candidates, const Board& board,
+                                     const std::array<uint16_t, 9>& row_used, const std::array<uint16_t, 9>& col_used,
+                                     const std::array<uint16_t, 9>& box_used) {
+    // Rows: row r, position s → cell r*9+s (contiguous access)
+    auto result = scanRegionBatch(
+        candidates, board,
+        [](size_t region, size_t pos) -> uint8_t { return static_cast<uint8_t>((region * BOARD_SIZE) + pos); },
+        [&row_used](size_t region) -> uint16_t { return row_used[region]; });
+    if (result.first >= 0) {
+        return result;
+    }
+
+    // Columns: col c, position s → cell s*9+c (stride-9 access)
+    result = scanRegionBatch(
+        candidates, board,
+        [](size_t region, size_t pos) -> uint8_t { return static_cast<uint8_t>((pos * BOARD_SIZE) + region); },
+        [&col_used](size_t region) -> uint16_t { return col_used[region]; });
+    if (result.first >= 0) {
+        return result;
+    }
+
+    // Boxes: precomputed cell indices
+    return scanRegionBatch(
+        candidates, board, [](size_t region, size_t pos) -> uint8_t { return BOX_CELL_TABLE[region][pos]; },
+        [&box_used](size_t region) -> uint16_t { return box_used[region]; });
+}
+
 }  // namespace sudoku::core::avx512

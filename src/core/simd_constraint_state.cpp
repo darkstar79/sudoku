@@ -36,6 +36,34 @@ namespace sudoku::core {
 
 namespace {
 
+/// Precomputed peer elimination masks: for each cell, a 96-element bitmask where
+/// peer cells = 0x0000 and non-peer cells = 0xFFFF. Used for bulk SIMD AND elimination.
+/// Layout: PEER_ELIM_MASKS[cell][i] = 0xFFFF if cell i is NOT a peer, 0x0000 if it IS a peer.
+/// This allows: candidates[i] &= (mask[i] | ~digit_mask) to eliminate digit from peers only.
+struct alignas(SIMD_ALIGNMENT) PeerElimMask {
+    std::array<uint16_t, SIMD_PADDED_CELLS> mask;
+};
+
+[[nodiscard]] constexpr std::array<PeerElimMask, BOARD_SIZE * BOARD_SIZE> generatePeerElimMasks() {
+    auto peer_table = generatePeerTable();
+    std::array<PeerElimMask, BOARD_SIZE * BOARD_SIZE> masks{};
+
+    for (size_t cell = 0; cell < BOARD_SIZE * BOARD_SIZE; ++cell) {
+        // Start with all 0xFFFF (non-peer = preserve all candidates)
+        for (size_t i = 0; i < SIMD_PADDED_CELLS; ++i) {
+            masks[cell].mask[i] = 0xFFFF;
+        }
+        // Set peer cells to 0x0000 (peer = eligible for elimination)
+        for (size_t p = 0; p < 20; ++p) {
+            masks[cell].mask[peer_table[cell].peers[p]] = 0x0000;
+        }
+    }
+    return masks;
+}
+
+/// Compile-time peer elimination mask table (81 × 192 bytes = 15.2 KB)
+inline constexpr auto PEER_ELIM_MASKS = generatePeerElimMasks();
+
 /// Lookup table for 4-bit popcount (replicated for both 128-bit lanes)
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays) — alignas required for _mm256_load_si256
 alignas(SIMD_ALIGNMENT) constexpr uint8_t POPCOUNT_LOOKUP[32] = {
@@ -196,11 +224,18 @@ void SIMDConstraintState::place(size_t cell, int digit) {
     col_used_[col] |= digit_mask;
     box_used_[box] |= digit_mask;
 
-    // Eliminate digit from all 20 peers
-    const auto& peers = PEER_TABLE[cell];
-    for (size_t i = 0; i < 20; ++i) {
-        size_t peer_cell = peers.peers[i];
-        candidates[peer_cell] &= ~digit_mask;
+    // Bulk SIMD elimination: AND candidates with (peer_mask | ~digit_mask)
+    // For peer cells (mask=0x0000): candidates &= ~digit_mask (eliminates digit)
+    // For non-peer cells (mask=0xFFFF): candidates &= 0xFFFF (unchanged)
+    const auto& elim_mask = PEER_ELIM_MASKS[cell].mask;
+    const __m256i not_digit = _mm256_set1_epi16(static_cast<short>(~digit_mask));
+
+    for (size_t i = 0; i < SIMD_PADDED_CELLS; i += 16) {
+        __m256i cands = _mm256_load_si256(reinterpret_cast<const __m256i*>(&candidates[i]));
+        __m256i mask = _mm256_load_si256(reinterpret_cast<const __m256i*>(&elim_mask[i]));
+        // (mask | ~digit_mask): 0xFFFF for non-peers, ~digit_mask for peers
+        __m256i combined = _mm256_or_si256(mask, not_digit);
+        _mm256_store_si256(reinterpret_cast<__m256i*>(&candidates[i]), _mm256_and_si256(cands, combined));
     }
 }
 
@@ -379,6 +414,9 @@ std::pair<int, int> SIMDConstraintState::findHiddenSingle(const BoardData& board
 }
 
 std::pair<int, int> SIMDConstraintState::findHiddenSingle(const Board& board) const {
+    if (simd_level_ == SolverPath::AVX512) {
+        return avx512::findHiddenSingle(candidates, board, row_used_, col_used_, box_used_);
+    }
     return findHiddenSingleImpl(board);
 }
 
