@@ -144,34 +144,77 @@ run_clang_tidy_check() {
 
     log_info "Running clang-tidy analysis on $file_count files ($jobs parallel jobs)..."
 
-    local tidy_args=(
-        "-p=$BUILD_DIR"
-        "--config-file=$TIDY_CONFIG"
-        "--warnings-as-errors=*"
-    )
+    local llvm_major
+    llvm_major=$(clang-tidy --version 2>/dev/null | grep -oP 'version \K[0-9]+' | head -1)
+
+    # Prefer run-clang-tidy (LLVM's parallel runner) when available.
+    # It uses Python multiprocessing for optimal work distribution across cores,
+    # avoiding the load-balancing issues of fixed-batch xargs.
+    local run_clang_tidy=""
+    for candidate in "run-clang-tidy-${llvm_major:-}" run-clang-tidy; do
+        if command -v "$candidate" &>/dev/null; then
+            run_clang_tidy="$candidate"
+            break
+        fi
+    done
+
+    # Collect extra compiler args (values only); formatted per runner below.
+    local extra_compiler_args=()
 
     # On LLVM < 19, Clang may compile with a lower C++ standard than what
     # compile_commands.json specifies (due to Conan toolchain interactions),
     # causing std::expected's #if __cplusplus > 202002L guard to fail.
     # Force C++23 explicitly and inject GCC's system include paths so
     # <expected> and other C++23 headers are found and enabled.
-    local llvm_major
-    llvm_major=$(clang-tidy --version 2>/dev/null | grep -oP 'version \K[0-9]+' | head -1)
     if [[ "${llvm_major:-0}" -lt 19 ]]; then
-        tidy_args+=("--extra-arg=-std=c++23")
+        extra_compiler_args+=("-std=c++23")
         while IFS= read -r inc_dir; do
-            [[ -d "$inc_dir" ]] && tidy_args+=("--extra-arg=-isystem$inc_dir")
+            [[ -d "$inc_dir" ]] && extra_compiler_args+=("-isystem$inc_dir")
         done < <(g++ -v -x c++ /dev/null -o /dev/null 2>&1 | \
             awk '/#include <...> search starts here:/{f=1;next} /End of search list/{f=0} f{gsub(/^ +/,""); print}')
     fi
 
-    if [[ "${VERBOSE:-0}" == "1" ]]; then
-        tidy_args+=("--explain-config")
-    fi
-
-    local exit_code=0
-    if ! echo "$source_files" | xargs -P "$jobs" -n 4 clang-tidy "${tidy_args[@]}"; then
-        exit_code=1
+    local tidy_args=()
+    if [[ -n "$run_clang_tidy" ]]; then
+        log_info "Using $run_clang_tidy for parallel analysis"
+        # run-clang-tidy uses Python argparse — single-dash, space-separated args
+        tidy_args=(
+            "-p" "$BUILD_DIR"
+            "-config-file" "$TIDY_CONFIG"
+            "-warnings-as-errors" "*"
+            "-j" "$jobs"
+        )
+        for arg in "${extra_compiler_args[@]}"; do
+            tidy_args+=("-extra-arg" "$arg")
+        done
+        if [[ "${VERBOSE:-0}" == "1" ]]; then
+            tidy_args+=("-explain-config")
+        fi
+        # run-clang-tidy uses Python multiprocessing for optimal work distribution
+        local exit_code=0
+        # shellcheck disable=SC2086
+        if ! $run_clang_tidy "${tidy_args[@]}" $source_files; then
+            exit_code=1
+        fi
+    else
+        log_info "Falling back to xargs-based parallel analysis"
+        # clang-tidy uses double-dash, = joined args
+        tidy_args=(
+            "-p=$BUILD_DIR"
+            "--config-file=$TIDY_CONFIG"
+            "--warnings-as-errors=*"
+        )
+        for arg in "${extra_compiler_args[@]}"; do
+            tidy_args+=("--extra-arg=$arg")
+        done
+        if [[ "${VERBOSE:-0}" == "1" ]]; then
+            tidy_args+=("--explain-config")
+        fi
+        # Use -n 1 so each core always works on a fresh file (no batch stalls)
+        local exit_code=0
+        if ! echo "$source_files" | xargs -P "$jobs" -n 1 clang-tidy "${tidy_args[@]}"; then
+            exit_code=1
+        fi
     fi
 
     if [[ $exit_code -eq 0 ]]; then
