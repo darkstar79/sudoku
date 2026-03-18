@@ -169,7 +169,7 @@ public:
     // Solution access
     void setSolutionBoard(const core::BoardData& solution);
     [[nodiscard]] const core::BoardData& getSolutionBoard() const {
-        return solution_board_.value();
+        return solution_board_.value();  // NOLINT(bugprone-unchecked-optional-access) — callers gate on hasSolution()
     }
     [[nodiscard]] bool hasSolution() const {
         return solution_board_.has_value();

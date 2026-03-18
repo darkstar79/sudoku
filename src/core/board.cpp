@@ -18,11 +18,11 @@
 
 namespace sudoku::core {
 
-Board Board::fromBoardData(const BoardData& vec) {
+Board Board::fromBoardData(const BoardData& src) {
     Board board;
     for (size_t row = 0; row < BOARD_SIZE; ++row) {
         for (size_t col = 0; col < BOARD_SIZE; ++col) {
-            board[row][col] = static_cast<int8_t>(vec[row][col]);
+            board[row][col] = static_cast<int8_t>(src[row][col]);
         }
     }
     return board;

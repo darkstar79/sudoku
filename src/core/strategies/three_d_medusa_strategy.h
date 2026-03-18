@@ -312,8 +312,8 @@ private:
     }
 
     /// Check elimination rules 3-6 for uncolored candidates.
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — rules 3-6 checking uncolored candidates; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — rules 3-6 checking uncolored candidates; nesting is inherent
     checkEliminations(const BoardData& board, const CandidateGrid& candidates, const std::vector<size_t>& color_a_nodes,
                       const std::vector<size_t>& color_b_nodes, const std::array<int8_t, TOTAL_NODES>& color) {
         std::vector<Elimination> eliminations;

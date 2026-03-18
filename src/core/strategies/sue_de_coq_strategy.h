@@ -74,8 +74,8 @@ public:
     }
 
 private:
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — partitions intersection candidates into ALS pairs; nesting is inherent to Sue de Coq
     [[nodiscard]] static std::optional<SolveStep>
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — partitions intersection candidates into ALS pairs; nesting is inherent to Sue de Coq
     tryIntersection(const BoardData& board, const CandidateGrid& candidates, size_t box, size_t line_idx, bool is_row) {
         // Find empty cells in the intersection
         std::vector<Position> inter_cells;

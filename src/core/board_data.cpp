@@ -18,7 +18,7 @@
 
 namespace sudoku::core {
 
-BoardData::BoardData(std::initializer_list<std::initializer_list<int>> init) : cells_{} {
+BoardData::BoardData(std::initializer_list<std::initializer_list<int>> init) {
     size_t row = 0;
     for (const auto& row_init : init) {
         if (row >= BOARD_SIZE) {
