@@ -188,75 +188,58 @@ enum class SolvingTechnique : uint8_t {
         case NakedPair:
             return 3.0;  // SE v1.2.1
         case XWing:
-            return 3.2;  // SE v1.2.1
-        case FinnedXWing:
-            return 3.4;  // SE-compatible: X-Wing + fin overhead
-        case HiddenPair:
-            return 3.4;  // SE v1.2.1
+            return 3.2;    // SE v1.2.1
+        case FinnedXWing:  // SE-compatible: X-Wing + fin overhead
+        case HiddenPair:   // SE v1.2.1
+            return 3.4;
         case NakedTriple:
             return 3.6;  // SE v1.2.1
         case Swordfish:
-            return 3.8;  // SE v1.2.1
-        case HiddenTriple:
-            return 4.0;  // SE v1.2.1
-        case SimpleColoring:
-            return 4.0;  // SE-compatible: simple single-digit chain
-        case Skyscraper:
-            return 4.0;  // SE-compatible: Turbot Fish equivalent
-        case FinnedSwordfish:
-            return 4.0;  // SE-compatible: Swordfish + fin
+            return 3.8;        // SE v1.2.1
+        case HiddenTriple:     // SE v1.2.1
+        case SimpleColoring:   // SE-compatible: simple single-digit chain
+        case Skyscraper:       // SE-compatible: Turbot Fish equivalent
+        case FinnedSwordfish:  // SE-compatible: Swordfish + fin
+            return 4.0;
         case TwoStringKite:
-            return 4.1;  // SE-compatible: slightly harder than Skyscraper
-        case MultiColoring:
-            return 4.2;  // SE-compatible: cross-cluster coloring
-        case FrankenFish:
-            return 4.2;  // SE-compatible: mixed base/cover fish
-        case XYWing:
-            return 4.2;  // SE v1.2.1
-        case ThreeDMedusa:
-            return 4.4;  // SE-compatible: multi-digit coloring
-        case WWing:
-            return 4.4;  // SE-compatible: XYZ-Wing equivalent
-        case XYZWing:
-            return 4.4;  // SE v1.2.1
-        case UniqueRectangle:
-            return 4.5;  // SE v1.2.1 (Type 1; Types 2-4 up to 5.0)
-        case AvoidableRectangle:
-            return 4.5;  // SE-compatible: UR Type 1 equivalent
-        case EmptyRectangle:
-            return 4.5;  // SE-compatible: single-digit intersection
-        case RemotePairs:
-            return 4.5;  // SE-compatible: chaining technique
+            return 4.1;      // SE-compatible: slightly harder than Skyscraper
+        case MultiColoring:  // SE-compatible: cross-cluster coloring
+        case FrankenFish:    // SE-compatible: mixed base/cover fish
+        case XYWing:         // SE v1.2.1
+            return 4.2;
+        case ThreeDMedusa:  // SE-compatible: multi-digit coloring
+        case WWing:         // SE-compatible: XYZ-Wing equivalent
+        case XYZWing:       // SE v1.2.1
+            return 4.4;
+        case UniqueRectangle:     // SE v1.2.1 (Type 1; Types 2-4 up to 5.0)
+        case AvoidableRectangle:  // SE-compatible: UR Type 1 equivalent
+        case EmptyRectangle:      // SE-compatible: single-digit intersection
+        case RemotePairs:         // SE-compatible: chaining technique
+            return 4.5;
         case WXYZWing:
-            return 4.6;  // SE-compatible: 4-cell wing
-        case HiddenUniqueRectangle:
-            return 4.8;  // SE-compatible: harder UR variant
-        case VWXYZWing:
-            return 4.8;  // SE-compatible: 5-cell wing
+            return 4.6;              // SE-compatible: 4-cell wing
+        case HiddenUniqueRectangle:  // SE-compatible: harder UR variant
+        case VWXYZWing:              // SE-compatible: 5-cell wing
+            return 4.8;
         case NakedQuad:
             return 5.0;  // SE v1.2.1
         case Jellyfish:
-            return 5.2;  // SE v1.2.1
-        case HiddenQuad:
-            return 5.4;  // SE v1.2.1
-        case FinnedJellyfish:
-            return 5.4;  // SE-compatible: Jellyfish + fin
+            return 5.2;        // SE v1.2.1
+        case HiddenQuad:       // SE v1.2.1
+        case FinnedJellyfish:  // SE-compatible: Jellyfish + fin
+            return 5.4;
         case BUG:
             return 5.6;  // SE v1.2.1
-        case XCycles:
-            return 6.6;  // SE: X-chains/X-cycles (6.5-6.9)
-        case XYChain:
-            return 6.6;  // SE: Y-cycles (6.6-7.0)
+        case XCycles:    // SE: X-chains/X-cycles (6.5-6.9)
+        case XYChain:    // SE: Y-cycles (6.6-7.0)
+            return 6.6;
         case GroupedXCycles:
-            return 6.8;  // SE-compatible: grouped nodes add complexity
-        case ALSxZ:
-            return 7.5;  // SE-compatible: forcing chain level
-        case SueDeCoq:
-            return 7.5;  // SE-compatible: complex disjoint subsets
-        case ForcingChain:
-            return 7.5;  // SE v1.2.1 (7.1-7.5 range)
-        case NiceLoop:
-            return 7.5;  // SE-compatible: AIC equivalent
+            return 6.8;     // SE-compatible: grouped nodes add complexity
+        case ALSxZ:         // SE-compatible: forcing chain level
+        case SueDeCoq:      // SE-compatible: complex disjoint subsets
+        case ForcingChain:  // SE v1.2.1 (7.1-7.5 range)
+        case NiceLoop:      // SE-compatible: AIC equivalent
+            return 7.5;
         case ALSXYWing:
             return 7.8;  // SE-compatible: three ALS linked
         case DeathBlossom:

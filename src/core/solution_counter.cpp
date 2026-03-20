@@ -416,8 +416,8 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
         size_t hs_col = SIMDConstraintState::cellCol(hs_cell_idx);
 
         // Save full candidates array for backtracking (bulk memcpy: ~6 SIMD stores vs 20 scattered loads)
-        alignas(SIMD_ALIGNMENT) std::array<uint16_t, SIMD_PADDED_CELLS>
-            hs_saved_candidates;  // NOLINT(cppcoreguidelines-pro-type-member-init) — immediately memcpy'd
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init) — immediately memcpy'd
+        alignas(SIMD_ALIGNMENT) std::array<uint16_t, SIMD_PADDED_CELLS> hs_saved_candidates;
         std::memcpy(hs_saved_candidates.data(), state.candidates.data(), sizeof(state.candidates));
 
         // Save region tracking state
@@ -473,8 +473,8 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
         }
 
         // Save full candidates array for backtracking (bulk memcpy)
-        alignas(SIMD_ALIGNMENT) std::array<uint16_t, SIMD_PADDED_CELLS>
-            ns_saved_candidates;  // NOLINT(cppcoreguidelines-pro-type-member-init) — immediately memcpy'd
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init) — immediately memcpy'd
+        alignas(SIMD_ALIGNMENT) std::array<uint16_t, SIMD_PADDED_CELLS> ns_saved_candidates;
         std::memcpy(ns_saved_candidates.data(), state.candidates.data(), sizeof(state.candidates));
 
         // Save region tracking state
@@ -553,8 +553,8 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
     uint16_t candidates = state.getCandidates(static_cast<size_t>(cell));
 
     // Save full candidates array for backtracking (bulk memcpy)
-    alignas(SIMD_ALIGNMENT) std::array<uint16_t, SIMD_PADDED_CELLS>
-        saved_candidates;  // NOLINT(cppcoreguidelines-pro-type-member-init) — immediately memcpy'd
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init) — immediately memcpy'd
+    alignas(SIMD_ALIGNMENT) std::array<uint16_t, SIMD_PADDED_CELLS> saved_candidates;
     std::memcpy(saved_candidates.data(), state.candidates.data(), sizeof(state.candidates));
 
     // Save region tracking state
