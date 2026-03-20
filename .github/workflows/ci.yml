@@ -140,13 +140,14 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          cmake --preset conan-relwithdebinfo -DSUDOKU_ENABLE_UI_TESTS=ON
-          cmake --build --preset conan-relwithdebinfo --target \
+          cmake --preset relwithdebinfo -DSUDOKU_ENABLE_UI_TESTS=ON
+          cmake --build --preset relwithdebinfo --target \
             test_main_window_construction \
             test_board_interaction \
             test_keyboard_handling \
             test_menu_toolbar_actions \
-            test_view_model_binding
-          ctest --preset conan-relwithdebinfo \
-            --tests-regex "test_(main_window|board|keyboard|menu|view_model)" \
+            test_view_model_binding \
+            test_training_widget
+          ctest --preset relwithdebinfo \
+            --tests-regex "test_(main_window|board|keyboard|menu|view_model|training)" \
             --output-on-failure

@@ -90,7 +90,7 @@ void TestViewModelBinding::ratingButtonVisibleAfterNewGame() {
 
     // After game: rating button should be visible (puzzle rating > 0)
     QVERIFY(window.rating_btn_->isVisible());
-    QVERIFY(window.rating_btn_->text().contains("Rating:"));
+    QVERIFY(window.rating_btn_->text().contains("SE "));
 }
 
 void TestViewModelBinding::ratingButtonShowsTechniqueCount() {
@@ -105,7 +105,7 @@ void TestViewModelBinding::ratingButtonShowsTechniqueCount() {
 
     // Rating text should mention technique count
     QString text = window.rating_btn_->text();
-    QVERIFY(text.contains("Rating:"));
+    QVERIFY(text.contains("SE "));
     QVERIFY(text.contains("techniques"));
 }
 
