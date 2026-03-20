@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.sudoku_cpp.Sudoku</id>
+
+  <name>Sudoku</name>
+  <summary>Play and solve Sudoku puzzles</summary>
+  <summary xml:lang="de">Sudoku-Rätsel spielen und lösen</summary>
+
+  <developer id="org.sudoku_cpp">
+    <name>Alexander Bendlin</name>
+  </developer>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <description>
+    <p>
+      A feature-rich Sudoku application built with C++23 and Qt6. Play puzzles
+      across multiple difficulty levels, get intelligent hints powered by 42
+      solving strategies, and track your progress with detailed statistics.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Multiple difficulty levels from Easy to Extreme</li>
+      <li>Intelligent hint system with step-by-step explanations</li>
+      <li>Candidate (pencil mark) support</li>
+      <li>Undo/redo with full move history</li>
+      <li>Auto-save and manual save/load</li>
+      <li>Game statistics and progress tracking</li>
+      <li>Training mode to practice specific solving techniques</li>
+      <li>English and German localizations</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">org.sudoku_cpp.Sudoku.desktop</launchable>
+
+  <url type="homepage">https://github.com/darkstar79/sudoku-cpp</url>
+  <url type="bugtracker">https://github.com/darkstar79/sudoku-cpp/issues</url>
+  <url type="vcs-browser">https://github.com/darkstar79/sudoku-cpp</url>
+
+  <provides>
+    <binary>sudoku</binary>
+  </provides>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0.0" date="2026-03-20">
+      <description>
+        <p>Initial release with full Sudoku gameplay, 42 solving strategies,
+           training mode, and multi-language support.</p>
+      </description>
+    </release>
+  </releases>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#2563eb</color>
+    <color type="primary" scheme_preference="dark">#1e40af</color>
+  </branding>
+</component>

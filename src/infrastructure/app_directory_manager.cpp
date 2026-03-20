@@ -36,7 +36,11 @@ std::filesystem::path AppDirectoryManager::getPlatformBaseDirectory() {
     // Fallback to current directory if APPDATA not set
     return std::filesystem::current_path();
 #else
-    // Linux/Unix: Use ~/.local/share/sudoku
+    // Linux/Unix: Use XDG_DATA_HOME/sudoku (Flatpak-compatible), fallback to ~/.local/share/sudoku
+    auto* xdg_data_home = std::getenv("XDG_DATA_HOME");
+    if (xdg_data_home && xdg_data_home[0] != '\0') {
+        return std::filesystem::path(xdg_data_home) / "sudoku";
+    }
     auto* home = std::getenv("HOME");
     if (home) {
         return std::filesystem::path(home) / ".local" / "share" / "sudoku";

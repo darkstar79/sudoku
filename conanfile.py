@@ -60,6 +60,8 @@ class SudokuConan(ConanFile):
         tc = CMakeToolchain(self)
         # Use Ninja generator for faster builds
         tc.generator = "Ninja"
+        # Don't generate CMakeUserPresets.json (repo-owned CMakePresets.json handles presets)
+        tc.user_presets_path = False
         
         # C++23 configuration
         tc.variables["CMAKE_CXX_STANDARD"] = "23"

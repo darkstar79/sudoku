@@ -43,7 +43,7 @@ fi
 
 if [ ! -d "$BUILD_DIR" ]; then
     echo -e "${RED}Build directory '$BUILD_DIR' not found.${NC}"
-    echo "Run: cmake --preset conan-release && cmake --build build/Release"
+    echo "Run: cmake --preset release && cmake --build --preset release"
     exit 1
 fi
 

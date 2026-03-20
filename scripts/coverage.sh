@@ -5,16 +5,10 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# Conan output directory (contains generators and toolchain)
 BUILD_DIR="${PROJECT_ROOT}/build/RelWithDebInfo"
 
-# Detect actual cmake binary dir (Conan output structure varies by version)
 function get_cmake_build_dir() {
-    if [ -f "${BUILD_DIR}/build/RelWithDebInfo/bin/tests/unit_tests" ]; then
-        echo "${BUILD_DIR}/build/RelWithDebInfo"
-    else
-        echo "${BUILD_DIR}"
-    fi
+    echo "${BUILD_DIR}"
 }
 
 # Colors for output
@@ -54,28 +48,17 @@ function ensure_debug_build() {
 
     cd "$PROJECT_ROOT"
 
-    # Install Conan dependencies for RelWithDebInfo
     conan install . --build=missing -s build_type=RelWithDebInfo || {
         echo -e "${RED}Failed to install Conan dependencies${NC}"
         exit 1
     }
 
-    # Bypass cmake --preset to avoid duplicate-preset errors when multiple
-    # Conan builds coexist (each defines 'conan-release' in their generators,
-    # causing CMake to reject all presets). Use the toolchain file directly.
-    local cmake_build_dir="${BUILD_DIR}/build/RelWithDebInfo"
-    local toolchain="${BUILD_DIR}/generators/conan_toolchain.cmake"
-
-    cmake -S . -B "${cmake_build_dir}" \
-        -G Ninja \
-        -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-        -DCMAKE_TOOLCHAIN_FILE="${toolchain}" \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON || {
+    cmake --preset relwithdebinfo || {
         echo -e "${RED}Failed to configure RelWithDebInfo build${NC}"
         exit 1
     }
 
-    cmake --build "${cmake_build_dir}" || {
+    cmake --build --preset relwithdebinfo || {
         echo -e "${RED}Failed to build project${NC}"
         exit 1
     }

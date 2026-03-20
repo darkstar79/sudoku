@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Background rounded square -->
+  <rect x="4" y="4" width="120" height="120" rx="16" ry="16" fill="#2563eb"/>
+  <rect x="8" y="8" width="112" height="112" rx="12" ry="12" fill="#1e40af"/>
+
+  <!-- Grid lines (3x3 major grid) -->
+  <!-- Outer border -->
+  <rect x="16" y="16" width="96" height="96" rx="4" ry="4" fill="#f8fafc" stroke="#1e3a5f" stroke-width="2"/>
+
+  <!-- Major grid lines (3x3 blocks) -->
+  <line x1="48" y1="16" x2="48" y2="112" stroke="#1e3a5f" stroke-width="2"/>
+  <line x1="80" y1="16" x2="80" y2="112" stroke="#1e3a5f" stroke-width="2"/>
+  <line x1="16" y1="48" x2="112" y2="48" stroke="#1e3a5f" stroke-width="2"/>
+  <line x1="16" y1="80" x2="112" y2="80" stroke="#1e3a5f" stroke-width="2"/>
+
+  <!-- Minor grid lines -->
+  <line x1="26.67" y1="16" x2="26.67" y2="112" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="37.33" y1="16" x2="37.33" y2="112" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="58.67" y1="16" x2="58.67" y2="112" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="69.33" y1="16" x2="69.33" y2="112" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="90.67" y1="16" x2="90.67" y2="112" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="101.33" y1="16" x2="101.33" y2="112" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+
+  <line x1="16" y1="26.67" x2="112" y2="26.67" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="16" y1="37.33" x2="112" y2="37.33" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="16" y1="58.67" x2="112" y2="58.67" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="16" y1="69.33" x2="112" y2="69.33" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="16" y1="90.67" x2="112" y2="90.67" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+  <line x1="16" y1="101.33" x2="112" y2="101.33" stroke="#94a3b8" stroke-width="0.5" opacity="0.5"/>
+
+  <!-- Sample numbers in cells -->
+  <text x="32" y="40" font-family="sans-serif" font-size="16" font-weight="bold" fill="#1e3a5f" text-anchor="middle">5</text>
+  <text x="64" y="40" font-family="sans-serif" font-size="16" font-weight="bold" fill="#1e3a5f" text-anchor="middle">3</text>
+  <text x="96" y="40" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2563eb" text-anchor="middle">7</text>
+
+  <text x="32" y="72" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2563eb" text-anchor="middle">6</text>
+  <text x="64" y="72" font-family="sans-serif" font-size="16" font-weight="bold" fill="#1e3a5f" text-anchor="middle">9</text>
+  <text x="96" y="72" font-family="sans-serif" font-size="16" font-weight="bold" fill="#1e3a5f" text-anchor="middle">8</text>
+
+  <text x="32" y="104" font-family="sans-serif" font-size="16" font-weight="bold" fill="#1e3a5f" text-anchor="middle">1</text>
+  <text x="64" y="104" font-family="sans-serif" font-size="16" font-weight="bold" fill="#2563eb" text-anchor="middle">4</text>
+  <text x="96" y="104" font-family="sans-serif" font-size="16" font-weight="bold" fill="#1e3a5f" text-anchor="middle">2</text>
+</svg>

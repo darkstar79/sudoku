@@ -43,7 +43,7 @@ public:
      * @brief Get the default directory for a specific type of application data.
      *
      * On Windows: %APPDATA%/Sudoku/{subdirectory}
-     * On Linux/Unix: ~/.local/share/sudoku/{subdirectory}
+     * On Linux/Unix: $XDG_DATA_HOME/sudoku/{subdirectory} (or ~/.local/share/sudoku/{subdirectory})
      * Fallback: ./​{subdirectory} (current directory)
      *
      * @param type Type of directory to retrieve

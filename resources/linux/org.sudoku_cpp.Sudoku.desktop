@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Sudoku
+GenericName=Sudoku Puzzle
+GenericName[de]=Sudoku-Rätsel
+Comment=Play and solve Sudoku puzzles
+Comment[de]=Sudoku-Rätsel spielen und lösen
+Exec=sudoku
+Icon=org.sudoku_cpp.Sudoku
+Terminal=false
+Type=Application
+Categories=Game;LogicGame;
+Keywords=sudoku;puzzle;logic;number;
+Keywords[de]=sudoku;rätsel;logik;zahlen;

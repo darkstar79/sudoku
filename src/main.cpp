@@ -36,6 +36,7 @@
 #include "core/sudoku_solver.h"
 #include "core/training_exercise_generator.h"
 #include "core/training_statistics_manager.h"
+#include "infrastructure/app_directory_manager.h"
 #include "view/main_window.h"
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
@@ -94,7 +95,11 @@ void setupDependencies() {
 
     container.registerSingleton<sudoku::core::ILocalizationManager>([&container]() {
         auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
+        // Try dev/Windows layout first (locales next to executable), then FHS layout
         auto locales_dir = exe_dir / "locales";
+        if (!std::filesystem::exists(locales_dir)) {
+            locales_dir = exe_dir / ".." / "share" / "sudoku" / "locales";
+        }
         auto manager = std::make_unique<sudoku::core::LocalizationManager>(locales_dir);
         // Use language from settings if available
         auto settings = container.resolve<sudoku::core::ISettingsManager>();
@@ -147,6 +152,13 @@ int main(int argc, char* argv[]) {
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
     auto log_path = exe_dir / "sudoku_debug.log";
+    // In sandboxed environments (Flatpak), exe_dir is read-only; use data directory instead
+    if (!std::filesystem::exists(exe_dir / "locales")) {
+        auto log_dir = sudoku::infrastructure::AppDirectoryManager::getDefaultDirectory(
+            sudoku::infrastructure::DirectoryType::Logs);
+        std::filesystem::create_directories(log_dir);
+        log_path = log_dir / "sudoku_debug.log";
+    }
     auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path.string(), true);  // truncate=true
     auto logger = std::make_shared<spdlog::logger>("sudoku", spdlog::sinks_init_list{console_sink, file_sink});
     logger->set_level(spdlog::level::debug);

@@ -10,23 +10,23 @@ set -euo pipefail
 # Usage: ./scripts/pgo_build.sh
 # Output: build/PGO/ directory with optimized binaries
 #
-# Requires: GCC 12+ with PGO support, Conan toolchain already generated
+# Requires: GCC 12+ with PGO support, Conan deps installed for Release
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PGO_DIR="$PROJECT_DIR/build/PGO"
 PROFILE_DIR="$PGO_DIR/profiles"
-TOOLCHAIN="$PROJECT_DIR/build/Release/build/Release/generators/conan_toolchain.cmake"
+TOOLCHAIN="$PROJECT_DIR/build/Release/generators/conan_toolchain.cmake"
 
 echo "=== PGO Build Pipeline ==="
 echo "Project: $PROJECT_DIR"
 echo "PGO dir: $PGO_DIR"
 echo ""
 
-# Verify toolchain exists (requires a prior Release build with Conan)
+# Verify toolchain exists (requires: conan install . --build=missing -s build_type=Release)
 if [ ! -f "$TOOLCHAIN" ]; then
     echo "ERROR: Conan toolchain not found at: $TOOLCHAIN"
-    echo "Run a normal Release build first: cmake --build build/Release"
+    echo "Run: conan install . --build=missing -s build_type=Release"
     exit 1
 fi
 

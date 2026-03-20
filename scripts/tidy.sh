@@ -105,19 +105,10 @@ check_dependencies() {
 ensure_build_exists() {
     if [[ ! -d "$BUILD_DIR" ]]; then
         log_info "Build directory not found, creating..."
-        mkdir -p "$BUILD_DIR"
-        
         cd "$PROJECT_ROOT"
-        if [[ ! -f "build/conan_toolchain.cmake" ]]; then
-            log_info "Running conan install..."
-            conan install . --build=missing -s build_type=Release
-        fi
-        
-        log_info "Configuring CMake..."
-        cmake --preset conan-release
-        
-        log_info "Building project..."
-        cmake --build --preset conan-release
+        conan install . --build=missing -s build_type=Release
+        cmake --preset release
+        cmake --build --preset release
     fi
 }
 
@@ -162,7 +153,7 @@ run_clang_tidy_check() {
     local extra_compiler_args=()
 
     # On LLVM < 19, Clang may compile with a lower C++ standard than what
-    # compile_commands.json specifies (due to Conan toolchain interactions),
+    # compile_commands.json specifies,
     # causing std::expected's #if __cplusplus > 202002L guard to fail.
     # Force C++23 explicitly and inject GCC's system include paths so
     # <expected> and other C++23 headers are found and enabled.
@@ -377,8 +368,8 @@ main() {
             log_info "Building project with clang-tidy integration..."
             cd "$PROJECT_ROOT"
             conan install . --build=missing -s build_type=Release
-            cmake --preset conan-release
-            cmake --build --preset conan-release
+            cmake --preset release
+            cmake --build --preset release
             run_clang_tidy_check
             ;;
         report)

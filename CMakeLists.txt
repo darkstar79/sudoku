@@ -77,7 +77,10 @@ endif()
 # All other code compiles at baseline x86-64 (no AVX flags).
 message(STATUS "SIMD: Runtime CPU dispatch ENABLED (Scalar/AVX2/AVX-512 auto-detection)")
 
-# Conan integration
+# Fallback find modules (used when Conan is not available, e.g. Flatpak builds)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# Dependencies (found via Conan toolchain or system)
 find_package(spdlog REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(ZLIB REQUIRED)
@@ -226,33 +229,42 @@ endif()
 #     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 # )
 
-# ── Install: exe
-install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION "."
-)
+# ── Install rules (platform-specific)
+if(WIN32)
+    # Windows: flat layout for NSIS installer
+    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ".")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/locales" DESTINATION ".")
 
-# ── Install: locales
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/locales"
-    DESTINATION "."
-)
-
-# ── Install: Qt runtime via windeployqt (Windows only)
-# QT6_DIR is set as an environment variable by the build scripts; read it with $ENV{}
-if(WIN32 AND NOT "$ENV{QT6_DIR}" STREQUAL "")
-    set(_qt6_dir "$ENV{QT6_DIR}")
-    file(TO_CMAKE_PATH "${_qt6_dir}" _qt6_dir)
-    install(CODE "
-        message(STATUS \"Running windeployqt on staged install...\")
-        execute_process(
-            COMMAND \"${_qt6_dir}/bin/windeployqt.exe\"
-                    --release --no-translations
-                    \"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.exe\"
-            RESULT_VARIABLE _wdqt_result
-        )
-        if(NOT _wdqt_result EQUAL 0)
-            message(FATAL_ERROR \"windeployqt failed: \${_wdqt_result}\")
-        endif()
-    ")
+    # Qt runtime via windeployqt
+    # QT6_DIR is set as an environment variable by the build scripts; read it with $ENV{}
+    if(NOT "$ENV{QT6_DIR}" STREQUAL "")
+        set(_qt6_dir "$ENV{QT6_DIR}")
+        file(TO_CMAKE_PATH "${_qt6_dir}" _qt6_dir)
+        install(CODE "
+            message(STATUS \"Running windeployqt on staged install...\")
+            execute_process(
+                COMMAND \"${_qt6_dir}/bin/windeployqt.exe\"
+                        --release --no-translations
+                        \"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.exe\"
+                RESULT_VARIABLE _wdqt_result
+            )
+            if(NOT _wdqt_result EQUAL 0)
+                message(FATAL_ERROR \"windeployqt failed: \${_wdqt_result}\")
+            endif()
+        ")
+    endif()
+else()
+    # Linux: FHS-compliant layout
+    include(GNUInstallDirs)
+    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/locales"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/sudoku")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/linux/org.sudoku_cpp.Sudoku.desktop"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/linux/org.sudoku_cpp.Sudoku.metainfo.xml"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/org.sudoku_cpp.Sudoku.svg"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps")
 endif()
 
 # ── CPack configuration
@@ -263,21 +275,23 @@ set(CPACK_PACKAGE_VERSION             "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY   "Sudoku")
 set(CPACK_RESOURCE_FILE_LICENSE       "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 
-# NSIS-specific settings
-set(CPACK_NSIS_DISPLAY_NAME           "Sudoku")
-set(CPACK_NSIS_PACKAGE_NAME           "Sudoku ${PROJECT_VERSION}")
-set(CPACK_NSIS_INSTALL_ROOT           "$LOCALAPPDATA")
-set(CPACK_NSIS_EXECUTABLES_DIRECTORY  ".")
-set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-set(CPACK_NSIS_CREATE_ICONS_EXTRA
-    "CreateShortcut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk' '$INSTDIR\\\\${PROJECT_NAME}.exe'")
-set(CPACK_NSIS_DELETE_ICONS_EXTRA
-    "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk'")
-set(CPACK_NSIS_MUI_FINISHPAGE_RUN     "${PROJECT_NAME}.exe")
+if(WIN32)
+    # NSIS-specific settings (Windows only)
+    set(CPACK_NSIS_DISPLAY_NAME           "Sudoku")
+    set(CPACK_NSIS_PACKAGE_NAME           "Sudoku ${PROJECT_VERSION}")
+    set(CPACK_NSIS_INSTALL_ROOT           "$LOCALAPPDATA")
+    set(CPACK_NSIS_EXECUTABLES_DIRECTORY  ".")
+    set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
+    set(CPACK_NSIS_CREATE_ICONS_EXTRA
+        "CreateShortcut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk' '$INSTDIR\\\\${PROJECT_NAME}.exe'")
+    set(CPACK_NSIS_DELETE_ICONS_EXTRA
+        "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk'")
+    set(CPACK_NSIS_MUI_FINISHPAGE_RUN     "${PROJECT_NAME}.exe")
 
-# Output filename: Sudoku-1.0.0-win64.exe
-set(CPACK_SYSTEM_NAME                 "win64")
-set(CPACK_PACKAGE_FILE_NAME           "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
+    # Output filename: Sudoku-1.0.0-win64.exe
+    set(CPACK_SYSTEM_NAME                 "win64")
+    set(CPACK_PACKAGE_FILE_NAME           "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
+endif()
 
 include(CPack)
 

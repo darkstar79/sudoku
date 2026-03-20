@@ -1,0 +1,113 @@
+name: Linux Packaging
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  flatpak:
+    name: Flatpak Bundle
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Flatpak and SDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user -y flathub org.kde.Platform//6.8 org.kde.Sdk//6.8
+
+      - name: Build Flatpak
+        run: |
+          flatpak-builder --user --force-clean --repo=repo \
+            build-flatpak flatpak/org.sudoku_cpp.Sudoku.yml
+
+      - name: Create Flatpak bundle
+        run: |
+          flatpak build-bundle repo \
+            Sudoku-${{ github.ref_name }}-x86_64.flatpak \
+            org.sudoku_cpp.Sudoku
+
+      - name: Upload Flatpak bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-bundle
+          path: Sudoku-*.flatpak
+          retention-days: 90
+
+  appimage:
+    name: AppImage
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qt6-base-dev libgl1-mesa-dev \
+            libsodium-dev libyaml-cpp-dev libspdlog-dev libfmt-dev \
+            zlib1g-dev \
+            ninja-build ccache \
+            libfuse2
+
+      - name: Build Release
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build
+
+      - name: Install to AppDir
+        run: |
+          DESTDIR=${{ github.workspace }}/AppDir cmake --install build
+
+      - name: Download linuxdeploy
+        run: |
+          curl -sL -o linuxdeploy-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -sL -o linuxdeploy-plugin-qt-x86_64.AppImage \
+            https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy-*.AppImage
+
+      - name: Create AppImage
+        env:
+          LDAI_OUTPUT: Sudoku-${{ github.ref_name }}-x86_64.AppImage
+        run: |
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --plugin qt \
+            --output appimage
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: appimage
+          path: Sudoku-*.AppImage
+          retention-days: 90
+
+  release:
+    name: Upload Release Assets
+    runs-on: ubuntu-24.04
+    needs: [flatpak, appimage]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Sudoku-*.flatpak
+            Sudoku-*.AppImage

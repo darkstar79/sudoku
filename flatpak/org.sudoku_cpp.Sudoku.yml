@@ -1,0 +1,56 @@
+app-id: org.sudoku_cpp.Sudoku
+runtime: org.kde.Platform
+runtime-version: '6.10'
+sdk: org.kde.Sdk
+command: sudoku
+
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+
+modules:
+  # spdlog (header-only mode with fmt bundled)
+  - name: spdlog
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DSPDLOG_BUILD_SHARED=OFF
+      - -DSPDLOG_BUILD_EXAMPLE=OFF
+      - -DSPDLOG_BUILD_TESTS=OFF
+      - -DSPDLOG_FMT_EXTERNAL=OFF
+    sources:
+      - type: archive
+        url: https://github.com/gabime/spdlog/archive/refs/tags/v1.15.3.tar.gz
+        sha256: 15a04e69c222eb6c01094b5c7ff8a249b36bb22788d72519646fb85feb267e67
+
+  # yaml-cpp (0.9.0 for GCC 15 compatibility)
+  - name: yaml-cpp
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DYAML_BUILD_SHARED_LIBS=OFF
+      - -DYAML_CPP_BUILD_TESTS=OFF
+      - -DYAML_CPP_BUILD_TOOLS=OFF
+    sources:
+      - type: archive
+        url: https://github.com/jbeder/yaml-cpp/archive/refs/tags/yaml-cpp-0.9.0.tar.gz
+        sha256: 25cb043240f828a8c51beb830569634bc7ac603978e0f69d6b63558dadefd49a
+
+  # libsodium
+  - name: libsodium
+    buildsystem: autotools
+    sources:
+      - type: archive
+        url: https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz
+        sha256: 6f504490b342a4f8a4c4a02fc9b866cbef8622d5df4e5452b46be121e46636c1
+
+  # sudoku (the application)
+  - name: sudoku
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    sources:
+      - type: dir
+        path: ..
