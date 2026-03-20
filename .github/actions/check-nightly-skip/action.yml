@@ -1,0 +1,103 @@
+name: Check Nightly Skip
+description: >
+  Determines whether a nightly job should skip (no recent commits) and, if so,
+  checks the last real run's result via the GitHub API to propagate failures.
+
+inputs:
+  job-name:
+    description: 'Display name of the calling job (must match the job name: field exactly)'
+    required: true
+
+outputs:
+  skip:
+    description: '"true" if work steps should be skipped'
+    value: ${{ steps.decide.outputs.skip }}
+  previous-failed:
+    description: '"true" if skipping but the last real run of this job failed'
+    value: ${{ steps.decide.outputs.previous-failed }}
+
+runs:
+  using: composite
+  steps:
+    - name: Decide whether to skip and check previous run
+      id: decide
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        INPUT_JOB_NAME: ${{ inputs.job-name }}
+        EVENT_NAME: ${{ github.event_name }}
+        REPO: ${{ github.repository }}
+        REF_NAME: ${{ github.ref_name }}
+        CURRENT_RUN_ID: ${{ github.run_id }}
+      run: |
+        set -euo pipefail
+
+        # --- Manual trigger: always run ---
+        if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          echo "Manual trigger — running unconditionally"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "previous-failed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # --- Recent commits: run normally ---
+        if [ -n "$(git log --since='24 hours ago' --oneline)" ]; then
+          echo "Recent commits found — running"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "previous-failed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # --- No recent commits: check last real run ---
+        echo "No commits in the last 24 hours — checking last real run of '${INPUT_JOB_NAME}'..."
+        echo "skip=true" >> "$GITHUB_OUTPUT"
+
+        RUNS=$(gh api "repos/${REPO}/actions/workflows/nightly.yml/runs?branch=${REF_NAME}&status=completed&per_page=10" \
+          --jq '.workflow_runs[].id' 2>/dev/null || echo "")
+
+        if [ -z "$RUNS" ]; then
+          echo "No previous runs found — assuming OK"
+          echo "previous-failed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        for RUN_ID in $RUNS; do
+          # Skip the current run
+          if [ "$RUN_ID" = "$CURRENT_RUN_ID" ]; then
+            continue
+          fi
+
+          # Get the matching job from this run
+          JOB_JSON=$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs?per_page=30" \
+            --jq ".jobs[] | select(.name == \"${INPUT_JOB_NAME}\")" 2>/dev/null || echo "")
+
+          if [ -z "$JOB_JSON" ]; then
+            echo "Run ${RUN_ID}: job '${INPUT_JOB_NAME}' not found, skipping"
+            continue
+          fi
+
+          # Count steps that actually executed (conclusion is set and not "skipped")
+          NON_SKIPPED=$(echo "$JOB_JSON" | jq '[.steps[] | select(.conclusion != null and .conclusion != "skipped")] | length')
+
+          # A skip-run has at most 3 non-skipped steps (Checkout, Check, Post Checkout).
+          # A real run has 7+ non-skipped steps.
+          if [ "$NON_SKIPPED" -le 3 ]; then
+            echo "Run ${RUN_ID}: skip-run (${NON_SKIPPED} non-skipped steps), looking further..."
+            continue
+          fi
+
+          # Found a real run
+          CONCLUSION=$(echo "$JOB_JSON" | jq -r '.conclusion')
+          echo "Last real run: ${RUN_ID}, conclusion: ${CONCLUSION} (${NON_SKIPPED} non-skipped steps)"
+
+          if [ "$CONCLUSION" = "failure" ]; then
+            echo "::warning::Last real run of '${INPUT_JOB_NAME}' failed (run ${RUN_ID}) — propagating failure"
+            echo "previous-failed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "previous-failed=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+        done
+
+        echo "No previous real run found in last 10 runs — assuming OK"
+        echo "previous-failed=false" >> "$GITHUB_OUTPUT"
