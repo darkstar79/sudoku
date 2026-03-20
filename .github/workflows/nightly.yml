@@ -68,8 +68,8 @@ jobs:
       - name: Build
         if: steps.check.outputs.skip != 'true'
         run: |
-          cmake --preset conan-relwithdebinfo
-          cmake --build --preset conan-relwithdebinfo
+          cmake --preset relwithdebinfo
+          cmake --build --preset relwithdebinfo
 
       - name: Show ccache stats
         if: steps.check.outputs.skip != 'true'
@@ -148,8 +148,8 @@ jobs:
       - name: Build with sanitizers
         if: steps.check.outputs.skip != 'true'
         run: |
-          cmake --preset conan-release -DENABLE_SANITIZERS=ON
-          cmake --build --preset conan-release
+          cmake --preset release -DENABLE_SANITIZERS=ON
+          cmake --build --preset release
 
       - name: Show ccache stats
         if: steps.check.outputs.skip != 'true'
@@ -257,8 +257,8 @@ jobs:
       - name: Build
         if: steps.check.outputs.skip != 'true'
         run: |
-          cmake --preset conan-relwithdebinfo
-          cmake --build --preset conan-relwithdebinfo
+          cmake --preset relwithdebinfo
+          cmake --build --preset relwithdebinfo
 
       - name: Show ccache stats
         if: steps.check.outputs.skip != 'true'
@@ -331,8 +331,8 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           conan install . --build=missing -s build_type=Release -s compiler.cppstd=gnu23
-          cmake --preset conan-release
-          cmake --build --preset conan-release
+          cmake --preset release
+          cmake --build --preset release
 
       - name: Run cppcheck
         if: steps.check.outputs.skip != 'true'
