@@ -50,7 +50,6 @@ struct SavedGame {
     int hints_used{0};
     int mistakes{0};
     bool is_complete{false};
-    bool auto_notes_enabled{false};
 
     // Puzzle rating info
     double puzzle_rating{0.0};

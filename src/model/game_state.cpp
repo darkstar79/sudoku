@@ -374,4 +374,23 @@ bool GameState::operator==(const GameState& other) const {
            selected_position_ == other.selected_position_ && timer_running_ == other.timer_running_;
 }
 
+void GameState::setCellColor(size_t row, size_t col, uint8_t color) {
+    if (row < core::BOARD_SIZE && col < core::BOARD_SIZE) {
+        cell_colors_[row][col] = color;
+    }
+}
+
+uint8_t GameState::getCellColor(size_t row, size_t col) const {
+    if (row < core::BOARD_SIZE && col < core::BOARD_SIZE) {
+        return cell_colors_[row][col];
+    }
+    return 0;
+}
+
+void GameState::clearAllCellColors() {
+    for (auto& row : cell_colors_) {
+        row.fill(0);
+    }
+}
+
 }  // namespace sudoku::model

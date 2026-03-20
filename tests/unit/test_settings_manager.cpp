@@ -44,11 +44,9 @@ TEST_CASE("SettingsManager - Default values when no file exists", "[settings]") 
 
     CHECK(s.max_hints == 10);
     CHECK(s.auto_save_interval_ms == 30000);
-    CHECK(s.double_press_threshold_ms == 300);
     CHECK(s.default_difficulty == Difficulty::Medium);
     CHECK(s.show_conflicts == true);
     CHECK(s.show_hints == true);
-    CHECK(s.auto_notes_on_startup == false);
     CHECK(s.language == "en");
 
     std::filesystem::remove_all(tmp);
@@ -62,11 +60,9 @@ TEST_CASE("SettingsManager - Save and load round-trip", "[settings]") {
         SettingsManager mgr(path);
         mgr.setMaxHints(5);
         mgr.setAutoSaveInterval(60000);
-        mgr.setDoublePressThreshold(500);
         mgr.setDefaultDifficulty(Difficulty::Hard);
         mgr.setShowConflicts(false);
         mgr.setShowHints(false);
-        mgr.setAutoNotesOnStartup(true);
         mgr.setLanguage("de");
     }
 
@@ -76,11 +72,9 @@ TEST_CASE("SettingsManager - Save and load round-trip", "[settings]") {
 
     CHECK(s.max_hints == 5);
     CHECK(s.auto_save_interval_ms == 60000);
-    CHECK(s.double_press_threshold_ms == 500);
     CHECK(s.default_difficulty == Difficulty::Hard);
     CHECK(s.show_conflicts == false);
     CHECK(s.show_hints == false);
-    CHECK(s.auto_notes_on_startup == true);
     CHECK(s.language == "de");
 
     std::filesystem::remove_all(tmp);
@@ -146,12 +140,6 @@ TEST_CASE("SettingsManager - Values are clamped to valid ranges", "[settings]") 
 
     mgr.setAutoSaveInterval(999999);
     CHECK(mgr.getSettings().auto_save_interval_ms == 300000);
-
-    mgr.setDoublePressThreshold(10);
-    CHECK(mgr.getSettings().double_press_threshold_ms == 100);
-
-    mgr.setDoublePressThreshold(5000);
-    CHECK(mgr.getSettings().double_press_threshold_ms == 1000);
 
     std::filesystem::remove_all(tmp);
 }

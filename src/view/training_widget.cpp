@@ -17,6 +17,7 @@
 #include "training_widget.h"
 
 #include "../core/solving_technique.h"
+#include "../core/string_keys.h"
 #include "core/i_training_statistics_manager.h"
 #include "core/technique_descriptions.h"
 #include "core/training_learning_path.h"
@@ -26,6 +27,7 @@
 #include "view_model/training_view_model.h"
 
 #include <array>
+#include <functional>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -50,22 +52,23 @@ namespace {
 
 /// Format a technique button label with mastery badge and recommendation marker
 std::string formatTechniqueLabel(sudoku::core::SolvingTechnique technique, sudoku::core::MasteryLevel mastery,
-                                 bool is_recommended) {
+                                 bool is_recommended, const std::function<const char*(std::string_view)>& loc_fn) {
     auto name = sudoku::core::getTechniqueName(technique);
     auto points = sudoku::core::getTechniqueRating(technique);
 
     std::string badge;
+    using namespace sudoku::core::StringKeys;
     switch (mastery) {
         case sudoku::core::MasteryLevel::Beginner:
             break;
         case sudoku::core::MasteryLevel::Intermediate:
-            badge = " [Intermediate]";
+            badge = fmt::format(" [{}]", loc_fn(MasteryIntermediate));
             break;
         case sudoku::core::MasteryLevel::Proficient:
-            badge = " [Proficient]";
+            badge = fmt::format(" [{}]", loc_fn(MasteryProficient));
             break;
         case sudoku::core::MasteryLevel::Mastered:
-            badge = " [Mastered]";
+            badge = fmt::format(" [{}]", loc_fn(MasteryMastered));
             break;
     }
 
@@ -76,11 +79,46 @@ std::string formatTechniqueLabel(sudoku::core::SolvingTechnique technique, sudok
 
 namespace sudoku::view {
 
+using namespace core::StringKeys;
+
 TrainingWidget::TrainingWidget(QWidget* parent) : QWidget(parent), pages_(new QStackedWidget) {
     auto* layout = new QVBoxLayout(this);
     layout->addWidget(pages_);
 
-    // Create 5 pages for each training phase
+    rebuildPages();
+}
+
+void TrainingWidget::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
+    loc_manager_ = std::move(loc_manager);
+    rebuildPages();
+}
+
+void TrainingWidget::rebuildPages() {
+    // Block signals to prevent currentChanged firing during teardown
+    pages_->blockSignals(true);
+
+    // Remove all existing pages
+    while (pages_->count() > 0) {
+        auto* w = pages_->widget(0);
+        pages_->removeWidget(w);
+        delete w;
+    }
+
+    // Disconnect all signals from pages_ to avoid stale lambdas from prior builds
+    pages_->disconnect();
+
+    pages_->blockSignals(false);
+
+    // Reset widget pointers (owned by old pages, now deleted)
+    training_board_ = nullptr;
+    feedback_board_ = nullptr;
+    number_pad_ = nullptr;
+    color_a_btn_ = nullptr;
+    color_b_btn_ = nullptr;
+    undo_btn_ = nullptr;
+    redo_btn_ = nullptr;
+    color_palette_ = nullptr;
+
     buildTechniqueSelectionPage();
     buildTheoryPage();
     buildExercisePage();
@@ -91,7 +129,13 @@ TrainingWidget::TrainingWidget(QWidget* parent) : QWidget(parent), pages_(new QS
 void TrainingWidget::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm) {
     training_vm_ = std::move(training_vm);
     if (training_vm_) {
-        observer_.observe(training_vm_->trainingState, [this](const auto&) { refreshCurrentPage(); });
+        observer_.observe(training_vm_->trainingState, [this](const auto& state) {
+            refreshCurrentPage();
+            // Push selection state to board widget
+            if (training_board_) {
+                training_board_->setSelectedCell(state.selected_cell);
+            }
+        });
         observer_.observe(training_vm_->trainingBoard, [this](const auto&) { updateExerciseBoard(); });
         observer_.observe(training_vm_->feedbackBoard, [this](const auto&) {
             if (feedback_board_ && training_vm_) {
@@ -131,13 +175,14 @@ void TrainingWidget::refreshCurrentPage() {
 }
 
 // NOLINTNEXTLINE(readability-function-size) — UI builder: constructs grouped technique buttons with signal wiring
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — page builder with group/button creation and analysis mode filtering
 void TrainingWidget::buildTechniqueSelectionPage() {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);
 
-    auto* title = new QLabel("<h1>Training Mode</h1>");
+    auto* title = new QLabel(QString("<h1>%1</h1>").arg(loc(TrainingTitle)));
     layout->addWidget(title);
-    layout->addWidget(new QLabel("Select a technique to practice:"));
+    layout->addWidget(new QLabel(loc(TrainingSelectTechnique)));
 
     // clang-format off
     struct TechniqueGroup {
@@ -146,24 +191,24 @@ void TrainingWidget::buildTechniqueSelectionPage() {
     };
 
     std::array<TechniqueGroup, 9> groups = {{
-        {.name = "Foundations", .techniques = {core::SolvingTechnique::NakedSingle, core::SolvingTechnique::HiddenSingle}},
-        {.name = "Subset Basics", .techniques = {core::SolvingTechnique::NakedPair, core::SolvingTechnique::NakedTriple,
+        {.name = loc(TrainingGroupFoundations), .techniques = {core::SolvingTechnique::NakedSingle, core::SolvingTechnique::HiddenSingle}},
+        {.name = loc(TrainingGroupSubsetBasics), .techniques = {core::SolvingTechnique::NakedPair, core::SolvingTechnique::NakedTriple,
                            core::SolvingTechnique::HiddenPair, core::SolvingTechnique::HiddenTriple}},
-        {.name = "Intersections & Quads", .techniques = {core::SolvingTechnique::PointingPair, core::SolvingTechnique::BoxLineReduction,
+        {.name = loc(TrainingGroupIntersections), .techniques = {core::SolvingTechnique::PointingPair, core::SolvingTechnique::BoxLineReduction,
                                     core::SolvingTechnique::NakedQuad, core::SolvingTechnique::HiddenQuad}},
-        {.name = "Basic Fish & Wings", .techniques = {core::SolvingTechnique::XWing, core::SolvingTechnique::XYWing,
+        {.name = loc(TrainingGroupBasicFish), .techniques = {core::SolvingTechnique::XWing, core::SolvingTechnique::XYWing,
                                  core::SolvingTechnique::Swordfish, core::SolvingTechnique::Skyscraper,
                                  core::SolvingTechnique::TwoStringKite, core::SolvingTechnique::XYZWing}},
-        {.name = "Links & Rectangles", .techniques = {core::SolvingTechnique::UniqueRectangle, core::SolvingTechnique::WWing,
+        {.name = loc(TrainingGroupLinks), .techniques = {core::SolvingTechnique::UniqueRectangle, core::SolvingTechnique::WWing,
                                  core::SolvingTechnique::SimpleColoring, core::SolvingTechnique::FinnedXWing,
                                  core::SolvingTechnique::RemotePairs, core::SolvingTechnique::BUG}},
-        {.name = "Advanced Fish & Wings", .techniques = {core::SolvingTechnique::Jellyfish, core::SolvingTechnique::FinnedSwordfish,
+        {.name = loc(TrainingGroupAdvancedFish), .techniques = {core::SolvingTechnique::Jellyfish, core::SolvingTechnique::FinnedSwordfish,
                                     core::SolvingTechnique::EmptyRectangle, core::SolvingTechnique::WXYZWing,
                                     core::SolvingTechnique::MultiColoring}},
-        {.name = "Advanced Fish (Finned)", .techniques = {core::SolvingTechnique::FinnedJellyfish}},
-        {.name = "Chains & Set Logic", .techniques = {core::SolvingTechnique::XYChain, core::SolvingTechnique::ALSxZ,
+        {.name = loc(TrainingGroupFinnedFish), .techniques = {core::SolvingTechnique::FinnedJellyfish}},
+        {.name = loc(TrainingGroupChains), .techniques = {core::SolvingTechnique::XYChain, core::SolvingTechnique::ALSxZ,
                                  core::SolvingTechnique::SueDeCoq}},
-        {.name = "Inference Engines", .techniques = {core::SolvingTechnique::ForcingChain, core::SolvingTechnique::NiceLoop}},
+        {.name = loc(TrainingGroupInference), .techniques = {core::SolvingTechnique::ForcingChain, core::SolvingTechnique::NiceLoop}},
     }};
     // clang-format on
 
@@ -193,23 +238,33 @@ void TrainingWidget::buildTechniqueSelectionPage() {
         layout->addWidget(group_box);
     }
 
-    auto* back_btn = new QPushButton("Back to Game");
+    auto* back_btn = new QPushButton(loc(TrainingBackToGame));
     connect(back_btn, &QPushButton::clicked, this, &TrainingWidget::backToGame);
     layout->addWidget(back_btn);
 
     layout->addStretch();
 
     // Update mastery badges and recommended technique when selection page is shown
-    connect(pages_, &QStackedWidget::currentChanged, this, [this, page](int index) {
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity) — page update with analysis mode filtering
+    connect(pages_, &QStackedWidget::currentChanged, this, [this, page, title](int index) {
         if (index != 0 || !training_vm_) {
             return;
         }
-        auto stats_mgr = training_vm_->statsManager();
-        if (!stats_mgr) {
-            return;
+
+        // Build set of applicable techniques in analysis mode
+        std::set<core::SolvingTechnique> applicable_techniques;
+        if (training_vm_->isAnalysisMode()) {
+            title->setText(QString("<h1>%1</h1>").arg(loc(TrainingAnalyzeTitle)));
+            for (const auto& step : training_vm_->analysisSteps()) {
+                applicable_techniques.insert(step.technique);
+            }
+        } else {
+            title->setText(QString("<h1>%1</h1>").arg(loc(TrainingTitle)));
         }
 
-        auto recommended = core::getRecommendedTechnique(*stats_mgr);
+        auto stats_mgr = training_vm_->statsManager();
+        auto recommended =
+            stats_mgr ? core::getRecommendedTechnique(*stats_mgr) : std::optional<core::SolvingTechnique>{};
 
         // Find all technique buttons and update their labels
         auto buttons = page->findChildren<QPushButton*>();
@@ -220,19 +275,30 @@ void TrainingWidget::buildTechniqueSelectionPage() {
                 continue;
             }
             auto technique = static_cast<core::SolvingTechnique>(tech_int);
-            auto mastery = stats_mgr->getMastery(technique);
-            bool is_recommended = recommended.has_value() && *recommended == technique;
 
-            btn->setText(QString::fromStdString(formatTechniqueLabel(technique, mastery, is_recommended)));
-
-            bool prereqs_met = core::arePrerequisitesMet(technique, *stats_mgr);
-            btn->setEnabled(prereqs_met);
-            if (!prereqs_met) {
-                btn->setToolTip("Prerequisites not met");
-            } else if (is_recommended) {
-                btn->setToolTip("Recommended next technique");
+            if (training_vm_->isAnalysisMode()) {
+                // In analysis mode: only enable techniques that have applicable steps
+                bool applicable = applicable_techniques.contains(technique);
+                btn->setEnabled(applicable);
+                btn->setVisible(applicable);
+                btn->setToolTip(applicable ? loc(TrainingApplicable) : "");
             } else {
-                btn->setToolTip("");
+                btn->setVisible(true);
+                auto mastery = stats_mgr ? stats_mgr->getMastery(technique) : core::MasteryLevel::Beginner;
+                bool is_recommended = recommended.has_value() && *recommended == technique;
+
+                auto loc_fn = [this](std::string_view key) { return loc(key); };
+                btn->setText(QString::fromStdString(formatTechniqueLabel(technique, mastery, is_recommended, loc_fn)));
+
+                bool prereqs_met = !stats_mgr || core::arePrerequisitesMet(technique, *stats_mgr);
+                btn->setEnabled(prereqs_met);
+                if (!prereqs_met) {
+                    btn->setToolTip(loc(TrainingPrereqNotMet));
+                } else if (is_recommended) {
+                    btn->setToolTip(loc(TrainingRecommended));
+                } else {
+                    btn->setToolTip("");
+                }
             }
         }
     });
@@ -264,21 +330,21 @@ void TrainingWidget::buildTheoryPage() {
     prereqs_label->setStyleSheet("color: #555; font-style: italic;");
     layout->addWidget(prereqs_label);
 
-    layout->addWidget(new QLabel("<b>What It Is:</b>"));
+    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(loc(TrainingWhatItIs))));
     auto* what_label = new QLabel;
     what_label->setObjectName("theoryWhat");
     what_label->setWordWrap(true);
     layout->addWidget(what_label);
 
-    layout->addWidget(new QLabel("<b>What to Look For:</b>"));
+    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(loc(TrainingWhatToLookFor))));
     auto* look_label = new QLabel;
     look_label->setObjectName("theoryLook");
     look_label->setWordWrap(true);
     layout->addWidget(look_label);
 
     auto* btn_layout = new QHBoxLayout;
-    auto* start_btn = new QPushButton("Start Exercises");
-    auto* back_btn = new QPushButton("Back");
+    auto* start_btn = new QPushButton(loc(TrainingStartExercises));
+    auto* back_btn = new QPushButton(loc(TrainingBack));
     btn_layout->addWidget(start_btn);
     btn_layout->addWidget(back_btn);
     btn_layout->addStretch();
@@ -307,13 +373,13 @@ void TrainingWidget::buildTheoryPage() {
                 auto points = core::getTechniqueRating(state.current_technique);
 
                 title_label->setText(QString::fromUtf8(desc.title.data(), static_cast<int>(desc.title.size())));
-                points_label->setText(QString("%1 difficulty points").arg(points));
+                points_label->setText(QString::fromStdString(locFormat(TrainingDifficultyPoints, points)));
 
                 auto prereqs = core::getPrerequisites(state.current_technique);
                 if (prereqs.empty()) {
                     prereqs_label->hide();
                 } else {
-                    std::string prereq_text = "Prerequisites: ";
+                    std::string prereq_text = loc(TrainingPrerequisites);
                     for (size_t i = 0; i < prereqs.size(); ++i) {
                         if (i > 0) {
                             prereq_text += ", ";
@@ -354,7 +420,7 @@ void TrainingWidget::buildExercisePage() {
     color_palette_ = new QWidget;
     auto* color_layout = new QHBoxLayout(color_palette_);
     color_layout->setContentsMargins(0, 0, 0, 0);
-    auto* color_label = new QLabel("Color:");
+    auto* color_label = new QLabel(loc(TrainingColor));
     color_a_btn_ = new QPushButton("A");
     color_a_btn_->setFixedSize(44, 44);
     color_a_btn_->setStyleSheet("background-color: #a0c4ff; font-weight: bold; font-size: 16px;");
@@ -381,14 +447,14 @@ void TrainingWidget::buildExercisePage() {
 
     // Action buttons
     auto* btn_layout = new QHBoxLayout;
-    undo_btn_ = new QPushButton("Undo");
-    redo_btn_ = new QPushButton("Redo");
+    undo_btn_ = new QPushButton(loc(ButtonUndo));
+    redo_btn_ = new QPushButton(loc(ButtonRedo));
     undo_btn_->setEnabled(false);
     redo_btn_->setEnabled(false);
-    auto* submit_btn = new QPushButton("Submit");
-    auto* hint_btn = new QPushButton("Hint");
-    auto* skip_btn = new QPushButton("Skip");
-    auto* quit_btn = new QPushButton("Quit Lesson");
+    auto* submit_btn = new QPushButton(loc(TrainingSubmit));
+    auto* hint_btn = new QPushButton(loc(TrainingHint));
+    auto* skip_btn = new QPushButton(loc(TrainingSkip));
+    auto* quit_btn = new QPushButton(loc(TrainingQuitLesson));
     btn_layout->addWidget(undo_btn_);
     btn_layout->addWidget(redo_btn_);
     btn_layout->addWidget(submit_btn);
@@ -419,17 +485,31 @@ void TrainingWidget::buildExercisePage() {
 
     // --- Connections ---
 
-    // Number pad → board
+    // Number pad → ViewModel
     connect(number_pad_, &TrainingNumberPad::numberPressed, this, [this](int value) {
-        if (!training_vm_ || !training_board_) {
-            return;
+        if (training_vm_) {
+            training_vm_->applyNumber(value);
+            undo_btn_->setEnabled(training_vm_->canUndo());
+            redo_btn_->setEnabled(training_vm_->canRedo());
         }
-        const auto& exercises = training_vm_->exercises();
-        auto idx = static_cast<size_t>(training_vm_->trainingState.get().exercise_index);
-        if (idx >= exercises.size()) {
-            return;
+    });
+
+    // Keyboard number keys from board → ViewModel
+    connect(training_board_, &TrainingBoardWidget::numberPressed, this, [this](int value) {
+        if (training_vm_) {
+            training_vm_->applyNumber(value);
+            undo_btn_->setEnabled(training_vm_->canUndo());
+            redo_btn_->setEnabled(training_vm_->canRedo());
         }
-        training_board_->applyNumber(value, exercises[idx].interaction_mode);
+    });
+
+    // Keyboard color keys from board → ViewModel
+    connect(training_board_, &TrainingBoardWidget::colorPressed, this, [this](int color) {
+        if (training_vm_) {
+            training_vm_->applyColor(color);
+            undo_btn_->setEnabled(training_vm_->canUndo());
+            redo_btn_->setEnabled(training_vm_->canRedo());
+        }
     });
 
     // Color palette mutual exclusivity + board coloring
@@ -442,34 +522,25 @@ void TrainingWidget::buildExercisePage() {
         color_b_btn_->setChecked(true);
     });
 
-    // Cell selection → apply color (in coloring mode) or update number pad
+    // Cell selection → ViewModel (auto-color in coloring mode)
     connect(training_board_, &TrainingBoardWidget::cellSelected, this, [this](size_t row, size_t col) {
         if (!training_vm_) {
             return;
         }
-        const auto& exercises = training_vm_->exercises();
-        auto idx = static_cast<size_t>(training_vm_->trainingState.get().exercise_index);
-        if (idx >= exercises.size()) {
-            return;
-        }
+        training_vm_->selectCell(row, col);
 
-        if (exercises[idx].interaction_mode == core::TrainingInteractionMode::Coloring) {
+        const auto& state = training_vm_->trainingState.get();
+        if (state.interaction_mode == core::TrainingInteractionMode::Coloring) {
             int color = color_a_btn_->isChecked() ? 1 : 2;
-            training_board_->applyColor(color);
-        }
-
-        // Update number pad enabled state
-        const auto& cell = training_board_->board()[row][col];
-        number_pad_->updateEnabledNumbers(cell.candidates);
-    });
-
-    // Board changes → record in undo history and update ViewModel
-    connect(training_board_, &TrainingBoardWidget::boardChanged, this, [this](const core::TrainingBoard& board) {
-        if (training_vm_) {
-            training_vm_->recordBoardChange(board);
+            training_vm_->applyColor(color);
             undo_btn_->setEnabled(training_vm_->canUndo());
             redo_btn_->setEnabled(training_vm_->canRedo());
         }
+
+        // Update number pad enabled state
+        const auto& board = training_vm_->trainingBoard.get();
+        const auto& cell = board[row][col];
+        number_pad_->updateEnabledNumbers(cell.candidates);
     });
 
     // Undo/Redo buttons
@@ -490,8 +561,8 @@ void TrainingWidget::buildExercisePage() {
 
     // Submit/Hint/Skip/Quit
     connect(submit_btn, &QPushButton::clicked, this, [this, hint_label]() {
-        if (training_vm_ && training_board_) {
-            training_vm_->submitAnswer(training_board_->board());
+        if (training_vm_) {
+            training_vm_->submitAnswer();
             // If still in Exercise phase, a correct step was applied — show message
             const auto& state = training_vm_->trainingState.get();
             if (state.phase == core::TrainingPhase::Exercise && !state.found_step_message.empty()) {
@@ -529,10 +600,8 @@ void TrainingWidget::buildExercisePage() {
         }
         const auto& state = training_vm_->trainingState.get();
         auto name = core::getTechniqueName(state.current_technique);
-        header->setText(QString("Exercise %1 / %2  -  %3")
-                            .arg(state.exercise_index + 1)
-                            .arg(state.total_exercises)
-                            .arg(QString::fromUtf8(name.data(), static_cast<int>(name.size()))));
+        header->setText(QString::fromStdString(
+            locFormat(TrainingExerciseHeader, state.exercise_index + 1, state.total_exercises, name)));
 
         // Show/hide color palette based on interaction mode
         const auto& exercises = training_vm_->exercises();
@@ -543,6 +612,9 @@ void TrainingWidget::buildExercisePage() {
             number_pad_->setVisible(!is_coloring);
             number_pad_->setInteractionMode(exercises[idx].interaction_mode);
         }
+
+        // Ensure board has keyboard focus for arrow key navigation
+        training_board_->setFocus();
 
         // Reset hint label and undo/redo buttons for new exercise
         hint_label->setVisible(false);
@@ -589,10 +661,10 @@ void TrainingWidget::buildFeedbackPage() {
     layout->addWidget(feedback_board_, 1);
 
     auto* btn_layout = new QHBoxLayout;
-    auto* next_btn = new QPushButton("Next Exercise");
-    auto* retry_btn = new QPushButton("Retry");
-    auto* solution_btn = new QPushButton("Show Solution");
-    auto* quit_btn = new QPushButton("Quit Lesson");
+    auto* next_btn = new QPushButton(loc(TrainingNextExercise));
+    auto* retry_btn = new QPushButton(loc(TrainingRetry));
+    auto* solution_btn = new QPushButton(loc(TrainingShowSolution));
+    auto* quit_btn = new QPushButton(loc(TrainingQuitLesson));
     btn_layout->addWidget(next_btn);
     btn_layout->addWidget(retry_btn);
     btn_layout->addWidget(solution_btn);
@@ -631,15 +703,15 @@ void TrainingWidget::buildFeedbackPage() {
         QString color;
         switch (state.last_result) {
             case core::AnswerResult::Correct:
-                result_text = "Correct!";
+                result_text = loc(TrainingCorrect);
                 color = "color: green;";
                 break;
             case core::AnswerResult::PartiallyCorrect:
-                result_text = "Partially Correct";
+                result_text = loc(TrainingPartiallyCorrect);
                 color = "color: #cc9900;";
                 break;
             case core::AnswerResult::Incorrect:
-                result_text = "Incorrect";
+                result_text = loc(TrainingIncorrect);
                 color = "color: red;";
                 break;
         }
@@ -647,7 +719,8 @@ void TrainingWidget::buildFeedbackPage() {
         result_label->setText(result_text);
         result_label->setStyleSheet(QString("font-size: 24px; font-weight: bold; %1").arg(color));
         msg_label->setText(QString::fromStdString(state.feedback_message));
-        score_label->setText(QString("Score: %1 / %2").arg(state.correct_count).arg(state.exercise_index + 1));
+        score_label->setText(
+            QString::fromStdString(locFormat(TrainingScore, state.correct_count, state.exercise_index + 1)));
 
         // Update feedback board with diff highlights
         if (feedback_board_) {
@@ -663,7 +736,7 @@ void TrainingWidget::buildLessonCompletePage() {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);
 
-    auto* title = new QLabel("<h1>Lesson Complete!</h1>");
+    auto* title = new QLabel(QString("<h1>%1</h1>").arg(loc(TrainingLessonComplete)));
     layout->addWidget(title);
 
     auto* info_label = new QLabel;
@@ -675,9 +748,9 @@ void TrainingWidget::buildLessonCompletePage() {
     layout->addWidget(verdict_label);
 
     auto* btn_layout = new QHBoxLayout;
-    auto* again_btn = new QPushButton("Try Again");
-    auto* pick_btn = new QPushButton("Pick Technique");
-    auto* game_btn = new QPushButton("Return to Game");
+    auto* again_btn = new QPushButton(loc(TrainingTryAgain));
+    auto* pick_btn = new QPushButton(loc(TrainingPickTechnique));
+    auto* game_btn = new QPushButton(loc(TrainingReturnToGame));
     btn_layout->addWidget(again_btn);
     btn_layout->addWidget(pick_btn);
     btn_layout->addWidget(game_btn);
@@ -709,34 +782,31 @@ void TrainingWidget::buildLessonCompletePage() {
         const auto& state = training_vm_->trainingState.get();
         auto name = core::getTechniqueName(state.current_technique);
 
-        info_label->setText(QString("Technique: %1\nScore: %2 / %3 correct\nHints used: %4")
-                                .arg(QString::fromUtf8(name.data(), static_cast<int>(name.size())))
-                                .arg(state.correct_count)
-                                .arg(state.total_exercises)
-                                .arg(state.hints_used));
+        auto technique_str = locFormat(TrainingTechnique, name);
+        auto score_str = locFormat(TrainingScore, state.correct_count, state.total_exercises);
+        auto hints_str = locFormat(TrainingHintsUsed, state.hints_used);
+        info_label->setText(QString::fromStdString(fmt::format("{}\n{}\n{}", technique_str, score_str, hints_str)));
 
         // Show mastery level if stats manager is available
         auto stats_mgr = training_vm_->statsManager();
         if (stats_mgr) {
             auto mastery = stats_mgr->getMastery(state.current_technique);
-            std::string_view mastery_text;
+            const char* mastery_text = loc(MasteryBeginner);
             switch (mastery) {
                 case core::MasteryLevel::Beginner:
-                    mastery_text = "Beginner";
+                    mastery_text = loc(MasteryBeginner);
                     break;
                 case core::MasteryLevel::Intermediate:
-                    mastery_text = "Intermediate";
+                    mastery_text = loc(MasteryIntermediate);
                     break;
                 case core::MasteryLevel::Proficient:
-                    mastery_text = "Proficient";
+                    mastery_text = loc(MasteryProficient);
                     break;
                 case core::MasteryLevel::Mastered:
-                    mastery_text = "Mastered";
+                    mastery_text = loc(MasteryMastered);
                     break;
             }
-            verdict_label->setText(
-                QString("Mastery: %1")
-                    .arg(QString::fromUtf8(mastery_text.data(), static_cast<int>(mastery_text.size()))));
+            verdict_label->setText(QString::fromStdString(locFormat(TrainingMastery, mastery_text)));
             verdict_label->setStyleSheet(mastery == core::MasteryLevel::Mastered ? "color: green; font-weight: bold;"
                                                                                  : "color: #333; font-weight: bold;");
         } else {
@@ -744,13 +814,13 @@ void TrainingWidget::buildLessonCompletePage() {
                               ? static_cast<float>(state.correct_count) / static_cast<float>(state.total_exercises)
                               : 0.0f;
             if (ratio >= 0.8f) {
-                verdict_label->setText("Excellent! You've mastered this technique.");
+                verdict_label->setText(loc(TrainingExcellent));
                 verdict_label->setStyleSheet("color: green; font-weight: bold;");
             } else if (ratio >= 0.5f) {
-                verdict_label->setText("Good progress. Try again for a higher score.");
+                verdict_label->setText(loc(TrainingGoodProgress));
                 verdict_label->setStyleSheet("color: #cc9900; font-weight: bold;");
             } else {
-                verdict_label->setText("Keep practicing! Review the theory and try again.");
+                verdict_label->setText(loc(TrainingKeepPracticing));
                 verdict_label->setStyleSheet("color: red; font-weight: bold;");
             }
         }

@@ -265,7 +265,8 @@ TEST_CASE("TrainingViewModel - submitAnswer", "[training_view_model]") {
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 9;  // Expected placement
 
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         REQUIRE(f.vm.trainingState.get().phase == TrainingPhase::Feedback);
         REQUIRE(f.vm.trainingState.get().last_result == AnswerResult::Correct);
@@ -276,7 +277,8 @@ TEST_CASE("TrainingViewModel - submitAnswer", "[training_view_model]") {
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 5;  // Wrong value
 
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         REQUIRE(f.vm.trainingState.get().phase == TrainingPhase::Feedback);
         REQUIRE(f.vm.trainingState.get().last_result == AnswerResult::Incorrect);
@@ -287,7 +289,8 @@ TEST_CASE("TrainingViewModel - submitAnswer", "[training_view_model]") {
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 9;
 
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         REQUIRE(f.vm.trainingState.get().feedback_message.find("Naked Single") != std::string::npos);
     }
@@ -366,7 +369,8 @@ TEST_CASE("TrainingViewModel - retryExercise", "[training_view_model]") {
     SECTION("Works from Feedback phase") {
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 5;  // Wrong answer
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
         REQUIRE(f.vm.trainingState.get().phase == TrainingPhase::Feedback);
 
         f.vm.retryExercise();
@@ -384,7 +388,8 @@ TEST_CASE("TrainingViewModel - nextExercise", "[training_view_model]") {
     SECTION("Advances from Feedback to next Exercise") {
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 9;
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         f.vm.nextExercise();
 
@@ -397,7 +402,8 @@ TEST_CASE("TrainingViewModel - nextExercise", "[training_view_model]") {
         for (int i = 0; i < 5; ++i) {
             auto board = f.vm.trainingBoard.get();
             board[1][0].value = 9;
-            f.vm.submitAnswer(board);
+            f.vm.trainingBoard.set(board);
+            f.vm.submitAnswer();
             if (i < 4) {
                 f.vm.nextExercise();
             }
@@ -443,7 +449,8 @@ TEST_CASE("TrainingViewModel - returnToSelection", "[training_view_model]") {
         for (int i = 0; i < 5; ++i) {
             auto board = f.vm.trainingBoard.get();
             board[1][0].value = 9;
-            f.vm.submitAnswer(board);
+            f.vm.trainingBoard.set(board);
+            f.vm.submitAnswer();
             if (i < 4) {
                 f.vm.nextExercise();
             }
@@ -498,14 +505,16 @@ TEST_CASE("TrainingViewModel - Score tracking", "[training_view_model]") {
     SECTION("Correct answers increment score") {
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 9;
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         REQUIRE(f.vm.trainingState.get().correct_count == 1);
 
         f.vm.nextExercise();
         board = f.vm.trainingBoard.get();
         board[1][0].value = 9;
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         REQUIRE(f.vm.trainingState.get().correct_count == 2);
     }
@@ -513,7 +522,8 @@ TEST_CASE("TrainingViewModel - Score tracking", "[training_view_model]") {
     SECTION("Incorrect answers do not increment score") {
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 5;
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         REQUIRE(f.vm.trainingState.get().correct_count == 0);
     }
@@ -534,7 +544,8 @@ TEST_CASE("TrainingViewModel - submitAnswer elimination mode", "[training_view_m
         board[0][2].player_selected = true;
         board[0][2].candidates = {7};  // Removed 1
 
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         REQUIRE(f.vm.trainingState.get().phase == TrainingPhase::Feedback);
         REQUIRE(f.vm.trainingState.get().last_result == AnswerResult::Correct);
@@ -543,7 +554,8 @@ TEST_CASE("TrainingViewModel - submitAnswer elimination mode", "[training_view_m
     SECTION("No eliminations gives Incorrect") {
         auto board = f.vm.trainingBoard.get();
         // Don't mark any cells
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         REQUIRE(f.vm.trainingState.get().last_result == AnswerResult::Incorrect);
     }
@@ -554,7 +566,8 @@ TEST_CASE("TrainingViewModel - submitAnswer elimination mode", "[training_view_m
         board[0][2].player_selected = true;
         board[0][2].candidates = {1};  // Removed 7 (wrong)
 
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         REQUIRE(f.vm.trainingState.get().last_result == AnswerResult::Incorrect);
     }
@@ -568,7 +581,8 @@ TEST_CASE("TrainingViewModel - submitAnswer guards", "[training_view_model]") {
     SECTION("Does nothing outside Exercise phase") {
         // Still in TechniqueSelection
         TrainingBoard board{};
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
         REQUIRE(f.vm.trainingState.get().phase == TrainingPhase::TechniqueSelection);
     }
 }
@@ -584,7 +598,8 @@ TEST_CASE("TrainingViewModel - revealSolution", "[training_view_model]") {
         // Submit correct answer to get to Feedback
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 9;
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
         REQUIRE(f.vm.trainingState.get().phase == TrainingPhase::Feedback);
 
         f.vm.revealSolution();
@@ -613,7 +628,8 @@ TEST_CASE("TrainingViewModel - diff board placement mode", "[training_view_model
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 9;
         board[1][0].player_selected = true;
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         const auto& fb = f.vm.feedbackBoard.get();
         CHECK(fb[1][0].highlight_role == CellRole::CorrectAnswer);
@@ -623,7 +639,8 @@ TEST_CASE("TrainingViewModel - diff board placement mode", "[training_view_model
         auto board = f.vm.trainingBoard.get();
         board[1][0].value = 5;
         board[1][0].player_selected = true;
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         const auto& fb = f.vm.feedbackBoard.get();
         // The final pass sets MissedAnswer since highlight != CorrectAnswer
@@ -635,7 +652,8 @@ TEST_CASE("TrainingViewModel - diff board placement mode", "[training_view_model
         // Player placed nothing at expected cell, but placed elsewhere
         board[2][2].value = 3;
         board[2][2].player_selected = true;
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         const auto& fb = f.vm.feedbackBoard.get();
         CHECK(fb[1][0].highlight_role == CellRole::MissedAnswer);
@@ -652,7 +670,8 @@ TEST_CASE("TrainingViewModel - diff board elimination mode", "[training_view_mod
         auto board = f.vm.trainingBoard.get();
         board[0][2].player_selected = true;
         board[0][2].candidates = {7};  // Removed 1 (correct)
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         const auto& fb = f.vm.feedbackBoard.get();
         CHECK(fb[0][2].highlight_role == CellRole::CorrectAnswer);
@@ -662,7 +681,8 @@ TEST_CASE("TrainingViewModel - diff board elimination mode", "[training_view_mod
         auto board = f.vm.trainingBoard.get();
         board[0][2].player_selected = true;
         board[0][2].candidates = {1};  // Removed 7 (wrong)
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         const auto& fb = f.vm.feedbackBoard.get();
         CHECK(fb[0][2].highlight_role == CellRole::WrongAnswer);
@@ -671,7 +691,8 @@ TEST_CASE("TrainingViewModel - diff board elimination mode", "[training_view_mod
     SECTION("Missed elimination shows MissedAnswer") {
         auto board = f.vm.trainingBoard.get();
         // Don't touch cell (0,2) at all
-        f.vm.submitAnswer(board);
+        f.vm.trainingBoard.set(board);
+        f.vm.submitAnswer();
 
         const auto& fb = f.vm.feedbackBoard.get();
         CHECK(fb[0][2].highlight_role == CellRole::MissedAnswer);
@@ -709,7 +730,8 @@ TEST_CASE("TrainingViewModel - records stats on lesson complete", "[training_vie
     for (int i = 0; i < 5; ++i) {
         auto board = vm.trainingBoard.get();
         board[1][0].value = 9;
-        vm.submitAnswer(board);
+        vm.trainingBoard.set(board);
+        vm.submitAnswer();
         if (i < 4) {
             vm.nextExercise();
         }
@@ -881,7 +903,8 @@ TEST_CASE("TrainingViewModel - undo history cleared on next exercise", "[trainin
     f.vm.recordBoardChange(board);
 
     // Submit and move to next
-    f.vm.submitAnswer(board);
+    f.vm.trainingBoard.set(board);
+    f.vm.submitAnswer();
     f.vm.nextExercise();
 
     CHECK_FALSE(f.vm.canUndo());
@@ -976,7 +999,8 @@ TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[train
         auto board = vm.trainingBoard.get();
         // Place value 4 at (0,2) — first naked single
         board[0][2].value = 4;
-        vm.submitAnswer(board);
+        vm.trainingBoard.set(board);
+        vm.submitAnswer();
 
         // Should stay in Exercise (more naked singles remain)
         REQUIRE(vm.trainingState.get().phase == TrainingPhase::Exercise);
@@ -993,12 +1017,14 @@ TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[train
     SECTION("Second correct answer also stays in Exercise") {
         auto board = vm.trainingBoard.get();
         board[0][2].value = 4;
-        vm.submitAnswer(board);
+        vm.trainingBoard.set(board);
+        vm.submitAnswer();
 
         // Now find second one: (7,8)=5
         auto board2 = vm.trainingBoard.get();
         board2[7][8].value = 5;
-        vm.submitAnswer(board2);
+        vm.trainingBoard.set(board2);
+        vm.submitAnswer();
 
         // Should still stay in Exercise (one more naked single at (8,8))
         REQUIRE(vm.trainingState.get().phase == TrainingPhase::Exercise);
@@ -1014,15 +1040,18 @@ TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[train
         // Find all 3 naked singles
         auto board = vm.trainingBoard.get();
         board[0][2].value = 4;
-        vm.submitAnswer(board);
+        vm.trainingBoard.set(board);
+        vm.submitAnswer();
 
         auto board2 = vm.trainingBoard.get();
         board2[7][8].value = 5;
-        vm.submitAnswer(board2);
+        vm.trainingBoard.set(board2);
+        vm.submitAnswer();
 
         auto board3 = vm.trainingBoard.get();
         board3[8][8].value = 9;
-        vm.submitAnswer(board3);
+        vm.trainingBoard.set(board3);
+        vm.submitAnswer();
 
         // No more steps — should transition to Feedback
         REQUIRE(vm.trainingState.get().phase == TrainingPhase::Feedback);
@@ -1033,7 +1062,8 @@ TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[train
     SECTION("Wrong answer during multi-step goes to Feedback") {
         auto board = vm.trainingBoard.get();
         board[0][2].value = 7;  // Wrong value
-        vm.submitAnswer(board);
+        vm.trainingBoard.set(board);
+        vm.submitAnswer();
 
         REQUIRE(vm.trainingState.get().phase == TrainingPhase::Feedback);
         REQUIRE(vm.trainingState.get().last_result == AnswerResult::Incorrect);
@@ -1043,7 +1073,8 @@ TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[train
         // Start with (8,8)=9 instead of (0,2)=4
         auto board = vm.trainingBoard.get();
         board[8][8].value = 9;
-        vm.submitAnswer(board);
+        vm.trainingBoard.set(board);
+        vm.submitAnswer();
 
         REQUIRE(vm.trainingState.get().phase == TrainingPhase::Exercise);
         REQUIRE(vm.trainingState.get().correct_count == 1);

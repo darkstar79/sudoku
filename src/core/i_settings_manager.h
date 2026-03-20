@@ -38,11 +38,9 @@ public:
 
     virtual void setMaxHints(int value) = 0;
     virtual void setAutoSaveInterval(int ms) = 0;
-    virtual void setDoublePressThreshold(int ms) = 0;
     virtual void setDefaultDifficulty(Difficulty difficulty) = 0;
     virtual void setShowConflicts(bool value) = 0;
     virtual void setShowHints(bool value) = 0;
-    virtual void setAutoNotesOnStartup(bool value) = 0;
     virtual void setLanguage(std::string_view locale_code) = 0;
 
     /// Observable for reactive UI updates when settings change.

@@ -55,7 +55,6 @@ GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
         uiState.update([&settings](UIState& state) {
             state.show_conflicts = settings.show_conflicts;
             state.show_hints = settings.show_hints;
-            state.auto_notes_enabled = settings.auto_notes_on_startup;
         });
     }
     spdlog::debug("GameViewModel initialized with dependencies");
@@ -126,11 +125,6 @@ void GameViewModel::startNewGame(core::Difficulty difficulty) {
     // Start timer via update() to ensure Observable internal state has timer_running_ = true
     gameState.update([](model::GameState& state) { state.startTimer(); });
 
-    // Recompute auto-notes if enabled
-    if (isAutoNotesEnabled()) {
-        recomputeAutoNotes();
-    }
-
     // Clear move history
     move_history_.clear();
     move_history_index_ = -1;
@@ -170,11 +164,6 @@ void GameViewModel::resetGame() {
 
     // Start timer via update() to ensure Observable internal state has timer_running_ = true
     gameState.update([](model::GameState& state) { state.startTimer(); });
-
-    // Recompute auto-notes if enabled
-    if (isAutoNotesEnabled()) {
-        recomputeAutoNotes();
-    }
 
     // Clear move history
     move_history_.clear();
@@ -288,12 +277,6 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
         current_puzzle_techniques_.insert(static_cast<core::SolvingTechnique>(id));
     }
 
-    // Restore auto-notes preference and recompute if enabled
-    uiState.update([&saved_game](UIState& state) { state.auto_notes_enabled = saved_game.auto_notes_enabled; });
-    if (saved_game.auto_notes_enabled) {
-        recomputeAutoNotes();
-    }
-
     updateUIState();
     spdlog::debug("Game state restored: {} moves in history", move_history_.size());
 }
@@ -322,9 +305,6 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
     core::forEachCell([&](size_t row, size_t col) {
         saved_game.hint_revealed_cells.set(row, col, current_state.isCellHintRevealed({.row = row, .col = col}));
     });
-
-    // Persist auto-notes preference
-    saved_game.auto_notes_enabled = isAutoNotesEnabled();
 
     // Persist puzzle rating
     saved_game.puzzle_rating = current_puzzle_rating_;
@@ -357,7 +337,6 @@ void GameViewModel::autoSave() {
         auto_save_game.difficulty = current_state.getDifficulty();
         auto_save_game.elapsed_time = current_state.getElapsedTime();
         auto_save_game.is_auto_save = true;
-        auto_save_game.auto_notes_enabled = isAutoNotesEnabled();
         auto_save_game.puzzle_rating = current_puzzle_rating_;
         auto_save_game.puzzle_requires_backtracking = current_puzzle_requires_backtracking_;
         for (const auto& tech : current_puzzle_techniques_) {

@@ -21,8 +21,9 @@ private slots:
     void arrowKeysNavigateSelection();
     void arrowUpWrapsAround();
     void deleteKeyClears();
-    void numberKeySinglePressEntersNote();
-    void numberKeyDoublePressEntersValue();
+    void normalModeNumberKeyPlacesValue();
+    void notesModeNumberKeyTogglesNote();
+    void spaceKeyCyclesInputMode();
 
 private:
     std::unique_ptr<test::UITestContext> ctx_;
@@ -82,13 +83,12 @@ void TestKeyboardHandling::arrowUpWrapsAround() {
 }
 
 void TestKeyboardHandling::deleteKeyClears() {
-    // Find an empty cell and enter a number, then delete it
     selectEmptyCell();
     auto pos = selectedPos();
     QVERIFY(pos.has_value());
 
-    // Double-press to enter value
-    QTest::keyClick(window_.get(), Qt::Key_5);
+    // In Normal mode (default), single press places value
+    ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
     QTest::keyClick(window_.get(), Qt::Key_5);
     QApplication::processEvents();
 
@@ -102,40 +102,64 @@ void TestKeyboardHandling::deleteKeyClears() {
     QCOMPARE(cell_after_delete.value, 0);
 }
 
-void TestKeyboardHandling::numberKeySinglePressEntersNote() {
+void TestKeyboardHandling::normalModeNumberKeyPlacesValue() {
     selectEmptyCell();
     auto pos = selectedPos();
     QVERIFY(pos.has_value());
 
-    // Wait to avoid double-press with previous tests
-    QTest::qWait(350);
+    ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
 
-    QTest::keyClick(window_.get(), Qt::Key_3);
-    QApplication::processEvents();
-
-    auto cell = ctx_->game_vm->gameState.get().getCell(pos->row, pos->col);
-    // Single press should enter a note (not a value), unless auto-notes is on
-    if (!ctx_->game_vm->isAutoNotesEnabled()) {
-        QCOMPARE(cell.value, 0);
-        QVERIFY(cell.notes.contains(3));
-    }
-}
-
-void TestKeyboardHandling::numberKeyDoublePressEntersValue() {
-    selectEmptyCell();
-    auto pos = selectedPos();
-    QVERIFY(pos.has_value());
-
-    // Wait to ensure clean state
-    QTest::qWait(350);
-
-    // Rapid double-press (within 300ms threshold)
-    QTest::keyClick(window_.get(), Qt::Key_7);
     QTest::keyClick(window_.get(), Qt::Key_7);
     QApplication::processEvents();
 
     auto cell = ctx_->game_vm->gameState.get().getCell(pos->row, pos->col);
     QCOMPARE(cell.value, 7);
+
+    // Clean up
+    QTest::keyClick(window_.get(), Qt::Key_Delete);
+    QApplication::processEvents();
+}
+
+void TestKeyboardHandling::notesModeNumberKeyTogglesNote() {
+    selectEmptyCell();
+    auto pos = selectedPos();
+    QVERIFY(pos.has_value());
+
+    // Switch to Notes mode
+    ctx_->game_vm->setInputMode(viewmodel::InputMode::Notes);
+
+    QTest::keyClick(window_.get(), Qt::Key_3);
+    QApplication::processEvents();
+
+    auto cell = ctx_->game_vm->gameState.get().getCell(pos->row, pos->col);
+    QCOMPARE(cell.value, 0);
+    QVERIFY(cell.notes.contains(3));
+
+    // Press again to toggle off
+    QTest::keyClick(window_.get(), Qt::Key_3);
+    QApplication::processEvents();
+
+    cell = ctx_->game_vm->gameState.get().getCell(pos->row, pos->col);
+    QVERIFY(!cell.notes.contains(3));
+
+    // Restore Normal mode
+    ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
+}
+
+void TestKeyboardHandling::spaceKeyCyclesInputMode() {
+    QCOMPARE(ctx_->game_vm->getInputMode(), viewmodel::InputMode::Normal);
+
+    QTest::keyClick(window_.get(), Qt::Key_Space);
+    QApplication::processEvents();
+    QCOMPARE(ctx_->game_vm->getInputMode(), viewmodel::InputMode::Notes);
+
+    QTest::keyClick(window_.get(), Qt::Key_Space);
+    QApplication::processEvents();
+    QCOMPARE(ctx_->game_vm->getInputMode(), viewmodel::InputMode::Color);
+
+    QTest::keyClick(window_.get(), Qt::Key_Space);
+    QApplication::processEvents();
+    QCOMPARE(ctx_->game_vm->getInputMode(), viewmodel::InputMode::Normal);
 }
 
 void TestKeyboardHandling::selectEmptyCell() {

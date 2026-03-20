@@ -21,6 +21,7 @@
 #include "../core/i_time_provider.h"
 #include "../core/observable.h"
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -175,6 +176,11 @@ public:
         return solution_board_.has_value();
     }
 
+    // Analysis cell colors (ephemeral — not saved, not part of undo)
+    void setCellColor(size_t row, size_t col, uint8_t color);
+    [[nodiscard]] uint8_t getCellColor(size_t row, size_t col) const;
+    void clearAllCellColors();
+
     // Dirty flag for auto-save optimization
     [[nodiscard]] bool isDirty() const {
         return is_dirty_;
@@ -222,6 +228,9 @@ private:
 
     // UI state
     std::optional<core::Position> selected_position_;
+
+    // Analysis cell colors (ephemeral — not saved/loaded, not part of undo)
+    std::array<std::array<uint8_t, core::BOARD_SIZE>, core::BOARD_SIZE> cell_colors_{};
 
     // Auto-save optimization
     bool is_dirty_{false};  // Tracks if state changed since last save

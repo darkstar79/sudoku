@@ -114,18 +114,21 @@ void MainWindow::setupCentralWidget() {
         "QPushButton:disabled { color: #9ca3af; background-color: #f3f4f6; border-color: #e5e7eb; }"
         "QPushButton:checked { background-color: #2563eb; color: white; border-color: #1d4ed8; }";
 
-    undo_btn_ = new QPushButton("Undo");
-    redo_btn_ = new QPushButton("Redo");
-    undo_valid_btn_ = new QPushButton("Undo Until Valid");
-    auto_notes_btn_ = new QPushButton("Auto-Notes");
-    auto_notes_btn_->setCheckable(true);
+    undo_btn_ = new QPushButton(loc(ButtonUndo));
+    redo_btn_ = new QPushButton(loc(ButtonRedo));
+    undo_valid_btn_ = new QPushButton(loc(ButtonUndoUntilValid));
+    auto_notes_btn_ = new QPushButton(loc(ButtonFillNotes));
+    mode_btn_ = new QPushButton(loc(ModeNormal));
+    mode_btn_->setToolTip("Input mode (Space to cycle, N for Notes)");
 
     undo_btn_->setStyleSheet(BTN_STYLE);
     redo_btn_->setStyleSheet(BTN_STYLE);
     undo_valid_btn_->setStyleSheet(BTN_STYLE);
     auto_notes_btn_->setStyleSheet(BTN_STYLE);
+    mode_btn_->setStyleSheet(BTN_STYLE);
 
     button_layout->addStretch();
+    button_layout->addWidget(mode_btn_);
     button_layout->addWidget(undo_btn_);
     button_layout->addWidget(redo_btn_);
     button_layout->addWidget(undo_valid_btn_);
@@ -144,45 +147,64 @@ void MainWindow::setupCentralWidget() {
 }
 
 void MainWindow::setupMenuBar() {
-    auto* game_menu = menuBar()->addMenu("&Game");
+    auto* game_menu = menuBar()->addMenu(QString("&%1").arg(loc(MenuGame)));
 
-    game_menu->addAction("&New Game", QKeySequence("Ctrl+N"), this, &MainWindow::showNewGameDialog);
+    game_menu->addAction(QString("&%1").arg(loc(MenuNewGame)), QKeySequence("Ctrl+N"), this,
+                         &MainWindow::showNewGameDialog);
 
-    auto* reset_action =
-        game_menu->addAction("&Reset Puzzle", QKeySequence("Ctrl+R"), this, &MainWindow::showResetDialog);
+    auto* reset_action = game_menu->addAction(QString("&%1").arg(loc(MenuResetPuzzle)), QKeySequence("Ctrl+R"), this,
+                                              &MainWindow::showResetDialog);
     reset_action->setEnabled(false);
 
     game_menu->addSeparator();
 
-    game_menu->addAction("&Save", QKeySequence("Ctrl+S"), this, &MainWindow::showSaveDialog);
-    game_menu->addAction("&Open/Load", QKeySequence("Ctrl+O"), this, &MainWindow::showLoadDialog);
+    game_menu->addAction(QString("&%1").arg(loc(MenuSave)), QKeySequence("Ctrl+S"), this, &MainWindow::showSaveDialog);
+    game_menu->addAction(QString("&%1").arg(loc(MenuLoad)), QKeySequence("Ctrl+O"), this, &MainWindow::showLoadDialog);
 
     game_menu->addSeparator();
 
-    game_menu->addAction("&Training Mode", this, [this]() { central_stack_->setCurrentIndex(1); });
+    game_menu->addAction(QString("&%1").arg(loc(MenuTrainingMode)), this,
+                         [this]() { central_stack_->setCurrentIndex(1); });
 
-    game_menu->addAction("Resume &Game", this, [this]() { central_stack_->setCurrentIndex(0); });
+    game_menu->addAction(QString("&%1").arg(loc(MenuAnalyzePosition)), QKeySequence("F2"), this, [this]() {
+        if (!view_model_ || !training_vm_) {
+            return;
+        }
+        auto result = view_model_->analyzePosition();
+        if (!result.has_value()) {
+            if (toast_widget_) {
+                toast_widget_->show("No logical strategies found at this position.");
+            }
+            return;
+        }
+        training_vm_->analyzePosition(result->board, result->given_board, result->candidate_masks,
+                                      result->applicable_steps);
+        central_stack_->setCurrentIndex(1);
+    });
+
+    game_menu->addAction(QString("&%1").arg(loc(MenuResumeGame)), this,
+                         [this]() { central_stack_->setCurrentIndex(0); });
 
     game_menu->addSeparator();
 
-    game_menu->addAction("S&tatistics", this, &MainWindow::showStatisticsDialog);
-    game_menu->addAction("Export &Aggregate Stats to CSV", this, &MainWindow::exportAggregateStatsCsv);
-    game_menu->addAction("Export Game &Sessions to CSV", this, &MainWindow::exportGameSessionsCsv);
+    game_menu->addAction(loc(MenuStatistics), this, &MainWindow::showStatisticsDialog);
+    game_menu->addAction(loc(MenuExportAggregate), this, &MainWindow::exportAggregateStatsCsv);
+    game_menu->addAction(loc(MenuExportSessions), this, &MainWindow::exportGameSessionsCsv);
 
     game_menu->addSeparator();
-    game_menu->addAction("Se&ttings...", QKeySequence("Ctrl+,"), this, &MainWindow::showSettingsDialog);
+    game_menu->addAction(loc(MenuSettings), QKeySequence("Ctrl+,"), this, &MainWindow::showSettingsDialog);
     game_menu->addSeparator();
-    game_menu->addAction("E&xit", QKeySequence("Alt+F4"), this, &QWidget::close);
+    game_menu->addAction(QString("&%1").arg(loc(MenuExit)), QKeySequence("Alt+F4"), this, &QWidget::close);
 
-    auto* edit_menu = menuBar()->addMenu("&Edit");
-    edit_menu->addAction("&Undo", QKeySequence("Ctrl+Z"), this, [this]() {
+    auto* edit_menu = menuBar()->addMenu(QString("&%1").arg(loc(MenuEdit)));
+    edit_menu->addAction(QString("&%1").arg(loc(MenuUndo)), QKeySequence("Ctrl+Z"), this, [this]() {
         if (view_model_) {
             view_model_->undo();
             board_widget_->update();
         }
     });
 
-    edit_menu->addAction("&Redo", QKeySequence("Ctrl+Y"), this, [this]() {
+    edit_menu->addAction(QString("&%1").arg(loc(MenuRedo)), QKeySequence("Ctrl+Y"), this, [this]() {
         if (view_model_) {
             view_model_->redo();
             board_widget_->update();
@@ -190,23 +212,23 @@ void MainWindow::setupMenuBar() {
     });
 
     edit_menu->addSeparator();
-    edit_menu->addAction("&Clear Cell", QKeySequence("Delete"), this, [this]() {
+    edit_menu->addAction(QString("&%1").arg(loc(MenuClearCell)), QKeySequence("Delete"), this, [this]() {
         if (view_model_) {
             view_model_->clearSelectedCell();
             board_widget_->update();
         }
     });
 
-    auto* help_menu = menuBar()->addMenu("&Help");
-    help_menu->addAction("Get &Hint", QKeySequence("H"), this, [this]() {
+    auto* help_menu = menuBar()->addMenu(QString("&%1").arg(loc(MenuHelp)));
+    help_menu->addAction(loc(MenuGetHint), QKeySequence("H"), this, [this]() {
         if (view_model_ && view_model_->getHintCount() > 0) {
             view_model_->getHint();
             board_widget_->update();
         }
     });
     help_menu->addSeparator();
-    help_menu->addAction("&About", this, &MainWindow::showAboutDialog);
-    help_menu->addAction("&Third-Party Licenses", this, &MainWindow::showThirdPartyLicensesDialog);
+    help_menu->addAction(QString("&%1").arg(loc(MenuAbout)), this, &MainWindow::showAboutDialog);
+    help_menu->addAction(loc(MenuThirdPartyLicenses), this, &MainWindow::showThirdPartyLicensesDialog);
 }
 
 void MainWindow::setupToolBar() {
@@ -215,18 +237,20 @@ void MainWindow::setupToolBar() {
     toolbar->setStyleSheet(
         "QToolBar { background-color: #f5f5f5; border-bottom: 1px solid #ddd; padding: 4px; spacing: 8px; }");
 
-    auto* new_game_btn = new QPushButton("New Game");
-    new_game_btn->setStyleSheet(
+    new_game_btn_ = new QPushButton(loc(ToolbarNewGame));
+    new_game_btn_->setStyleSheet(
         "QPushButton { background-color: #2563eb; color: white; padding: 6px 16px; border-radius: 4px; }"
         "QPushButton:hover { background-color: #1d4ed8; }");
-    connect(new_game_btn, &QPushButton::clicked, this, &MainWindow::showNewGameDialog);
-    toolbar->addWidget(new_game_btn);
+    connect(new_game_btn_, &QPushButton::clicked, this, &MainWindow::showNewGameDialog);
+    toolbar->addWidget(new_game_btn_);
 
     toolbar->addSeparator();
 
-    toolbar->addWidget(new QLabel(" Difficulty: "));
+    difficulty_label_ = new QLabel(QString(" %1 ").arg(loc(ToolbarDifficulty)));
+    toolbar->addWidget(difficulty_label_);
     difficulty_combo_ = new QComboBox;
-    difficulty_combo_->addItems({"Easy", "Medium", "Hard", "Expert", "Master"});
+    difficulty_combo_->addItems({loc(DifficultyEasy), loc(DifficultyMedium), loc(DifficultyHard), loc(DifficultyExpert),
+                                 loc(DifficultyMaster)});
     difficulty_combo_->setCurrentIndex(1);  // Medium
     toolbar->addWidget(difficulty_combo_);
 
@@ -250,7 +274,8 @@ void MainWindow::setupToolBar() {
 
     toolbar->addSeparator();
 
-    toolbar->addWidget(new QLabel(" Hints: "));
+    hints_text_label_ = new QLabel(QString(" %1 ").arg(loc(ToolbarHints)));
+    toolbar->addWidget(hints_text_label_);
     hints_label_ = new QLabel("10");
     hints_label_->setStyleSheet("background-color: #2563eb; color: white; padding: 2px 12px; border-radius: 12px;");
     toolbar->addWidget(hints_label_);
@@ -268,7 +293,7 @@ void MainWindow::setupToolBar() {
 }
 
 void MainWindow::setupStatusBar() {
-    status_label_ = new QLabel("Ready");
+    status_label_ = new QLabel(loc(StatusReady));
     statusBar()->addWidget(status_label_, 1);
     statusBar()->setStyleSheet("QStatusBar { background-color: #f0f0f0; border-top: 1px solid #ddd; color: #666; }");
 }
@@ -315,7 +340,14 @@ void MainWindow::setViewModel(std::shared_ptr<viewmodel::GameViewModel> view_mod
         });
         connect(auto_notes_btn_, &QPushButton::clicked, this, [this]() {
             if (view_model_) {
-                view_model_->toggleAutoNotes();
+                view_model_->fillNotes();
+                board_widget_->update();
+            }
+        });
+        connect(mode_btn_, &QPushButton::clicked, this, [this]() {
+            if (view_model_) {
+                view_model_->cycleInputMode();
+                updateButtonPanel();
                 board_widget_->update();
             }
         });
@@ -357,6 +389,14 @@ void MainWindow::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewMod
 void MainWindow::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
     loc_manager_ = std::move(loc_manager);
     spdlog::debug("LocalizationManager bound to MainWindow (locale: {})", loc_manager_->getCurrentLocale());
+    if (training_widget_) {
+        training_widget_->setLocalizationManager(loc_manager_);
+        // Re-bind training VM since rebuildPages() destroyed the old page widgets
+        if (training_vm_) {
+            training_widget_->setTrainingViewModel(training_vm_);
+        }
+    }
+    retranslateUi();
 }
 
 void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> settings_manager) {
@@ -373,6 +413,11 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
             if (auto_save_timer_) {
                 auto_save_timer_->setInterval(s.auto_save_interval_ms);
             }
+            // Retranslate UI if language changed
+            if (loc_manager_ && s.language != std::string(loc_manager_->getCurrentLocale())) {
+                [[maybe_unused]] auto result = loc_manager_->setLocale(s.language);
+                retranslateUi();
+            }
         });
     }
 
@@ -388,6 +433,11 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     event->accept();
 }
 
+bool MainWindow::event(QEvent* event) {
+    return QMainWindow::event(event);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — event handler with inherent branching
 void MainWindow::keyPressEvent(QKeyEvent* event) {
     if (!view_model_) {
         QMainWindow::keyPressEvent(event);
@@ -400,9 +450,60 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 
     int key = event->key();
 
-    // Number keys 1-9
+    // Space cycles input mode (Normal → Notes → Color → Normal)
+    if (key == Qt::Key_Space) {
+        view_model_->cycleInputMode();
+        updateButtonPanel();
+        board_widget_->update();
+        return;
+    }
+
+    // N key toggles Notes mode directly
+    if (key == Qt::Key_N && event->modifiers() == Qt::NoModifier) {
+        auto current = view_model_->getInputMode();
+        view_model_->setInputMode(current == viewmodel::InputMode::Notes ? viewmodel::InputMode::Normal
+                                                                         : viewmodel::InputMode::Notes);
+        updateButtonPanel();
+        board_widget_->update();
+        return;
+    }
+
+    // Number keys 1-9: action depends on input mode
     if (key >= Qt::Key_1 && key <= Qt::Key_9) {
-        handleNumberInput(key - Qt::Key_1 + 1);
+        int number = key - Qt::Key_1 + 1;
+        const auto& game_state = view_model_->gameState.get();
+        if (!game_state.isTimerRunning()) {
+            return;
+        }
+        auto pos_opt = game_state.getSelectedPosition();
+        if (!pos_opt.has_value()) {
+            return;
+        }
+        const auto& cell = game_state.getCell(pos_opt->row, pos_opt->col);
+        if (cell.is_given) {
+            return;
+        }
+
+        switch (view_model_->getInputMode()) {
+            case viewmodel::InputMode::Normal:
+                if (cell.value == 0) {
+                    view_model_->enterNumber(number);
+                } else if (cell.value == number) {
+                    view_model_->clearSelectedCell();
+                }
+                break;
+            case viewmodel::InputMode::Notes:
+                if (cell.value == 0) {
+                    view_model_->enterNote(number);
+                }
+                break;
+            case viewmodel::InputMode::Color:
+                if (number <= 6) {
+                    view_model_->colorSelectedCell(static_cast<uint8_t>(number));
+                }
+                break;
+        }
+        board_widget_->update();
         return;
     }
 
@@ -436,7 +537,11 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 
     // Editing keys
     if (key == Qt::Key_Delete || key == Qt::Key_Backspace || key == Qt::Key_0) {
-        view_model_->clearSelectedCell();
+        if (view_model_->getInputMode() == viewmodel::InputMode::Color) {
+            view_model_->colorSelectedCell(0);  // Clear color
+        } else {
+            view_model_->clearSelectedCell();
+        }
         board_widget_->update();
         return;
     }
@@ -457,72 +562,19 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
     QMainWindow::keyPressEvent(event);
 }
 
-void MainWindow::handleNumberInput(int number) {
-    if (!view_model_) {
-        return;
-    }
-
-    const auto& game_state = view_model_->gameState.get();
-    if (!game_state.isTimerRunning()) {
-        return;
-    }
-
-    auto pos_opt = game_state.getSelectedPosition();
-    if (!pos_opt.has_value()) {
-        return;
-    }
-
-    const auto& cell = game_state.getCell(pos_opt->row, pos_opt->col);
-    if (cell.is_given) {
-        return;
-    }
-
-    if (view_model_->isAutoNotesEnabled()) {
-        if (cell.value == 0) {
-            view_model_->enterNumber(number);
-        } else if (cell.value == number) {
-            view_model_->clearSelectedCell();
-        }
-        board_widget_->update();
-        return;
-    }
-
-    // Double-press detection
-    auto now = std::chrono::steady_clock::now();
-    auto threshold = settings_manager_
-                         ? std::chrono::milliseconds(settings_manager_->getSettings().double_press_threshold_ms)
-                         : DEFAULT_DOUBLE_PRESS_THRESHOLD;
-    bool is_double = (number == last_number_pressed_ && now - last_press_time_ < threshold);
-
-    if (is_double) {
-        view_model_->enterNumber(number);
-        last_number_pressed_ = 0;
-        last_press_time_ = {};
-    } else {
-        if (cell.value == 0) {
-            view_model_->enterNote(number);
-        } else if (cell.value == number && !cell.is_given) {
-            view_model_->clearSelectedCell();
-        }
-        last_number_pressed_ = number;
-        last_press_time_ = now;
-    }
-    board_widget_->update();
-}
-
 void MainWindow::updateStatusBar() {
     if (!view_model_) {
-        status_label_->setText("Ready");
+        status_label_->setText(loc(StatusReady));
         return;
     }
 
     const auto& game_state = view_model_->gameState.get();
     if (game_state.isComplete()) {
-        status_label_->setText("<span style='color: green;'>Completed!</span>");
+        status_label_->setText(QString("<span style='color: green;'>%1</span>").arg(loc(StatusCompleted)));
     } else if (game_state.isTimerRunning()) {
-        status_label_->setText("Playing...");
+        status_label_->setText(loc(StatusPlaying));
     } else {
-        status_label_->setText("Ready");
+        status_label_->setText(loc(StatusReady));
     }
 }
 
@@ -537,11 +589,12 @@ void MainWindow::updateToolBar() {
     const auto& ui_state = view_model_->uiState.get();
     if (ui_state.puzzle_rating > 0.0) {
         const auto& techniques = ui_state.puzzle_techniques;
+        auto rating_str = QString::number(ui_state.puzzle_rating, 'f', 1).toStdString();
         if (!techniques.empty()) {
             rating_btn_->setText(
-                QString("SE %1 (%2 techniques)").arg(ui_state.puzzle_rating, 0, 'f', 1).arg(techniques.size()));
+                QString::fromStdString(locFormat(ToolbarRatingWithTechniques, rating_str, techniques.size())));
         } else {
-            rating_btn_->setText(QString("SE %1").arg(ui_state.puzzle_rating, 0, 'f', 1));
+            rating_btn_->setText(QString::fromStdString(locFormat(ToolbarRatingSimple, rating_str)));
         }
         rating_action_->setVisible(true);
     } else {
@@ -556,7 +609,19 @@ void MainWindow::updateButtonPanel() {
 
     undo_btn_->setEnabled(view_model_->canUndo());
     redo_btn_->setEnabled(view_model_->canRedo());
-    auto_notes_btn_->setChecked(view_model_->isAutoNotesEnabled());
+
+    // Update input mode indicator
+    switch (view_model_->getInputMode()) {
+        case viewmodel::InputMode::Normal:
+            mode_btn_->setText(loc(ModeNormal));
+            break;
+        case viewmodel::InputMode::Notes:
+            mode_btn_->setText(loc(ModeNotes));
+            break;
+        case viewmodel::InputMode::Color:
+            mode_btn_->setText(loc(ModeColor));
+            break;
+    }
 }
 
 // Dialog methods
@@ -717,19 +782,21 @@ void MainWindow::showTechniquesDialog() {
         return;
     }
 
-    QString text = QString("Puzzle Rating: SE %1\n\n").arg(ui_state.puzzle_rating, 0, 'f', 1);
+    QString text = QString::fromStdString(
+                       locFormat(DialogPuzzleRating, QString::number(ui_state.puzzle_rating, 'f', 1).toStdString())) +
+                   "\n\n";
 
     const auto& techniques = ui_state.puzzle_techniques;
     if (!techniques.empty()) {
-        text += "Techniques required to solve:\n\n";
+        text += QString("%1\n\n").arg(loc(DialogTechniquesRequired));
         for (const auto& tech : techniques) {
             text += QString("  %1\n").arg(QString::fromStdString(tech));
         }
     } else {
-        text += "No technique details available.";
+        text += loc(DialogNoTechniqueDetails);
     }
 
-    QMessageBox::information(this, "Puzzle Difficulty", text);
+    QMessageBox::information(this, loc(DialogPuzzleDifficulty), text);
 }
 
 void MainWindow::exportAggregateStatsCsv() {
@@ -775,6 +842,42 @@ const char* MainWindow::difficultyString(core::Difficulty difficulty) const {
     }
 }
 
+void MainWindow::retranslateUi() {
+    // Menu bar: rebuild entirely (avoids storing ~15 action pointers)
+    menuBar()->clear();
+    setupMenuBar();
+
+    // Toolbar labels
+    new_game_btn_->setText(loc(ToolbarNewGame));
+    difficulty_label_->setText(QString(" %1 ").arg(loc(ToolbarDifficulty)));
+    hints_text_label_->setText(QString(" %1 ").arg(loc(ToolbarHints)));
+
+    // Difficulty combo items
+    difficulty_combo_->blockSignals(true);
+    for (int i = 0; i < difficulty_combo_->count(); ++i) {
+        difficulty_combo_->setItemText(i, difficultyString(static_cast<core::Difficulty>(i)));
+    }
+    difficulty_combo_->blockSignals(false);
+
+    // Button panel
+    undo_btn_->setText(loc(ButtonUndo));
+    redo_btn_->setText(loc(ButtonRedo));
+    undo_valid_btn_->setText(loc(ButtonUndoUntilValid));
+    auto_notes_btn_->setText(loc(ButtonFillNotes));
+
+    // Training widget: rebuild pages with new locale, then re-bind VM
+    if (training_widget_ && loc_manager_) {
+        training_widget_->setLocalizationManager(loc_manager_);
+        if (training_vm_) {
+            training_widget_->setTrainingViewModel(training_vm_);
+        }
+    }
+
+    // Status bar and mode button
+    updateStatusBar();
+    updateButtonPanel();
+}
+
 // NOLINTNEXTLINE(readability-function-size) — UI builder: settings dialog with tabs and signal wiring
 void MainWindow::showSettingsDialog() {
     if (!settings_manager_) {
@@ -803,13 +906,6 @@ void MainWindow::showSettingsDialog() {
     auto_save_spin->setValue(settings_manager_->getSettings().auto_save_interval_ms / 1000);
     gameplay_layout->addRow("Auto-save Interval:", auto_save_spin);
 
-    auto* double_press_spin = new QSpinBox();
-    double_press_spin->setRange(100, 1000);
-    double_press_spin->setSuffix(" ms");
-    double_press_spin->setSingleStep(50);
-    double_press_spin->setValue(settings_manager_->getSettings().double_press_threshold_ms);
-    gameplay_layout->addRow("Double-press Threshold:", double_press_spin);
-
     auto* difficulty_combo = new QComboBox();
     difficulty_combo->addItems({"Easy", "Medium", "Hard", "Expert", "Master"});
     difficulty_combo->setCurrentIndex(static_cast<int>(settings_manager_->getSettings().default_difficulty));
@@ -828,10 +924,6 @@ void MainWindow::showSettingsDialog() {
     auto* show_hints_cb = new QCheckBox("Show Hints");
     show_hints_cb->setChecked(settings_manager_->getSettings().show_hints);
     display_layout->addWidget(show_hints_cb);
-
-    auto* auto_notes_cb = new QCheckBox("Auto Notes on Startup");
-    auto_notes_cb->setChecked(settings_manager_->getSettings().auto_notes_on_startup);
-    display_layout->addWidget(auto_notes_cb);
 
     // Language selection
     if (loc_manager_) {
@@ -854,9 +946,6 @@ void MainWindow::showSettingsDialog() {
         connect(lang_combo, &QComboBox::currentIndexChanged, this, [this, lang_combo](int idx) {
             auto code = lang_combo->itemData(idx).toString().toStdString();
             settings_manager_->setLanguage(code);
-            if (loc_manager_) {
-                [[maybe_unused]] auto result = loc_manager_->setLocale(code);
-            }
         });
     }
 
@@ -875,9 +964,6 @@ void MainWindow::showSettingsDialog() {
 
     connect(auto_save_spin, &QSpinBox::valueChanged, this,
             [this](int v) { settings_manager_->setAutoSaveInterval(v * 1000); });
-
-    connect(double_press_spin, &QSpinBox::valueChanged, this,
-            [this](int v) { settings_manager_->setDoublePressThreshold(v); });
 
     connect(difficulty_combo, &QComboBox::currentIndexChanged, this,
             [this](int idx) { settings_manager_->setDefaultDifficulty(static_cast<core::Difficulty>(idx)); });
@@ -903,8 +989,6 @@ void MainWindow::showSettingsDialog() {
             view_model_->setShowHints(checked);
         }
     });
-
-    connectCheckBox(auto_notes_cb, [this](bool checked) { settings_manager_->setAutoNotesOnStartup(checked); });
 
     dialog->exec();
 }

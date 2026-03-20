@@ -49,6 +49,8 @@ public:
 
     [[nodiscard]] bool applyStep(BoardData& board, const SolveStep& step) const override;
 
+    [[nodiscard]] std::vector<SolveStep> findAllApplicableSteps(const BoardData& board) const override;
+
 private:
     std::shared_ptr<IGameValidator> validator_;
     std::vector<std::unique_ptr<ISolvingStrategy>> strategies_;

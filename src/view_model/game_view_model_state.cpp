@@ -16,7 +16,6 @@
 
 #include "../core/solving_technique.h"
 #include "../core/string_keys.h"
-#include "core/board_utils.h"
 #include "core/i_game_validator.h"
 #include "core/i_save_manager.h"
 #include "core/i_statistics_manager.h"
@@ -56,14 +55,11 @@ void GameViewModel::executeCommand(GameCommand command) {
         case GameCommand::ResetGame:
             resetGame();
             break;
-        case GameCommand::ToggleNotes:
-            toggleNotesMode();
+        case GameCommand::ToggleInputMode:
+            cycleInputMode();
             break;
         case GameCommand::ShowStatistics:
             refreshStatistics();
-            break;
-        case GameCommand::ToggleAutoNotes:
-            toggleAutoNotes();
             break;
         default:
             spdlog::warn("Unhandled command: {}", static_cast<int>(command));
@@ -103,43 +99,29 @@ bool GameViewModel::isGameStateDirty() const {
     return state.isDirty();
 }
 
-void GameViewModel::setNotesMode(bool enabled) {
-    auto current_ui = uiState.get();
-    current_ui.notes_mode = enabled;
-    uiState.set(current_ui);
+void GameViewModel::setInputMode(InputMode mode) {
+    uiState.update([mode](UIState& state) { state.input_mode = mode; });
 }
 
-void GameViewModel::toggleNotesMode() {
-    auto current_ui = uiState.get();
-    current_ui.notes_mode = !current_ui.notes_mode;
-    uiState.set(current_ui);
-}
-
-void GameViewModel::setAutoNotesEnabled(bool enabled) {
-    if (uiState.get().auto_notes_enabled == enabled) {
-        return;
+void GameViewModel::cycleInputMode() {
+    const auto& ui = uiState.get();
+    InputMode next{};
+    switch (ui.input_mode) {
+        case InputMode::Normal:
+            next = InputMode::Notes;
+            break;
+        case InputMode::Notes:
+            next = InputMode::Color;
+            break;
+        case InputMode::Color:
+            next = InputMode::Normal;
+            break;
     }
-
-    uiState.update([enabled](UIState& state) { state.auto_notes_enabled = enabled; });
-
-    if (enabled) {
-        recomputeAutoNotes();
-    } else {
-        // Clear all notes for a fresh manual start
-        gameState.update([](model::GameState& state) {
-            core::forEachCell([&](size_t row, size_t col) { state.clearNotes({.row = row, .col = col}); });
-        });
-    }
-
-    spdlog::info("Auto-notes {}", enabled ? "enabled" : "disabled");
+    uiState.update([next](UIState& state) { state.input_mode = next; });
 }
 
-void GameViewModel::toggleAutoNotes() {
-    setAutoNotesEnabled(!isAutoNotesEnabled());
-}
-
-bool GameViewModel::isAutoNotesEnabled() const {
-    return uiState.get().auto_notes_enabled;
+InputMode GameViewModel::getInputMode() const {
+    return uiState.get().input_mode;
 }
 
 void GameViewModel::refreshStatistics() {
@@ -177,7 +159,8 @@ void GameViewModel::updateUIState() {
     ui.puzzle_rating = current_puzzle_rating_;
     ui.puzzle_techniques = formatTechniques(current_puzzle_techniques_, current_puzzle_requires_backtracking_);
     // Preserve user preferences across UI state updates
-    ui.auto_notes_enabled = uiState.get().auto_notes_enabled;
+    const auto& prev = uiState.get();
+    ui.input_mode = prev.input_mode;
 
     uiState.set(ui);
 }

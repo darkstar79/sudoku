@@ -27,13 +27,11 @@ struct Settings {
     // Gameplay
     int max_hints{10};
     int auto_save_interval_ms{30000};
-    int double_press_threshold_ms{300};
     Difficulty default_difficulty{Difficulty::Medium};
 
     // Display
     bool show_conflicts{true};
     bool show_hints{true};
-    bool auto_notes_on_startup{false};
 
     // Language
     std::string language{"en"};

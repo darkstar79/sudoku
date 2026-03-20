@@ -191,87 +191,64 @@ void GameViewModel::recordMove(const core::Move& move, bool is_mistake) {
 }
 
 void GameViewModel::applyMove(const core::Move& move) {
-    bool auto_notes = isAutoNotesEnabled();
-    gameState.update([&move, auto_notes](model::GameState& state) {
+    gameState.update([&move](model::GameState& state) {
         switch (move.move_type) {
             case core::MoveType::PlaceNumber:
                 state.setValue(move.position, move.value);
-                if (!auto_notes) {
-                    state.clearNotes(move.position);
-                    cleanupConflictingNotes(state, move.position, move.value);
-                }
+                state.clearNotes(move.position);
+                cleanupConflictingNotes(state, move.position, move.value);
                 break;
             case core::MoveType::RemoveNumber:
                 state.setValue(move.position, 0);
                 break;
             case core::MoveType::AddNote:
-                if (!auto_notes) {
-                    state.addNote(move.position, move.value);
-                }
+                state.addNote(move.position, move.value);
                 break;
             case core::MoveType::RemoveNote:
-                if (!auto_notes) {
-                    state.removeNote(move.position, move.value);
-                }
+                state.removeNote(move.position, move.value);
                 break;
             case core::MoveType::PlaceHint:
                 state.setValue(move.position, move.value);
                 state.setHintRevealed(move.position, true);
-                if (!auto_notes) {
-                    state.clearNotes(move.position);
-                    cleanupConflictingNotes(state, move.position, move.value);
-                }
+                state.clearNotes(move.position);
+                cleanupConflictingNotes(state, move.position, move.value);
                 state.incrementMoves();  // Count hint as a move
                 break;
             default:
                 break;
         }
     });
-
-    if (auto_notes) {
-        recomputeAutoNotes();
-    }
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) — undo logic with note/value branching; nesting is inherent
 void GameViewModel::revertMove(const core::Move& move) {
-    bool auto_notes = isAutoNotesEnabled();
-    gameState.update([&move, auto_notes](model::GameState& state) {
+    gameState.update([&move](model::GameState& state) {
         switch (move.move_type) {
             case core::MoveType::PlaceNumber:
                 state.setValue(move.position, move.previous_value);
                 state.setHintRevealed(move.position, move.previous_hint_revealed);
-                if (!auto_notes) {
-                    state.setNotes(move.position, move.previous_notes);
-                    if (move.value != 0) {
-                        restoreConflictingNotes(state, move.position, move.value);
-                    }
+                state.setNotes(move.position, move.previous_notes);
+                if (move.value != 0) {
+                    restoreConflictingNotes(state, move.position, move.value);
                 }
                 break;
             case core::MoveType::RemoveNumber:
                 state.setValue(move.position, move.previous_value);
                 state.setHintRevealed(move.position, move.previous_hint_revealed);
-                if (!auto_notes) {
-                    state.setNotes(move.position, move.previous_notes);
-                    if (move.previous_value != 0) {
-                        cleanupConflictingNotes(state, move.position, move.previous_value);
-                    }
+                state.setNotes(move.position, move.previous_notes);
+                if (move.previous_value != 0) {
+                    cleanupConflictingNotes(state, move.position, move.previous_value);
                 }
                 break;
             case core::MoveType::AddNote:
             case core::MoveType::RemoveNote:
-                if (!auto_notes) {
-                    state.setNotes(move.position, move.previous_notes);
-                }
+                state.setNotes(move.position, move.previous_notes);
                 break;
             case core::MoveType::PlaceHint:
                 state.setValue(move.position, move.previous_value);
                 state.setHintRevealed(move.position, move.previous_hint_revealed);
-                if (!auto_notes) {
-                    state.setNotes(move.position, move.previous_notes);
-                    if (move.value != 0) {
-                        restoreConflictingNotes(state, move.position, move.value);
-                    }
+                state.setNotes(move.position, move.previous_notes);
+                if (move.value != 0) {
+                    restoreConflictingNotes(state, move.position, move.value);
                 }
                 spdlog::warn("Attempted to revert hint move - hints should not be undoable!");
                 break;
@@ -279,10 +256,6 @@ void GameViewModel::revertMove(const core::Move& move) {
                 break;
         }
     });
-
-    if (auto_notes) {
-        recomputeAutoNotes();
-    }
 }
 
 }  // namespace sudoku::viewmodel

@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <QFont>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <qbrush.h>
@@ -37,14 +38,8 @@
 
 namespace sudoku::view {
 
-namespace {
-constexpr float BOARD_MAX_SIZE = 540.0F;
-constexpr float BOARD_MIN_SIZE = 360.0F;
-constexpr float THICK_LINE_WIDTH = 3.0F;
-constexpr float THIN_LINE_WIDTH = 1.0F;
-}  // namespace
-
-TrainingBoardWidget::TrainingBoardWidget(QWidget* parent) : QWidget(parent) {
+TrainingBoardWidget::TrainingBoardWidget(QWidget* parent)
+    : QWidget(parent), painter_({.max_size = 540.0F, .min_size = 360.0F, .padding = 20.0F}) {
     setFocusPolicy(Qt::StrongFocus);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     setMouseTracking(true);
@@ -52,102 +47,96 @@ TrainingBoardWidget::TrainingBoardWidget(QWidget* parent) : QWidget(parent) {
 
 void TrainingBoardWidget::setBoard(const core::TrainingBoard& board) {
     board_ = board;
-    selected_cell_.reset();
     hovered_candidate_ = 0;
     update();
+}
+
+void TrainingBoardWidget::setSelectedCell(std::optional<std::pair<size_t, size_t>> cell) {
+    if (selected_cell_ != cell) {
+        selected_cell_ = cell;
+        update();
+    }
+}
+
+void TrainingBoardWidget::keyPressEvent(QKeyEvent* event) {
+    if (read_only_ || event->isAutoRepeat()) {
+        return;
+    }
+
+    int key = event->key();
+
+    // Arrow key navigation with wrapping
+    if (key >= Qt::Key_Left && key <= Qt::Key_Down) {
+        size_t row = 0;
+        size_t col = 0;
+        if (selected_cell_.has_value()) {
+            row = selected_cell_->first;
+            col = selected_cell_->second;
+        }
+
+        switch (key) {
+            case Qt::Key_Up:
+                row = row > 0 ? row - 1 : core::BOARD_SIZE - 1;
+                break;
+            case Qt::Key_Down:
+                row = row < core::BOARD_SIZE - 1 ? row + 1 : 0;
+                break;
+            case Qt::Key_Left:
+                col = col > 0 ? col - 1 : core::BOARD_SIZE - 1;
+                break;
+            case Qt::Key_Right:
+                col = col < core::BOARD_SIZE - 1 ? col + 1 : 0;
+                break;
+            default:
+                break;
+        }
+
+        emit cellSelected(row, col);
+        return;
+    }
+
+    // Number keys 1-9
+    if (key >= Qt::Key_1 && key <= Qt::Key_9) {
+        emit numberPressed(key - Qt::Key_1 + 1);
+        return;
+    }
+
+    // A/B keys for coloring
+    if (key == Qt::Key_A) {
+        emit colorPressed(1);
+        return;
+    }
+    if (key == Qt::Key_B) {
+        emit colorPressed(2);
+        return;
+    }
 }
 
 void TrainingBoardWidget::setReadOnly(bool read_only) {
     read_only_ = read_only;
     if (read_only) {
-        selected_cell_.reset();
         hovered_candidate_ = 0;
     }
     update();
 }
 
-void TrainingBoardWidget::applyNumber(int value, core::TrainingInteractionMode mode) {
-    if (read_only_ || !selected_cell_.has_value()) {
-        return;
-    }
-
-    auto [row, col] = *selected_cell_;
-    auto& cell = board_[row][col];
-
-    if (cell.is_given || cell.is_found || cell.value != 0) {
-        return;
-    }
-
-    if (mode == core::TrainingInteractionMode::Placement) {
-        // Check value is a valid candidate
-        if (std::ranges::find(cell.candidates, value) == cell.candidates.end()) {
-            return;
-        }
-        cell.value = value;
-        cell.player_selected = true;
-    } else {
-        // Elimination mode: toggle candidate removal
-        auto iter = std::ranges::find(cell.candidates, value);
-        if (iter != cell.candidates.end()) {
-            cell.candidates.erase(iter);
-            cell.player_selected = true;
-        }
-    }
-
-    update();
-    emit boardChanged(board_);
-}
-
-void TrainingBoardWidget::applyColor(int color) {
-    if (read_only_ || !selected_cell_.has_value()) {
-        return;
-    }
-
-    auto [row, col] = *selected_cell_;
-    auto& cell = board_[row][col];
-
-    if (cell.is_given) {
-        return;
-    }
-
-    // Toggle: if already this color, remove it
-    cell.player_color = (cell.player_color == color) ? 0 : color;
-    cell.player_selected = true;
-
-    update();
-    emit boardChanged(board_);
-}
-
 QSize TrainingBoardWidget::minimumSizeHint() const {
-    return {static_cast<int>(BOARD_MIN_SIZE) + 20, static_cast<int>(BOARD_MIN_SIZE) + 20};
+    return painter_.minimumSizeHint();
 }
 
 QSize TrainingBoardWidget::sizeHint() const {
-    return {static_cast<int>(BOARD_MAX_SIZE) + 20, static_cast<int>(BOARD_MAX_SIZE) + 20};
+    return painter_.sizeHint();
 }
 
-float TrainingBoardWidget::cellSize() const {
-    float available = std::min(static_cast<float>(width()) - 20.0F, static_cast<float>(height()) - 20.0F);
-    float board_size = std::clamp(available, BOARD_MIN_SIZE, BOARD_MAX_SIZE);
-    return board_size / static_cast<float>(core::BOARD_SIZE);
-}
-
-QPointF TrainingBoardWidget::boardOrigin() const {
-    float cs = cellSize();
-    float board_size = cs * static_cast<float>(core::BOARD_SIZE);
-    return {(static_cast<float>(width()) - board_size) / 2.0F, (static_cast<float>(height()) - board_size) / 2.0F};
-}
-
-// CPD-OFF — Qt widget boilerplate shared with sudoku_board_widget
 void TrainingBoardWidget::paintEvent(QPaintEvent* /*event*/) {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    float cs = cellSize();
+    float cs = painter_.cellSize(width(), height());
     float board_size = cs * static_cast<float>(core::BOARD_SIZE);
-    QPointF origin = boardOrigin();
+    QPointF origin = painter_.boardOrigin(width(), height());
 
-    paintBackground(painter, origin, board_size);
+    painter_.paintBackground(painter, origin, board_size);
 
     for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
         for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
@@ -155,7 +144,7 @@ void TrainingBoardWidget::paintEvent(QPaintEvent* /*event*/) {
         }
     }
 
-    paintGridLines(painter, origin, board_size, cs);
+    painter_.paintGridLines(painter, origin, board_size, cs);
 }
 
 void TrainingBoardWidget::mousePressEvent(QMouseEvent* event) {
@@ -163,8 +152,8 @@ void TrainingBoardWidget::mousePressEvent(QMouseEvent* event) {
         return;
     }
 
-    QPointF origin = boardOrigin();
-    float cs = cellSize();
+    QPointF origin = painter_.boardOrigin(width(), height());
+    float cs = painter_.cellSize(width(), height());
 
     float mx = static_cast<float>(event->position().x()) - static_cast<float>(origin.x());
     float my = static_cast<float>(event->position().y()) - static_cast<float>(origin.y());
@@ -177,8 +166,6 @@ void TrainingBoardWidget::mousePressEvent(QMouseEvent* event) {
     auto row = static_cast<size_t>(my / cs);
 
     if (row < core::BOARD_SIZE && col < core::BOARD_SIZE) {
-        selected_cell_ = {row, col};
-        update();
         emit cellSelected(row, col);
     }
 }
@@ -188,8 +175,8 @@ void TrainingBoardWidget::mouseMoveEvent(QMouseEvent* event) {
         return;
     }
 
-    QPointF origin = boardOrigin();
-    float cs = cellSize();
+    QPointF origin = painter_.boardOrigin(width(), height());
+    float cs = painter_.cellSize(width(), height());
 
     float mx = static_cast<float>(event->position().x()) - static_cast<float>(origin.x());
     float my = static_cast<float>(event->position().y()) - static_cast<float>(origin.y());
@@ -205,7 +192,7 @@ void TrainingBoardWidget::mouseMoveEvent(QMouseEvent* event) {
             if (cell.value == 0 && !cell.candidates.empty()) {
                 float local_x = mx - (static_cast<float>(col) * cs);
                 float local_y = my - (static_cast<float>(row) * cs);
-                int candidate = candidateAtPosition(local_x, local_y, cs);
+                int candidate = BoardPainter::candidateAtPosition(local_x, local_y, cs);
                 if (std::ranges::find(cell.candidates, candidate) != cell.candidates.end()) {
                     new_hover = candidate;
                 }
@@ -219,23 +206,6 @@ void TrainingBoardWidget::mouseMoveEvent(QMouseEvent* event) {
     }
 }
 
-int TrainingBoardWidget::candidateAtPosition(float local_x, float local_y, float cell_size) {
-    float note_w = cell_size / static_cast<float>(core::BOX_SIZE);
-    float note_h = cell_size / static_cast<float>(core::BOX_SIZE);
-    int note_col = std::clamp(static_cast<int>(local_x / note_w), 0, 2);
-    int note_row = std::clamp(static_cast<int>(local_y / note_h), 0, 2);
-    return (note_row * 3) + note_col + 1;
-}
-
-void TrainingBoardWidget::paintBackground(QPainter& painter, const QPointF& origin, float board_size) {
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(TrainingBoardColors::BOARD_BORDER);
-    painter.drawRect(QRectF(origin.x() - 2, origin.y() - 2, board_size + 4, board_size + 4));
-
-    painter.setBrush(TrainingBoardColors::BOARD_BACKGROUND);
-    painter.drawRect(QRectF(origin.x(), origin.y(), board_size, board_size));
-}
-
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — cell painting with multiple visual states; nesting is inherent
 void TrainingBoardWidget::paintCell(QPainter& painter, size_t row, size_t col, const QPointF& origin, float cell_size) {
     const auto& cell = board_[row][col];
@@ -245,7 +215,7 @@ void TrainingBoardWidget::paintCell(QPainter& painter, size_t row, size_t col, c
     bool is_selected = selected_cell_.has_value() && selected_cell_->first == row && selected_cell_->second == col;
 
     // Determine background color (priority: selection > found > player color > highlight role > hover > default)
-    QColor bg = TrainingBoardColors::CELL_BACKGROUND;
+    QColor bg = BoardColors::CELL_BACKGROUND;
     if (cell.is_found) {
         bg = cellRoleColor(core::CellRole::CorrectAnswer);
     } else if (cell.player_color != 0) {
@@ -255,7 +225,11 @@ void TrainingBoardWidget::paintCell(QPainter& painter, size_t row, size_t col, c
     }
 
     if (is_selected) {
-        bg = TrainingBoardColors::CELL_SELECTED;
+        if (bg != BoardColors::CELL_BACKGROUND) {
+            bg = bg.darker(120);
+        } else {
+            bg = BoardColors::CELL_SELECTED;
+        }
     }
 
     painter.setPen(Qt::NoPen);
@@ -265,16 +239,13 @@ void TrainingBoardWidget::paintCell(QPainter& painter, size_t row, size_t col, c
     // Hover highlight: subtle tint on cells sharing the hovered candidate
     if (hovered_candidate_ > 0 && !is_selected && cell.value == 0) {
         if (std::ranges::find(cell.candidates, hovered_candidate_) != cell.candidates.end()) {
-            painter.setBrush(TrainingBoardColors::HOVER_TINT);
+            painter.setBrush(BoardColors::HOVER_TINT);
             painter.drawRect(cell_rect);
         }
     }
 
     if (is_selected) {
-        QPen outline_pen(TrainingBoardColors::CELL_SELECTION_OUTLINE, 3.0);
-        painter.setPen(outline_pen);
-        painter.setBrush(Qt::NoBrush);
-        painter.drawRect(cell_rect.adjusted(2, 2, -2, -2));
+        painter_.paintSelectionOutline(painter, cell_rect);
     }
 
     if (cell.value > 0) {
@@ -291,7 +262,7 @@ void TrainingBoardWidget::paintCellValue(QPainter& painter, const core::Training
     QFont font("Sans", value_font_size, is_locked ? QFont::Bold : QFont::Normal);
     painter.setFont(font);
 
-    QColor text_color = is_locked ? TrainingBoardColors::TEXT_GIVEN : TrainingBoardColors::HIGHLIGHT_CHAIN_A;
+    QColor text_color = is_locked ? BoardColors::TEXT_GIVEN : TrainingBoardColors::HIGHLIGHT_CHAIN_A;
     painter.setPen(text_color);
     painter.drawText(cell_rect, Qt::AlignCenter, QString::number(cell.value));
 }
@@ -328,23 +299,6 @@ void TrainingBoardWidget::paintCellCandidates(QPainter& painter, const core::Tra
         }
     }
 }
-
-void TrainingBoardWidget::paintGridLines(QPainter& painter, const QPointF& origin, float board_size, float cell_size) {
-    for (size_t i = 1; i < core::BOARD_SIZE; ++i) {
-        bool is_box = (i % core::BOX_SIZE == 0);
-        float thickness = is_box ? THICK_LINE_WIDTH : THIN_LINE_WIDTH;
-        QColor color = is_box ? TrainingBoardColors::GRID_THICK_LINE : TrainingBoardColors::GRID_THIN_LINE;
-
-        QPen pen(color, thickness);
-        painter.setPen(pen);
-
-        float pos = static_cast<float>(i) * cell_size;
-
-        painter.drawLine(QPointF(origin.x() + pos, origin.y()), QPointF(origin.x() + pos, origin.y() + board_size));
-        painter.drawLine(QPointF(origin.x(), origin.y() + pos), QPointF(origin.x() + board_size, origin.y() + pos));
-    }
-}
-// CPD-ON
 
 QColor TrainingBoardWidget::cellRoleColor(core::CellRole role) {
     switch (role) {
@@ -388,7 +342,7 @@ QColor TrainingBoardWidget::playerColorBackground(int player_color) {
     if (player_color == 2) {
         return TrainingBoardColors::COLOR_B.lighter(170);
     }
-    return TrainingBoardColors::CELL_BACKGROUND;
+    return BoardColors::CELL_BACKGROUND;
 }
 
 }  // namespace sudoku::view

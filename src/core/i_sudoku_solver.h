@@ -76,6 +76,17 @@ public:
     /// @note For placements: sets cell value; for eliminations: updates notes (future)
     [[nodiscard]] virtual bool applyStep(BoardData& board, const SolveStep& step) const = 0;
 
+    /// Finds all applicable strategies at the current board state.
+    /// Returns one step per technique (deduplicated). Useful for position analysis.
+    [[nodiscard]] virtual std::vector<SolveStep> findAllApplicableSteps(const BoardData& board) const {
+        // Default: return only the first step
+        auto step = findNextStep(board);
+        if (step.has_value()) {
+            return {std::move(*step)};
+        }
+        return {};
+    }
+
 protected:
     // Protected special member functions to prevent slicing while allowing derived classes
     ISudokuSolver() = default;

@@ -39,6 +39,11 @@ inline constexpr std::string_view MenuClearCell = "menu.clear_cell";
 inline constexpr std::string_view MenuHelp = "menu.help";
 inline constexpr std::string_view MenuGetHint = "menu.get_hint";
 inline constexpr std::string_view MenuAbout = "menu.about";
+inline constexpr std::string_view MenuTrainingMode = "menu.training_mode";
+inline constexpr std::string_view MenuAnalyzePosition = "menu.analyze_position";
+inline constexpr std::string_view MenuResumeGame = "menu.resume_game";
+inline constexpr std::string_view MenuSettings = "menu.settings";
+inline constexpr std::string_view MenuThirdPartyLicenses = "menu.third_party_licenses";
 
 // =========================================================================
 // Toolbar
@@ -69,6 +74,69 @@ inline constexpr std::string_view ButtonRedo = "button.redo";
 inline constexpr std::string_view ButtonUndoToValid = "button.undo_to_valid";
 inline constexpr std::string_view ButtonAutoNotesOn = "button.auto_notes_on";
 inline constexpr std::string_view ButtonAutoNotesOff = "button.auto_notes_off";
+inline constexpr std::string_view ButtonFillNotes = "button.fill_notes";
+inline constexpr std::string_view ButtonUndoUntilValid = "button.undo_until_valid";
+
+// =========================================================================
+// Input modes
+// =========================================================================
+inline constexpr std::string_view ModeNormal = "mode.normal";
+inline constexpr std::string_view ModeNotes = "mode.notes";
+inline constexpr std::string_view ModeColor = "mode.color";
+
+// =========================================================================
+// Training mode
+// =========================================================================
+inline constexpr std::string_view TrainingTitle = "training.title";
+inline constexpr std::string_view TrainingAnalyzeTitle = "training.analyze_title";
+inline constexpr std::string_view TrainingSelectTechnique = "training.select_technique";
+inline constexpr std::string_view TrainingBackToGame = "training.back_to_game";
+inline constexpr std::string_view TrainingGroupFoundations = "training.group.foundations";
+inline constexpr std::string_view TrainingGroupSubsetBasics = "training.group.subset_basics";
+inline constexpr std::string_view TrainingGroupIntersections = "training.group.intersections";
+inline constexpr std::string_view TrainingGroupBasicFish = "training.group.basic_fish";
+inline constexpr std::string_view TrainingGroupLinks = "training.group.links";
+inline constexpr std::string_view TrainingGroupAdvancedFish = "training.group.advanced_fish";
+inline constexpr std::string_view TrainingGroupFinnedFish = "training.group.finned_fish";
+inline constexpr std::string_view TrainingGroupChains = "training.group.chains";
+inline constexpr std::string_view TrainingGroupInference = "training.group.inference";
+inline constexpr std::string_view TrainingWhatItIs = "training.what_it_is";
+inline constexpr std::string_view TrainingWhatToLookFor = "training.what_to_look_for";
+inline constexpr std::string_view TrainingStartExercises = "training.start_exercises";
+inline constexpr std::string_view TrainingBack = "training.back";
+inline constexpr std::string_view TrainingDifficultyPoints = "training.difficulty_points";
+inline constexpr std::string_view TrainingPrerequisites = "training.prerequisites";
+inline constexpr std::string_view TrainingExerciseHeader = "training.exercise_header";
+inline constexpr std::string_view TrainingColor = "training.color";
+inline constexpr std::string_view TrainingSubmit = "training.submit";
+inline constexpr std::string_view TrainingHint = "training.hint";
+inline constexpr std::string_view TrainingSkip = "training.skip";
+inline constexpr std::string_view TrainingQuitLesson = "training.quit_lesson";
+inline constexpr std::string_view TrainingNextExercise = "training.next_exercise";
+inline constexpr std::string_view TrainingRetry = "training.retry";
+inline constexpr std::string_view TrainingShowSolution = "training.show_solution";
+inline constexpr std::string_view TrainingScore = "training.score";
+inline constexpr std::string_view TrainingCorrect = "training.correct";
+inline constexpr std::string_view TrainingPartiallyCorrect = "training.partially_correct";
+inline constexpr std::string_view TrainingIncorrect = "training.incorrect";
+inline constexpr std::string_view TrainingLessonComplete = "training.lesson_complete";
+inline constexpr std::string_view TrainingTryAgain = "training.try_again";
+inline constexpr std::string_view TrainingPickTechnique = "training.pick_technique";
+inline constexpr std::string_view TrainingReturnToGame = "training.return_to_game";
+inline constexpr std::string_view TrainingTechnique = "training.technique";
+inline constexpr std::string_view TrainingHintsUsed = "training.hints_used";
+inline constexpr std::string_view TrainingMastery = "training.mastery";
+inline constexpr std::string_view TrainingPointsFmt = "training.points_fmt";
+inline constexpr std::string_view TrainingPrereqNotMet = "training.prereq_not_met";
+inline constexpr std::string_view TrainingRecommended = "training.recommended";
+inline constexpr std::string_view TrainingApplicable = "training.applicable";
+inline constexpr std::string_view TrainingExcellent = "training.excellent";
+inline constexpr std::string_view TrainingGoodProgress = "training.good_progress";
+inline constexpr std::string_view TrainingKeepPracticing = "training.keep_practicing";
+inline constexpr std::string_view MasteryBeginner = "mastery.beginner";
+inline constexpr std::string_view MasteryIntermediate = "mastery.intermediate";
+inline constexpr std::string_view MasteryProficient = "mastery.proficient";
+inline constexpr std::string_view MasteryMastered = "mastery.mastered";
 
 // =========================================================================
 // Status bar
@@ -138,6 +206,20 @@ inline constexpr std::string_view AboutBuiltWith = "about.built_with";
 // =========================================================================
 inline constexpr std::string_view TooltipRatingScale = "tooltip.rating_scale";
 inline constexpr std::string_view TooltipTechniquesRequired = "tooltip.techniques_required";
+
+// =========================================================================
+// Dialogs — Puzzle Difficulty
+// =========================================================================
+inline constexpr std::string_view DialogPuzzleDifficulty = "dialog.puzzle_difficulty";
+inline constexpr std::string_view DialogPuzzleRating = "dialog.puzzle_rating";
+inline constexpr std::string_view DialogTechniquesRequired = "dialog.techniques_required";
+inline constexpr std::string_view DialogNoTechniqueDetails = "dialog.no_technique_details";
+
+// =========================================================================
+// Toolbar — Rating button format
+// =========================================================================
+inline constexpr std::string_view ToolbarRatingWithTechniques = "toolbar.rating_with_techniques";
+inline constexpr std::string_view ToolbarRatingSimple = "toolbar.rating_simple";
 
 // =========================================================================
 // Toast notifications

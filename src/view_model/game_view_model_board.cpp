@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "core/board_utils.h"
+#include "core/candidate_grid.h"
 #include "core/constants.h"
 #include "core/i_game_validator.h"
 #include "core/observable.h"
@@ -108,7 +109,7 @@ void GameViewModel::enterNumber(int number) {
 }
 
 void GameViewModel::enterNote(int number) {
-    if (number < 1 || number > 9 || !isGameActive() || isAutoNotesEnabled()) {
+    if (number < 1 || number > 9 || !isGameActive()) {
         return;
     }
 
@@ -211,6 +212,56 @@ void GameViewModel::recomputeAutoNotes() {
             }
         });
     });
+}
+
+void GameViewModel::fillNotes() {
+    recomputeAutoNotes();
+    spdlog::info("Filled pencil marks for all empty cells");
+}
+
+void GameViewModel::colorSelectedCell(uint8_t color_index) {
+    const auto& current_state = gameState.get();
+    auto pos_opt = current_state.getSelectedPosition();
+    if (!pos_opt.has_value()) {
+        return;
+    }
+    const auto& pos = pos_opt.value();
+
+    gameState.update(
+        [&pos, color_index](model::GameState& state) { state.setCellColor(pos.row, pos.col, color_index); });
+}
+
+void GameViewModel::clearAllCellColors() {
+    gameState.update([](model::GameState& state) { state.clearAllCellColors(); });
+}
+
+std::optional<GameViewModel::AnalysisResult> GameViewModel::analyzePosition() const {
+    if (!isGameActive()) {
+        return std::nullopt;
+    }
+
+    const auto& state = gameState.get();
+    auto board = state.extractNumbers();
+    auto given_board = state.extractGivenNumbers();
+
+    // Build candidate masks from current board
+    core::CandidateGrid candidates(board);
+    std::vector<uint16_t> masks(core::TOTAL_CELLS);
+    core::forEachCell([&](size_t row, size_t col) {
+        masks[(row * core::BOARD_SIZE) + col] = candidates.getPossibleValuesMask(row, col);
+    });
+
+    auto steps = solver_->findAllApplicableSteps(board);
+    if (steps.empty()) {
+        return std::nullopt;
+    }
+
+    return AnalysisResult{
+        .board = board,
+        .given_board = given_board,
+        .candidate_masks = std::move(masks),
+        .applicable_steps = std::move(steps),
+    };
 }
 
 bool GameViewModel::hasBoardErrors() const {

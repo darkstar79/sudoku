@@ -17,6 +17,7 @@
 #pragma once
 
 #include "../core/training_types.h"
+#include "board_painter.h"
 
 #include <cstddef>
 #include <optional>
@@ -29,16 +30,8 @@
 
 namespace sudoku::view {
 
-// CPD-OFF — board color constants shared with sudoku_board_widget
+/// Training-specific color constants (shared colors are in BoardColors in board_painter.h).
 namespace TrainingBoardColors {
-inline constexpr QColor BOARD_BORDER{44, 44, 44};
-inline constexpr QColor BOARD_BACKGROUND{255, 255, 255};
-inline constexpr QColor GRID_THICK_LINE{44, 44, 44};
-inline constexpr QColor GRID_THIN_LINE{140, 140, 140};
-inline constexpr QColor CELL_BACKGROUND{255, 255, 255};
-inline constexpr QColor CELL_SELECTED{254, 243, 199};
-inline constexpr QColor CELL_SELECTION_OUTLINE{20, 20, 20};
-inline constexpr QColor TEXT_GIVEN{20, 20, 20};
 inline constexpr QColor TEXT_CANDIDATE{107, 107, 107};
 inline constexpr QColor TEXT_ELIMINATED{220, 38, 38};
 inline constexpr QColor HIGHLIGHT_PATTERN{200, 220, 255};
@@ -53,13 +46,13 @@ inline constexpr QColor HIGHLIGHT_SET_C{200, 255, 230};
 inline constexpr QColor HIGHLIGHT_CORRECT{198, 246, 213};  // Soft green — correct answer
 inline constexpr QColor HIGHLIGHT_WRONG{254, 215, 215};    // Soft red — wrong answer
 inline constexpr QColor HIGHLIGHT_MISSED{254, 252, 191};   // Soft yellow — missed answer
-inline constexpr QColor HOVER_TINT{200, 220, 255, 80};     // Subtle blue overlay for hover
 inline constexpr QColor COLOR_A{100, 149, 237};            // Cornflower blue
 inline constexpr QColor COLOR_B{60, 179, 113};             // Medium sea green
 }  // namespace TrainingBoardColors
 
-/// Interactive Sudoku board widget for training exercises.
-/// Renders a TrainingBoard and supports cell selection.
+/// Passive Sudoku board renderer for training exercises.
+/// Displays a TrainingBoard and emits user interaction signals.
+/// All mutable state is owned by TrainingViewModel.
 class TrainingBoardWidget : public QWidget {
     Q_OBJECT
 
@@ -69,60 +62,42 @@ public:
     /// Update the board data and repaint
     void setBoard(const core::TrainingBoard& board);
 
-    /// Get the current board state (with player modifications)
-    [[nodiscard]] const core::TrainingBoard& board() const {
-        return board_;
-    }
-
-    /// Get currently selected cell position
-    [[nodiscard]] std::optional<std::pair<size_t, size_t>> selectedCell() const {
-        return selected_cell_;
-    }
+    /// Update the selected cell highlight
+    void setSelectedCell(std::optional<std::pair<size_t, size_t>> cell);
 
     /// Set read-only mode (disables interaction, used on feedback page)
     void setReadOnly(bool read_only);
 
-    /// Apply a number action to the selected cell (placement or elimination depending on mode)
-    void applyNumber(int value, core::TrainingInteractionMode mode);
-
-    /// Apply a color to the selected cell
-    void applyColor(int color);
-
-    // CPD-OFF — Qt widget interface boilerplate
     [[nodiscard]] QSize minimumSizeHint() const override;
     [[nodiscard]] QSize sizeHint() const override;
 
 signals:
-    /// Emitted when the player modifies the board
-    void boardChanged(const core::TrainingBoard& board);
-
-    /// Emitted when a cell is selected
+    /// Emitted when a cell is selected (mouse click or keyboard navigation)
     void cellSelected(size_t row, size_t col);
+
+    /// Emitted when user presses a number key (1-9)
+    void numberPressed(int value);
+
+    /// Emitted when user presses a color key (A=1, B=2)
+    void colorPressed(int color);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 
 private:
     core::TrainingBoard board_{};
     std::optional<std::pair<size_t, size_t>> selected_cell_;
     bool read_only_{false};
     int hovered_candidate_{0};  ///< Currently hovered candidate value (0 = none)
+    BoardPainter painter_;
 
-    [[nodiscard]] float cellSize() const;
-    [[nodiscard]] QPointF boardOrigin() const;
-
-    /// Determine which candidate (1-9) is under the given cell-relative position
-    [[nodiscard]] static int candidateAtPosition(float local_x, float local_y, float cell_size);
-
-    void paintBackground(QPainter& painter, const QPointF& origin, float board_size);
     void paintCell(QPainter& painter, size_t row, size_t col, const QPointF& origin, float cell_size);
     void paintCellValue(QPainter& painter, const core::TrainingCellState& cell, const QRectF& cell_rect);
     void paintCellCandidates(QPainter& painter, const core::TrainingCellState& cell, const QRectF& cell_rect);
-    void paintGridLines(QPainter& painter, const QPointF& origin, float board_size, float cell_size);
 
-    // CPD-ON
     [[nodiscard]] static QColor cellRoleColor(core::CellRole role);
     [[nodiscard]] static QColor playerColorBackground(int player_color);
 };

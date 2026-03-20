@@ -34,9 +34,6 @@ public:
     void setAutoSaveInterval(int ms) override {
         updateIf(settings_.auto_save_interval_ms, ms);
     }
-    void setDoublePressThreshold(int ms) override {
-        updateIf(settings_.double_press_threshold_ms, ms);
-    }
     void setDefaultDifficulty(Difficulty d) override {
         updateIf(settings_.default_difficulty, d);
     }
@@ -45,9 +42,6 @@ public:
     }
     void setShowHints(bool v) override {
         updateIf(settings_.show_hints, v);
-    }
-    void setAutoNotesOnStartup(bool v) override {
-        updateIf(settings_.auto_notes_on_startup, v);
     }
     void setLanguage(std::string_view code) override {
         auto s = std::string(code);

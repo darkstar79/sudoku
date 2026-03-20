@@ -68,7 +68,7 @@ struct UITestContext {
     void setupMainWindow(view::MainWindow& window) {
         window.setViewModel(game_vm);
         window.setTrainingViewModel(training_vm);
-        window.setLocalizationManager(loc_manager);
+        window.setLocalizationManager(loc_manager);  // also propagates to training widget
     }
 };
 

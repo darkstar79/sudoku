@@ -44,6 +44,13 @@
 
 namespace sudoku::viewmodel {
 
+/// Input mode for number keys on the game board
+enum class InputMode : std::uint8_t {
+    Normal,  ///< Number keys place values
+    Notes,   ///< Number keys toggle pencil marks
+    Color    ///< Number keys apply analysis colors (1-6)
+};
+
 /// Commands that can be executed from the UI
 enum class GameCommand : std::uint8_t {
     NewGame,
@@ -57,11 +64,10 @@ enum class GameCommand : std::uint8_t {
     ResumeGame,
     ResetGame,
     ShowStatistics,
-    ToggleNotes,
+    ToggleInputMode,
     ClearNotes,
     HighlightNumber,
-    ClearHighlights,
-    ToggleAutoNotes
+    ClearHighlights
 };
 
 /// UI state information
@@ -69,10 +75,9 @@ struct UIState {
     bool is_game_active{false};
     bool is_paused{false};
     bool is_complete{false};
-    bool notes_mode{false};
+    InputMode input_mode{InputMode::Normal};
     bool show_conflicts{true};
     bool show_hints{true};
-    bool auto_notes_enabled{false};
     std::string status_message;
     std::string time_display;
     double puzzle_rating{0.0};                   // Sudoku Explainer rating (SE 1.0-12.0 scale)
@@ -140,6 +145,19 @@ public:
     void clearCell();
     void clearSelectedCell();
 
+    // Analysis cell coloring (ephemeral, not saved/undoable)
+    void colorSelectedCell(uint8_t color_index);
+    void clearAllCellColors();
+
+    // Position analysis — finds all applicable strategies for the current board state
+    struct AnalysisResult {
+        core::BoardData board;
+        core::BoardData given_board;
+        std::vector<uint16_t> candidate_masks;
+        std::vector<core::SolveStep> applicable_steps;
+    };
+    [[nodiscard]] std::optional<AnalysisResult> analyzePosition() const;
+
     // Game commands
     void executeCommand(GameCommand command);
     [[nodiscard]] bool canExecuteCommand(GameCommand command) const;
@@ -166,13 +184,12 @@ public:
     void checkSolution();
 
     // Settings and preferences
-    void setNotesMode(bool enabled);
+    void setInputMode(InputMode mode);
+    void cycleInputMode();
+    [[nodiscard]] InputMode getInputMode() const;
     void setShowConflicts(bool show);
     void setShowHints(bool show);
-    void toggleNotesMode();
-    void setAutoNotesEnabled(bool enabled);
-    void toggleAutoNotes();
-    [[nodiscard]] bool isAutoNotesEnabled() const;
+    void fillNotes();
 
     // Statistics
     void refreshStatistics();

@@ -123,17 +123,17 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
         REQUIRE(true);
     }
 
-    SECTION("Execute ToggleNotes command") {
+    SECTION("Execute ToggleInputMode command") {
         fixture.view_model->startNewGame(Difficulty::Easy);
 
-        const auto& initial_ui = fixture.view_model->uiState.get();
-        bool initial_notes_mode = initial_ui.notes_mode;
+        auto initial_mode = fixture.view_model->uiState.get().input_mode;
+        REQUIRE(initial_mode == InputMode::Normal);
 
-        // Execute ToggleNotes command
-        fixture.view_model->executeCommand(GameCommand::ToggleNotes);
+        // Execute ToggleInputMode command — cycles Normal → Notes
+        fixture.view_model->executeCommand(GameCommand::ToggleInputMode);
 
-        const auto& toggled_ui = fixture.view_model->uiState.get();
-        REQUIRE(toggled_ui.notes_mode == !initial_notes_mode);
+        auto toggled_mode = fixture.view_model->uiState.get().input_mode;
+        REQUIRE(toggled_mode == InputMode::Notes);
     }
 
     SECTION("Execute ShowStatistics command") {
@@ -193,10 +193,10 @@ TEST_CASE("GameViewModel - Can Execute Commands", "[game_view_model][commands]")
         REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::GetHint) == true);
     }
 
-    SECTION("Can always execute ToggleNotes") {
+    SECTION("Can always execute ToggleInputMode") {
         fixture.view_model->startNewGame(Difficulty::Easy);
 
-        REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::ToggleNotes) == true);
+        REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::ToggleInputMode) == true);
     }
 
     SECTION("Can always execute ShowStatistics") {
@@ -222,22 +222,22 @@ TEST_CASE("GameViewModel - Error String Conversions", "[game_view_model][errors]
     }
 }
 
-TEST_CASE("GameViewModel - Toggle Notes Mode", "[game_view_model][notes]") {
+TEST_CASE("GameViewModel - Cycle Input Mode", "[game_view_model][input_mode]") {
     CommandTestFixture fixture;
 
-    SECTION("Toggle notes mode on and off") {
+    SECTION("Cycle input mode through Normal → Notes → Color → Normal") {
         fixture.view_model->startNewGame(Difficulty::Easy);
 
-        const auto& initial_ui = fixture.view_model->uiState.get();
-        bool initial_mode = initial_ui.notes_mode;
+        REQUIRE(fixture.view_model->getInputMode() == InputMode::Normal);
 
-        fixture.view_model->toggleNotesMode();
-        const auto& toggled_ui = fixture.view_model->uiState.get();
-        REQUIRE(toggled_ui.notes_mode == !initial_mode);
+        fixture.view_model->cycleInputMode();
+        REQUIRE(fixture.view_model->getInputMode() == InputMode::Notes);
 
-        fixture.view_model->toggleNotesMode();
-        const auto& toggled_again_ui = fixture.view_model->uiState.get();
-        REQUIRE(toggled_again_ui.notes_mode == initial_mode);
+        fixture.view_model->cycleInputMode();
+        REQUIRE(fixture.view_model->getInputMode() == InputMode::Color);
+
+        fixture.view_model->cycleInputMode();
+        REQUIRE(fixture.view_model->getInputMode() == InputMode::Normal);
     }
 }
 

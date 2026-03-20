@@ -21,7 +21,9 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace sudoku::core {
@@ -87,8 +89,51 @@ struct TrainingUIState {
     std::string feedback_message;
     std::string found_step_message;  ///< Brief message when a step is applied mid-exercise
     AnswerResult last_result{AnswerResult::Incorrect};
+    std::optional<std::pair<size_t, size_t>> selected_cell;  ///< Currently selected cell (row, col)
+    TrainingInteractionMode interaction_mode{TrainingInteractionMode::Elimination};  ///< Current interaction mode
 
     bool operator==(const TrainingUIState& other) const = default;
 };
+
+/// Convert a game board state to a TrainingBoard for position analysis.
+/// @param board Current board values
+/// @param given_board Original puzzle (non-zero = given)
+/// @param candidate_masks Per-cell candidate bitmasks (81 entries, bit N = value N is candidate)
+[[nodiscard]] inline TrainingBoard boardStateToTrainingBoard(const BoardData& board, const BoardData& given_board,
+                                                             const std::vector<uint16_t>& candidate_masks) {
+    TrainingBoard result{};
+    for (size_t r = 0; r < BOARD_SIZE; ++r) {
+        for (size_t c = 0; c < BOARD_SIZE; ++c) {
+            auto& cell = result[r][c];
+            cell.value = board[r][c];
+            cell.is_given = given_board[r][c] != 0;
+            if (cell.value == 0) {
+                uint16_t mask = candidate_masks[(r * BOARD_SIZE) + c];
+                for (int v = 1; v <= 9; ++v) {
+                    if ((mask >> v) & 1) {
+                        cell.candidates.push_back(v);
+                    }
+                }
+            }
+        }
+    }
+    return result;
+}
+
+/// Determine the training interaction mode from a SolveStep type and technique.
+[[nodiscard]] inline TrainingInteractionMode interactionModeForStep(const SolveStep& step) {
+    // Coloring techniques use coloring mode
+    switch (step.technique) {
+        case SolvingTechnique::SimpleColoring:
+        case SolvingTechnique::MultiColoring:
+        case SolvingTechnique::ThreeDMedusa:
+            return TrainingInteractionMode::Coloring;
+        default:
+            break;
+    }
+    // Placement vs elimination based on step type
+    return step.type == SolveStepType::Placement ? TrainingInteractionMode::Placement
+                                                 : TrainingInteractionMode::Elimination;
+}
 
 }  // namespace sudoku::core

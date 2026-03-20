@@ -361,24 +361,6 @@ TEST_CASE("SaveManager - deserialize: YAML with move_history is loaded correctly
 }
 
 // ============================================================================
-// Load YAML with auto_notes_enabled = true → covers L773 true branch
-// ============================================================================
-
-TEST_CASE("SaveManager - deserialize: YAML with auto_notes_enabled=true is loaded", "[save_manager_deser]") {
-    DeserTmpDir tmp;
-    SaveManager mgr(tmp.path().string());
-
-    std::string yaml = validBaseYaml();
-    yaml += "auto_notes_enabled: true\n";
-
-    writeYaml(tmp.path(), "auto-notes", yaml);
-
-    auto result = mgr.loadGame("auto-notes");
-    REQUIRE(result.has_value());
-    REQUIRE(result->auto_notes_enabled == true);
-}
-
-// ============================================================================
 // Load YAML without optional metadata (save_id, display_name, timestamps)
 // Covers the false branches for each `if (root["field"])` check
 // ============================================================================
@@ -403,7 +385,6 @@ TEST_CASE("SaveManager - deserialize: YAML without optional metadata loads with 
     // Optional fields absent → default values
     REQUIRE(result->save_id.empty());
     REQUIRE(result->display_name.empty());
-    REQUIRE(result->auto_notes_enabled == false);
 }
 
 // ============================================================================

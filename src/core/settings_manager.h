@@ -38,11 +38,9 @@ public:
 
     void setMaxHints(int value) override;
     void setAutoSaveInterval(int ms) override;
-    void setDoublePressThreshold(int ms) override;
     void setDefaultDifficulty(Difficulty difficulty) override;
     void setShowConflicts(bool value) override;
     void setShowHints(bool value) override;
-    void setAutoNotesOnStartup(bool value) override;
     void setLanguage(std::string_view locale_code) override;
 
     [[nodiscard]] Observable<Settings>& settingsObservable() override;

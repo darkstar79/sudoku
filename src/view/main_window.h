@@ -23,7 +23,6 @@
 #include "../view_model/training_view_model.h"
 #include "core/i_puzzle_generator.h"
 
-#include <chrono>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -75,6 +74,7 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    bool event(QEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
@@ -104,6 +104,9 @@ private:
     TrainingWidget* training_widget_{nullptr};
     ToastWidget* toast_widget_{nullptr};
     QStackedWidget* central_stack_{nullptr};
+    QPushButton* new_game_btn_{nullptr};
+    QLabel* difficulty_label_{nullptr};
+    QLabel* hints_text_label_{nullptr};
     QComboBox* difficulty_combo_{nullptr};
     QLabel* hints_label_{nullptr};
     QPushButton* rating_btn_{nullptr};
@@ -115,6 +118,7 @@ private:
     QPushButton* redo_btn_{nullptr};
     QPushButton* undo_valid_btn_{nullptr};
     QPushButton* auto_notes_btn_{nullptr};
+    QPushButton* mode_btn_{nullptr};
 
     // Auto-save timer
     QTimer* auto_save_timer_{nullptr};
@@ -122,20 +126,12 @@ private:
     // Difficulty combo tracking
     int last_difficulty_index_{1};  // Medium default
 
-    // Double-press detection
-    int last_number_pressed_{0};
-    std::chrono::steady_clock::time_point last_press_time_;
-    static constexpr std::chrono::milliseconds DEFAULT_DOUBLE_PRESS_THRESHOLD{300};
-
     // Setup methods
     void setupMenuBar();
     void setupToolBar();
     void setupStatusBar();
     void setupCentralWidget();
     void setupAutoSaveTimer();
-
-    // Input handling
-    void handleNumberInput(int number);
 
     // Dialog handlers
     void showNewGameDialog();
@@ -147,6 +143,7 @@ private:
     void showThirdPartyLicensesDialog();
     void showTechniquesDialog();
     void showSettingsDialog();
+    void retranslateUi();
 
     // CSV export
     void exportAggregateStatsCsv();

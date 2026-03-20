@@ -131,9 +131,6 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
                 std::chrono::duration_cast<std::chrono::seconds>(game.last_auto_save.time_since_epoch()).count();
         }
 
-        // UI preferences
-        root["auto_notes_enabled"] = game.auto_notes_enabled;
-
         // Puzzle rating
         if (game.puzzle_rating > 0) {
             root["puzzle_rating"] = game.puzzle_rating;
@@ -378,10 +375,7 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
             game.last_auto_save = std::chrono::system_clock::time_point(std::chrono::seconds(seconds));
         }
 
-        // UI preferences (backward-compatible: defaults to false if missing)
-        if (root["auto_notes_enabled"]) {
-            game.auto_notes_enabled = root["auto_notes_enabled"].as<bool>();
-        }
+        // auto_notes_enabled: ignored (feature removed, backward-compatible)
 
         // Puzzle rating (backward-compatible: defaults to 0/empty if missing)
         if (root["puzzle_rating"]) {

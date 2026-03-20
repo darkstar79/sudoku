@@ -17,11 +17,17 @@
 #pragma once
 
 #include "../view_model/training_view_model.h"
+#include "core/i_localization_manager.h"
 #include "core/observable.h"
 
 #include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
 
 #include <QWidget>
+#include <fmt/base.h>
+#include <fmt/format.h>
 #include <qtmetamacros.h>
 
 class QPushButton;
@@ -43,14 +49,25 @@ public:
     explicit TrainingWidget(QWidget* parent = nullptr);
 
     void setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm);
+    void setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager);
 
 signals:
     void backToGame();
 
 private:
     std::shared_ptr<viewmodel::TrainingViewModel> training_vm_;
+    std::shared_ptr<core::ILocalizationManager> loc_manager_;
     core::CompositeObserver observer_;
     QStackedWidget* pages_{nullptr};
+
+    [[nodiscard]] const char* loc(std::string_view key) const {
+        return loc_manager_ ? loc_manager_->getString(key) : key.data();
+    }
+
+    template <typename... Args>
+    [[nodiscard]] std::string locFormat(std::string_view key, Args&&... args) const {
+        return fmt::format(fmt::runtime(loc(key)), std::forward<Args>(args)...);
+    }
 
     // Exercise page widgets (owned by Qt parent)
     TrainingBoardWidget* training_board_{nullptr};
@@ -62,6 +79,7 @@ private:
     QPushButton* redo_btn_{nullptr};
     QWidget* color_palette_{nullptr};
 
+    void rebuildPages();
     void buildTechniqueSelectionPage();
     void buildTheoryPage();
     void buildExercisePage();

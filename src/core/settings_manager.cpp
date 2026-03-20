@@ -97,13 +97,6 @@ void SettingsManager::setAutoSaveInterval(int ms) {
     notifyIfChanged(old);
 }
 
-void SettingsManager::setDoublePressThreshold(int ms) {
-    ms = std::clamp(ms, 100, 1000);
-    auto old = settings_;
-    settings_.double_press_threshold_ms = ms;
-    notifyIfChanged(old);
-}
-
 void SettingsManager::setDefaultDifficulty(Difficulty difficulty) {
     auto old = settings_;
     settings_.default_difficulty = difficulty;
@@ -119,12 +112,6 @@ void SettingsManager::setShowConflicts(bool value) {
 void SettingsManager::setShowHints(bool value) {
     auto old = settings_;
     settings_.show_hints = value;
-    notifyIfChanged(old);
-}
-
-void SettingsManager::setAutoNotesOnStartup(bool value) {
-    auto old = settings_;
-    settings_.auto_notes_on_startup = value;
     notifyIfChanged(old);
 }
 
@@ -160,9 +147,6 @@ void SettingsManager::load() {
             if (auto v = gameplay["auto_save_interval_ms"]) {
                 settings_.auto_save_interval_ms = std::clamp(v.as<int>(), 10000, 300000);
             }
-            if (auto v = gameplay["double_press_threshold_ms"]) {
-                settings_.double_press_threshold_ms = std::clamp(v.as<int>(), 100, 1000);
-            }
             if (auto v = gameplay["default_difficulty"]) {
                 settings_.default_difficulty = difficultyFromString(v.as<std::string>());
             }
@@ -175,9 +159,7 @@ void SettingsManager::load() {
             if (auto v = display["show_hints"]) {
                 settings_.show_hints = v.as<bool>();
             }
-            if (auto v = display["auto_notes_on_startup"]) {
-                settings_.auto_notes_on_startup = v.as<bool>();
-            }
+            // auto_notes_on_startup: ignored (feature removed)
         }
 
         if (auto v = root["language"]) {
@@ -201,14 +183,12 @@ void SettingsManager::save() const {
         YAML::Node gameplay;
         gameplay["max_hints"] = settings_.max_hints;
         gameplay["auto_save_interval_ms"] = settings_.auto_save_interval_ms;
-        gameplay["double_press_threshold_ms"] = settings_.double_press_threshold_ms;
         gameplay["default_difficulty"] = std::string(difficultyToString(settings_.default_difficulty));
         root["gameplay"] = gameplay;
 
         YAML::Node display;
         display["show_conflicts"] = settings_.show_conflicts;
         display["show_hints"] = settings_.show_hints;
-        display["auto_notes_on_startup"] = settings_.auto_notes_on_startup;
         root["display"] = display;
 
         root["language"] = settings_.language;

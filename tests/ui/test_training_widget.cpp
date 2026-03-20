@@ -81,8 +81,7 @@ void TestTrainingWidget::testStartExercisesShowsExercise() {
 
 void TestTrainingWidget::testSubmitAnswerShowsFeedback() {
     // Submit the current board as-is (will likely be incorrect, but that's fine for UI test)
-    auto board = ctx_->training_vm->trainingBoard.get();
-    ctx_->training_vm->submitAnswer(board);
+    ctx_->training_vm->submitAnswer();
     QApplication::processEvents();
 
     QCOMPARE(pages()->currentIndex(), 3);
@@ -104,10 +103,10 @@ void TestTrainingWidget::testFeedbackButtonsExist() {
         button_texts << btn->text();
     }
 
-    QVERIFY(button_texts.contains("Next Exercise"));
-    QVERIFY(button_texts.contains("Retry"));
-    QVERIFY(button_texts.contains("Show Solution"));
-    QVERIFY(button_texts.contains("Quit Lesson"));
+    QVERIFY(button_texts.contains("training.next_exercise"));
+    QVERIFY(button_texts.contains("training.retry"));
+    QVERIFY(button_texts.contains("training.show_solution"));
+    QVERIFY(button_texts.contains("training.quit_lesson"));
 }
 
 void TestTrainingWidget::testReturnToSelection() {
@@ -126,7 +125,7 @@ void TestTrainingWidget::testBackToGameSignal() {
 
     QPushButton* back_btn = nullptr;
     for (auto* btn : buttons) {
-        if (btn->text() == "Back to Game") {
+        if (btn->text() == "training.back_to_game") {
             back_btn = btn;
             break;
         }

@@ -33,8 +33,8 @@ using namespace sudoku;
 using namespace sudoku::viewmodel;
 using namespace sudoku::core;
 
-// Test fixture for auto-notes tests
-struct AutoNotesFixture {
+// Test fixture for fill-notes tests
+struct FillNotesFixture {
     std::shared_ptr<GameValidator> validator;
     std::shared_ptr<IPuzzleGenerator> generator;
     std::shared_ptr<ISudokuSolver> solver;
@@ -43,7 +43,7 @@ struct AutoNotesFixture {
     std::unique_ptr<GameViewModel> view_model;
     sudoku::test::TempTestDir temp_dir;
 
-    AutoNotesFixture() {
+    FillNotesFixture() {
         validator = std::make_shared<GameValidator>();
         generator = std::make_shared<PuzzleGenerator>();
         solver = std::make_shared<SudokuSolver>(validator);
@@ -53,12 +53,10 @@ struct AutoNotesFixture {
                                                      std::make_shared<MockLocalizationManager>());
     }
 
-    /// Helper: start a game and return the game state
     void startGame(Difficulty difficulty = Difficulty::Easy) {
         view_model->startNewGame(difficulty);
     }
 
-    /// Helper: count total notes across all cells
     [[nodiscard]] size_t countTotalNotes() const {
         size_t count = 0;
         const auto& state = view_model->gameState.get();
@@ -67,7 +65,6 @@ struct AutoNotesFixture {
         return count;
     }
 
-    /// Helper: check if all empty cells have auto-computed notes matching getPossibleValues
     [[nodiscard]] bool allNotesMatchPossibleValues() const {
         const auto& state = view_model->gameState.get();
         auto board = state.extractNumbers();
@@ -75,7 +72,6 @@ struct AutoNotesFixture {
         core::forEachCell([&](size_t row, size_t col) {
             const auto& cell = state.getCell(row, col);
             auto expected = validator->getPossibleValues(board, {.row = row, .col = col});
-            // Convert expected vector to CellNotes for comparison
             core::CellNotes expected_notes;
             for (int v : expected) {
                 expected_notes.add(v);
@@ -88,335 +84,99 @@ struct AutoNotesFixture {
     }
 };
 
-TEST_CASE("GameViewModel - Auto Notes Toggle", "[game_view_model][auto_notes]") {
-    AutoNotesFixture f;
+TEST_CASE("GameViewModel - fillNotes fills candidates for all empty cells", "[game_view_model][fill_notes]") {
+    FillNotesFixture f;
+    f.startGame();
 
-    SECTION("Auto notes is OFF by default") {
-        REQUIRE_FALSE(f.view_model->isAutoNotesEnabled());
-        REQUIRE_FALSE(f.view_model->uiState.get().auto_notes_enabled);
-    }
+    REQUIRE(f.countTotalNotes() == 0);
 
-    SECTION("Toggle auto notes ON enables computed notes") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
+    f.view_model->fillNotes();
 
-        REQUIRE(f.view_model->isAutoNotesEnabled());
-        REQUIRE(f.view_model->uiState.get().auto_notes_enabled);
-        REQUIRE(f.countTotalNotes() > 0);
-    }
-
-    SECTION("Toggle auto notes OFF clears all notes") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
-        REQUIRE(f.countTotalNotes() > 0);
-
-        f.view_model->setAutoNotesEnabled(false);
-
-        REQUIRE_FALSE(f.view_model->isAutoNotesEnabled());
-        REQUIRE(f.countTotalNotes() == 0);
-    }
-
-    SECTION("toggleAutoNotes() round-trip ON->OFF->ON") {
-        f.startGame();
-
-        f.view_model->toggleAutoNotes();
-        REQUIRE(f.view_model->isAutoNotesEnabled());
-        size_t notes_on = f.countTotalNotes();
-        REQUIRE(notes_on > 0);
-
-        f.view_model->toggleAutoNotes();
-        REQUIRE_FALSE(f.view_model->isAutoNotesEnabled());
-        REQUIRE(f.countTotalNotes() == 0);
-
-        f.view_model->toggleAutoNotes();
-        REQUIRE(f.view_model->isAutoNotesEnabled());
-        REQUIRE(f.countTotalNotes() == notes_on);
-    }
-
-    SECTION("setAutoNotesEnabled with same value is no-op") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(false);  // Already false
-        REQUIRE(f.countTotalNotes() == 0);
-    }
+    REQUIRE(f.countTotalNotes() > 0);
+    REQUIRE(f.allNotesMatchPossibleValues());
 }
 
-TEST_CASE("GameViewModel - Auto Notes Computation", "[game_view_model][auto_notes]") {
-    AutoNotesFixture f;
+TEST_CASE("GameViewModel - fillNotes does not set notes on given or filled cells", "[game_view_model][fill_notes]") {
+    FillNotesFixture f;
+    f.startGame();
+    f.view_model->fillNotes();
 
-    SECTION("Auto notes computes valid candidates for empty cells") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
-
-        REQUIRE(f.allNotesMatchPossibleValues());
-    }
-
-    SECTION("Auto notes does not set notes on given cells") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
-
-        const auto& state = f.view_model->gameState.get();
-        bool any_given_has_notes = false;
-        core::forEachCell([&](size_t row, size_t col) {
-            const auto& cell = state.getCell(row, col);
-            if (cell.is_given && !cell.notes.empty()) {
-                any_given_has_notes = true;
-            }
-        });
-        REQUIRE_FALSE(any_given_has_notes);
-    }
-
-    SECTION("Auto notes does not set notes on filled cells") {
-        f.startGame();
-
-        // Place a number first
-        const auto& state = f.view_model->gameState.get();
-        auto empty_opt = test::findEmptyCell(state);
-        REQUIRE(empty_opt.has_value());
-        auto pos = empty_opt.value();
-
-        // Get solution value to avoid conflicts
-        auto solution = state.getSolutionBoard();
-        int correct_value = solution[pos.row][pos.col];
-
-        f.view_model->selectCell(pos);
-        f.view_model->enterNumber(correct_value);
-
-        f.view_model->setAutoNotesEnabled(true);
-
-        // The filled cell should have no notes
-        const auto& filled_cell = f.view_model->gameState.get().getCell(pos);
-        REQUIRE(filled_cell.notes.empty());
-    }
-
-    SECTION("Auto notes update after placing a number") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
-
-        size_t notes_before = f.countTotalNotes();
-
-        // Place a correct number
-        const auto& state = f.view_model->gameState.get();
-        auto empty_opt = test::findEmptyCell(state);
-        REQUIRE(empty_opt.has_value());
-        auto pos = empty_opt.value();
-
-        auto solution = state.getSolutionBoard();
-        int correct_value = solution[pos.row][pos.col];
-
-        f.view_model->selectCell(pos);
-        f.view_model->enterNumber(correct_value);
-
-        // Notes should have changed (fewer empty cells, candidates updated)
-        REQUIRE(f.allNotesMatchPossibleValues());
-        // Placing a number should reduce total notes (fewer empty cells + fewer candidates)
-        REQUIRE(f.countTotalNotes() < notes_before);
-    }
+    const auto& state = f.view_model->gameState.get();
+    bool any_given_has_notes = false;
+    core::forEachCell([&](size_t row, size_t col) {
+        const auto& cell = state.getCell(row, col);
+        if ((cell.is_given || cell.value > 0) && !cell.notes.empty()) {
+            any_given_has_notes = true;
+        }
+    });
+    REQUIRE_FALSE(any_given_has_notes);
 }
 
-TEST_CASE("GameViewModel - Auto Notes and Manual Notes Interaction", "[game_view_model][auto_notes]") {
-    AutoNotesFixture f;
+TEST_CASE("GameViewModel - fillNotes updates after placing a number", "[game_view_model][fill_notes]") {
+    FillNotesFixture f;
+    f.startGame();
+    f.view_model->fillNotes();
 
-    SECTION("enterNote is no-op when auto notes is enabled") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
+    size_t notes_before = f.countTotalNotes();
 
-        const auto& state = f.view_model->gameState.get();
-        auto empty_opt = test::findEmptyCell(state);
-        REQUIRE(empty_opt.has_value());
-        auto pos = empty_opt.value();
+    // Place a correct number
+    const auto& state = f.view_model->gameState.get();
+    auto empty_opt = test::findEmptyCell(state);
+    REQUIRE(empty_opt.has_value());
+    auto pos = empty_opt.value();
+    auto solution = state.getSolutionBoard();
+    int correct_value = solution[pos.row][pos.col];
 
-        // Get notes before manual attempt
-        auto notes_before = f.view_model->gameState.get().getCell(pos).notes;
+    f.view_model->selectCell(pos);
+    f.view_model->enterNumber(correct_value);
 
-        f.view_model->selectCell(pos);
-        f.view_model->enterNote(1);
+    // Fill again — should reflect the new board state
+    f.view_model->fillNotes();
 
-        // Notes should be unchanged (enterNote was blocked)
-        auto notes_after = f.view_model->gameState.get().getCell(pos).notes;
-        REQUIRE(notes_before == notes_after);
-    }
-
-    SECTION("Manual notes work normally when auto notes is disabled") {
-        f.startGame();
-
-        const auto& state = f.view_model->gameState.get();
-        auto empty_opt = test::findEmptyCell(state);
-        REQUIRE(empty_opt.has_value());
-        auto pos = empty_opt.value();
-
-        f.view_model->selectCell(pos);
-        f.view_model->enterNote(5);
-
-        auto notes = f.view_model->gameState.get().getCell(pos).notes;
-        REQUIRE(std::find(notes.begin(), notes.end(), 5) != notes.end());
-    }
-
-    SECTION("Turning auto notes ON replaces manual notes with computed") {
-        f.startGame();
-
-        // Add a manual note
-        const auto& state = f.view_model->gameState.get();
-        auto empty_opt = test::findEmptyCell(state);
-        REQUIRE(empty_opt.has_value());
-        auto pos = empty_opt.value();
-
-        f.view_model->selectCell(pos);
-        f.view_model->enterNote(5);
-
-        // Enable auto-notes — should overwrite manual notes
-        f.view_model->setAutoNotesEnabled(true);
-
-        REQUIRE(f.allNotesMatchPossibleValues());
-    }
+    REQUIRE(f.allNotesMatchPossibleValues());
+    REQUIRE(f.countTotalNotes() < notes_before);
 }
 
-TEST_CASE("GameViewModel - Auto Notes and Undo/Redo", "[game_view_model][auto_notes]") {
-    AutoNotesFixture f;
+TEST_CASE("GameViewModel - manual notes work independently of fillNotes", "[game_view_model][fill_notes]") {
+    FillNotesFixture f;
+    f.startGame();
 
-    SECTION("Undo recomputes auto notes when enabled") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
+    const auto& state = f.view_model->gameState.get();
+    auto empty_opt = test::findEmptyCell(state);
+    REQUIRE(empty_opt.has_value());
+    auto pos = empty_opt.value();
 
-        // Place a number
-        const auto& state = f.view_model->gameState.get();
-        auto empty_opt = test::findEmptyCell(state);
-        REQUIRE(empty_opt.has_value());
-        auto pos = empty_opt.value();
+    // Manual note entry works
+    f.view_model->selectCell(pos);
+    f.view_model->enterNote(5);
 
-        auto solution = state.getSolutionBoard();
-        int correct_value = solution[pos.row][pos.col];
+    auto notes = f.view_model->gameState.get().getCell(pos).notes;
+    REQUIRE(std::find(notes.begin(), notes.end(), 5) != notes.end());
 
-        f.view_model->selectCell(pos);
-        f.view_model->enterNumber(correct_value);
-        REQUIRE(f.allNotesMatchPossibleValues());
-
-        // Undo
-        f.view_model->undo();
-
-        // After undo, notes should still match possible values for the restored board
-        REQUIRE(f.allNotesMatchPossibleValues());
-        // The undone cell should have notes again (it's empty again)
-        REQUIRE_FALSE(f.view_model->gameState.get().getCell(pos).notes.empty());
-    }
-
-    SECTION("Redo recomputes auto notes when enabled") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
-
-        const auto& state = f.view_model->gameState.get();
-        auto empty_opt = test::findEmptyCell(state);
-        REQUIRE(empty_opt.has_value());
-        auto pos = empty_opt.value();
-
-        auto solution = state.getSolutionBoard();
-        int correct_value = solution[pos.row][pos.col];
-
-        f.view_model->selectCell(pos);
-        f.view_model->enterNumber(correct_value);
-        f.view_model->undo();
-        f.view_model->redo();
-
-        REQUIRE(f.allNotesMatchPossibleValues());
-        // The cell should be filled again, no notes
-        REQUIRE(f.view_model->gameState.get().getCell(pos).value == correct_value);
-        REQUIRE(f.view_model->gameState.get().getCell(pos).notes.empty());
-    }
+    // fillNotes overwrites manual notes with computed values
+    f.view_model->fillNotes();
+    REQUIRE(f.allNotesMatchPossibleValues());
 }
 
-TEST_CASE("GameViewModel - Auto Notes and New Game/Reset", "[game_view_model][auto_notes]") {
-    AutoNotesFixture f;
+TEST_CASE("GameViewModel - fillNotes is one-shot, not persistent", "[game_view_model][fill_notes]") {
+    FillNotesFixture f;
+    f.startGame();
+    f.view_model->fillNotes();
 
-    SECTION("Auto notes preference persists across new game") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
-        REQUIRE(f.view_model->isAutoNotesEnabled());
+    REQUIRE(f.countTotalNotes() > 0);
 
-        f.view_model->startNewGame(Difficulty::Medium);
+    // Place a number — notes are NOT auto-recomputed (only cleanup runs)
+    const auto& state = f.view_model->gameState.get();
+    auto empty_opt = test::findEmptyCell(state);
+    REQUIRE(empty_opt.has_value());
+    auto pos = empty_opt.value();
+    auto solution = state.getSolutionBoard();
 
-        REQUIRE(f.view_model->isAutoNotesEnabled());
-        REQUIRE(f.countTotalNotes() > 0);
-        REQUIRE(f.allNotesMatchPossibleValues());
-    }
+    f.view_model->selectCell(pos);
+    f.view_model->enterNumber(solution[pos.row][pos.col]);
 
-    SECTION("Auto notes preference persists across reset") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
-
-        // Place a number to make reset meaningful
-        const auto& state = f.view_model->gameState.get();
-        auto empty_opt = test::findEmptyCell(state);
-        REQUIRE(empty_opt.has_value());
-        auto pos = empty_opt.value();
-
-        auto solution = state.getSolutionBoard();
-        f.view_model->selectCell(pos);
-        f.view_model->enterNumber(solution[pos.row][pos.col]);
-
-        f.view_model->resetGame();
-
-        REQUIRE(f.view_model->isAutoNotesEnabled());
-        REQUIRE(f.allNotesMatchPossibleValues());
-    }
-}
-
-TEST_CASE("GameViewModel - Auto Notes and Save/Load", "[game_view_model][auto_notes]") {
-    AutoNotesFixture f;
-
-    SECTION("Auto notes flag is saved and restored via restoreGameState") {
-        f.startGame();
-
-        // Build a SavedGame with auto_notes_enabled = true
-        const auto& current_state = f.view_model->gameState.get();
-        core::SavedGame saved_game;
-        saved_game.original_puzzle = current_state.extractGivenNumbers();
-        saved_game.current_state = current_state.extractNumbers();
-        saved_game.difficulty = current_state.getDifficulty();
-        saved_game.auto_notes_enabled = true;
-
-        // Ensure auto-notes is OFF before restore
-        REQUIRE_FALSE(f.view_model->isAutoNotesEnabled());
-
-        // Restore the game with auto_notes_enabled flag set
-        f.view_model->restoreGameState(saved_game);
-
-        REQUIRE(f.view_model->isAutoNotesEnabled());
-        REQUIRE(f.allNotesMatchPossibleValues());
-    }
-
-    SECTION("Loading save without auto_notes_enabled defaults to OFF") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
-        REQUIRE(f.view_model->isAutoNotesEnabled());
-
-        // Build a SavedGame without auto_notes_enabled (simulates old save format)
-        const auto& current_state = f.view_model->gameState.get();
-        core::SavedGame saved_game;
-        saved_game.original_puzzle = current_state.extractGivenNumbers();
-        saved_game.current_state = current_state.extractNumbers();
-        saved_game.difficulty = current_state.getDifficulty();
-        // auto_notes_enabled defaults to false
-
-        f.view_model->restoreGameState(saved_game);
-
-        REQUIRE_FALSE(f.view_model->isAutoNotesEnabled());
-    }
-}
-
-TEST_CASE("GameViewModel - Auto Notes and Hints", "[game_view_model][auto_notes]") {
-    AutoNotesFixture f;
-
-    SECTION("Hint placement recomputes auto notes") {
-        f.startGame();
-        f.view_model->setAutoNotesEnabled(true);
-
-        const auto& state = f.view_model->gameState.get();
-        auto empty_opt = test::findEmptyCell(state);
-        REQUIRE(empty_opt.has_value());
-
-        f.view_model->selectCell(empty_opt.value());
-        f.view_model->getHint();
-
-        // After hint, all notes should still be consistent
-        REQUIRE(f.allNotesMatchPossibleValues());
-    }
+    // Notes were cleaned up (conflicting removed) but not fully recomputed
+    // Some cells may have stale notes — this is expected (one-shot behavior)
+    // The placed cell should have no notes
+    REQUIRE(f.view_model->gameState.get().getCell(pos).notes.empty());
 }

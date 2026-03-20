@@ -66,6 +66,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <set>
 #include <utility>
 
 #include <spdlog/spdlog.h>
@@ -245,6 +246,26 @@ bool SudokuSolver::isComplete(const BoardData& board) {
 bool SudokuSolver::solveWithBacktracking(BoardData& board) const {
     BacktrackingSolver solver(validator_);
     return solver.solve(board, ValueSelectionStrategy::MostConstrained);
+}
+
+std::vector<SolveStep> SudokuSolver::findAllApplicableSteps(const BoardData& board) const {
+    if (isComplete(board)) {
+        return {};
+    }
+
+    CandidateGrid candidates(board);
+    std::vector<SolveStep> results;
+    std::set<SolvingTechnique> seen_techniques;
+
+    for (const auto& strategy : strategies_) {
+        auto step = strategy->findStep(board, candidates);
+        if (step.has_value() && !seen_techniques.contains(step->technique)) {
+            seen_techniques.insert(step->technique);
+            results.push_back(std::move(*step));
+        }
+    }
+
+    return results;
 }
 
 }  // namespace sudoku::core

@@ -26,7 +26,6 @@
 #include "core/solve_step.h"
 #include "core/solving_technique.h"
 
-#include <format>
 #include <memory>
 #include <optional>
 #include <set>
@@ -61,9 +60,6 @@ public:
     /// Start exercises after reading theory (TheoryReview → Exercise)
     void startExercises();
 
-    /// Submit the player's answer for evaluation (Exercise → Feedback)
-    void submitAnswer(const core::TrainingBoard& player_board);
-
     /// Request a progressive hint (up to 3 levels)
     void requestHint();
 
@@ -79,10 +75,39 @@ public:
     /// Return to technique selection from any phase
     void returnToSelection();
 
+    /// Enter analysis mode: analyze a game position and show applicable techniques.
+    /// The board is read-only (returning to game leaves it unchanged).
+    void analyzePosition(const core::BoardData& board, const core::BoardData& given_board,
+                         const std::vector<uint16_t>& candidate_masks,
+                         const std::vector<core::SolveStep>& applicable_steps);
+
+    /// Whether we are in analysis mode (game position analysis vs standalone training)
+    [[nodiscard]] bool isAnalysisMode() const {
+        return is_analysis_mode_;
+    }
+
+    /// Get applicable techniques in analysis mode
+    [[nodiscard]] const std::vector<core::SolveStep>& analysisSteps() const {
+        return analysis_steps_;
+    }
+
     /// Reveal the full expected solution on the feedback board
     void revealSolution();
 
-    /// Record a board change from the view (pushes undo snapshot)
+    /// Select a cell on the training board
+    void selectCell(size_t row, size_t col);
+
+    /// Apply a number to the selected cell (placement or elimination based on current mode)
+    void applyNumber(int value);
+
+    /// Apply a color to the selected cell (toggle)
+    void applyColor(int color);
+
+    /// Submit the player's answer for evaluation (Exercise → Feedback)
+    /// Reads current board from trainingBoard observable
+    void submitAnswer();
+
+    /// Record a board change (pushes undo snapshot). Used internally by applyNumber/applyColor.
     void recordBoardChange(const core::TrainingBoard& board);
 
     /// Undo the last board modification
@@ -121,6 +146,16 @@ private:
     std::vector<core::TrainingExercise> exercises_;
     int initial_step_count_{0};  ///< Number of valid steps when exercise loaded
     int found_step_count_{0};    ///< Number of steps the player has found so far
+
+    // Analysis mode state (game position analysis)
+    bool is_analysis_mode_{false};
+    std::vector<core::SolveStep> analysis_steps_;
+    core::BoardData analysis_board_;
+    core::BoardData analysis_given_board_;
+    std::vector<uint16_t> analysis_candidate_masks_;
+
+    // Original board snapshot (for candidate toggle-restore in elimination mode)
+    core::TrainingBoard original_board_{};
 
     // Undo/redo history (snapshot-based)
     static constexpr int kMaxUndoHistory = 50;

@@ -73,15 +73,35 @@ void TrainingViewModel::startExercises() {
         return;
     }
 
-    auto result = exercise_generator_->generateExercises(state.current_technique, state.total_exercises);
-
-    if (!result.has_value()) {
-        errorMessage.set(result.error());
-        spdlog::warn("Failed to generate exercises: {}", result.error());
-        return;
+    if (is_analysis_mode_) {
+        // In analysis mode, create a single exercise from the matching analysis step
+        auto technique = state.current_technique;
+        exercises_.clear();
+        for (const auto& step : analysis_steps_) {
+            if (step.technique == technique) {
+                TrainingExercise exercise;
+                exercise.board = analysis_board_;
+                exercise.candidate_masks = analysis_candidate_masks_;
+                exercise.expected_step = step;
+                exercise.technique = technique;
+                exercise.interaction_mode = interactionModeForStep(step);
+                exercises_.push_back(std::move(exercise));
+                break;
+            }
+        }
+        if (exercises_.empty()) {
+            errorMessage.set("No applicable step found for this technique.");
+            return;
+        }
+    } else {
+        auto result = exercise_generator_->generateExercises(state.current_technique, state.total_exercises);
+        if (!result.has_value()) {
+            errorMessage.set(result.error());
+            spdlog::warn("Failed to generate exercises: {}", result.error());
+            return;
+        }
+        exercises_ = std::move(*result);
     }
-
-    exercises_ = std::move(*result);
 
     trainingState.update([this](TrainingUIState& s) {
         s.phase = TrainingPhase::Exercise;
@@ -94,7 +114,8 @@ void TrainingViewModel::startExercises() {
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — submit flow with continue-on-correct logic; nesting is inherent
-void TrainingViewModel::submitAnswer(const TrainingBoard& player_board) {
+void TrainingViewModel::submitAnswer() {
+    const auto& player_board = trainingBoard.get();
     const auto& state = trainingState.get();
     if (state.phase != TrainingPhase::Exercise) {
         return;
@@ -232,9 +253,99 @@ void TrainingViewModel::nextExercise() {
 void TrainingViewModel::returnToSelection() {
     exercises_.clear();
     clearHistory();
+    original_board_ = {};
+    is_analysis_mode_ = false;
+    analysis_steps_.clear();
+    analysis_candidate_masks_.clear();
     trainingState.set(TrainingUIState{});  // Reset to defaults (TechniqueSelection)
     trainingBoard.set(TrainingBoard{});
     feedbackBoard.set(TrainingBoard{});
+}
+
+void TrainingViewModel::analyzePosition(const BoardData& board, const BoardData& given_board,
+                                        const std::vector<uint16_t>& candidate_masks,
+                                        const std::vector<SolveStep>& applicable_steps) {
+    is_analysis_mode_ = true;
+    analysis_board_ = board;
+    analysis_given_board_ = given_board;
+    analysis_candidate_masks_ = candidate_masks;
+    analysis_steps_ = applicable_steps;
+    exercises_.clear();
+    clearHistory();
+
+    TrainingUIState initial_state;
+    initial_state.phase = TrainingPhase::TechniqueSelection;
+    trainingState.set(initial_state);
+    trainingBoard.set(TrainingBoard{});
+    feedbackBoard.set(TrainingBoard{});
+}
+
+void TrainingViewModel::selectCell(size_t row, size_t col) {
+    if (row >= BOARD_SIZE || col >= BOARD_SIZE) {
+        return;
+    }
+    trainingState.update([row, col](TrainingUIState& s) { s.selected_cell = std::pair{row, col}; });
+}
+
+void TrainingViewModel::applyNumber(int value) {
+    const auto& state = trainingState.get();
+    if (!state.selected_cell.has_value()) {
+        return;
+    }
+
+    auto [row, col] = *state.selected_cell;
+    auto board = trainingBoard.get();
+    auto& cell = board[row][col];
+
+    if (cell.is_given || cell.is_found || cell.value != 0) {
+        return;
+    }
+
+    if (state.interaction_mode == TrainingInteractionMode::Placement) {
+        if (std::ranges::find(cell.candidates, value) == cell.candidates.end()) {
+            return;
+        }
+        cell.value = value;
+        cell.player_selected = true;
+    } else {
+        // Elimination mode: toggle candidate (remove if present, restore if was in original)
+        auto iter = std::ranges::find(cell.candidates, value);
+        if (iter != cell.candidates.end()) {
+            cell.candidates.erase(iter);
+            cell.player_selected = true;
+        } else {
+            // Restore only if this candidate was present in the original board
+            const auto& orig = original_board_[row][col];
+            if (std::ranges::find(orig.candidates, value) != orig.candidates.end()) {
+                cell.candidates.push_back(value);
+                std::ranges::sort(cell.candidates);
+                cell.player_selected = true;
+            }
+        }
+    }
+
+    recordBoardChange(board);
+}
+
+void TrainingViewModel::applyColor(int color) {
+    const auto& state = trainingState.get();
+    if (!state.selected_cell.has_value()) {
+        return;
+    }
+
+    auto [row, col] = *state.selected_cell;
+    auto board = trainingBoard.get();
+    auto& cell = board[row][col];
+
+    if (cell.is_given) {
+        return;
+    }
+
+    // Toggle: if already this color, remove it
+    cell.player_color = (cell.player_color == color) ? 0 : color;
+    cell.player_selected = true;
+
+    recordBoardChange(board);
 }
 
 void TrainingViewModel::recordBoardChange(const TrainingBoard& board) {
@@ -343,9 +454,16 @@ void TrainingViewModel::loadExerciseBoard() {
         }
     }
 
+    original_board_ = board;
     clearHistory();
     pushSnapshot(board);
     trainingBoard.set(board);
+
+    // Set interaction mode and clear selection for new exercise
+    trainingState.update([&exercise](TrainingUIState& s) {
+        s.interaction_mode = exercise.interaction_mode;
+        s.selected_cell.reset();
+    });
 
     // Precompute how many valid steps exist on the original board
     auto candidates = TrainingAnswerValidator::reconstructCandidates(exercise.board, exercise.candidate_masks);
