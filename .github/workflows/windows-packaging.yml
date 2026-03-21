@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,22 +18,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.3'
           arch: win64_msvc2022_64
 
+      - name: Compute QT6_DIR
+        run: |
+          import os, pathlib
+          qt_root = str(pathlib.Path(os.environ["Qt6_DIR"]).parents[2])
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"QT6_DIR={qt_root}\n")
+        shell: python
+
       - name: Install Conan
         run: |
           pip install conan
-          conan profile detect
+          conan profile detect --force
 
       - name: Install NSIS
         run: choco install nsis -y
 
       - name: Cache Conan packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.conan2
           key: conan-windows-release-${{ hashFiles('conanfile.py') }}
@@ -42,22 +54,19 @@ jobs:
         run: conan install . --build=missing --output-folder=build/Release
 
       - name: Configure CMake
-        env:
-          QT6_DIR: ${{ env.Qt6_DIR }}/..
         run: |
           call build\Release\generators\conanbuild.bat
           cmake -S . -B build/Release ^
+            -G Ninja ^
             -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake ^
             -DCMAKE_BUILD_TYPE=Release ^
-            "-DCMAKE_PREFIX_PATH=%Qt6_DIR%/.."
+            "-DCMAKE_PREFIX_PATH=%QT6_DIR%"
         shell: cmd
 
       - name: Build
         run: cmake --build build/Release --config Release
 
       - name: Package installer
-        env:
-          QT6_DIR: ${{ env.Qt6_DIR }}/..
         run: cpack --config build/Release/CPackConfig.cmake -G NSIS -C Release -B build/Release
 
       - name: Upload installer
