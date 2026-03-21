@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install clang-format
         run: |
@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install system dependencies
         uses: ./.github/actions/install-qt-deps
@@ -52,7 +52,7 @@ jobs:
           conan profile detect --force
 
       - name: Cache Conan packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.conan2
           key: conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}
@@ -63,7 +63,7 @@ jobs:
         run: conan install . --build=missing -s build_type=RelWithDebInfo
 
       - name: Cache ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ccache
           key: ccache-${{ runner.os }}-relwithdebinfo-${{ github.sha }}
@@ -90,7 +90,7 @@ jobs:
           echo "✅ Coverage thresholds met"
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: |
@@ -105,7 +105,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install system dependencies
         uses: ./.github/actions/install-qt-deps
@@ -116,7 +116,7 @@ jobs:
           conan profile detect --force
 
       - name: Cache Conan packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.conan2
           key: conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}
@@ -127,7 +127,7 @@ jobs:
         run: conan install . --build=missing -s build_type=RelWithDebInfo
 
       - name: Cache ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ccache
           key: ccache-ui-${{ runner.os }}-${{ github.sha }}
