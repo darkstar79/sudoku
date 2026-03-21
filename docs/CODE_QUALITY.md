@@ -553,7 +553,7 @@ Coverage builds are slower due to instrumentation:
 All pushes and pull requests automatically enforce:
 - ✅ Code formatting check passes (clang-format)
 - ✅ Zero clang-tidy errors
-- ✅ All tests passing (114 test cases, 1,830 assertions)
+- ✅ All tests passing (901 test cases, 14,512 assertions)
 - ✅ Coverage ≥80% (line and function)
 
 **Quality Gates:**

@@ -10,7 +10,7 @@ This project is entirely **vibe coded** using [Claude Code](https://docs.anthrop
 ## Features
 
 - Puzzle generation with 5 difficulty levels and guaranteed unique solutions
-- 42 solving strategies with step-by-step hints
+- 54 solving strategies with step-by-step hints
 - Undo/redo, pencil marks, keyboard navigation
 - Encrypted save/load (YAML + zlib + libsodium)
 - Statistics tracking

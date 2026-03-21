@@ -17,11 +17,13 @@
 #include "training_answer_validator.h"
 
 #include "core/constants.h"
+#include "strategies/als_chain_strategy.h"
 #include "strategies/als_xy_wing_strategy.h"
 #include "strategies/als_xz_strategy.h"
 #include "strategies/avoidable_rectangle_strategy.h"
 #include "strategies/box_line_reduction_strategy.h"
 #include "strategies/bug_strategy.h"
+#include "strategies/continuous_nice_loop_strategy.h"
 #include "strategies/death_blossom_strategy.h"
 #include "strategies/empty_rectangle_strategy.h"
 #include "strategies/finned_jellyfish_strategy.h"
@@ -29,6 +31,7 @@
 #include "strategies/finned_x_wing_strategy.h"
 #include "strategies/forcing_chain_strategy.h"
 #include "strategies/franken_fish_strategy.h"
+#include "strategies/grouped_nice_loop_strategy.h"
 #include "strategies/grouped_x_cycles_strategy.h"
 #include "strategies/hidden_pair_strategy.h"
 #include "strategies/hidden_quad_strategy.h"
@@ -36,21 +39,30 @@
 #include "strategies/hidden_triple_strategy.h"
 #include "strategies/hidden_unique_rectangle_strategy.h"
 #include "strategies/jellyfish_strategy.h"
+#include "strategies/junior_exocet_strategy.h"
+#include "strategies/kraken_fish_strategy.h"
 #include "strategies/multi_coloring_strategy.h"
+#include "strategies/mutant_fish_strategy.h"
 #include "strategies/naked_pair_strategy.h"
 #include "strategies/naked_quad_strategy.h"
 #include "strategies/naked_single_strategy.h"
 #include "strategies/naked_triple_strategy.h"
 #include "strategies/nice_loop_strategy.h"
 #include "strategies/pointing_pair_strategy.h"
+#include "strategies/region_forcing_chain_strategy.h"
 #include "strategies/remote_pairs_strategy.h"
+#include "strategies/sashimi_jellyfish_strategy.h"
+#include "strategies/sashimi_swordfish_strategy.h"
+#include "strategies/sashimi_x_wing_strategy.h"
 #include "strategies/simple_coloring_strategy.h"
 #include "strategies/skyscraper_strategy.h"
 #include "strategies/sue_de_coq_strategy.h"
 #include "strategies/swordfish_strategy.h"
 #include "strategies/three_d_medusa_strategy.h"
 #include "strategies/two_string_kite_strategy.h"
+#include "strategies/unique_loop_strategy.h"
 #include "strategies/unique_rectangle_strategy.h"
+#include "strategies/unit_forcing_chain_strategy.h"
 #include "strategies/vwxyz_wing_strategy.h"
 #include "strategies/w_wing_strategy.h"
 #include "strategies/wxyz_wing_strategy.h"
@@ -328,8 +340,32 @@ std::unique_ptr<ISolvingStrategy> TrainingAnswerValidator::createStrategy(Solvin
             return std::make_unique<VWXYZWingStrategy>();
         case FrankenFish:
             return std::make_unique<FrankenFishStrategy>();
+        case MutantFish:
+            return std::make_unique<MutantFishStrategy>();
         case GroupedXCycles:
             return std::make_unique<GroupedXCyclesStrategy>();
+        case SashimiXWing:
+            return std::make_unique<SashimiXWingStrategy>();
+        case SashimiSwordfish:
+            return std::make_unique<SashimiSwordfishStrategy>();
+        case SashimiJellyfish:
+            return std::make_unique<SashimiJellyfishStrategy>();
+        case UnitForcingChain:
+            return std::make_unique<UnitForcingChainStrategy>();
+        case RegionForcingChain:
+            return std::make_unique<RegionForcingChainStrategy>();
+        case KrakenFish:
+            return std::make_unique<KrakenFishStrategy>();
+        case ALSChain:
+            return std::make_unique<ALSChainStrategy>();
+        case JuniorExocet:
+            return std::make_unique<JuniorExocetStrategy>();
+        case UniqueLoop:
+            return std::make_unique<UniqueLoopStrategy>();
+        case GroupedNiceLoop:
+            return std::make_unique<GroupedNiceLoopStrategy>();
+        case ContinuousNiceLoop:
+            return std::make_unique<ContinuousNiceLoopStrategy>();
         case Backtracking:
             return nullptr;
     }

@@ -29,7 +29,7 @@
 
 namespace sudoku::core {
 
-/// Strategy for finding Unique Rectangle patterns (Types 1-4).
+/// Strategy for finding Unique Rectangle patterns (Types 1-4, 6).
 /// A Unique Rectangle has 4 cells forming a rectangle across exactly 2 boxes.
 /// Types eliminate candidates to avoid the "deadly pattern" that would imply multiple solutions.
 class UniqueRectangleStrategy : public ISolvingStrategy, protected StrategyBase {
@@ -245,6 +245,10 @@ private:
             return result;
         }
         result = checkType4Rectangle(board, candidates, c1, c2, c3, c4, val_a, val_b);
+        if (result.has_value()) {
+            return result;
+        }
+        result = checkType6Rectangle(board, candidates, c1, c2, c3, c4, val_a, val_b);
         if (result.has_value()) {
             return result;
         }
@@ -572,6 +576,112 @@ private:
                                                   .secondary_region_type = unit_type,
                                                   .secondary_region_index = unit_index,
                                                   .technique_subtype = 3,  // Type 4
+                                                  .position_roles = std::move(ur_roles)}};
+        }
+
+        return std::nullopt;
+    }
+    /// Type 6: 2 roof cells bivalue {A,B}, 2 floor cells with extras.
+    /// One UR digit is conjugate in BOTH parallel lines of the rectangle
+    /// (both columns for a row-based UR, or both rows for a column-based UR).
+    /// This locks the digit placement across the UR diagonals, forcing all 4 cells
+    /// to hold exactly A or B → eliminate all extras from floor cells.
+    [[nodiscard]] static std::optional<SolveStep>
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — UR type 6 checks conjugate pairs across parallel lines; nesting is inherent
+    checkType6Rectangle(const BoardData& board, const CandidateGrid& candidates, const Position& c1, const Position& c2,
+                        const Position& c3, const Position& c4, int val_a, int val_b) {
+        if (!isValidRectangle(board, candidates, c1, c2, c3, c4, val_a, val_b)) {
+            return std::nullopt;
+        }
+
+        auto [roof, floor] = classifyCells(candidates, c1, c2, c3, c4, val_a, val_b);
+        if (roof.size() != 2 || floor.size() != 2) {
+            return std::nullopt;
+        }
+
+        // Extract the 2 rows and 2 columns of the rectangle
+        size_t ur_row1 = c1.row;
+        size_t ur_row2 = (c3.row != ur_row1) ? c3.row : c4.row;
+        size_t ur_col1 = c1.col;
+        size_t ur_col2 = (c2.col != ur_col1) ? c2.col : c4.col;
+
+        for (int locked_val : {val_a, val_b}) {
+            // Check if locked_val is conjugate in both rows of the UR
+            bool conjugate_both_rows = false;
+            {
+                int count_r1 = 0;
+                int count_r2 = 0;
+                for (size_t col = 0; col < BOARD_SIZE; ++col) {
+                    if (board[ur_row1][col] == EMPTY_CELL && candidates.isAllowed(ur_row1, col, locked_val)) {
+                        ++count_r1;
+                    }
+                    if (board[ur_row2][col] == EMPTY_CELL && candidates.isAllowed(ur_row2, col, locked_val)) {
+                        ++count_r2;
+                    }
+                }
+                conjugate_both_rows = (count_r1 == 2 && count_r2 == 2);
+            }
+
+            // Check if locked_val is conjugate in both columns of the UR
+            bool conjugate_both_cols = false;
+            {
+                int count_c1 = 0;
+                int count_c2 = 0;
+                for (size_t row = 0; row < BOARD_SIZE; ++row) {
+                    if (board[row][ur_col1] == EMPTY_CELL && candidates.isAllowed(row, ur_col1, locked_val)) {
+                        ++count_c1;
+                    }
+                    if (board[row][ur_col2] == EMPTY_CELL && candidates.isAllowed(row, ur_col2, locked_val)) {
+                        ++count_c2;
+                    }
+                }
+                conjugate_both_cols = (count_c1 == 2 && count_c2 == 2);
+            }
+
+            if (!conjugate_both_rows && !conjugate_both_cols) {
+                continue;
+            }
+
+            // locked_val is conjugate across both parallel lines of the UR.
+            // This forces each UR cell to hold exactly A or B → eliminate all extras from floor cells.
+            std::vector<Elimination> eliminations;
+            for (const auto& f : floor) {
+                uint16_t extras = getExtrasMask(candidates, f, val_a, val_b);
+                for (int v = MIN_VALUE; v <= MAX_VALUE; ++v) {
+                    if ((extras & valueToBit(v)) != 0) {
+                        eliminations.push_back(Elimination{.position = f, .value = v});
+                    }
+                }
+            }
+
+            if (eliminations.empty()) {
+                continue;
+            }
+
+            std::string axis = conjugate_both_rows ? "rows" : "columns";
+            auto explanation = fmt::format(
+                "Unique Rectangle Type 6: cells {}, {}, {}, {} with values {{{},{}}} — {} is conjugate in both {} "
+                "of the rectangle, locking the pattern → eliminates extras from floor cells",
+                formatPosition(c1), formatPosition(c2), formatPosition(c3), formatPosition(c4), val_a, val_b,
+                locked_val, axis);
+
+            std::vector<Position> all_positions = {c1, c2, c3, c4};
+            std::vector<CellRole> ur_roles = {
+                isBivalueAB(candidates, c1, val_a, val_b) ? CellRole::Roof : CellRole::Floor,
+                isBivalueAB(candidates, c2, val_a, val_b) ? CellRole::Roof : CellRole::Floor,
+                isBivalueAB(candidates, c3, val_a, val_b) ? CellRole::Roof : CellRole::Floor,
+                isBivalueAB(candidates, c4, val_a, val_b) ? CellRole::Roof : CellRole::Floor};
+
+            return SolveStep{.type = SolveStepType::Elimination,
+                             .technique = SolvingTechnique::UniqueRectangle,
+                             .position = eliminations[0].position,
+                             .value = 0,
+                             .eliminations = eliminations,
+                             .explanation = explanation,
+                             .rating = getTechniqueRating(SolvingTechnique::UniqueRectangle),
+                             .explanation_data = {.positions = all_positions,
+                                                  .values = {val_a, val_b, locked_val},
+                                                  .technique_subtype = 5,  // Type 6
                                                   .position_roles = std::move(ur_roles)}};
         }
 

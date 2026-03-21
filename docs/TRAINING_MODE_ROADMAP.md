@@ -13,7 +13,7 @@ Status overview and implementation roadmap for Training Mode.
 - [x] **TrainingViewModel**: Full state machine (5 phases), exercise loading, answer evaluation (placement + elimination), per-technique hint progression
 - [x] **TrainingWidget**: 5-page QStackedWidget with technique selection, theory review, interactive exercise board, feedback, lesson complete
 - [x] **MainWindow integration**: Menu item, stacked widget page switching, ViewModel wiring, error logging
-- [x] **Technique descriptions**: Theory text (title, what_it_is, what_to_look_for) for all 42 techniques
+- [x] **Technique descriptions**: Theory text (title, what_it_is, what_to_look_for) for all 54 techniques
 - [x] **Unit tests**: Types, exercise generator (mock), ViewModel state machine
 - [x] **Interactive exercise board** (TrainingBoardWidget) — cell selection, candidate rendering, CellRole highlighting, player color support
 - [x] **Number pad for training** (TrainingNumberPad) — 1-9 buttons with mode-aware tooltips and per-cell enable/disable
@@ -204,7 +204,7 @@ Algorithm (implemented in `getRecommendedTechnique()`):
 1. Find the lowest-difficulty technique not yet Mastered
 2. Skip techniques whose prerequisites are not met
 3. Among same-difficulty techniques, prefer least recently practiced
-4. Returns `std::nullopt` when all 42 techniques are Mastered
+4. Returns `std::nullopt` when all 54 techniques are Mastered
 
 UI: Recommended technique shown with ">> " prefix on technique selection buttons.
 

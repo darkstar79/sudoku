@@ -28,17 +28,19 @@
 
 namespace sudoku::core {
 
-/// Strategy for detecting BUG (Bivalue Universal Grave) + 1.
-/// If all empty cells have exactly 2 candidates EXCEPT exactly one cell with 3 candidates,
-/// the puzzle is in a BUG+1 state. The trivalue cell's "odd" candidate (the one that
+/// Strategy for detecting BUG (Bivalue Universal Grave) + N (N = 1, 2, or 3).
+/// If all empty cells have exactly 2 candidates EXCEPT N cells with 3 candidates,
+/// the puzzle is in a BUG+N state. Each trivalue cell's "odd" candidate (the one that
 /// appears an odd number of times in its row, column, or box) must be placed.
 /// This produces a Placement, not an Elimination.
 class BUGStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
+    static constexpr int MAX_TRIVALUE_CELLS = 3;
+
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity) — BUG+N scans all cells, finds odd candidates per trivalue cell, and checks consistency; nesting is inherent
     [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board,
                                                     const CandidateGrid& candidates) const override {
-        Position trivalue_cell{};
-        int trivalue_count = 0;
+        std::vector<Position> trivalue_cells;
 
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (size_t col = 0; col < BOARD_SIZE; ++col) {
@@ -47,41 +49,84 @@ public:
                 }
                 int count = candidates.countPossibleValues(row, col);
                 if (count == 2) {
-                    continue;  // expected
+                    continue;  // expected bivalue
                 }
-                if (count == 3 && trivalue_count == 0) {
-                    trivalue_cell = Position{.row = row, .col = col};
-                    ++trivalue_count;
+                if (count == 3) {
+                    trivalue_cells.push_back(Position{.row = row, .col = col});
+                    if (static_cast<int>(trivalue_cells.size()) > MAX_TRIVALUE_CELLS) {
+                        return std::nullopt;  // too many trivalue cells
+                    }
                 } else {
-                    // Not a BUG+1 state: either count != 2 and != 3, or multiple trivalue cells
+                    // Cell with count != 2 and != 3 — not a BUG state
                     return std::nullopt;
                 }
             }
         }
 
-        if (trivalue_count != 1) {
+        if (trivalue_cells.empty() || static_cast<int>(trivalue_cells.size()) > MAX_TRIVALUE_CELLS) {
             return std::nullopt;
         }
 
-        // Find the odd candidate: appears an odd number of times in its row, col, or box
-        auto cands = getCandidates(candidates, trivalue_cell.row, trivalue_cell.col);
-        int odd_value = findOddCandidate(board, candidates, trivalue_cell, cands);
-        if (odd_value == 0) {
-            return std::nullopt;
+        // For each trivalue cell, find its odd candidate
+        struct OddPlacement {
+            Position cell;
+            int value;
+        };
+        std::vector<OddPlacement> placements;
+
+        for (const auto& cell : trivalue_cells) {
+            auto cands = getCandidates(candidates, cell.row, cell.col);
+            int odd_value = findOddCandidate(board, candidates, cell, cands);
+            if (odd_value == 0) {
+                return std::nullopt;  // can't determine odd candidate
+            }
+            placements.push_back({cell, odd_value});
         }
 
-        auto explanation =
-            fmt::format("BUG: all cells bivalue except {} — value {} must be placed to avoid deadly pattern",
-                        formatPosition(trivalue_cell), odd_value);
+        // Verify consistency: no two odd placements conflict
+        // (same value in same row, column, or box)
+        for (size_t i = 0; i < placements.size(); ++i) {
+            for (size_t j = i + 1; j < placements.size(); ++j) {
+                if (placements[i].value == placements[j].value) {
+                    if (placements[i].cell.row == placements[j].cell.row ||
+                        placements[i].cell.col == placements[j].cell.col ||
+                        sameBox(placements[i].cell, placements[j].cell)) {
+                        return std::nullopt;  // conflicting placements
+                    }
+                }
+            }
+        }
+
+        // Return the first placement (solver will re-evaluate after each)
+        const auto& first = placements[0];
+        int n = static_cast<int>(trivalue_cells.size());
+
+        std::string explanation;
+        if (n == 1) {
+            explanation =
+                fmt::format("BUG: all cells bivalue except {} — value {} must be placed to avoid deadly pattern",
+                            formatPosition(first.cell), first.value);
+        } else {
+            std::string cells_str;
+            for (size_t i = 0; i < trivalue_cells.size(); ++i) {
+                if (i > 0) {
+                    cells_str += ", ";
+                }
+                cells_str += formatPosition(trivalue_cells[i]);
+            }
+            explanation = fmt::format(
+                "BUG+{}: all cells bivalue except {} — value {} must be placed at {} to avoid deadly pattern", n,
+                cells_str, first.value, formatPosition(first.cell));
+        }
 
         return SolveStep{.type = SolveStepType::Placement,
                          .technique = SolvingTechnique::BUG,
-                         .position = trivalue_cell,
-                         .value = odd_value,
+                         .position = first.cell,
+                         .value = first.value,
                          .eliminations = {},
                          .explanation = explanation,
                          .rating = getTechniqueRating(SolvingTechnique::BUG),
-                         .explanation_data = {.positions = {trivalue_cell}, .values = {odd_value}}};
+                         .explanation_data = {.positions = {first.cell}, .values = {first.value}}};
     }
 
     [[nodiscard]] SolvingTechnique getTechnique() const override {

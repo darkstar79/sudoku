@@ -73,6 +73,14 @@ struct TechniquePrerequisite {
             return {{.prerequisite = Jellyfish}, {.prerequisite = FinnedSwordfish}};
         case FrankenFish:
             return {{.prerequisite = XWing}};
+        case MutantFish:
+            return {{.prerequisite = FrankenFish}};
+        case SashimiXWing:
+            return {{.prerequisite = FinnedXWing}};
+        case SashimiSwordfish:
+            return {{.prerequisite = FinnedSwordfish}, {.prerequisite = SashimiXWing}};
+        case SashimiJellyfish:
+            return {{.prerequisite = FinnedJellyfish}, {.prerequisite = SashimiSwordfish}};
 
         // Wing chain
         case XYZWing:
@@ -99,12 +107,29 @@ struct TechniquePrerequisite {
             return {{.prerequisite = XCycles}};
         case ForcingChain:
             return {{.prerequisite = XYChain}};
+        case UnitForcingChain:
+            return {{.prerequisite = ForcingChain}};
+        case RegionForcingChain:
+            return {{.prerequisite = UnitForcingChain}};
         case NiceLoop:
+            return {{.prerequisite = ForcingChain}};
+        case ContinuousNiceLoop:
+            return {{.prerequisite = NiceLoop}};
+        case GroupedNiceLoop:
+            return {{.prerequisite = NiceLoop}, {.prerequisite = GroupedXCycles}};
+
+        // Kraken Fish requires finned fish knowledge + chain propagation
+        case KrakenFish:
+            return {{.prerequisite = FinnedJellyfish}, {.prerequisite = ForcingChain}};
+
+        // Junior Exocet requires forcing chain-level reasoning
+        case JuniorExocet:
             return {{.prerequisite = ForcingChain}};
 
         // Unique rectangles
         case HiddenUniqueRectangle:
         case AvoidableRectangle:
+        case UniqueLoop:
             return {{.prerequisite = UniqueRectangle}};
 
         // ALS family
@@ -112,6 +137,8 @@ struct TechniquePrerequisite {
         case DeathBlossom:
         case SueDeCoq:
             return {{.prerequisite = ALSxZ}};
+        case ALSChain:
+            return {{.prerequisite = ALSXYWing}};
 
         // Remote Pairs builds on naked pairs
         case RemotePairs:
@@ -141,9 +168,11 @@ inline constexpr std::array kAllTechniques = {
     SolvingTechnique::TwoStringKite,
     SolvingTechnique::XYZWing,
     SolvingTechnique::UniqueRectangle,
+    SolvingTechnique::UniqueLoop,
     SolvingTechnique::WWing,
     SolvingTechnique::SimpleColoring,
     SolvingTechnique::FinnedXWing,
+    SolvingTechnique::SashimiXWing,
     SolvingTechnique::RemotePairs,
     SolvingTechnique::BUG,
     SolvingTechnique::XCycles,
@@ -151,21 +180,31 @@ inline constexpr std::array kAllTechniques = {
     SolvingTechnique::AvoidableRectangle,
     SolvingTechnique::Jellyfish,
     SolvingTechnique::FinnedSwordfish,
+    SolvingTechnique::SashimiSwordfish,
     SolvingTechnique::EmptyRectangle,
     SolvingTechnique::WXYZWing,
     SolvingTechnique::MultiColoring,
     SolvingTechnique::ThreeDMedusa,
     SolvingTechnique::FinnedJellyfish,
+    SolvingTechnique::SashimiJellyfish,
     SolvingTechnique::XYChain,
     SolvingTechnique::VWXYZWing,
     SolvingTechnique::FrankenFish,
+    SolvingTechnique::MutantFish,
     SolvingTechnique::GroupedXCycles,
     SolvingTechnique::ALSxZ,
     SolvingTechnique::SueDeCoq,
     SolvingTechnique::ALSXYWing,
     SolvingTechnique::DeathBlossom,
+    SolvingTechnique::ALSChain,
     SolvingTechnique::ForcingChain,
+    SolvingTechnique::UnitForcingChain,
+    SolvingTechnique::RegionForcingChain,
+    SolvingTechnique::KrakenFish,
+    SolvingTechnique::JuniorExocet,
     SolvingTechnique::NiceLoop,
+    SolvingTechnique::ContinuousNiceLoop,
+    SolvingTechnique::GroupedNiceLoop,
 };
 
 /// Check whether all prerequisites for a technique are met at the required mastery level

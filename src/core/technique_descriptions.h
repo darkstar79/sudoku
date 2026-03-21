@@ -360,6 +360,107 @@ struct TechniqueDescription {
                                   "row or column that all have a candidate digit. Same Type 1/2/3 rules apply.",
                     .what_to_look_for = "Build X-Cycle chains using grouped box nodes alongside individual cells."};
 
+        case SashimiXWing:
+            return {.title = "Sashimi X-Wing",
+                    .what_it_is = "A fish pattern where one base row has only one candidate position instead of two. "
+                                  "The missing position is compensated by a fin cell, restricting eliminations to the "
+                                  "fin's box.",
+                    .what_to_look_for = "Look for an X-Wing-like pattern where one row is incomplete — it only has the "
+                                        "candidate in one of the two expected columns, plus an extra fin cell."};
+
+        case SashimiSwordfish:
+            return {.title = "Sashimi Swordfish",
+                    .what_it_is = "A 3-row fish pattern where at least one base row has fewer candidate positions than "
+                                  "expected. The missing position creates a fin that restricts eliminations.",
+                    .what_to_look_for =
+                        "Find a Swordfish shape where one row only covers 1 of the 3 base columns, plus a fin."};
+
+        case SashimiJellyfish:
+            return {.title = "Sashimi Jellyfish",
+                    .what_it_is = "A 4-row fish pattern where at least one base row has fewer candidate positions than "
+                                  "expected. The missing position creates a fin restricting eliminations.",
+                    .what_to_look_for =
+                        "Find a Jellyfish shape where one row only covers 1 of the 4 base columns, plus a fin."};
+
+        case UnitForcingChain:
+            return {.title = "Unit Forcing Chain",
+                    .what_it_is =
+                        "For a digit in a unit with 2-3 positions, assume the digit goes in each position "
+                        "and propagate. If all branches lead to the same conclusion, that conclusion is true.",
+                    .what_to_look_for = "Find a unit where a digit appears in few cells, then try each placement."};
+
+        case RegionForcingChain:
+            return {.title = "Region Forcing Chain",
+                    .what_it_is =
+                        "For a digit in a box with 2-3 positions, assume the digit goes in each position "
+                        "and propagate. If all branches lead to the same conclusion, that conclusion is true.",
+                    .what_to_look_for = "Find a box where a digit appears in few cells, then try each placement."};
+
+        case MutantFish:
+            return {.title = "Mutant Fish",
+                    .what_it_is = "A fish pattern where BOTH base and cover sets freely mix rows, columns, and boxes. "
+                                  "Unlike Franken Fish (one mixed side), Mutant Fish requires both sides to contain at "
+                                  "least 2 different unit types. Eliminates from cover cells outside the base.",
+                    .what_to_look_for =
+                        "Look for fish patterns where both the base set and cover set mix rows, columns, and boxes."};
+
+        case KrakenFish:
+            return {
+                .title = "Kraken Fish",
+                .what_it_is =
+                    "Extends finned fish by using chain propagation to verify eliminations outside the fin's box. "
+                    "For each candidate that a standard finned fish would reject (outside the fin's box), place the "
+                    "digit at the fin cell and propagate. If the target still loses the candidate, the elimination "
+                    "is valid regardless of whether the fin is true or false.",
+                .what_to_look_for = "Find a finned fish pattern, then check if chain propagation from the fin cell "
+                                    "eliminates the digit from cells outside the fin's box."};
+
+        case ALSChain:
+            return {.title = "ALS Chain",
+                    .what_it_is =
+                        "A generalized chain of 4-6 Almost Locked Sets linked by distinct restricted commons. "
+                        "Values common across the chain endpoints can be eliminated from cells that see all "
+                        "relevant ALS members.",
+                    .what_to_look_for = "Find a chain of ALSs where each adjacent pair shares a restricted common."};
+
+        case UniqueLoop:
+            return {.title = "Unique Loop",
+                    .what_it_is =
+                        "A deadly pattern where 4-6 cells form a loop, each consecutive pair sharing a unit "
+                        "(row, column, or box). All cells contain the same candidate pair {A,B}. If all cells "
+                        "had only {A,B}, two solutions would exist. Cells with extra candidates must keep them.",
+                    .what_to_look_for =
+                        "Find a loop of 4-6 cells across at least 2 boxes where each cell has candidates {A,B} "
+                        "and each consecutive pair shares a row, column, or box. If exactly one cell has extras, "
+                        "eliminate A and B from it."};
+
+        case JuniorExocet:
+            return {.title = "Junior Exocet",
+                    .what_it_is = "A base pair of cells in a box whose candidates must appear in specific target cells "
+                                  "in other boxes along cross-lines. Candidates not matching the base pair pattern can "
+                                  "be eliminated from the target cells.",
+                    .what_to_look_for =
+                        "Find a base pair in a box with target cells in aligned boxes along cross-lines."};
+
+        case ContinuousNiceLoop:
+            return {.title = "Continuous Nice Loop",
+                    .what_it_is =
+                        "A continuous alternating inference chain (AIC) that forms a complete loop. Every weak "
+                        "link in the loop produces eliminations: the digit can be removed from any cell outside "
+                        "the loop that sees both endpoints of a weak link.",
+                    .what_to_look_for =
+                        "Build an AIC where the chain closes back on itself with consistent alternating links. "
+                        "Every weak link segment yields eliminations from external cells seeing both endpoints."};
+
+        case GroupedNiceLoop:
+            return {.title = "Grouped Nice Loop",
+                    .what_it_is =
+                        "Extends Nice Loop (AIC) with grouped nodes: 2-3 cells in the same box on the same "
+                        "row or column that all share a candidate digit. Combines multi-digit cell-based links "
+                        "(bivalue strong links) with single-digit grouped unit links for stronger chains.",
+                    .what_to_look_for = "Build AIC chains using grouped box nodes alongside individual cells. Look for "
+                                        "discontinuous Type 2 chains where both endpoints assert the same digit."};
+
         case Backtracking:
             return {.title = "Backtracking",
                     .what_it_is = "A brute-force trial-and-error method. Not a logical technique — used as a fallback "

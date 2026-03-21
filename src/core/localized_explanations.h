@@ -290,6 +290,12 @@ namespace sudoku::core {
                     formatPositionList(loc, data.positions), data.values[0], data.values[1], data.values[2],
                     localizedRegion(loc, data.secondary_region_type, data.secondary_region_index), data.values[3]);
             }
+            if (data.technique_subtype == 5 && data.values.size() >= 3) {
+                // Type 6: digit {3} conjugate in both parallel lines → eliminates extras
+                return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainUniqueRectangleType6)),
+                                   formatPositionList(loc, data.positions), data.values[0], data.values[1],
+                                   data.values[2]);
+            }
             // Type 1 (default): eliminates {1},{2} from {3}
             return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainUniqueRectangle)),
                                formatPositionList(loc, data.positions), data.values[0], data.values[1],
@@ -558,6 +564,16 @@ namespace sudoku::core {
                                data.values[1], data.positions.empty() ? "" : formatPositionList(loc, data.positions),
                                data.values.size() >= 3 ? std::to_string(data.values[2]) : "");
         }
+        case SolvingTechnique::MutantFish: {
+            if (data.values.empty()) {
+                return step.explanation;
+            }
+            // values = {digit}, positions = base pattern cells
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainMutantFish)), data.values[0],
+                               data.positions.empty() ? "" : formatPositionList(loc, data.positions),
+                               "",  // cover description not stored in explanation_data
+                               static_cast<int>(step.eliminations.size()));
+        }
         case SolvingTechnique::GroupedXCycles: {
             if (data.values.empty()) {
                 return step.explanation;
@@ -565,6 +581,101 @@ namespace sudoku::core {
             return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainGroupedXCycles)), data.values[0],
                                data.values.size() >= 2 ? std::to_string(data.values[1]) : "");
         }
+        case SolvingTechnique::SashimiXWing: {
+            if (data.values.empty() || data.positions.empty() || data.region_type == RegionType::None) {
+                return step.explanation;
+            }
+            // values = {candidate, row/col1, row/col2}, fin is last position
+            if (data.values.size() < 3) {
+                return step.explanation;
+            }
+            auto fin_pos = localizedPosition(loc, data.positions.back());
+            if (data.region_type == RegionType::Row) {
+                return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainSashimiXWingRow)), data.values[0],
+                                   data.values[1], data.values[2], fin_pos);
+            }
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainSashimiXWingCol)), data.values[0],
+                               data.values[1], data.values[2], fin_pos);
+        }
+        case SolvingTechnique::SashimiSwordfish: {
+            if (data.positions.empty() || data.values.size() < 4 || data.region_type == RegionType::None) {
+                return step.explanation;
+            }
+            auto fin_pos = localizedPosition(loc, data.positions.back());
+            if (data.region_type == RegionType::Row) {
+                return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainSashimiSwordfishRow)), data.values[0],
+                                   data.values[1], data.values[2], data.values[3], fin_pos);
+            }
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainSashimiSwordfishCol)), data.values[0],
+                               data.values[1], data.values[2], data.values[3], fin_pos);
+        }
+        case SolvingTechnique::SashimiJellyfish: {
+            if (data.positions.empty() || data.values.size() < 5 || data.region_type == RegionType::None) {
+                return step.explanation;
+            }
+            auto fin_pos = localizedPosition(loc, data.positions.back());
+            if (data.region_type == RegionType::Row) {
+                return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainSashimiJellyfishRow)), data.values[0],
+                                   data.values[1], data.values[2], data.values[3], data.values[4], fin_pos);
+            }
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainSashimiJellyfishCol)), data.values[0],
+                               data.values[1], data.values[2], data.values[3], data.values[4], fin_pos);
+        }
+        case SolvingTechnique::KrakenFish: {
+            if (data.values.empty() || data.positions.empty()) {
+                return step.explanation;
+            }
+            // Template: "Kraken Fish on value {0}: finned fish with chain-verified eliminations from {1}"
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainKrakenFish)), data.values[0],
+                               formatPositionList(loc, data.positions));
+        }
+        case SolvingTechnique::ALSChain: {
+            if (data.values.empty() || data.positions.empty()) {
+                return step.explanation;
+            }
+            // values = [rc1, rc2, ..., z, chain_length]; positions = all ALS cells
+            auto chain_len = data.values.back();
+            auto val_z = data.values.size() >= 2 ? data.values[static_cast<size_t>(data.values.size() - 2)] : 0;
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainALSChain)), chain_len, val_z,
+                               formatPositionList(loc, data.positions));
+        }
+        case SolvingTechnique::JuniorExocet: {
+            if (data.positions.size() < 4 || data.values.empty()) {
+                return step.explanation;
+            }
+            // positions = {base1, base2, target1, target2}, values = base candidates
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainJuniorExocet)),
+                               localizedPosition(loc, data.positions[0]), localizedPosition(loc, data.positions[1]),
+                               formatValueList(data.values), localizedPosition(loc, data.positions[2]),
+                               localizedPosition(loc, data.positions[3]));
+        }
+        case SolvingTechnique::UniqueLoop: {
+            if (data.positions.size() < 4 || data.values.size() < 2) {
+                return step.explanation;
+            }
+            // Template: "Unique Loop: cells {0} with values {{{1},{2}}} — eliminates {1},{2} from {3}"
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainUniqueLoop)),
+                               formatPositionList(loc, data.positions), data.values[0], data.values[1],
+                               localizedPosition(loc, data.positions.back()));
+        }
+        case SolvingTechnique::ContinuousNiceLoop: {
+            if (data.values.empty()) {
+                return step.explanation;
+            }
+            // Template: "Continuous Nice Loop: loop of {0} nodes — eliminates {1} candidate(s)"
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainContinuousNiceLoop)), data.values[0],
+                               data.values.size() >= 2 ? data.values[1] : 0);
+        }
+        case SolvingTechnique::GroupedNiceLoop: {
+            if (data.positions.size() < 2 || data.values.empty()) {
+                return step.explanation;
+            }
+            return fmt::format(fmt::runtime(loc.getString(StringKeys::ExplainGroupedNiceLoop)),
+                               localizedPosition(loc, data.positions[0]), localizedPosition(loc, data.positions[1]),
+                               data.values[0]);
+        }
+        case SolvingTechnique::UnitForcingChain:
+        case SolvingTechnique::RegionForcingChain:
         case SolvingTechnique::Backtracking:
             return step.explanation;
     }

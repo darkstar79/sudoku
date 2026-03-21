@@ -21,11 +21,13 @@
 #include "core/i_game_validator.h"
 #include "core/i_solving_strategy.h"
 #include "core/i_sudoku_solver.h"
+#include "strategies/als_chain_strategy.h"
 #include "strategies/als_xy_wing_strategy.h"
 #include "strategies/als_xz_strategy.h"
 #include "strategies/avoidable_rectangle_strategy.h"
 #include "strategies/box_line_reduction_strategy.h"
 #include "strategies/bug_strategy.h"
+#include "strategies/continuous_nice_loop_strategy.h"
 #include "strategies/death_blossom_strategy.h"
 #include "strategies/empty_rectangle_strategy.h"
 #include "strategies/finned_jellyfish_strategy.h"
@@ -33,6 +35,7 @@
 #include "strategies/finned_x_wing_strategy.h"
 #include "strategies/forcing_chain_strategy.h"
 #include "strategies/franken_fish_strategy.h"
+#include "strategies/grouped_nice_loop_strategy.h"
 #include "strategies/grouped_x_cycles_strategy.h"
 #include "strategies/hidden_pair_strategy.h"
 #include "strategies/hidden_quad_strategy.h"
@@ -40,21 +43,30 @@
 #include "strategies/hidden_triple_strategy.h"
 #include "strategies/hidden_unique_rectangle_strategy.h"
 #include "strategies/jellyfish_strategy.h"
+#include "strategies/junior_exocet_strategy.h"
+#include "strategies/kraken_fish_strategy.h"
 #include "strategies/multi_coloring_strategy.h"
+#include "strategies/mutant_fish_strategy.h"
 #include "strategies/naked_pair_strategy.h"
 #include "strategies/naked_quad_strategy.h"
 #include "strategies/naked_single_strategy.h"
 #include "strategies/naked_triple_strategy.h"
 #include "strategies/nice_loop_strategy.h"
 #include "strategies/pointing_pair_strategy.h"
+#include "strategies/region_forcing_chain_strategy.h"
 #include "strategies/remote_pairs_strategy.h"
+#include "strategies/sashimi_jellyfish_strategy.h"
+#include "strategies/sashimi_swordfish_strategy.h"
+#include "strategies/sashimi_x_wing_strategy.h"
 #include "strategies/simple_coloring_strategy.h"
 #include "strategies/skyscraper_strategy.h"
 #include "strategies/sue_de_coq_strategy.h"
 #include "strategies/swordfish_strategy.h"
 #include "strategies/three_d_medusa_strategy.h"
 #include "strategies/two_string_kite_strategy.h"
+#include "strategies/unique_loop_strategy.h"
 #include "strategies/unique_rectangle_strategy.h"
+#include "strategies/unit_forcing_chain_strategy.h"
 #include "strategies/vwxyz_wing_strategy.h"
 #include "strategies/w_wing_strategy.h"
 #include "strategies/wxyz_wing_strategy.h"
@@ -97,8 +109,10 @@ void SudokuSolver::initializeStrategies() {
     strategies_.push_back(std::make_unique<XYZWingStrategy>());
     strategies_.push_back(std::make_unique<WWingStrategy>());
     strategies_.push_back(std::make_unique<UniqueRectangleStrategy>());
+    strategies_.push_back(std::make_unique<UniqueLoopStrategy>());
     strategies_.push_back(std::make_unique<SimpleColoringStrategy>());
     strategies_.push_back(std::make_unique<FinnedXWingStrategy>());
+    strategies_.push_back(std::make_unique<SashimiXWingStrategy>());
     strategies_.push_back(std::make_unique<RemotePairsStrategy>());
     strategies_.push_back(std::make_unique<BUGStrategy>());
     strategies_.push_back(std::make_unique<HiddenUniqueRectangleStrategy>());  // NEW 350
@@ -106,21 +120,31 @@ void SudokuSolver::initializeStrategies() {
     strategies_.push_back(std::make_unique<XCyclesStrategy>());                // NEW 350
     strategies_.push_back(std::make_unique<JellyfishStrategy>());
     strategies_.push_back(std::make_unique<FinnedSwordfishStrategy>());
+    strategies_.push_back(std::make_unique<SashimiSwordfishStrategy>());
     strategies_.push_back(std::make_unique<EmptyRectangleStrategy>());
     strategies_.push_back(std::make_unique<WXYZWingStrategy>());
     strategies_.push_back(std::make_unique<MultiColoringStrategy>());
     strategies_.push_back(std::make_unique<ThreeDMedusaStrategy>());  // NEW 400
     strategies_.push_back(std::make_unique<FinnedJellyfishStrategy>());
+    strategies_.push_back(std::make_unique<SashimiJellyfishStrategy>());
     strategies_.push_back(std::make_unique<XYChainStrategy>());
     strategies_.push_back(std::make_unique<VWXYZWingStrategy>());       // NEW 450
     strategies_.push_back(std::make_unique<FrankenFishStrategy>());     // NEW 450
+    strategies_.push_back(std::make_unique<MutantFishStrategy>());      // NEW 450
     strategies_.push_back(std::make_unique<GroupedXCyclesStrategy>());  // NEW 450
     strategies_.push_back(std::make_unique<ALSxZStrategy>());
     strategies_.push_back(std::make_unique<SueDeCoqStrategy>());
     strategies_.push_back(std::make_unique<ALSXYWingStrategy>());     // NEW 550
     strategies_.push_back(std::make_unique<DeathBlossomStrategy>());  // NEW 550
+    strategies_.push_back(std::make_unique<ALSChainStrategy>());      // NEW 550
     strategies_.push_back(std::make_unique<ForcingChainStrategy>());
+    strategies_.push_back(std::make_unique<UnitForcingChainStrategy>());
+    strategies_.push_back(std::make_unique<RegionForcingChainStrategy>());
+    strategies_.push_back(std::make_unique<KrakenFishStrategy>());
+    strategies_.push_back(std::make_unique<JuniorExocetStrategy>());
     strategies_.push_back(std::make_unique<NiceLoopStrategy>());
+    strategies_.push_back(std::make_unique<ContinuousNiceLoopStrategy>());
+    strategies_.push_back(std::make_unique<GroupedNiceLoopStrategy>());
 }
 
 std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const BoardData& board) const {

@@ -221,7 +221,7 @@ TEST_CASE("getRecommendedTechnique — returns nullopt when all mastered", "[Lea
 }
 
 TEST_CASE("kAllTechniques — contains all logical techniques", "[LearningPath]") {
-    CHECK(kAllTechniques.size() == 42);
+    CHECK(kAllTechniques.size() == 54);
 
     // Verify Backtracking is excluded
     for (auto tech : kAllTechniques) {

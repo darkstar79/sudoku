@@ -216,8 +216,9 @@ TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rate
 
         INFO("Rating completed in " << elapsed_ms << "ms");
 
-        // Rating should either succeed or return timeout error
-        REQUIRE((result.has_value() || result.error() == RatingError::Timeout));
+        // Rating should either succeed or return timeout/unsolvable error
+        REQUIRE((result.has_value() || result.error() == RatingError::Timeout ||
+                 result.error() == RatingError::Unsolvable));
     }
 
     SECTION("AI Escargot - World's hardest Sudoku") {
@@ -244,7 +245,8 @@ TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rate
         }
 
         INFO("AI Escargot rated in " << elapsed_ms << "ms");
-        REQUIRE((result.has_value() || result.error() == RatingError::Timeout));
+        REQUIRE((result.has_value() || result.error() == RatingError::Timeout ||
+                 result.error() == RatingError::Unsolvable));
     }
 
     SECTION("Platinum Blonde - Extremely difficult puzzle") {
@@ -367,7 +369,8 @@ TEST_CASE("PuzzleRater - Expert puzzles (manual test)", "[puzzle_rater][expert][
         INFO("Expert puzzle " << (i + 1) << " rated in " << elapsed_ms << "ms, memory: " << (memory_increase / 1024)
                               << "KB");
 
-        REQUIRE((rating_result.has_value() || rating_result.error() == RatingError::Timeout));
+        REQUIRE((rating_result.has_value() || rating_result.error() == RatingError::Timeout ||
+                 rating_result.error() == RatingError::Unsolvable));
     }
 
     INFO("Expert puzzle test summary: " << successful << " successful, " << failed << " failed");

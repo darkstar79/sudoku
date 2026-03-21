@@ -69,6 +69,18 @@ enum class SolvingTechnique : uint8_t {
     VWXYZWing = 39,              ///< 5-cell wing pattern with 5 candidate values (SE 4.8)
     FrankenFish = 40,            ///< Fish patterns with mixed row/col/box base+cover sets (SE 4.2)
     GroupedXCycles = 41,         ///< X-Cycles with grouped nodes (pointing pairs) (SE 6.8)
+    SashimiXWing = 42,           ///< X-Wing with missing base position + fin (SE 3.4)
+    SashimiSwordfish = 43,       ///< Swordfish with missing base position + fin (SE 4.2)
+    SashimiJellyfish = 44,       ///< Jellyfish with missing base position + fin (SE 5.6)
+    UnitForcingChain = 45,       ///< Unit forcing chain — branch on positions for a digit in a unit (SE 7.8)
+    RegionForcingChain = 46,     ///< Region forcing chain — branch on positions for a digit in a box (SE 8.0)
+    MutantFish = 47,             ///< Fish with both base and cover mixing rows/cols/boxes (SE 5.4)
+    KrakenFish = 48,             ///< Finned fish + chain verification for extended eliminations (SE 8.5)
+    ALSChain = 49,               ///< Generalized ALS chain (4-6 ALSs) linked by distinct RCs (SE 8.5)
+    JuniorExocet = 50,           ///< Base pair + target cells cross-line elimination (SE 9.4)
+    UniqueLoop = 51,             ///< Deadly pattern loop of 4-6 cells with shared candidate pair (SE 4.5)
+    ContinuousNiceLoop = 52,     ///< Continuous AIC loop — every weak link produces elimination (SE 7.0)
+    GroupedNiceLoop = 53,        ///< Nice Loop with grouped nodes (grouped AIC) (SE 8.0)
     Backtracking = 255           ///< Not a logical technique - fallback solver (SE 12.0)
 };
 
@@ -162,6 +174,30 @@ enum class SolvingTechnique : uint8_t {
             return "Franken Fish";
         case GroupedXCycles:
             return "Grouped X-Cycles";
+        case SashimiXWing:
+            return "Sashimi X-Wing";
+        case SashimiSwordfish:
+            return "Sashimi Swordfish";
+        case SashimiJellyfish:
+            return "Sashimi Jellyfish";
+        case UnitForcingChain:
+            return "Unit Forcing Chain";
+        case RegionForcingChain:
+            return "Region Forcing Chain";
+        case MutantFish:
+            return "Mutant Fish";
+        case KrakenFish:
+            return "Kraken Fish";
+        case ALSChain:
+            return "ALS Chain";
+        case JuniorExocet:
+            return "Junior Exocet";
+        case UniqueLoop:
+            return "Unique Loop";
+        case ContinuousNiceLoop:
+            return "Continuous Nice Loop";
+        case GroupedNiceLoop:
+            return "Grouped Nice Loop";
         case Backtracking:
             return "Backtracking";
     }
@@ -188,9 +224,10 @@ enum class SolvingTechnique : uint8_t {
         case NakedPair:
             return 3.0;  // SE v1.2.1
         case XWing:
-            return 3.2;    // SE v1.2.1
-        case FinnedXWing:  // SE-compatible: X-Wing + fin overhead
-        case HiddenPair:   // SE v1.2.1
+            return 3.2;     // SE v1.2.1
+        case FinnedXWing:   // SE-compatible: X-Wing + fin overhead
+        case SashimiXWing:  // SE-compatible: sashimi variant of X-Wing
+        case HiddenPair:    // SE v1.2.1
             return 3.4;
         case NakedTriple:
             return 3.6;  // SE v1.2.1
@@ -202,10 +239,11 @@ enum class SolvingTechnique : uint8_t {
         case FinnedSwordfish:  // SE-compatible: Swordfish + fin
             return 4.0;
         case TwoStringKite:
-            return 4.1;      // SE-compatible: slightly harder than Skyscraper
-        case MultiColoring:  // SE-compatible: cross-cluster coloring
-        case FrankenFish:    // SE-compatible: mixed base/cover fish
-        case XYWing:         // SE v1.2.1
+            return 4.1;         // SE-compatible: slightly harder than Skyscraper
+        case MultiColoring:     // SE-compatible: cross-cluster coloring
+        case FrankenFish:       // SE-compatible: mixed base/cover fish
+        case SashimiSwordfish:  // SE-compatible: sashimi variant of Swordfish
+        case XYWing:            // SE v1.2.1
             return 4.2;
         case ThreeDMedusa:  // SE-compatible: multi-digit coloring
         case WWing:         // SE-compatible: XYZ-Wing equivalent
@@ -227,11 +265,13 @@ enum class SolvingTechnique : uint8_t {
             return 5.2;        // SE v1.2.1
         case HiddenQuad:       // SE v1.2.1
         case FinnedJellyfish:  // SE-compatible: Jellyfish + fin
+        case MutantFish:       // SE-compatible: both base and cover mix unit types
             return 5.4;
-        case BUG:
-            return 5.6;  // SE v1.2.1
-        case XCycles:    // SE: X-chains/X-cycles (6.5-6.9)
-        case XYChain:    // SE: Y-cycles (6.6-7.0)
+        case BUG:               // SE v1.2.1
+        case SashimiJellyfish:  // SE-compatible: sashimi variant of Jellyfish
+            return 5.6;
+        case XCycles:  // SE: X-chains/X-cycles (6.5-6.9)
+        case XYChain:  // SE: Y-cycles (6.6-7.0)
             return 6.6;
         case GroupedXCycles:
             return 6.8;     // SE-compatible: grouped nodes add complexity
@@ -241,9 +281,23 @@ enum class SolvingTechnique : uint8_t {
         case NiceLoop:      // SE-compatible: AIC equivalent
             return 7.5;
         case ALSXYWing:
-            return 7.8;  // SE-compatible: three ALS linked
+        case UnitForcingChain:  // SE-compatible: unit forcing chain
+            return 7.8;
+        case RegionForcingChain:
+            return 8.0;  // SE-compatible: region forcing chain (box-only, more branches)
         case DeathBlossom:
-            return 8.2;  // SE-compatible: region forcing chain level
+            return 8.2;   // SE-compatible: region forcing chain level
+        case KrakenFish:  // SE-compatible: finned fish + chain verification
+        case ALSChain:    // SE-compatible: generalized ALS chain
+            return 8.5;
+        case JuniorExocet:
+            return 9.4;  // SE-compatible: extremely hard cross-line elimination
+        case UniqueLoop:
+            return 4.5;  // SE-compatible: deadly pattern loop (same as Unique Rectangle)
+        case ContinuousNiceLoop:
+            return 7.0;  // SE-compatible: continuous AIC loop (slightly easier than discontinuous)
+        case GroupedNiceLoop:
+            return 8.0;  // SE-compatible: grouped AIC (harder than Nice Loop)
         case Backtracking:
             return 12.0;  // Maximum: brute force / trial-and-error
     }
@@ -343,6 +397,30 @@ enum class SolvingTechnique : uint8_t {
             return loc.getString(TechFrankenFish);
         case GroupedXCycles:
             return loc.getString(TechGroupedXCycles);
+        case SashimiXWing:
+            return loc.getString(TechSashimiXWing);
+        case SashimiSwordfish:
+            return loc.getString(TechSashimiSwordfish);
+        case SashimiJellyfish:
+            return loc.getString(TechSashimiJellyfish);
+        case UnitForcingChain:
+            return loc.getString(TechUnitForcingChain);
+        case RegionForcingChain:
+            return loc.getString(TechRegionForcingChain);
+        case MutantFish:
+            return loc.getString(TechMutantFish);
+        case KrakenFish:
+            return loc.getString(TechKrakenFish);
+        case ALSChain:
+            return loc.getString(TechALSChain);
+        case JuniorExocet:
+            return loc.getString(TechJuniorExocet);
+        case UniqueLoop:
+            return loc.getString(TechUniqueLoop);
+        case ContinuousNiceLoop:
+            return loc.getString(TechContinuousNiceLoop);
+        case GroupedNiceLoop:
+            return loc.getString(TechGroupedNiceLoop);
         case Backtracking:
             return loc.getString(TechBacktrackingName);
     }

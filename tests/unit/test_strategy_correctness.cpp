@@ -17,11 +17,13 @@
 #include "../../src/core/candidate_grid.h"
 #include "../../src/core/game_validator.h"
 #include "../../src/core/puzzle_generator.h"
+#include "../../src/core/strategies/als_chain_strategy.h"
 #include "../../src/core/strategies/als_xy_wing_strategy.h"
 #include "../../src/core/strategies/als_xz_strategy.h"
 #include "../../src/core/strategies/avoidable_rectangle_strategy.h"
 #include "../../src/core/strategies/box_line_reduction_strategy.h"
 #include "../../src/core/strategies/bug_strategy.h"
+#include "../../src/core/strategies/continuous_nice_loop_strategy.h"
 #include "../../src/core/strategies/death_blossom_strategy.h"
 #include "../../src/core/strategies/empty_rectangle_strategy.h"
 #include "../../src/core/strategies/finned_jellyfish_strategy.h"
@@ -29,6 +31,7 @@
 #include "../../src/core/strategies/finned_x_wing_strategy.h"
 #include "../../src/core/strategies/forcing_chain_strategy.h"
 #include "../../src/core/strategies/franken_fish_strategy.h"
+#include "../../src/core/strategies/grouped_nice_loop_strategy.h"
 #include "../../src/core/strategies/grouped_x_cycles_strategy.h"
 #include "../../src/core/strategies/hidden_pair_strategy.h"
 #include "../../src/core/strategies/hidden_quad_strategy.h"
@@ -36,21 +39,30 @@
 #include "../../src/core/strategies/hidden_triple_strategy.h"
 #include "../../src/core/strategies/hidden_unique_rectangle_strategy.h"
 #include "../../src/core/strategies/jellyfish_strategy.h"
+#include "../../src/core/strategies/junior_exocet_strategy.h"
+#include "../../src/core/strategies/kraken_fish_strategy.h"
 #include "../../src/core/strategies/multi_coloring_strategy.h"
+#include "../../src/core/strategies/mutant_fish_strategy.h"
 #include "../../src/core/strategies/naked_pair_strategy.h"
 #include "../../src/core/strategies/naked_quad_strategy.h"
 #include "../../src/core/strategies/naked_single_strategy.h"
 #include "../../src/core/strategies/naked_triple_strategy.h"
 #include "../../src/core/strategies/nice_loop_strategy.h"
 #include "../../src/core/strategies/pointing_pair_strategy.h"
+#include "../../src/core/strategies/region_forcing_chain_strategy.h"
 #include "../../src/core/strategies/remote_pairs_strategy.h"
+#include "../../src/core/strategies/sashimi_jellyfish_strategy.h"
+#include "../../src/core/strategies/sashimi_swordfish_strategy.h"
+#include "../../src/core/strategies/sashimi_x_wing_strategy.h"
 #include "../../src/core/strategies/simple_coloring_strategy.h"
 #include "../../src/core/strategies/skyscraper_strategy.h"
 #include "../../src/core/strategies/sue_de_coq_strategy.h"
 #include "../../src/core/strategies/swordfish_strategy.h"
 #include "../../src/core/strategies/three_d_medusa_strategy.h"
 #include "../../src/core/strategies/two_string_kite_strategy.h"
+#include "../../src/core/strategies/unique_loop_strategy.h"
 #include "../../src/core/strategies/unique_rectangle_strategy.h"
+#include "../../src/core/strategies/unit_forcing_chain_strategy.h"
 #include "../../src/core/strategies/vwxyz_wing_strategy.h"
 #include "../../src/core/strategies/w_wing_strategy.h"
 #include "../../src/core/strategies/wxyz_wing_strategy.h"
@@ -214,8 +226,10 @@ std::vector<std::unique_ptr<ISolvingStrategy>> createStrategyChain() {
     strategies.push_back(std::make_unique<XYZWingStrategy>());
     strategies.push_back(std::make_unique<WWingStrategy>());
     strategies.push_back(std::make_unique<UniqueRectangleStrategy>());
+    strategies.push_back(std::make_unique<UniqueLoopStrategy>());
     strategies.push_back(std::make_unique<SimpleColoringStrategy>());
     strategies.push_back(std::make_unique<FinnedXWingStrategy>());
+    strategies.push_back(std::make_unique<SashimiXWingStrategy>());
     strategies.push_back(std::make_unique<RemotePairsStrategy>());
     strategies.push_back(std::make_unique<BUGStrategy>());
     strategies.push_back(std::make_unique<HiddenUniqueRectangleStrategy>());
@@ -223,21 +237,31 @@ std::vector<std::unique_ptr<ISolvingStrategy>> createStrategyChain() {
     strategies.push_back(std::make_unique<XCyclesStrategy>());
     strategies.push_back(std::make_unique<JellyfishStrategy>());
     strategies.push_back(std::make_unique<FinnedSwordfishStrategy>());
+    strategies.push_back(std::make_unique<SashimiSwordfishStrategy>());
     strategies.push_back(std::make_unique<EmptyRectangleStrategy>());
     strategies.push_back(std::make_unique<WXYZWingStrategy>());
     strategies.push_back(std::make_unique<MultiColoringStrategy>());
     strategies.push_back(std::make_unique<ThreeDMedusaStrategy>());
     strategies.push_back(std::make_unique<FinnedJellyfishStrategy>());
+    strategies.push_back(std::make_unique<SashimiJellyfishStrategy>());
     strategies.push_back(std::make_unique<XYChainStrategy>());
     strategies.push_back(std::make_unique<VWXYZWingStrategy>());
     strategies.push_back(std::make_unique<FrankenFishStrategy>());
+    strategies.push_back(std::make_unique<MutantFishStrategy>());
     strategies.push_back(std::make_unique<GroupedXCyclesStrategy>());
     strategies.push_back(std::make_unique<ALSxZStrategy>());
     strategies.push_back(std::make_unique<SueDeCoqStrategy>());
     strategies.push_back(std::make_unique<ALSXYWingStrategy>());
     strategies.push_back(std::make_unique<DeathBlossomStrategy>());
+    strategies.push_back(std::make_unique<ALSChainStrategy>());
     strategies.push_back(std::make_unique<ForcingChainStrategy>());
+    strategies.push_back(std::make_unique<UnitForcingChainStrategy>());
+    strategies.push_back(std::make_unique<RegionForcingChainStrategy>());
+    strategies.push_back(std::make_unique<KrakenFishStrategy>());
+    strategies.push_back(std::make_unique<JuniorExocetStrategy>());
     strategies.push_back(std::make_unique<NiceLoopStrategy>());
+    strategies.push_back(std::make_unique<ContinuousNiceLoopStrategy>());
+    strategies.push_back(std::make_unique<GroupedNiceLoopStrategy>());
     return strategies;
 }
 

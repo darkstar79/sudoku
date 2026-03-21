@@ -109,7 +109,7 @@ TEST_CASE("BUGStrategy - Detects BUG+1 and produces placement", "[bug]") {
     REQUIRE(result->value > 0);
 }
 
-TEST_CASE("BUGStrategy - Returns nullopt when multiple trivalue cells", "[bug]") {
+TEST_CASE("BUGStrategy - Detects BUG+2 when two trivalue cells are non-conflicting", "[bug]") {
     BoardData board = BoardData::filled(1);  // all filled
     // Leave 4 cells empty — 2 bivalue, 2 trivalue
     board[0][0] = 0;
@@ -126,7 +126,10 @@ TEST_CASE("BUGStrategy - Returns nullopt when multiple trivalue cells", "[bug]")
 
     BUGStrategy strategy;
     auto result = strategy.findStep(board, state);
-    REQUIRE_FALSE(result.has_value());
+    // BUG+2: two trivalue cells in different rows/cols/boxes → should produce placement
+    REQUIRE(result.has_value());
+    REQUIRE(result->type == SolveStepType::Placement);
+    REQUIRE(result->technique == SolvingTechnique::BUG);
 }
 
 TEST_CASE("BUGStrategy - Explanation contains relevant info", "[bug]") {

@@ -99,7 +99,7 @@ Training Mode operates as a 5-phase state machine managed by `TrainingViewModel`
 
 | Phase | UI Page | User Actions |
 |-------|---------|-------------|
-| TechniqueSelection | Scrollable list of 42 techniques grouped into 9 categories | Click a technique button |
+| TechniqueSelection | Scrollable list of 54 techniques grouped into 9 categories | Click a technique button |
 | TheoryReview | Title, SE difficulty rating, "What It Is", "What to Look For" | Start Exercises / Back |
 | Exercise | Interactive board + number pad + hint/skip/quit buttons | Interact with board, Submit, Hint, Skip |
 | Feedback | Result (Correct/Partial/Incorrect), explanation, score | Next Exercise / Retry / Quit |
@@ -189,7 +189,7 @@ Player eliminations are detected by comparing the player's board candidates agai
 
 Players can request up to 3 hints per exercise (tracked in `hints_used` for scoring). Hints are technique-specific, implemented in `src/core/training_hints.h` via `getTrainingHint()`.
 
-All 42 techniques are classified into 11 categories, each with tailored 3-level hint progressions:
+All 54 techniques are classified into 11 categories, each with tailored 3-level hint progressions:
 
 | Category | Hint 1 | Hint 2 | Hint 3 |
 |----------|--------|--------|--------|
@@ -211,7 +211,7 @@ Each hint level highlights relevant cells on the board using `CellRole`-based co
 
 ## Technique Groups
 
-The technique selection page organizes all 42 techniques into 9 groups:
+The technique selection page organizes all 54 techniques into 9 groups:
 
 | Group | Techniques |
 |-------|-----------|
@@ -238,7 +238,7 @@ Each button displays the technique name and Sudoku Explainer (SE) difficulty rat
 | `src/core/training_types.h` | `TrainingPhase`, `TrainingInteractionMode`, `AnswerResult`, `TrainingCellState`, `TrainingBoard`, `TrainingExercise`, `TrainingUIState` |
 | `src/core/i_training_exercise_generator.h` | Interface for exercise generation |
 | `src/core/training_exercise_generator.h/.cpp` | Implementation: puzzle generation → solve → walk forward → snapshot |
-| `src/core/technique_descriptions.h` | `TechniqueDescription` with title, what_it_is, what_to_look_for for all 42 techniques |
+| `src/core/technique_descriptions.h` | `TechniqueDescription` with title, what_it_is, what_to_look_for for all 54 techniques |
 | `src/core/training_hints.h` | `TrainingHint`, `TechniqueCategory`, `getTrainingHint()` — per-technique 3-level progressive hints |
 
 ### ViewModel

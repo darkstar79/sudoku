@@ -73,6 +73,11 @@ enum class TechniqueCategory : uint8_t {
         case FinnedSwordfish:
         case FinnedJellyfish:
         case FrankenFish:
+        case MutantFish:
+        case SashimiXWing:
+        case SashimiSwordfish:
+        case SashimiJellyfish:
+        case KrakenFish:
             return TechniqueCategory::Fish;
         case XYWing:
         case XYZWing:
@@ -91,6 +96,7 @@ enum class TechniqueCategory : uint8_t {
         case UniqueRectangle:
         case HiddenUniqueRectangle:
         case AvoidableRectangle:
+        case UniqueLoop:
             return TechniqueCategory::UniqueRect;
         case XYChain:
         case RemotePairs:
@@ -98,13 +104,19 @@ enum class TechniqueCategory : uint8_t {
         case GroupedXCycles:
         case ForcingChain:
         case NiceLoop:
+        case ContinuousNiceLoop:
+        case GroupedNiceLoop:
+        case UnitForcingChain:
+        case RegionForcingChain:
             return TechniqueCategory::Chains;
         case ALSxZ:
         case ALSXYWing:
         case SueDeCoq:
         case DeathBlossom:
+        case ALSChain:
             return TechniqueCategory::SetLogic;
         case BUG:
+        case JuniorExocet:
         case Backtracking:
             return TechniqueCategory::Special;
     }
