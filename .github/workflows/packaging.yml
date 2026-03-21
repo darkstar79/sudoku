@@ -154,7 +154,7 @@ jobs:
           restore-keys: conan-windows-release-
 
       - name: Install dependencies
-        run: conan install . --build=missing --output-folder=build/Release
+        run: conan install . --build=missing --output-folder=build/Release -o with_tests=False
 
       - name: Configure CMake
         run: |
