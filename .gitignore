@@ -124,3 +124,8 @@ scripts/installer_log.txt
 
 # Windows installer output
 Sudoku-*-win64.exe
+
+# AppImage build artifacts
+.appimage-tools/
+AppDir/
+Sudoku-*.AppImage
