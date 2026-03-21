@@ -67,7 +67,7 @@ struct StallSnapshot {
 };
 
 struct PuzzleAnalysis {
-    int rating{0};
+    double rating{0.0};
     int clue_count{0};
     bool requires_backtracking{false};
     std::set<SolvingTechnique> techniques_used;
