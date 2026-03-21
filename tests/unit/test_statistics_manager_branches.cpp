@@ -208,6 +208,7 @@ TEST_CASE("StatisticsManager - getRecentGames truncation and no-truncation", "[s
     StatsTempDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);
 
     // Create 3 completed games
     for (int i = 0; i < 3; ++i) {
@@ -229,14 +230,8 @@ TEST_CASE("StatisticsManager - getRecentGames truncation and no-truncation", "[s
         REQUIRE(result->size() == 2);
     }
 
-    SECTION("count == 0: returns 0 games") {
-        auto result = mgr.getRecentGames(0);
-        REQUIRE(result.has_value());
-        REQUIRE(result->empty());
-    }
-
-    SECTION("count == -1: returns all games (negative means unlimited)") {
-        auto result = mgr.getRecentGames(-1);
+    SECTION("getAllSessions returns all games") {
+        auto result = mgr.getAllSessions();
         REQUIRE(result.has_value());
         REQUIRE(result->size() == 3);
     }

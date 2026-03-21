@@ -36,10 +36,12 @@ public:
           stats_manager_(test_dir_, mock_time_) {
         // Create test directory
         fs::create_directories(test_dir_);
+        stats_manager_.setCollectDetailedStats(true);
     }
 
     ~StatisticsManagerTestFixture() {
-        // Clean up test directory
+        // Flush before removing the directory (destructor body runs before member destruction)
+        stats_manager_.flushSessions();
         if (fs::exists(test_dir_)) {
             fs::remove_all(test_dir_);
         }
@@ -203,15 +205,20 @@ TEST_CASE("StatisticsManager - Game session tracking", "[statistics_manager][int
             fixture.mock_time_->advanceSystemTime(std::chrono::milliseconds(10));
         }
 
-        // Get recent games
+        // Get recent games (limited)
         auto recent_result = fixture.stats_manager_.getRecentGames(5);
         REQUIRE(recent_result.has_value());
         REQUIRE(recent_result->size() <= 5);
 
+        // Get all sessions (unlimited)
+        auto all_result = fixture.stats_manager_.getAllSessions();
+        REQUIRE(all_result.has_value());
+        REQUIRE(all_result->size() == 10);
+
         // Verify they're sorted by most recent first
-        if (recent_result->size() > 1) {
-            for (size_t i = 1; i < recent_result->size(); ++i) {
-                REQUIRE((*recent_result)[i - 1].end_time >= (*recent_result)[i].end_time);
+        if (all_result->size() > 1) {
+            for (size_t i = 1; i < all_result->size(); ++i) {
+                REQUIRE((*all_result)[i - 1].end_time >= (*all_result)[i].end_time);
             }
         }
     }

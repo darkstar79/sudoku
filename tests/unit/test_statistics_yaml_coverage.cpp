@@ -272,7 +272,7 @@ TEST_CASE("StatisticsManager YAML - empty sessions file", "[statistics_yaml]") {
     writeFile(tmp.path() / "game_sessions.yaml", "[]\n");
 
     // ACT
-    auto result = mgr.getRecentGames(-1);
+    auto result = mgr.getAllSessions();
 
     // ASSERT
     REQUIRE(result.has_value());
@@ -294,7 +294,7 @@ TEST_CASE("StatisticsManager YAML - session with missing fields", "[statistics_y
 )");
 
     // ACT
-    auto result = mgr.getRecentGames(-1);
+    auto result = mgr.getAllSessions();
 
     // ASSERT
     REQUIRE(result.has_value());
@@ -318,18 +318,23 @@ TEST_CASE("StatisticsManager YAML - append mode saves two sessions", "[statistic
     YamlCovTmpDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);
+    mgr.setEncryptSessions(false);  // Plain YAML to test append path
 
-    // ACT: play first game (creates sessions file)
+    // ACT: play first game, flush to create sessions file
     auto id1 = mgr.startGame(Difficulty::Easy, 1, 100);
     REQUIRE(id1.has_value());
     time->advanceSystemTime(std::chrono::milliseconds(10000));
     auto end1 = mgr.endGame(*id1, true);
     REQUIRE(end1.has_value());
 
+    // Force flush so the file exists on disk for the append path
+    mgr.flushSessions();
+
     // Verify sessions file was created
     REQUIRE(fs::exists(tmp.path() / "game_sessions.yaml"));
 
-    // ACT: play second game — this triggers the append path (line 762)
+    // ACT: play second game — this triggers the append path
     auto id2 = mgr.startGame(Difficulty::Medium, 2, 200);
     REQUIRE(id2.has_value());
     time->advanceSystemTime(std::chrono::milliseconds(20000));
@@ -337,7 +342,7 @@ TEST_CASE("StatisticsManager YAML - append mode saves two sessions", "[statistic
     REQUIRE(end2.has_value());
 
     // ASSERT: both sessions should be present
-    auto recent = mgr.getRecentGames(-1);
+    auto recent = mgr.getAllSessions();
     REQUIRE(recent.has_value());
     REQUIRE(recent->size() == 2);
 }
@@ -349,6 +354,8 @@ TEST_CASE("StatisticsManager YAML - corrupted sessions file on append is handled
     YamlCovTmpDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);
+    mgr.setEncryptSessions(false);  // Plain YAML to test append path
 
     // Write corrupted sessions file so the append-mode YAML load fails
     writeFile(tmp.path() / "game_sessions.yaml", "invalid: yaml: {{{broken\n");
@@ -369,6 +376,7 @@ TEST_CASE("StatisticsManager YAML - getRecentGames with many sessions exercises 
     YamlCovTmpDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);
 
     for (int i = 0; i < 5; ++i) {
         auto id = mgr.startGame(static_cast<Difficulty>(i % 4), static_cast<uint32_t>(i + 1), 0);
@@ -378,7 +386,7 @@ TEST_CASE("StatisticsManager YAML - getRecentGames with many sessions exercises 
     }
 
     // ACT
-    auto result = mgr.getRecentGames(-1);
+    auto result = mgr.getAllSessions();
 
     // ASSERT: all 5 sessions returned and sorted newest-first
     REQUIRE(result.has_value());
@@ -393,6 +401,7 @@ TEST_CASE("StatisticsManager YAML - getRecentGames with count limit trims result
     YamlCovTmpDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);
 
     // Play 4 games
     for (int i = 0; i < 4; ++i) {

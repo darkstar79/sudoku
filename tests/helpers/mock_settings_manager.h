@@ -43,6 +43,12 @@ public:
     void setShowHints(bool v) override {
         updateIf(settings_.show_hints, v);
     }
+    void setCollectDetailedStats(bool v) override {
+        updateIf(settings_.collect_detailed_stats, v);
+    }
+    void setEncryptDetailedStats(bool v) override {
+        updateIf(settings_.encrypt_detailed_stats, v);
+    }
     void setLanguage(std::string_view code) override {
         auto s = std::string(code);
         updateIf(settings_.language, s);

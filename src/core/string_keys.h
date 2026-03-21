@@ -186,12 +186,25 @@ inline constexpr std::string_view DialogReset = "dialog.reset";
 inline constexpr std::string_view DialogSaveGame = "dialog.save_game";
 inline constexpr std::string_view DialogEnterSaveName = "dialog.enter_save_name";
 inline constexpr std::string_view DialogSave = "dialog.save";
+inline constexpr std::string_view SavePreviewTitle = "save.preview_title";
+inline constexpr std::string_view SavePreviewDifficulty = "save.preview_difficulty";
+inline constexpr std::string_view SavePreviewTime = "save.preview_time";
+inline constexpr std::string_view SavePreviewMoves = "save.preview_moves";
+inline constexpr std::string_view SavePreviewMistakes = "save.preview_mistakes";
+inline constexpr std::string_view SaveNamePlaceholder = "save.name_placeholder";
+inline constexpr std::string_view SaveNameEmpty = "save.name_empty";
+inline constexpr std::string_view SaveOverwriteConfirm = "save.overwrite_confirm";
 
 // =========================================================================
 // Dialogs — Load
 // =========================================================================
 inline constexpr std::string_view DialogLoadGame = "dialog.load_game";
 inline constexpr std::string_view DialogRecentSaves = "dialog.recent_saves";
+inline constexpr std::string_view LoadColName = "load.col_name";
+inline constexpr std::string_view LoadColDifficulty = "load.col_difficulty";
+inline constexpr std::string_view LoadColDate = "load.col_date";
+inline constexpr std::string_view LoadColTime = "load.col_time";
+inline constexpr std::string_view LoadColRating = "load.col_rating";
 
 // =========================================================================
 // Dialogs — Statistics (parameterized with fmt-style {0})
@@ -206,6 +219,32 @@ inline constexpr std::string_view StatsAverageTime = "stats.average_time";
 inline constexpr std::string_view StatsCurrentStreak = "stats.current_streak";
 inline constexpr std::string_view StatsBestStreak = "stats.best_streak";
 inline constexpr std::string_view StatsTimeNa = "stats.time_na";
+
+// Statistics dialog — tabs
+inline constexpr std::string_view StatsTabOverview = "stats.tab_overview";
+inline constexpr std::string_view StatsTabPerDifficulty = "stats.tab_per_difficulty";
+inline constexpr std::string_view StatsTabRecentGames = "stats.tab_recent_games";
+
+// Statistics dialog — totals
+inline constexpr std::string_view StatsTotalMoves = "stats.total_moves";
+inline constexpr std::string_view StatsTotalHints = "stats.total_hints";
+inline constexpr std::string_view StatsTotalMistakes = "stats.total_mistakes";
+inline constexpr std::string_view StatsTotalTime = "stats.total_time";
+
+// Statistics dialog — per-difficulty table rows
+inline constexpr std::string_view StatsRowPlayed = "stats.row_played";
+inline constexpr std::string_view StatsRowCompleted = "stats.row_completed";
+inline constexpr std::string_view StatsRowBestTime = "stats.row_best_time";
+inline constexpr std::string_view StatsRowAvgTime = "stats.row_avg_time";
+inline constexpr std::string_view StatsRowAvgRating = "stats.row_avg_rating";
+
+// Statistics dialog — recent games columns
+inline constexpr std::string_view StatsColDate = "stats.col_date";
+inline constexpr std::string_view StatsColDifficulty = "stats.col_difficulty";
+inline constexpr std::string_view StatsColTime = "stats.col_time";
+inline constexpr std::string_view StatsColRating = "stats.col_rating";
+inline constexpr std::string_view StatsColMoves = "stats.col_moves";
+inline constexpr std::string_view StatsColMistakes = "stats.col_mistakes";
 
 // =========================================================================
 // Dialogs — About
@@ -228,6 +267,12 @@ inline constexpr std::string_view SettingsDefaultDifficulty = "settings.default_
 inline constexpr std::string_view SettingsSecondsSuffix = "settings.seconds_suffix";
 inline constexpr std::string_view SettingsHighlightConflicts = "settings.highlight_conflicts";
 inline constexpr std::string_view SettingsShowHints = "settings.show_hints";
+inline constexpr std::string_view SettingsCollectDetailedStats = "settings.collect_detailed_stats";
+inline constexpr std::string_view SettingsEncryptDetailedStats = "settings.encrypt_detailed_stats";
+inline constexpr std::string_view SettingsEncryptDetailedStatsTooltip = "settings.encrypt_detailed_stats_tooltip";
+inline constexpr std::string_view SettingsTabStatistics = "settings.tab_statistics";
+inline constexpr std::string_view StatsDeletePrompt = "stats.delete_prompt";
+inline constexpr std::string_view StatsSessionsDeleted = "stats.sessions_deleted";
 
 // =========================================================================
 // Tooltips — Rating scale

@@ -95,12 +95,20 @@ public:
     }
 };
 
-/// Minimal localization manager for tests
+/// Minimal localization manager for tests — returns key as-is, except for
+/// keys that are used as fmt::format templates (contain {0} in the real locale).
+/// Those need a valid placeholder so locFormat() doesn't crash.
 class MockLocManager : public ILocalizationManager {
 public:
     [[nodiscard]] std::string_view getString(std::string_view key) const override {
+        // Keys used with locFormat() need a valid {0} placeholder.
+        // Detect by suffix pattern rather than hardcoding specific keys.
+        if (key.find("feedback_") != std::string_view::npos || key.find("correct_continue") != std::string_view::npos) {
+            return format_placeholder_;
+        }
         return key;
     }
+
     [[nodiscard]] std::expected<void, std::string> setLocale(std::string_view /*locale_code*/) override {
         return {};
     }
@@ -110,6 +118,10 @@ public:
     [[nodiscard]] std::vector<std::pair<std::string, std::string>> getAvailableLocales() const override {
         return {{"en", "English"}};
     }
+
+private:
+    // Generic format template for any key that locFormat() will expand
+    std::string format_placeholder_ = "{0}";
 };
 
 struct VMFixture {

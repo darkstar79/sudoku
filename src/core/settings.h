@@ -32,6 +32,8 @@ struct Settings {
     // Display
     bool show_conflicts{true};
     bool show_hints{true};
+    bool collect_detailed_stats{false};
+    bool encrypt_detailed_stats{true};
 
     // Language
     std::string language{"en"};

@@ -59,13 +59,22 @@ public:
     EncryptionManager(EncryptionManager&&) = delete;
     EncryptionManager& operator=(EncryptionManager&&) = delete;
 
-    /// Encrypts plaintext using system-derived key
+    /// Encrypts plaintext using system-derived key (Argon2id MODERATE KDF)
     /// @param plaintext Data to encrypt (can be compressed YAML)
     /// @return Encrypted file format with header, salt, nonce, and ciphertext
     [[nodiscard]] static std::expected<std::vector<uint8_t>, EncryptionError>
     encrypt(const std::vector<uint8_t>& plaintext);
 
+    /// Encrypts plaintext using system-derived key (Argon2id INTERACTIVE KDF — faster)
+    /// Suitable for data written frequently (statistics). Uses flags byte 0x01 to indicate
+    /// interactive KDF, so decrypt() automatically selects the correct cost level.
+    /// @param plaintext Data to encrypt
+    /// @return Encrypted file format with header, salt, nonce, and ciphertext
+    [[nodiscard]] static std::expected<std::vector<uint8_t>, EncryptionError>
+    encryptInteractive(const std::vector<uint8_t>& plaintext);
+
     /// Decrypts ciphertext using system-derived key
+    /// Automatically detects KDF level from the flags byte.
     /// @param encrypted_data Complete encrypted file (header + salt + nonce + ciphertext)
     /// @return Decrypted plaintext data
     [[nodiscard]] static std::expected<std::vector<uint8_t>, EncryptionError>
@@ -88,11 +97,19 @@ private:
     static constexpr size_t KEY_SIZE = 32;    // crypto_secretbox_KEYBYTES
     static constexpr size_t MAC_SIZE = 16;    // crypto_secretbox_MACBYTES
 
+    /// KDF cost level flags (stored in file header flags byte)
+    static constexpr uint8_t FLAG_INTERACTIVE_KDF = 0x01;
+
+    /// Internal encrypt implementation with configurable KDF cost
+    [[nodiscard]] static std::expected<std::vector<uint8_t>, EncryptionError>
+    encryptWithFlags(const std::vector<uint8_t>& plaintext, uint8_t flags);
+
     /// Derives encryption key from system identifiers using Argon2id
     /// @param salt Random salt for this encryption
+    /// @param interactive Use INTERACTIVE (fast) instead of MODERATE (secure) KDF cost
     /// @return 32-byte encryption key
     [[nodiscard]] static std::expected<std::vector<uint8_t>, EncryptionError>
-    deriveKey(const std::vector<uint8_t>& salt);
+    deriveKey(const std::vector<uint8_t>& salt, bool interactive = false);
 
     /// Retrieves system-specific identifier string
     /// Combines machine-id, hostname, and username for key derivation

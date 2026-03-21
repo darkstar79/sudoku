@@ -50,17 +50,29 @@ EncryptionManager::EncryptionManager() {
 }
 
 std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::encrypt(const std::vector<uint8_t>& plaintext) {
+    return encryptWithFlags(plaintext, 0);
+}
+
+std::expected<std::vector<uint8_t>, EncryptionError>
+EncryptionManager::encryptInteractive(const std::vector<uint8_t>& plaintext) {
+    return encryptWithFlags(plaintext, FLAG_INTERACTIVE_KDF);
+}
+
+std::expected<std::vector<uint8_t>, EncryptionError>
+EncryptionManager::encryptWithFlags(const std::vector<uint8_t>& plaintext, uint8_t flags) {
     if (plaintext.empty()) {
         spdlog::error("Cannot encrypt empty data");
         return std::unexpected(EncryptionError::InvalidInput);
     }
+
+    bool interactive = (flags & FLAG_INTERACTIVE_KDF) != 0;
 
     // Generate random salt and nonce
     auto salt = generateRandomBytes(SALT_SIZE);
     auto nonce = generateRandomBytes(NONCE_SIZE);
 
     // Derive encryption key from system identifiers
-    auto key_result = deriveKey(salt);
+    auto key_result = deriveKey(salt, interactive);
     if (!key_result) {
         return std::unexpected(key_result.error());
     }
@@ -88,7 +100,7 @@ std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::encrypt(
     // Header
     encrypted_file.insert(encrypted_file.end(), MAGIC_BYTES.begin(), MAGIC_BYTES.end());
     encrypted_file.push_back(VERSION);
-    encrypted_file.push_back(0);  // Flags (reserved)
+    encrypted_file.push_back(flags);
 
     // Salt and nonce
     encrypted_file.insert(encrypted_file.end(), salt.begin(), salt.end());
@@ -97,7 +109,8 @@ std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::encrypt(
     // Ciphertext
     encrypted_file.insert(encrypted_file.end(), ciphertext.begin(), ciphertext.end());
 
-    spdlog::debug("Encrypted {} bytes to {} bytes", plaintext.size(), encrypted_file.size());
+    spdlog::debug("Encrypted {} bytes to {} bytes (interactive={})", plaintext.size(), encrypted_file.size(),
+                  interactive);
     return encrypted_file;
 }
 
@@ -123,6 +136,10 @@ EncryptionManager::decrypt(const std::vector<uint8_t>& encrypted_data) {
         return std::unexpected(EncryptionError::InvalidFileFormat);
     }
 
+    // Read flags to determine KDF cost level
+    uint8_t flags = encrypted_data[5];
+    bool interactive = (flags & FLAG_INTERACTIVE_KDF) != 0;
+
     // Extract salt and nonce
     std::vector<uint8_t> salt(encrypted_data.begin() + HEADER_SIZE, encrypted_data.begin() + HEADER_SIZE + SALT_SIZE);
     std::vector<uint8_t> nonce(encrypted_data.begin() + HEADER_SIZE + SALT_SIZE,
@@ -132,8 +149,8 @@ EncryptionManager::decrypt(const std::vector<uint8_t>& encrypted_data) {
     const size_t ciphertext_start = HEADER_SIZE + SALT_SIZE + NONCE_SIZE;
     std::vector<uint8_t> ciphertext(encrypted_data.begin() + ciphertext_start, encrypted_data.end());
 
-    // Derive decryption key
-    auto key_result = deriveKey(salt);
+    // Derive decryption key (cost level from flags)
+    auto key_result = deriveKey(salt, interactive);
     if (!key_result) {
         return std::unexpected(key_result.error());
     }
@@ -165,7 +182,8 @@ bool EncryptionManager::isEncrypted(const std::vector<uint8_t>& data) {
     return std::equal(MAGIC_BYTES.begin(), MAGIC_BYTES.end(), data.begin());
 }
 
-std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::deriveKey(const std::vector<uint8_t>& salt) {
+std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::deriveKey(const std::vector<uint8_t>& salt,
+                                                                                  bool interactive) {
     if (salt.size() != SALT_SIZE) {
         spdlog::error("Invalid salt size: {}", salt.size());
         return std::unexpected(EncryptionError::KeyDerivationFailed);
@@ -181,12 +199,12 @@ std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::deriveKe
     // Derive key using Argon2id
     std::vector<uint8_t> key(KEY_SIZE);
 
-    // Argon2id parameters:
-    // - opslimit: moderate (interactive use, ~0.5s on modern hardware)
-    // - memlimit: moderate (64 MB)
-    int result =
-        crypto_pwhash(key.data(), key.size(), system_id.c_str(), system_id.length(), salt.data(),
-                      crypto_pwhash_OPSLIMIT_MODERATE, crypto_pwhash_MEMLIMIT_MODERATE, crypto_pwhash_ALG_ARGON2ID13);
+    // Select KDF cost level
+    auto opslimit = interactive ? crypto_pwhash_OPSLIMIT_INTERACTIVE : crypto_pwhash_OPSLIMIT_MODERATE;
+    auto memlimit = interactive ? crypto_pwhash_MEMLIMIT_INTERACTIVE : crypto_pwhash_MEMLIMIT_MODERATE;
+
+    int result = crypto_pwhash(key.data(), key.size(), system_id.c_str(), system_id.length(), salt.data(), opslimit,
+                               memlimit, crypto_pwhash_ALG_ARGON2ID13);
 
     // Securely zero out password material
     sodium_memzero(const_cast<char*>(system_id.data()), system_id.size());
@@ -196,7 +214,7 @@ std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::deriveKe
         return std::unexpected(EncryptionError::KeyDerivationFailed);
     }
 
-    spdlog::debug("Derived encryption key from system identifiers");
+    spdlog::debug("Derived encryption key from system identifiers (interactive={})", interactive);
     return key;
 }
 

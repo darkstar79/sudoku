@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 
+#include <yaml-cpp/yaml.h>
+
 namespace sudoku::core::statistics_serializer {
 
 /// Serializes aggregate statistics to a YAML file
@@ -46,6 +48,10 @@ serializeGameStatsToYaml(const GameStats& stats, const std::filesystem::path& fi
 /// Deserializes all game sessions from a YAML file
 [[nodiscard]] std::expected<std::vector<GameStats>, StatisticsError>
 deserializeGameStatsFromYaml(const std::filesystem::path& file_path);
+
+/// Deserializes game sessions from an already-parsed YAML node (for encrypted data)
+[[nodiscard]] std::expected<std::vector<GameStats>, StatisticsError>
+deserializeGameStatsFromNode(const YAML::Node& sessions_node);
 
 /// Writes aggregate statistics as CSV to a file
 [[nodiscard]] std::expected<void, StatisticsError> exportAggregateStatsCsv(const AggregateStats& stats,

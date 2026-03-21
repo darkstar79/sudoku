@@ -21,7 +21,7 @@ namespace sudoku::view {
 /// CSS color constants for Qt stylesheet use.
 /// Board-level paint colors (QColor) live in BoardColors (board_painter.h),
 /// SudokuBoardColors (sudoku_board_widget.h), and TrainingBoardColors (training_board_widget.h).
-namespace UIColors {
+namespace StyleColors {
 
 // Primary action (blue buttons, badges, highlights)
 inline constexpr auto PRIMARY = "#2563eb";
@@ -61,6 +61,6 @@ inline constexpr auto TOAST_TEXT = "#00cc00";
 // Hint text
 inline constexpr auto HINT_TEXT = "#0052cc";
 
-}  // namespace UIColors
+}  // namespace StyleColors
 
 }  // namespace sudoku::view

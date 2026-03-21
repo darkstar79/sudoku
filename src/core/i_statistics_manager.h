@@ -133,11 +133,14 @@ public:
     [[nodiscard]] virtual std::expected<AggregateStats, StatisticsError>
     getStatsForDifficulty(Difficulty difficulty) const = 0;
 
-    /// Gets recent game history
-    /// @param count Maximum number of recent games to return
-    /// @return Vector of recent game statistics
-    [[nodiscard]] virtual std::expected<std::vector<GameStats>, StatisticsError>
-    getRecentGames(int count = 10) const = 0;
+    /// Gets all stored game sessions (disk + pending), sorted newest-first.
+    /// @return All session records or error
+    [[nodiscard]] virtual std::expected<std::vector<GameStats>, StatisticsError> getAllSessions() const = 0;
+
+    /// Gets the N most recent game sessions, sorted newest-first.
+    /// @param count Number of recent games to return (must be > 0)
+    /// @return Up to @p count session records or error
+    [[nodiscard]] virtual std::expected<std::vector<GameStats>, StatisticsError> getRecentGames(int count) const = 0;
 
     /// Gets personal best times for each difficulty
     /// @return Array of best times [Easy, Medium, Hard, Expert, Master]
@@ -171,6 +174,19 @@ public:
 
     /// Resets all statistics (for testing or user preference)
     virtual void resetAllStats() = 0;
+
+    /// Enable/disable detailed per-session data collection.
+    /// When disabled, endGame() still updates aggregate stats but does not persist individual sessions.
+    virtual void setCollectDetailedStats(bool enabled) = 0;
+
+    /// Enable/disable encryption of the session history file.
+    virtual void setEncryptSessions(bool enabled) = 0;
+
+    /// Delete all stored per-session history data.
+    [[nodiscard]] virtual std::expected<void, StatisticsError> deleteSessionHistory() = 0;
+
+    /// Flush any buffered sessions to disk (called on app exit).
+    virtual void flushSessions() = 0;
 
 protected:
     // Protected special member functions to prevent slicing while allowing derived classes

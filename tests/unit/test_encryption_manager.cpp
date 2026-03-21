@@ -285,10 +285,9 @@ TEST_CASE("EncryptionManager data integrity", "[encryption_manager]") {
         auto tampered = *encrypted;
         tampered[5] ^= 0x01;
 
-        // Decryption should still work (flags not used in crypto)
-        // But tampering with salt/nonce/ciphertext should fail
+        // Flipping FLAG_INTERACTIVE_KDF changes the KDF cost, producing a different key
         auto result = manager.decrypt(tampered);
-        REQUIRE(result.has_value());  // Flags field not authenticated
+        REQUIRE_FALSE(result.has_value());  // Wrong KDF → wrong key → MAC mismatch
     }
 
     SECTION("Tampering with salt detected") {

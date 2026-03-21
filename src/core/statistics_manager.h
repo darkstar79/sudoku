@@ -17,6 +17,7 @@
 #pragma once
 
 #include "core/i_puzzle_generator.h"
+#include "encryption_manager.h"
 #include "i_statistics_manager.h"
 #include "i_time_provider.h"
 
@@ -27,6 +28,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace sudoku::core {
 
@@ -59,7 +61,8 @@ public:
 
     std::expected<AggregateStats, StatisticsError> getStatsForDifficulty(Difficulty difficulty) const override;
 
-    std::expected<std::vector<GameStats>, StatisticsError> getRecentGames(int count) const override;
+    [[nodiscard]] std::expected<std::vector<GameStats>, StatisticsError> getAllSessions() const override;
+    [[nodiscard]] std::expected<std::vector<GameStats>, StatisticsError> getRecentGames(int count) const override;
 
     std::array<std::chrono::milliseconds, 5> getBestTimes() const override;
     std::array<double, 5> getCompletionRates() const override;
@@ -77,9 +80,15 @@ public:
 
     void resetAllStats() override;
 
+    void setCollectDetailedStats(bool enabled) override;
+    void setEncryptSessions(bool enabled) override;
+    [[nodiscard]] std::expected<void, StatisticsError> deleteSessionHistory() override;
+    void flushSessions() override;
+
 private:
     // Dependencies
     std::shared_ptr<ITimeProvider> time_provider_;
+    std::unique_ptr<EncryptionManager> encryption_manager_;
 
     std::filesystem::path stats_directory_;
     std::filesystem::path stats_file_;
@@ -88,6 +97,11 @@ private:
     // Active game sessions
     std::unordered_map<uint64_t, GameStats> active_sessions_;
     uint64_t next_session_id_{1};
+
+    // Detailed stats settings
+    bool collect_detailed_stats_{false};
+    bool encrypt_sessions_{true};
+    std::vector<GameStats> pending_sessions_;
 
     // Cached aggregate statistics
     mutable AggregateStats cached_stats_;
@@ -108,6 +122,10 @@ private:
     void updateAggregateStats(const GameStats& completed_game) const;
     void invalidateStatsCache();
     std::expected<void, StatisticsError> recalculateAggregateStats() const;
+
+    // Atomic file write (write to .tmp, then rename)
+    static std::expected<void, StatisticsError> atomicWriteFile(const std::filesystem::path& target,
+                                                                const std::vector<uint8_t>& data);
 
     // Validation
     bool isValidGameSession(uint64_t game_id) const;

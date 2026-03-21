@@ -22,9 +22,9 @@
 #include "core/technique_descriptions.h"
 #include "core/training_learning_path.h"
 #include "core/training_types.h"
+#include "style_colors.h"
 #include "training_board_widget.h"
 #include "training_number_pad.h"
-#include "ui_colors.h"
 #include "view_model/training_view_model.h"
 
 #include <array>
@@ -322,13 +322,13 @@ void TrainingWidget::buildTheoryPage() {
 
     auto* points_label = new QLabel;
     points_label->setObjectName("theoryPoints");
-    points_label->setStyleSheet(QString("color: %1;").arg(UIColors::TEXT_MUTED));
+    points_label->setStyleSheet(QString("color: %1;").arg(StyleColors::TEXT_MUTED));
     layout->addWidget(points_label);
 
     auto* prereqs_label = new QLabel;
     prereqs_label->setObjectName("theoryPrereqs");
     prereqs_label->setWordWrap(true);
-    prereqs_label->setStyleSheet(QString("color: %1; font-style: italic;").arg(UIColors::TEXT_SUBTLE));
+    prereqs_label->setStyleSheet(QString("color: %1; font-style: italic;").arg(StyleColors::TEXT_SUBTLE));
     layout->addWidget(prereqs_label);
 
     layout->addWidget(new QLabel(QString("<b>%1</b>").arg(qstr(loc(TrainingWhatItIs)))));
@@ -428,13 +428,13 @@ void TrainingWidget::buildExercisePage() {
     color_a_btn_ = new QPushButton("A");
     color_a_btn_->setFixedSize(44, 44);
     color_a_btn_->setStyleSheet(
-        QString("background-color: %1; font-weight: bold; font-size: 16px;").arg(UIColors::PALETTE_A));
+        QString("background-color: %1; font-weight: bold; font-size: 16px;").arg(StyleColors::PALETTE_A));
     color_a_btn_->setCheckable(true);
     color_a_btn_->setChecked(true);
     color_b_btn_ = new QPushButton("B");
     color_b_btn_->setFixedSize(44, 44);
     color_b_btn_->setStyleSheet(
-        QString("background-color: %1; font-weight: bold; font-size: 16px;").arg(UIColors::PALETTE_B));
+        QString("background-color: %1; font-weight: bold; font-size: 16px;").arg(StyleColors::PALETTE_B));
     color_b_btn_->setCheckable(true);
     color_layout->addWidget(color_label);
     color_layout->addWidget(color_a_btn_);
@@ -447,7 +447,7 @@ void TrainingWidget::buildExercisePage() {
     auto* hint_label = new QLabel;
     hint_label->setObjectName("exerciseHint");
     hint_label->setWordWrap(true);
-    hint_label->setStyleSheet(QString("color: %1; font-style: italic; padding: 4px 0;").arg(UIColors::HINT_TEXT));
+    hint_label->setStyleSheet(QString("color: %1; font-style: italic; padding: 4px 0;").arg(StyleColors::HINT_TEXT));
     hint_label->setVisible(false);
     layout->addWidget(hint_label);
 
@@ -574,7 +574,7 @@ void TrainingWidget::buildExercisePage() {
             if (state.phase == core::TrainingPhase::Exercise && !state.found_step_message.empty()) {
                 hint_label->setText(QString::fromStdString(state.found_step_message));
                 hint_label->setStyleSheet(
-                    QString("color: %1; font-weight: bold; padding: 4px 0;").arg(UIColors::SUCCESS));
+                    QString("color: %1; font-weight: bold; padding: 4px 0;").arg(StyleColors::SUCCESS));
                 hint_label->setVisible(true);
             }
         }
@@ -711,15 +711,15 @@ void TrainingWidget::buildFeedbackPage() {
         switch (state.last_result) {
             case core::AnswerResult::Correct:
                 result_text = qstr(loc(TrainingCorrect));
-                color = QString("color: %1;").arg(UIColors::SUCCESS);
+                color = QString("color: %1;").arg(StyleColors::SUCCESS);
                 break;
             case core::AnswerResult::PartiallyCorrect:
                 result_text = qstr(loc(TrainingPartiallyCorrect));
-                color = QString("color: %1;").arg(UIColors::WARNING);
+                color = QString("color: %1;").arg(StyleColors::WARNING);
                 break;
             case core::AnswerResult::Incorrect:
                 result_text = qstr(loc(TrainingIncorrect));
-                color = QString("color: %1;").arg(UIColors::ERROR_COLOR);
+                color = QString("color: %1;").arg(StyleColors::ERROR_COLOR);
                 break;
         }
 
@@ -814,22 +814,23 @@ void TrainingWidget::buildLessonCompletePage() {
                     break;
             }
             verdict_label->setText(QString::fromStdString(locFormat(TrainingMastery, mastery_text)));
-            verdict_label->setStyleSheet(mastery == core::MasteryLevel::Mastered
-                                             ? QString("color: %1; font-weight: bold;").arg(UIColors::SUCCESS)
-                                             : QString("color: %1; font-weight: bold;").arg(UIColors::TEXT_NEAR_BLACK));
+            verdict_label->setStyleSheet(
+                mastery == core::MasteryLevel::Mastered
+                    ? QString("color: %1; font-weight: bold;").arg(StyleColors::SUCCESS)
+                    : QString("color: %1; font-weight: bold;").arg(StyleColors::TEXT_NEAR_BLACK));
         } else {
             float ratio = state.total_exercises > 0
                               ? static_cast<float>(state.correct_count) / static_cast<float>(state.total_exercises)
                               : 0.0f;
             if (ratio >= 0.8f) {
                 verdict_label->setText(qstr(loc(TrainingExcellent)));
-                verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(UIColors::SUCCESS));
+                verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(StyleColors::SUCCESS));
             } else if (ratio >= 0.5f) {
                 verdict_label->setText(qstr(loc(TrainingGoodProgress)));
-                verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(UIColors::WARNING));
+                verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(StyleColors::WARNING));
             } else {
                 verdict_label->setText(qstr(loc(TrainingKeepPracticing)));
-                verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(UIColors::ERROR_COLOR));
+                verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(StyleColors::ERROR_COLOR));
             }
         }
     });

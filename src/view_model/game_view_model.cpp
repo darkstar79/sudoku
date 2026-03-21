@@ -56,6 +56,11 @@ GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
             state.show_conflicts = settings.show_conflicts;
             state.show_hints = settings.show_hints;
         });
+        // Wire detailed stats settings to statistics manager
+        if (stats_manager_) {
+            stats_manager_->setCollectDetailedStats(settings.collect_detailed_stats);
+            stats_manager_->setEncryptSessions(settings.encrypt_detailed_stats);
+        }
     }
     spdlog::debug("GameViewModel initialized with dependencies");
     updateUIState();
@@ -313,9 +318,12 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
         saved_game.puzzle_technique_ids.push_back(static_cast<int>(tech));
     }
 
+    saved_game.display_name = name;
+
     core::SaveSettings settings;
     settings.encrypt = true;
     settings.compress = true;
+    settings.custom_name = name;
 
     auto save_result = save_manager_->saveGame(saved_game, settings);
     if (!save_result) {

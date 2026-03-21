@@ -27,19 +27,22 @@
 #include <compare>
 #include <cstddef>
 #include <exception>
+#include <fstream>
 #include <ratio>
+#include <sstream>
 #include <utility>
 #include <vector>
 
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
 
 namespace sudoku::core {
 
 StatisticsManager::StatisticsManager(std::filesystem::path stats_directory,
                                      std::shared_ptr<ITimeProvider> time_provider)
-    : time_provider_(std::move(time_provider)) {
+    : time_provider_(std::move(time_provider)), encryption_manager_(std::make_unique<EncryptionManager>()) {
     if (stats_directory.empty()) {
         // Use platform-appropriate default directory
         stats_directory_ =
@@ -73,10 +76,17 @@ StatisticsManager::~StatisticsManager() {
         stats.time_played = std::chrono::duration_cast<std::chrono::milliseconds>(stats.end_time - stats.start_time);
         stats.completed = false;
 
-        std::ignore = saveGameSession(stats);
+        if (collect_detailed_stats_) {
+            pending_sessions_.push_back(stats);
+        }
         updateAggregateStats(stats);
     }
 
+    try {
+        flushSessions();
+    } catch (const std::exception& e) {
+        spdlog::error("Failed to flush sessions in destructor: {}", e.what());
+    }
     std::ignore = saveStatistics();
 }
 
@@ -145,10 +155,9 @@ std::expected<GameStats, StatisticsError> StatisticsManager::endGame(uint64_t ga
     stats.time_played = std::chrono::duration_cast<std::chrono::milliseconds>(stats.end_time - stats.start_time);
     stats.completed = completed;
 
-    // Save the completed game session
-    auto save_result = saveGameSession(stats);
-    if (!save_result) {
-        spdlog::warn("Failed to save game session {}", game_id);
+    // Buffer the session if collection is enabled (flushed on app exit)
+    if (collect_detailed_stats_) {
+        pending_sessions_.push_back(stats);
     }
 
     // Update aggregate statistics
@@ -216,34 +225,65 @@ std::expected<AggregateStats, StatisticsError> StatisticsManager::getStatsForDif
     return difficulty_stats;
 }
 
-std::expected<std::vector<GameStats>, StatisticsError> StatisticsManager::getRecentGames(int count) const {
+std::expected<std::vector<GameStats>, StatisticsError> StatisticsManager::getAllSessions() const {
     try {
-        if (!std::filesystem::exists(sessions_file_)) {
-            return std::vector<GameStats>{};  // Return empty if no sessions file
+        std::vector<GameStats> sessions;
+
+        if (std::filesystem::exists(sessions_file_)) {
+            // Read file as binary to detect encryption
+            std::ifstream file(sessions_file_, std::ios::binary);
+            std::vector<uint8_t> file_data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+            file.close();
+
+            if (EncryptionManager::isEncrypted(file_data)) {
+                // Decrypt then parse YAML
+                auto dec_result = EncryptionManager::decrypt(file_data);
+                if (dec_result) {
+                    std::string yaml_str(dec_result->begin(), dec_result->end());
+                    YAML::Node root = YAML::Load(yaml_str);
+                    auto parsed = statistics_serializer::deserializeGameStatsFromNode(root);
+                    if (parsed) {
+                        sessions = std::move(*parsed);
+                    }
+                } else {
+                    spdlog::warn("Failed to decrypt sessions file, treating as empty");
+                }
+            } else {
+                // Plain YAML
+                auto result = statistics_serializer::deserializeGameStatsFromYaml(sessions_file_);
+                if (!result) {
+                    return std::unexpected(result.error());
+                }
+                sessions = std::move(*result);
+            }
         }
 
-        auto all_sessions_result = statistics_serializer::deserializeGameStatsFromYaml(sessions_file_);
-        if (!all_sessions_result) {
-            return std::unexpected(all_sessions_result.error());
-        }
-
-        auto sessions = *all_sessions_result;
+        // Merge pending (in-memory) sessions
+        sessions.insert(sessions.end(), pending_sessions_.begin(), pending_sessions_.end());
 
         // Sort by start time (newest first)
         std::ranges::sort(sessions,
                           [](const GameStats& lhs, const GameStats& rhs) { return lhs.start_time > rhs.start_time; });
 
-        // Return requested count
-        if (count >= 0 && std::cmp_less(count, sessions.size())) {
-            sessions.resize(count);
-        }
-
         return sessions;
 
     } catch (const std::exception& e) {
-        spdlog::error("Exception getting recent games: {}", e.what());
+        spdlog::error("Exception loading all sessions: {}", e.what());
         return std::unexpected(StatisticsError::FileAccessError);
     }
+}
+
+std::expected<std::vector<GameStats>, StatisticsError> StatisticsManager::getRecentGames(int count) const {
+    auto all = getAllSessions();
+    if (!all) {
+        return all;
+    }
+
+    if (count > 0 && std::cmp_less(count, all->size())) {
+        all->resize(count);
+    }
+
+    return all;
 }
 
 std::array<std::chrono::milliseconds, 5> StatisticsManager::getBestTimes() const {
@@ -308,18 +348,13 @@ std::expected<void, StatisticsError> StatisticsManager::exportAggregateStatsCsv(
 
 std::expected<void, StatisticsError> StatisticsManager::exportGameSessionsCsv(const std::string& file_path) const {
     try {
-        // Load all game sessions
-        std::vector<GameStats> all_sessions;
-
-        if (std::filesystem::exists(sessions_file_)) {
-            auto sessions_result = statistics_serializer::deserializeGameStatsFromYaml(sessions_file_);
-            if (!sessions_result) {
-                return std::unexpected(sessions_result.error());
-            }
-            all_sessions = *sessions_result;
+        // Load all game sessions (handles both encrypted and plain YAML + pending)
+        auto sessions_result = getAllSessions();
+        if (!sessions_result) {
+            return std::unexpected(sessions_result.error());
         }
 
-        return statistics_serializer::exportGameSessionsCsv(all_sessions, file_path);
+        return statistics_serializer::exportGameSessionsCsv(*sessions_result, file_path);
 
     } catch (const std::exception& e) {
         spdlog::error("Exception during CSV export: {}", e.what());
@@ -468,10 +503,24 @@ std::expected<void, StatisticsError> StatisticsManager::saveStatistics() const {
             return std::unexpected(StatisticsError::InvalidGameData);
         }
 
+        // Write to temp file, then atomically rename
+        auto tmp_path = stats_file_;
+        tmp_path += ".tmp";
+
         auto serialize_result =
-            statistics_serializer::serializeStatsToYaml(cached_stats_, stats_file_, time_provider_->systemNow());
+            statistics_serializer::serializeStatsToYaml(cached_stats_, tmp_path, time_provider_->systemNow());
         if (!serialize_result) {
+            std::error_code ec;
+            std::filesystem::remove(tmp_path, ec);
             return std::unexpected(serialize_result.error());
+        }
+
+        std::error_code ec;
+        std::filesystem::rename(tmp_path, stats_file_, ec);
+        if (ec) {
+            spdlog::error("Failed to rename aggregate stats: {}", ec.message());
+            std::filesystem::remove(tmp_path, ec);
+            return std::unexpected(StatisticsError::FileAccessError);
         }
 
         spdlog::debug("Saved aggregate statistics to file");
@@ -570,7 +619,8 @@ std::expected<void, StatisticsError> StatisticsManager::recalculateAggregateStat
             return {};
         }
 
-        auto sessions_result = statistics_serializer::deserializeGameStatsFromYaml(sessions_file_);
+        // Read sessions (handles both encrypted and plain YAML)
+        auto sessions_result = getAllSessions();
         if (!sessions_result) {
             return std::unexpected(sessions_result.error());
         }
@@ -604,6 +654,120 @@ bool StatisticsManager::isValidDifficulty(Difficulty difficulty) {
     int diff_val = static_cast<int>(difficulty);
     // Difficulty enum is 0-based: Easy=0, Medium=1, Hard=2, Expert=3
     return diff_val >= 0 && diff_val <= 3;
+}
+
+void StatisticsManager::setCollectDetailedStats(bool enabled) {
+    collect_detailed_stats_ = enabled;
+    spdlog::info("Detailed stats collection: {}", enabled ? "enabled" : "disabled");
+}
+
+void StatisticsManager::setEncryptSessions(bool enabled) {
+    encrypt_sessions_ = enabled;
+    spdlog::info("Session encryption: {}", enabled ? "enabled" : "disabled");
+}
+
+std::expected<void, StatisticsError> StatisticsManager::deleteSessionHistory() {
+    pending_sessions_.clear();
+
+    if (std::filesystem::exists(sessions_file_)) {
+        try {
+            std::filesystem::remove(sessions_file_);
+            spdlog::info("Deleted session history file: {}", sessions_file_.string());
+        } catch (const std::exception& e) {
+            spdlog::error("Failed to delete session history: {}", e.what());
+            return std::unexpected(StatisticsError::FileAccessError);
+        }
+    }
+
+    return {};
+}
+
+void StatisticsManager::flushSessions() {
+    if (pending_sessions_.empty()) {
+        return;
+    }
+
+    if (encrypt_sessions_) {
+        // Load existing sessions, merge with pending, write as encrypted blob.
+        // getAllSessions() already merges pending_sessions_, so no extra append needed.
+        auto all_result = getAllSessions();
+        std::vector<GameStats> all_sessions;
+        if (all_result) {
+            all_sessions = std::move(*all_result);
+        }
+
+        // Serialize to YAML in memory
+        YAML::Node sessions_node;
+        for (const auto& s : all_sessions) {
+            YAML::Node node;
+            node["difficulty"] = static_cast<int>(s.difficulty);
+            node["puzzle_rating"] = s.puzzle_rating;
+            node["start_time"] = std::chrono::system_clock::to_time_t(s.start_time);
+            node["end_time"] = std::chrono::system_clock::to_time_t(s.end_time);
+            node["time_played"] = s.time_played.count();
+            node["completed"] = s.completed;
+            node["moves_made"] = s.moves_made;
+            node["hints_used"] = s.hints_used;
+            node["mistakes"] = s.mistakes;
+            node["puzzle_seed"] = s.puzzle_seed;
+            sessions_node.push_back(node);
+        }
+        std::stringstream ss;
+        ss << sessions_node;
+        auto yaml_str = ss.str();
+        std::vector<uint8_t> data(yaml_str.begin(), yaml_str.end());
+
+        // Encrypt with interactive KDF and write atomically
+        auto enc_result = EncryptionManager::encryptInteractive(data);
+        if (enc_result) {
+            auto write_result = atomicWriteFile(sessions_file_, *enc_result);
+            if (!write_result) {
+                spdlog::warn("Atomic write failed for sessions file");
+            }
+        } else {
+            spdlog::warn("Failed to encrypt sessions, falling back to plain YAML");
+            for (const auto& session : pending_sessions_) {
+                std::ignore = saveGameSession(session);
+            }
+        }
+    } else {
+        // Write as plain YAML (append mode)
+        for (const auto& session : pending_sessions_) {
+            std::ignore = saveGameSession(session);
+        }
+    }
+
+    spdlog::info("Flushed {} sessions to disk (encrypted={})", pending_sessions_.size(), encrypt_sessions_);
+    pending_sessions_.clear();
+}
+
+std::expected<void, StatisticsError> StatisticsManager::atomicWriteFile(const std::filesystem::path& target,
+                                                                        const std::vector<uint8_t>& data) {
+    auto tmp_path = target;
+    tmp_path += ".tmp";
+
+    {
+        std::ofstream file(tmp_path, std::ios::binary);
+        if (!file.is_open()) {
+            spdlog::error("Failed to open temp file for writing: {}", tmp_path.string());
+            return std::unexpected(StatisticsError::FileAccessError);
+        }
+        file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+        if (!file.good()) {
+            spdlog::error("Failed to write temp file: {}", tmp_path.string());
+            return std::unexpected(StatisticsError::FileAccessError);
+        }
+    }
+
+    std::error_code ec;
+    std::filesystem::rename(tmp_path, target, ec);
+    if (ec) {
+        spdlog::error("Failed to rename {} -> {}: {}", tmp_path.string(), target.string(), ec.message());
+        std::filesystem::remove(tmp_path, ec);
+        return std::unexpected(StatisticsError::FileAccessError);
+    }
+
+    return {};
 }
 
 }  // namespace sudoku::core

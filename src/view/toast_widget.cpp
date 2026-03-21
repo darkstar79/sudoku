@@ -16,7 +16,7 @@
 
 #include "toast_widget.h"
 
-#include "ui_colors.h"
+#include "style_colors.h"
 
 #include <QTimer>
 #include <QtCore/qobjectdefs.h>
@@ -30,7 +30,7 @@ ToastWidget::ToastWidget(QWidget* parent) : QLabel(parent), hide_timer_(new QTim
                           "padding: 10px 20px;"
                           "border-radius: 6px;"
                           "font-size: 14px;")
-                      .arg(UIColors::TOAST_BG, UIColors::TOAST_TEXT));
+                      .arg(StyleColors::TOAST_BG, StyleColors::TOAST_TEXT));
     setAlignment(Qt::AlignCenter);
     hide();
     hide_timer_->setSingleShot(true);

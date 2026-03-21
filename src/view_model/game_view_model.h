@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <expected>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -195,6 +196,18 @@ public:
     void refreshStatistics();
     void refreshRecentSaves();
     void exportStatistics(const std::string& file_path);
+
+    // Data accessors for dialogs (non-observable snapshots)
+    [[nodiscard]] std::vector<core::SavedGame> getSaveList() const;
+    [[nodiscard]] std::optional<core::AggregateStats> getAggregateStats() const;
+    [[nodiscard]] std::vector<core::GameStats> getRecentGames(int count = 20) const;
+
+    // Time formatting utility
+    [[nodiscard]] static std::string formatDuration(std::chrono::milliseconds time);
+
+    // Session history management
+    void deleteSessionHistory();
+    void flushStatsSessions();
 
     // CSV Export
     [[nodiscard]] std::expected<void, std::string> exportAggregateStatsCsv() const;

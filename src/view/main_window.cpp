@@ -23,10 +23,10 @@
 #include "core/observable.h"
 #include "infrastructure/app_directory_manager.h"
 #include "model/game_state.h"
+#include "style_colors.h"
 #include "sudoku_board_widget.h"
 #include "toast_widget.h"
 #include "training_widget.h"
-#include "ui_colors.h"
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
 
@@ -40,10 +40,13 @@
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QDateTime>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
@@ -55,6 +58,7 @@
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QTabWidget>
+#include <QTableWidget>
 #include <QTextEdit>
 #include <QTimer>
 #include <QToolBar>
@@ -76,7 +80,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     resize(800, 900);
 
     // Newspaper-like background
-    setStyleSheet(QString("QMainWindow { background-color: %1; }").arg(UIColors::BACKGROUND_WARM));
+    setStyleSheet(QString("QMainWindow { background-color: %1; }").arg(StyleColors::BACKGROUND_WARM));
 
     setupCentralWidget();
     setupMenuBar();
@@ -105,7 +109,7 @@ void MainWindow::setupCentralWidget() {
     // Button panel
     auto* button_panel = new QWidget;
     button_panel->setStyleSheet(QString("QWidget { background-color: %1; border-top: 1px solid %2; }")
-                                    .arg(UIColors::SURFACE, UIColors::DIVIDER));
+                                    .arg(StyleColors::SURFACE, StyleColors::DIVIDER));
     auto* button_layout = new QHBoxLayout(button_panel);
     button_layout->setContentsMargins(20, 8, 20, 8);
 
@@ -115,8 +119,8 @@ void MainWindow::setupCentralWidget() {
                 "QPushButton:hover { background-color: %3; }"
                 "QPushButton:disabled { color: %4; background-color: %5; border-color: %1; }"
                 "QPushButton:checked { background-color: %6; color: white; border-color: %7; }")
-            .arg(UIColors::BTN_BG, UIColors::BTN_TEXT, UIColors::BTN_BORDER, UIColors::BTN_DISABLED_TEXT,
-                 UIColors::BTN_DISABLED_BG, UIColors::PRIMARY, UIColors::PRIMARY_DARK);
+            .arg(StyleColors::BTN_BG, StyleColors::BTN_TEXT, StyleColors::BTN_BORDER, StyleColors::BTN_DISABLED_TEXT,
+                 StyleColors::BTN_DISABLED_BG, StyleColors::PRIMARY, StyleColors::PRIMARY_DARK);
 
     undo_btn_ = new QPushButton(qstr(loc(ButtonUndo)));
     redo_btn_ = new QPushButton(qstr(loc(ButtonRedo)));
@@ -242,13 +246,13 @@ void MainWindow::setupToolBar() {
     toolbar->setMovable(false);
     toolbar->setStyleSheet(QString("QToolBar { background-color: %1; border-bottom: 1px solid %2; "
                                    "padding: 4px; spacing: 8px; }")
-                               .arg(UIColors::SURFACE, UIColors::DIVIDER));
+                               .arg(StyleColors::SURFACE, StyleColors::DIVIDER));
 
     new_game_btn_ = new QPushButton(qstr(loc(ToolbarNewGame)));
     new_game_btn_->setStyleSheet(
         QString("QPushButton { background-color: %1; color: white; padding: 6px 16px; border-radius: 4px; }"
                 "QPushButton:hover { background-color: %2; }")
-            .arg(UIColors::PRIMARY, UIColors::PRIMARY_DARK));
+            .arg(StyleColors::PRIMARY, StyleColors::PRIMARY_DARK));
     connect(new_game_btn_, &QPushButton::clicked, this, &MainWindow::showNewGameDialog);
     toolbar->addWidget(new_game_btn_);
 
@@ -285,8 +289,8 @@ void MainWindow::setupToolBar() {
     hints_text_label_ = new QLabel(QString(" %1 ").arg(qstr(loc(ToolbarHints))));
     toolbar->addWidget(hints_text_label_);
     hints_label_ = new QLabel("10");
-    hints_label_->setStyleSheet(
-        QString("background-color: %1; color: white; padding: 2px 12px; border-radius: 12px;").arg(UIColors::PRIMARY));
+    hints_label_->setStyleSheet(QString("background-color: %1; color: white; padding: 2px 12px; border-radius: 12px;")
+                                    .arg(StyleColors::PRIMARY));
     toolbar->addWidget(hints_label_);
 
     toolbar->addSeparator();
@@ -296,7 +300,7 @@ void MainWindow::setupToolBar() {
     rating_btn_->setCursor(Qt::PointingHandCursor);
     rating_btn_->setStyleSheet(QString("QPushButton { border: none; padding: 2px 8px; text-decoration: underline; }"
                                        "QPushButton:hover { color: %1; }")
-                                   .arg(UIColors::PRIMARY));
+                                   .arg(StyleColors::PRIMARY));
     connect(rating_btn_, &QPushButton::clicked, this, &MainWindow::showTechniquesDialog);
     rating_action_ = toolbar->addWidget(rating_btn_);
     rating_action_->setVisible(false);
@@ -306,7 +310,7 @@ void MainWindow::setupStatusBar() {
     status_label_ = new QLabel(qstr(loc(StatusReady)));
     statusBar()->addWidget(status_label_, 1);
     statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; border-top: 1px solid %2; color: %3; }")
-                                   .arg(UIColors::SURFACE_STATUS, UIColors::DIVIDER, UIColors::TEXT_MUTED));
+                                   .arg(StyleColors::SURFACE_STATUS, StyleColors::DIVIDER, StyleColors::TEXT_MUTED));
 }
 
 void MainWindow::setupAutoSaveTimer() {
@@ -666,12 +670,64 @@ void MainWindow::showResetDialog() {
 }
 
 void MainWindow::showSaveDialog() {
-    bool ok = false;
-    QString name = QInputDialog::getText(this, qstr(loc(DialogSaveGame)), qstr(loc(DialogEnterSaveName)),
-                                         QLineEdit::Normal, "", &ok);
-    if (ok && !name.isEmpty() && view_model_) {
+    if (!view_model_ || !view_model_->isGameActive()) {
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(qstr(loc(DialogSaveGame)));
+    dialog.setMinimumWidth(380);
+
+    auto* layout = new QVBoxLayout(&dialog);
+
+    // Current game info preview
+    auto* info_group = new QGroupBox(qstr(loc(SavePreviewTitle)), &dialog);
+    auto* info_layout = new QFormLayout(info_group);
+    info_layout->addRow(qstr(loc(SavePreviewDifficulty)),
+                        new QLabel(qstr(difficultyString(view_model_->gameState.get().getDifficulty()))));
+    info_layout->addRow(qstr(loc(SavePreviewTime)),
+                        new QLabel(QString::fromStdString(view_model_->getFormattedTime())));
+    info_layout->addRow(qstr(loc(SavePreviewMoves)), new QLabel(QString::number(view_model_->getMoveCount())));
+    info_layout->addRow(qstr(loc(SavePreviewMistakes)), new QLabel(QString::number(view_model_->getMistakeCount())));
+    layout->addWidget(info_group);
+
+    // Name input
+    layout->addWidget(new QLabel(qstr(loc(DialogEnterSaveName))));
+    auto* name_edit = new QLineEdit(&dialog);
+    name_edit->setPlaceholderText(qstr(loc(SaveNamePlaceholder)));
+    layout->addWidget(name_edit);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
+    layout->addWidget(buttons);
+
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [&]() {
+        QString name = name_edit->text().trimmed();
+        if (name.isEmpty()) {
+            QMessageBox::warning(&dialog, qstr(loc(DialogSaveGame)), qstr(loc(SaveNameEmpty)));
+            return;
+        }
+
+        // Check for existing save with same display_name
+        auto existing = view_model_->getSaveList();
+        bool name_exists =
+            std::ranges::any_of(existing, [&](const auto& s) { return s.display_name == name.toStdString(); });
+        if (name_exists) {
+            auto confirm =
+                QMessageBox::question(&dialog, qstr(loc(DialogSaveGame)),
+                                      QString::fromStdString(locFormat(SaveOverwriteConfirm, name.toStdString())));
+            if (confirm != QMessageBox::Yes) {
+                return;
+            }
+        }
+
+        dialog.accept();
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        QString name = name_edit->text().trimmed();
         bool success = view_model_->saveCurrentGame(name.toStdString());
-        if (success) {
+        if (success && toast_widget_) {
             toast_widget_->show(qstr(loc(ToastGameSaved)));
         }
     }
@@ -682,48 +738,203 @@ void MainWindow::showLoadDialog() {
         return;
     }
 
+    auto saves = view_model_->getSaveList();
+
     QDialog dialog(this);
     dialog.setWindowTitle(qstr(loc(DialogLoadGame)));
-    dialog.setMinimumSize(300, 200);
+    dialog.setMinimumSize(600, 350);
 
     auto* layout = new QVBoxLayout(&dialog);
-    layout->addWidget(new QLabel(qstr(loc(DialogRecentSaves))));
 
-    auto* list = new QListWidget;
-    auto saves = view_model_->recentSaves.get();
-    for (const auto& save : saves) {
-        list->addItem(QString::fromStdString(save));
+    static constexpr int LOAD_COLS = 5;
+    auto* table = new QTableWidget(static_cast<int>(saves.size()), LOAD_COLS, &dialog);
+    table->setHorizontalHeaderLabels({qstr(loc(LoadColName)), qstr(loc(LoadColDifficulty)), qstr(loc(LoadColDate)),
+                                      qstr(loc(LoadColTime)), qstr(loc(LoadColRating))});
+    table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    table->setSelectionMode(QAbstractItemView::SingleSelection);
+    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->verticalHeader()->setVisible(false);
+
+    for (int row = 0; row < static_cast<int>(saves.size()); ++row) {
+        const auto& s = saves[row];
+        auto* name_item = new QTableWidgetItem(QString::fromStdString(s.display_name));
+        name_item->setData(Qt::UserRole, QString::fromStdString(s.save_id));
+        table->setItem(row, 0, name_item);
+        table->setItem(row, 1, new QTableWidgetItem(qstr(difficultyString(s.difficulty))));
+
+        auto tt = std::chrono::system_clock::to_time_t(s.last_modified);
+        table->setItem(
+            row, 2, new QTableWidgetItem(QDateTime::fromSecsSinceEpoch(static_cast<qint64>(tt)).toString(Qt::ISODate)));
+        table->setItem(
+            row, 3,
+            new QTableWidgetItem(QString::fromStdString(viewmodel::GameViewModel::formatDuration(s.elapsed_time))));
+        table->setItem(row, 4,
+                       new QTableWidgetItem(s.puzzle_rating > 0.0 ? QString("SE %1").arg(s.puzzle_rating, 0, 'f', 1)
+                                                                  : qstr(loc(StatsTimeNa))));
     }
-    layout->addWidget(list);
+    table->resizeColumnsToContents();
+    layout->addWidget(table);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     layout->addWidget(buttons);
 
     connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    connect(list, &QListWidget::itemDoubleClicked, &dialog, &QDialog::accept);
+    connect(table, &QTableWidget::itemDoubleClicked, &dialog, &QDialog::accept);
 
-    if (dialog.exec() == QDialog::Accepted && list->currentItem() != nullptr) {
-        view_model_->loadGame(list->currentItem()->text().toStdString());
+    if (dialog.exec() == QDialog::Accepted) {
+        auto selected = table->selectedItems();
+        if (!selected.isEmpty()) {
+            auto save_id = table->item(selected.first()->row(), 0)->data(Qt::UserRole).toString().toStdString();
+            view_model_->loadGame(save_id);
+        }
     }
 }
 
+// NOLINTNEXTLINE(readability-function-size) — UI builder: statistics dialog with tabs and tables
 void MainWindow::showStatisticsDialog() {
     if (!view_model_) {
         return;
     }
 
-    auto stats = view_model_->statistics.get();
+    auto maybe_stats = view_model_->getAggregateStats();
+    const auto& display = view_model_->statistics.get();
 
-    QString text = QString::fromStdString(locFormat(StatsGamesPlayed, stats.games_played)) + "\n" +
-                   QString::fromStdString(locFormat(StatsGamesCompleted, stats.games_completed)) + "\n" +
-                   QString::fromStdString(locFormat(StatsCompletionRate, stats.completion_rate)) + "\n" +
-                   QString::fromStdString(locFormat(StatsBestTime, stats.best_time)) + "\n" +
-                   QString::fromStdString(locFormat(StatsAverageTime, stats.average_time)) + "\n" +
-                   QString::fromStdString(locFormat(StatsCurrentStreak, stats.current_streak)) + "\n" +
-                   QString::fromStdString(locFormat(StatsBestStreak, stats.best_streak));
+    auto* dialog = new QDialog(this);
+    dialog->setWindowTitle(qstr(loc(DialogStatistics)));
+    dialog->setMinimumSize(520, 400);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
 
-    QMessageBox::information(this, qstr(loc(DialogStatistics)), text);
+    auto* tabs = new QTabWidget(dialog);
+
+    // === Overview tab ===
+    auto* overview_page = new QWidget();
+    auto* overview_layout = new QFormLayout(overview_page);
+    auto addStatRow = [&](std::string_view key, const auto& value) {
+        overview_layout->addRow(new QLabel(QString::fromStdString(locFormat(key, value))));
+    };
+    addStatRow(StatsGamesPlayed, display.games_played);
+    addStatRow(StatsGamesCompleted, display.games_completed);
+    addStatRow(StatsCompletionRate, display.completion_rate);
+    addStatRow(StatsBestTime, display.best_time);
+    addStatRow(StatsAverageTime, display.average_time);
+    addStatRow(StatsCurrentStreak, display.current_streak);
+    addStatRow(StatsBestStreak, display.best_streak);
+
+    if (maybe_stats) {
+        const auto& agg = *maybe_stats;
+        overview_layout->addRow(new QLabel(""));  // spacer
+        overview_layout->addRow(qstr(loc(StatsTotalMoves)), new QLabel(QString::number(agg.total_moves)));
+        overview_layout->addRow(qstr(loc(StatsTotalHints)), new QLabel(QString::number(agg.total_hints)));
+        overview_layout->addRow(qstr(loc(StatsTotalMistakes)), new QLabel(QString::number(agg.total_mistakes)));
+        overview_layout->addRow(
+            qstr(loc(StatsTotalTime)),
+            new QLabel(QString::fromStdString(viewmodel::GameViewModel::formatDuration(agg.total_time_played))));
+    }
+    tabs->addTab(overview_page, qstr(loc(StatsTabOverview)));
+
+    // === Per-difficulty tab ===
+    if (maybe_stats) {
+        const auto& agg = *maybe_stats;
+        static constexpr auto NUM_DIFFICULTIES = static_cast<int>(core::DIFFICULTY_COUNT);
+        static constexpr int NUM_METRICS = 5;
+
+        auto* diff_page = new QWidget();
+        auto* diff_layout = new QVBoxLayout(diff_page);
+        auto* table = new QTableWidget(NUM_METRICS, NUM_DIFFICULTIES, diff_page);
+
+        // Column headers: difficulty names
+        QStringList col_headers;
+        for (int d = 0; d < NUM_DIFFICULTIES; ++d) {
+            col_headers << qstr(difficultyString(static_cast<core::Difficulty>(d)));
+        }
+        table->setHorizontalHeaderLabels(col_headers);
+
+        // Row headers: metric names
+        table->setVerticalHeaderLabels({qstr(loc(StatsRowPlayed)), qstr(loc(StatsRowCompleted)),
+                                        qstr(loc(StatsRowBestTime)), qstr(loc(StatsRowAvgTime)),
+                                        qstr(loc(StatsRowAvgRating))});
+
+        for (int d = 0; d < NUM_DIFFICULTIES; ++d) {
+            table->setItem(0, d, new QTableWidgetItem(QString::number(agg.games_played[d])));
+            table->setItem(1, d, new QTableWidgetItem(QString::number(agg.games_completed[d])));
+
+            auto bt = agg.best_times[d];
+            table->setItem(
+                2, d,
+                new QTableWidgetItem((bt != std::chrono::milliseconds::max() && agg.games_completed[d] > 0)
+                                         ? QString::fromStdString(viewmodel::GameViewModel::formatDuration(bt))
+                                         : qstr(loc(StatsTimeNa))));
+
+            auto at = agg.average_times[d];
+            table->setItem(3, d,
+                           new QTableWidgetItem(
+                               at.count() > 0 ? QString::fromStdString(viewmodel::GameViewModel::formatDuration(at))
+                                              : qstr(loc(StatsTimeNa))));
+
+            table->setItem(4, d,
+                           new QTableWidgetItem(agg.average_ratings[d] > 0.0
+                                                    ? QString("SE %1").arg(agg.average_ratings[d], 0, 'f', 1)
+                                                    : qstr(loc(StatsTimeNa))));
+        }
+
+        table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        table->horizontalHeader()->setStretchLastSection(true);
+        table->resizeColumnsToContents();
+        diff_layout->addWidget(table);
+        tabs->addTab(diff_page, qstr(loc(StatsTabPerDifficulty)));
+    }
+
+    // === Recent Games tab (conditional on collect_detailed_stats) ===
+    bool show_detailed = settings_manager_ && settings_manager_->getSettings().collect_detailed_stats;
+    if (show_detailed) {
+        auto recent = view_model_->getRecentGames(20);
+        if (!recent.empty()) {
+            static constexpr int NUM_COLS = 6;
+            auto* recent_page = new QWidget();
+            auto* recent_layout = new QVBoxLayout(recent_page);
+            auto* recent_table = new QTableWidget(static_cast<int>(recent.size()), NUM_COLS, recent_page);
+
+            recent_table->setHorizontalHeaderLabels({qstr(loc(StatsColDate)), qstr(loc(StatsColDifficulty)),
+                                                     qstr(loc(StatsColTime)), qstr(loc(StatsColRating)),
+                                                     qstr(loc(StatsColMoves)), qstr(loc(StatsColMistakes))});
+
+            for (int row = 0; row < static_cast<int>(recent.size()); ++row) {
+                const auto& g = recent[row];
+                auto tt = std::chrono::system_clock::to_time_t(g.end_time);
+                recent_table->setItem(
+                    row, 0,
+                    new QTableWidgetItem(
+                        QDateTime::fromSecsSinceEpoch(static_cast<qint64>(tt)).toString("yyyy-MM-dd")));
+                recent_table->setItem(row, 1, new QTableWidgetItem(qstr(difficultyString(g.difficulty))));
+                recent_table->setItem(row, 2,
+                                      new QTableWidgetItem(QString::fromStdString(
+                                          viewmodel::GameViewModel::formatDuration(g.time_played))));
+                recent_table->setItem(row, 3,
+                                      new QTableWidgetItem(g.puzzle_rating > 0.0
+                                                               ? QString("SE %1").arg(g.puzzle_rating, 0, 'f', 1)
+                                                               : "-"));
+                recent_table->setItem(row, 4, new QTableWidgetItem(QString::number(g.moves_made)));
+                recent_table->setItem(row, 5, new QTableWidgetItem(QString::number(g.mistakes)));
+            }
+
+            recent_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+            recent_table->setSelectionBehavior(QAbstractItemView::SelectRows);
+            recent_table->horizontalHeader()->setStretchLastSection(true);
+            recent_table->resizeColumnsToContents();
+            recent_layout->addWidget(recent_table);
+            tabs->addTab(recent_page, qstr(loc(StatsTabRecentGames)));
+        }
+    }
+
+    auto* main_layout = new QVBoxLayout(dialog);
+    main_layout->addWidget(tabs);
+    auto* btn_box = new QDialogButtonBox(QDialogButtonBox::Close);
+    connect(btn_box, &QDialogButtonBox::rejected, dialog, &QDialog::close);
+    main_layout->addWidget(btn_box);
+
+    dialog->exec();
 }
 
 void MainWindow::showAboutDialog() {
@@ -971,6 +1182,23 @@ void MainWindow::showSettingsDialog() {
     display_layout->addStretch();
     tabs->addTab(display_page, qstr(loc(SettingsTabDisplay)));
 
+    // === Statistics Tab ===
+    auto* stats_page = new QWidget();
+    auto* stats_layout = new QVBoxLayout(stats_page);
+
+    auto* collect_stats_cb = new QCheckBox(qstr(loc(SettingsCollectDetailedStats)));
+    collect_stats_cb->setChecked(settings_manager_->getSettings().collect_detailed_stats);
+    stats_layout->addWidget(collect_stats_cb);
+
+    auto* encrypt_stats_cb = new QCheckBox(qstr(loc(SettingsEncryptDetailedStats)));
+    encrypt_stats_cb->setChecked(settings_manager_->getSettings().encrypt_detailed_stats);
+    encrypt_stats_cb->setToolTip(qstr(loc(SettingsEncryptDetailedStatsTooltip)));
+    encrypt_stats_cb->setEnabled(settings_manager_->getSettings().collect_detailed_stats);
+    stats_layout->addWidget(encrypt_stats_cb);
+
+    stats_layout->addStretch();
+    tabs->addTab(stats_page, qstr(loc(SettingsTabStatistics)));
+
     // === Dialog layout ===
     auto* main_layout = new QVBoxLayout(dialog);
     main_layout->addWidget(tabs);
@@ -1008,6 +1236,19 @@ void MainWindow::showSettingsDialog() {
             view_model_->setShowHints(checked);
         }
     });
+
+    connectCheckBox(collect_stats_cb, [this, encrypt_stats_cb](bool checked) {
+        encrypt_stats_cb->setEnabled(checked);
+        if (!checked) {
+            auto answer = QMessageBox::question(this, qstr(loc(DialogSettings)), qstr(loc(StatsDeletePrompt)));
+            if (answer == QMessageBox::Yes && view_model_) {
+                view_model_->deleteSessionHistory();
+            }
+        }
+        settings_manager_->setCollectDetailedStats(checked);
+    });
+
+    connectCheckBox(encrypt_stats_cb, [this](bool checked) { settings_manager_->setEncryptDetailedStats(checked); });
 
     dialog->exec();
 }

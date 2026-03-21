@@ -24,6 +24,7 @@
 #include "../../src/core/i_time_provider.h"
 #include "../../src/core/statistics_manager.h"
 
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <random>
@@ -70,6 +71,7 @@ TEST_CASE("StatisticsManager - recalculate is triggered when only sessions file 
     // First manager: play a game, persist sessions and aggregate
     {
         StatisticsManager mgr1(tmp.path().string(), time);
+        mgr1.setCollectDetailedStats(true);
         auto id = mgr1.startGame(Difficulty::Easy, 1, 0);
         REQUIRE(id.has_value());
         time->advanceSystemTime(std::chrono::milliseconds(30000));
@@ -153,6 +155,7 @@ TEST_CASE("StatisticsManager - fresh manager with sessions but no aggregate file
     // First manager: play two games
     {
         StatisticsManager mgr1(tmp.path().string(), time);
+        mgr1.setCollectDetailedStats(true);
         for (int i = 0; i < 2; ++i) {
             auto id = mgr1.startGame(Difficulty::Medium, static_cast<uint32_t>(i + 1), 0);
             REQUIRE(id.has_value());
@@ -226,6 +229,7 @@ TEST_CASE("StatisticsManager - exportStats then importStats merges data", "[stat
     StatsTmpDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);
 
     // Play one Easy game
     auto id = mgr.startGame(Difficulty::Easy, 1, 100);
@@ -264,7 +268,7 @@ TEST_CASE("StatisticsManager - getRecentGames returns error on corrupted session
     }
 
     // getRecentGames should fail on the corrupted file (covers line 203)
-    auto result = mgr.getRecentGames(-1);
+    auto result = mgr.getAllSessions();
     REQUIRE_FALSE(result.has_value());
 }
 
@@ -342,4 +346,118 @@ TEST_CASE("StatisticsManager - exportGameSessionsCsv returns error on corrupted 
     fs::path csv_path = tmp.path() / "sessions.csv";
     auto result = mgr.exportGameSessionsCsv(csv_path.string());
     REQUIRE_FALSE(result.has_value());
+}
+
+// ============================================================================
+// Destructor with active sessions: covers lines 74-82 (destructor auto-ends
+// active sessions and buffers them when collect_detailed_stats is enabled)
+// ============================================================================
+
+TEST_CASE("StatisticsManager - destructor ends active sessions and buffers them", "[statistics_extra]") {
+    StatsTmpDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+
+    {
+        StatisticsManager mgr(tmp.path().string(), time);
+        mgr.setCollectDetailedStats(true);
+        mgr.setEncryptSessions(false);
+
+        // Start a game but do NOT end it — destructor should handle it
+        auto id = mgr.startGame(Difficulty::Easy, 1, 0);
+        REQUIRE(id.has_value());
+        time->advanceSystemTime(std::chrono::milliseconds(5000));
+    }
+    // Destructor ran: active session ended as incomplete, buffered, flushed
+
+    // New manager should see the session persisted on disk
+    StatisticsManager mgr2(tmp.path().string(), time);
+    auto sessions = mgr2.getAllSessions();
+    REQUIRE(sessions.has_value());
+    REQUIRE(sessions->size() == 1);
+    REQUIRE_FALSE((*sessions)[0].completed);
+}
+
+// ============================================================================
+// deleteSessionHistory: covers lines 669-682
+// ============================================================================
+
+TEST_CASE("StatisticsManager - deleteSessionHistory removes file and pending sessions", "[statistics_extra]") {
+    StatsTmpDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);
+    mgr.setEncryptSessions(false);
+
+    // Play a game and flush to create a sessions file
+    auto id = mgr.startGame(Difficulty::Medium, 1, 0);
+    REQUIRE(id.has_value());
+    time->advanceSystemTime(std::chrono::milliseconds(10000));
+    REQUIRE(mgr.endGame(*id, true).has_value());
+    mgr.flushSessions();
+    REQUIRE(fs::exists(tmp.path() / "game_sessions.yaml"));
+
+    // Play another game (pending, not flushed)
+    auto id2 = mgr.startGame(Difficulty::Hard, 2, 0);
+    REQUIRE(id2.has_value());
+    time->advanceSystemTime(std::chrono::milliseconds(5000));
+    REQUIRE(mgr.endGame(*id2, false).has_value());
+
+    // Delete session history — should remove file and pending
+    auto result = mgr.deleteSessionHistory();
+    REQUIRE(result.has_value());
+    REQUIRE_FALSE(fs::exists(tmp.path() / "game_sessions.yaml"));
+
+    // getAllSessions should return empty (no file, no pending)
+    auto sessions = mgr.getAllSessions();
+    REQUIRE(sessions.has_value());
+    REQUIRE(sessions->empty());
+}
+
+// ============================================================================
+// getAllSessions with corrupt encrypted file: covers line 249 (decrypt warn)
+// ============================================================================
+
+TEST_CASE("StatisticsManager - getAllSessions handles corrupt encrypted file gracefully", "[statistics_extra]") {
+    StatsTmpDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    // Write data that looks encrypted (starts with magic bytes) but is corrupt
+    {
+        std::ofstream f(tmp.path() / "game_sessions.yaml", std::ios::binary);
+        // EncryptionManager magic: "SDKENC" + version byte + flags byte + garbage
+        std::array<char, 15> data = {'S', 'D', 'K', 'E', 'N', 'C', 0x01, 0x00, 'g', 'a', 'r', 'b', 'a', 'g', 'e'};
+        f.write(data.data(), data.size());
+    }
+
+    // getAllSessions should handle the decrypt failure gracefully (warn, return empty)
+    auto sessions = mgr.getAllSessions();
+    REQUIRE(sessions.has_value());
+    REQUIRE(sessions->empty());
+}
+
+// ============================================================================
+// getAggregateStats when recalculation fails: covers lines 192-194
+// (no aggregate file, corrupted sessions → recalc fails → error returned)
+// ============================================================================
+
+TEST_CASE("StatisticsManager - getStatsForDifficulty propagates aggregate error", "[statistics_extra]") {
+    StatsTmpDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+
+    // Write corrupted sessions file + no aggregate → constructor triggers
+    // recalculateAggregateStats which fails on corrupt sessions → falls back to empty stats
+    {
+        std::ofstream f(tmp.path() / "game_sessions.yaml");
+        f << "invalid: yaml: {{{broken\n";
+    }
+
+    // Constructor: no aggregate file → recalculate → corrupt sessions → recalc fails
+    // → falls back to empty stats (lines 486-488)
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    // getStatsForDifficulty should still work (empty stats, not error)
+    auto result = mgr.getStatsForDifficulty(Difficulty::Easy);
+    REQUIRE(result.has_value());
+    REQUIRE(result->total_games == 0);
 }

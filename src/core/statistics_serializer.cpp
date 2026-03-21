@@ -234,13 +234,11 @@ std::expected<void, StatisticsError> serializeGameStatsToYaml(const GameStats& s
     }
 }
 
-std::expected<std::vector<GameStats>, StatisticsError>
-deserializeGameStatsFromYaml(const std::filesystem::path& file_path) {
+std::expected<std::vector<GameStats>, StatisticsError> deserializeGameStatsFromNode(const YAML::Node& sessions_node) {
     try {
-        YAML::Node sessions = YAML::LoadFile(file_path.string());
         std::vector<GameStats> result;
 
-        for (const auto& session_node : sessions) {
+        for (const auto& session_node : sessions_node) {
             GameStats stats;
 
             if (session_node["difficulty"]) {
@@ -286,6 +284,17 @@ deserializeGameStatsFromYaml(const std::filesystem::path& file_path) {
         return std::unexpected(StatisticsError::SerializationError);
     } catch (const std::exception& e) {
         spdlog::error("Game stats deserialization error: {}", e.what());
+        return std::unexpected(StatisticsError::SerializationError);
+    }
+}
+
+std::expected<std::vector<GameStats>, StatisticsError>
+deserializeGameStatsFromYaml(const std::filesystem::path& file_path) {
+    try {
+        YAML::Node sessions = YAML::LoadFile(file_path.string());
+        return deserializeGameStatsFromNode(sessions);
+    } catch (const YAML::Exception& e) {
+        spdlog::error("YAML game stats file load error: {}", e.what());
         return std::unexpected(StatisticsError::SerializationError);
     }
 }

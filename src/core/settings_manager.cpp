@@ -115,6 +115,18 @@ void SettingsManager::setShowHints(bool value) {
     notifyIfChanged(old);
 }
 
+void SettingsManager::setCollectDetailedStats(bool value) {
+    auto old = settings_;
+    settings_.collect_detailed_stats = value;
+    notifyIfChanged(old);
+}
+
+void SettingsManager::setEncryptDetailedStats(bool value) {
+    auto old = settings_;
+    settings_.encrypt_detailed_stats = value;
+    notifyIfChanged(old);
+}
+
 void SettingsManager::setLanguage(std::string_view locale_code) {
     auto old = settings_;
     settings_.language = std::string(locale_code);
@@ -159,6 +171,12 @@ void SettingsManager::load() {
             if (auto v = display["show_hints"]) {
                 settings_.show_hints = v.as<bool>();
             }
+            if (auto v = display["collect_detailed_stats"]) {
+                settings_.collect_detailed_stats = v.as<bool>();
+            }
+            if (auto v = display["encrypt_detailed_stats"]) {
+                settings_.encrypt_detailed_stats = v.as<bool>();
+            }
             // auto_notes_on_startup: ignored (feature removed)
         }
 
@@ -189,6 +207,8 @@ void SettingsManager::save() const {
         YAML::Node display;
         display["show_conflicts"] = settings_.show_conflicts;
         display["show_hints"] = settings_.show_hints;
+        display["collect_detailed_stats"] = settings_.collect_detailed_stats;
+        display["encrypt_detailed_stats"] = settings_.encrypt_detailed_stats;
         root["display"] = display;
 
         root["language"] = settings_.language;

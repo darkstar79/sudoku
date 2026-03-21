@@ -16,6 +16,7 @@
 
 #include "../core/solving_technique.h"
 #include "../core/string_keys.h"
+#include "core/constants.h"
 #include "core/i_game_validator.h"
 #include "core/i_save_manager.h"
 #include "core/i_statistics_manager.h"
@@ -140,6 +141,36 @@ void GameViewModel::refreshRecentSaves() {
         }
         recentSaves.set(save_names);
     }
+}
+
+std::vector<core::SavedGame> GameViewModel::getSaveList() const {
+    auto result = save_manager_->listSaves();
+    return result ? *result : std::vector<core::SavedGame>{};
+}
+
+std::optional<core::AggregateStats> GameViewModel::getAggregateStats() const {
+    auto result = stats_manager_->getAggregateStats();
+    return result ? std::optional(*result) : std::nullopt;
+}
+
+std::vector<core::GameStats> GameViewModel::getRecentGames(int count) const {
+    auto result = stats_manager_->getRecentGames(count);
+    return result ? *result : std::vector<core::GameStats>{};
+}
+
+std::string GameViewModel::formatDuration(std::chrono::milliseconds time) {
+    return formatTime(time);
+}
+
+void GameViewModel::deleteSessionHistory() {
+    auto result = stats_manager_->deleteSessionHistory();
+    if (!result) {
+        spdlog::warn("Failed to delete session history");
+    }
+}
+
+void GameViewModel::flushStatsSessions() {
+    stats_manager_->flushSessions();
 }
 
 void GameViewModel::clearErrorMessage() {
@@ -267,10 +298,10 @@ StatsDisplay GameViewModel::createStatsDisplay(const core::AggregateStats& stats
     display.current_streak = stats.current_win_streak;
     display.best_streak = stats.best_win_streak;
 
-    // Calculate overall average from all difficulty levels
+    // Calculate overall average from all difficulty levels (including Master at index 4)
     std::chrono::milliseconds total_average_time{0};
     int total_completed_games = 0;
-    for (int i = 0; i < 4; ++i) {
+    for (size_t i = 0; i < core::DIFFICULTY_COUNT; ++i) {
         if (stats.games_completed[i] > 0 && stats.average_times[i].count() > 0) {
             total_average_time += stats.average_times[i] * stats.games_completed[i];
             total_completed_games += stats.games_completed[i];
@@ -284,12 +315,16 @@ StatsDisplay GameViewModel::createStatsDisplay(const core::AggregateStats& stats
         display.average_time = std::string(loc(core::StringKeys::StatsTimeNa));
     }
 
-    // Use the first element from best_times array for overall best time
-    if (stats.best_times[0].count() > 0) {
-        display.best_time = formatTime(stats.best_times[0]);
-    } else {
-        display.best_time = std::string(loc(core::StringKeys::StatsTimeNa));
+    // Find overall best time across all difficulties
+    auto best = std::chrono::milliseconds::max();
+    for (size_t i = 0; i < core::DIFFICULTY_COUNT; ++i) {
+        if (stats.games_completed[i] > 0 && stats.best_times[i] < best &&
+            stats.best_times[i] != std::chrono::milliseconds::max()) {
+            best = stats.best_times[i];
+        }
     }
+    display.best_time =
+        (best != std::chrono::milliseconds::max()) ? formatTime(best) : std::string(loc(core::StringKeys::StatsTimeNa));
 
     return display;
 }

@@ -36,9 +36,11 @@ public:
           test_dir_("./test_csv_export_" + std::to_string(std::random_device{}())),
           stats_manager_(test_dir_.string(), mock_time_) {
         fs::create_directories(test_dir_);
+        stats_manager_.setCollectDetailedStats(true);
     }
 
     ~CsvExportTestFixture() {
+        stats_manager_.flushSessions();
         if (fs::exists(test_dir_)) {
             fs::remove_all(test_dir_);
         }
