@@ -16,12 +16,14 @@
 
 #pragma once
 
+#include "../core/i_localization_manager.h"
 #include "../model/game_state.h"
 #include "../view_model/game_view_model.h"
 #include "board_painter.h"
 
 #include <cstddef>
 #include <memory>
+#include <string_view>
 
 #include <QWidget>
 #include <qcolor.h>
@@ -59,6 +61,7 @@ public:
     explicit SudokuBoardWidget(QWidget* parent = nullptr);
 
     void setViewModel(std::shared_ptr<viewmodel::GameViewModel> view_model);
+    void setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager);
 
     [[nodiscard]] float cellSize() const;
     [[nodiscard]] QPointF boardOrigin() const;
@@ -73,7 +76,12 @@ protected:
 
 private:
     std::shared_ptr<viewmodel::GameViewModel> view_model_;
+    std::shared_ptr<core::ILocalizationManager> loc_manager_;
     BoardPainter painter_;
+
+    [[nodiscard]] std::string_view loc(std::string_view key) const {
+        return loc_manager_ ? loc_manager_->getString(key) : key;
+    }
     int hovered_candidate_{0};  ///< Currently hovered candidate value (0 = none)
 
     void paintCell(QPainter& painter, const model::Cell& cell, size_t row, size_t col, const QPointF& origin,

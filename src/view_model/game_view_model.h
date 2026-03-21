@@ -215,7 +215,7 @@ private:
     std::shared_ptr<core::ISettingsManager> settings_manager_;
 
     // Localization helpers
-    [[nodiscard]] const char* loc(std::string_view key) const {
+    [[nodiscard]] std::string_view loc(std::string_view key) const {
         return loc_manager_->getString(key);
     }
 
@@ -246,7 +246,7 @@ private:
     static void cleanupConflictingNotes(model::GameState& state, const core::Position& pos, int number);
     static void restoreConflictingNotes(model::GameState& state, const core::Position& pos, int number);
     void checkGameCompletion();
-    void handleError(const std::string& message);
+    void handleError(std::string_view message);
     [[nodiscard]] static std::string formatTime(std::chrono::milliseconds time);
     void autoSaveIfNeeded();
     void recomputeAutoNotes();
@@ -255,10 +255,10 @@ private:
 
     // Hint system helpers
     [[nodiscard]] std::string formatHintExplanation(const core::SolveStep& step) const;
-    [[nodiscard]] std::string statisticsErrorToString(core::StatisticsError error) const;
+    [[nodiscard]] std::string_view statisticsErrorToString(core::StatisticsError error) const;
 
     // Statistics helpers
-    [[nodiscard]] static StatsDisplay createStatsDisplay(const core::AggregateStats& stats);
+    [[nodiscard]] StatsDisplay createStatsDisplay(const core::AggregateStats& stats) const;
     void updateStatisticsDisplay();
 };
 

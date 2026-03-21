@@ -2,6 +2,9 @@ locale: de
 name: Deutsch
 
 strings:
+  # Anwendung
+  app.title: "Sudoku"
+
   # Menü
   menu.game: "Spiel"
   menu.new_game: "Neues Spiel"
@@ -103,6 +106,13 @@ strings:
   training.excellent: "Ausgezeichnet! Du beherrschst diese Technik."
   training.good_progress: "Guter Fortschritt. Versuche es noch einmal für ein besseres Ergebnis."
   training.keep_practicing: "Weiter üben! Sieh dir die Theorie an und versuche es noch einmal."
+  training.error_backtracking: "Backtracking kann nicht geübt werden — es ist keine logische Technik."
+  training.error_no_step: "Kein anwendbarer Schritt für diese Technik gefunden."
+  training.correct_continue: "Richtig! {0} Finde den nächsten."
+  training.feedback_correct: "Richtig! {0}"
+  training.feedback_partial: "Teilweise richtig. {0}"
+  training.feedback_incorrect: "Nicht ganz. {0}"
+  training.feedback_unknown: "Unbekanntes Ergebnis."
   mastery.beginner: "Anfänger"
   mastery.intermediate: "Fortgeschrittener"
   mastery.proficient: "Geübt"
@@ -123,6 +133,7 @@ strings:
   dialog.select_difficulty: "Schwierigkeit auswählen:"
   dialog.start_game: "Spiel starten"
   dialog.cancel: "Abbrechen"
+  dialog.new_game_confirm: "Neues Spiel mit Schwierigkeit {0} starten?\nDer aktuelle Fortschritt geht verloren."
 
   # Dialoge — Zurücksetzen
   dialog.reset_puzzle: "Rätsel zurücksetzen"
@@ -148,12 +159,25 @@ strings:
   stats.average_time: "Durchschnittliche Zeit: {0}"
   stats.current_streak: "Aktuelle Serie: {0}"
   stats.best_streak: "Beste Serie: {0}"
+  stats.time_na: "k. A."
 
   # Dialoge — Über
   dialog.about: "Über"
   about.sudoku_game: "Sudoku-Spiel"
-  about.phase_info: "Phase 1 abgeschlossen – MVVM-Architektur"
   about.built_with: "Erstellt mit:"
+  about.description: "Eine funktionsreiche Offline-Sudoku-Anwendung."
+
+  # Dialoge — Einstellungen
+  dialog.settings: "Einstellungen"
+  dialog.third_party_licenses: "Drittanbieter-Lizenzen"
+  settings.tab_gameplay: "Spielmechanik"
+  settings.tab_display: "Anzeige"
+  settings.max_hints: "Maximale Hinweise:"
+  settings.auto_save_interval: "Automatisches Speichern:"
+  settings.default_difficulty: "Standard-Schwierigkeit:"
+  settings.seconds_suffix: " Sekunden"
+  settings.highlight_conflicts: "Konflikte hervorheben"
+  settings.show_hints: "Hinweise anzeigen"
 
   # Dialoge — Rätsel-Schwierigkeit
   dialog.puzzle_difficulty: "Rätsel-Schwierigkeit"
@@ -168,12 +192,16 @@ strings:
   # Tooltips — Bewertungsskala
   tooltip.rating_scale: "Sudoku-Explainer-Bewertungsskala:"
   tooltip.techniques_required: "Benötigte Techniken:"
+  tooltip.input_mode: "Eingabemodus (Leertaste zum Wechseln, N für Notizen)"
+  tooltip.place_digit: "{0} in ausgewählte Zelle setzen"
+  tooltip.eliminate_digit: "{0} aus ausgewählter Zelle eliminieren"
 
   # Toast-Benachrichtigungen
   toast.game_saved: "Spiel erfolgreich gespeichert"
   toast.aggregate_exported: "Gesamtstatistiken als CSV exportiert"
   toast.sessions_exported: "Spielsitzungen als CSV exportiert"
   toast.export_failed: "Export fehlgeschlagen: {0}"
+  toast.no_strategies: "Keine logischen Strategien an dieser Position gefunden."
 
   # Seitenleiste
   sidebar.difficulty: "Schwierigkeit: {0}"

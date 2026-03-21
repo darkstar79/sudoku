@@ -19,6 +19,7 @@
 #include "core/constants.h"
 #include "core/i_game_validator.h"
 #include "core/observable.h"
+#include "core/string_keys.h"
 #include "model/game_state.h"
 #include "view_model/game_view_model.h"
 
@@ -52,6 +53,10 @@ void SudokuBoardWidget::setViewModel(std::shared_ptr<viewmodel::GameViewModel> v
     update();
 }
 
+void SudokuBoardWidget::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
+    loc_manager_ = std::move(loc_manager);
+}
+
 float SudokuBoardWidget::cellSize() const {
     return painter_.cellSize(width(), height());
 }
@@ -73,7 +78,9 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     if (!view_model_) {
-        painter.drawText(rect(), Qt::AlignCenter, "No game loaded");
+        painter.drawText(rect(), Qt::AlignCenter,
+                         QString::fromUtf8(loc(core::StringKeys::BoardNoGameLoaded).data(),
+                                           static_cast<qsizetype>(loc(core::StringKeys::BoardNoGameLoaded).size())));
         return;
     }
 

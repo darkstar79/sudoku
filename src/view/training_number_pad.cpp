@@ -17,12 +17,15 @@
 #include "training_number_pad.h"
 
 #include "core/constants.h"
+#include "core/string_keys.h"
 #include "core/training_types.h"
 
 #include <algorithm>
+#include <utility>
 
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <fmt/format.h>
 #include <qstring.h>
 
 namespace sudoku::view {
@@ -47,15 +50,20 @@ TrainingNumberPad::TrainingNumberPad(QWidget* parent) : QWidget(parent) {
     layout->addStretch();
 }
 
+void TrainingNumberPad::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
+    loc_manager_ = std::move(loc_manager);
+    // Re-apply tooltips with new locale
+    setInteractionMode(mode_);
+}
+
 void TrainingNumberPad::setInteractionMode(core::TrainingInteractionMode mode) {
     mode_ = mode;
 
+    using namespace core::StringKeys;
     for (int i = 0; i < static_cast<int>(core::MAX_VALUE); ++i) {
-        if (mode == core::TrainingInteractionMode::Placement) {
-            buttons_[static_cast<size_t>(i)]->setToolTip(QString("Place %1 in selected cell").arg(i + 1));
-        } else {
-            buttons_[static_cast<size_t>(i)]->setToolTip(QString("Eliminate %1 from selected cell").arg(i + 1));
-        }
+        auto key = mode == core::TrainingInteractionMode::Placement ? TooltipPlaceDigit : TooltipEliminateDigit;
+        auto tooltip = fmt::format(fmt::runtime(loc(key)), i + 1);
+        buttons_[static_cast<size_t>(i)]->setToolTip(QString::fromStdString(tooltip));
     }
 }
 

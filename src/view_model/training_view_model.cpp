@@ -52,7 +52,7 @@ TrainingViewModel::TrainingViewModel(std::shared_ptr<ITrainingExerciseGenerator>
 
 void TrainingViewModel::selectTechnique(SolvingTechnique technique) {
     if (technique == SolvingTechnique::Backtracking) {
-        errorMessage.set("Cannot practice Backtracking — it is not a logical technique.");
+        errorMessage.set(std::string(loc(core::StringKeys::TrainingErrorBacktracking)));
         return;
     }
 
@@ -90,7 +90,7 @@ void TrainingViewModel::startExercises() {
             }
         }
         if (exercises_.empty()) {
-            errorMessage.set("No applicable step found for this technique.");
+            errorMessage.set(std::string(loc(core::StringKeys::TrainingErrorNoStep)));
             return;
         }
     } else {
@@ -144,7 +144,7 @@ void TrainingViewModel::submitAnswer() {
             // More steps remain — apply and continue
             applyContinue(feedback_step);
             found_step_count_++;
-            auto msg = fmt::format("Correct! {} Find the next one.", feedback_step.explanation);
+            auto msg = locFormat(core::StringKeys::TrainingCorrectContinue, feedback_step.explanation);
             trainingState.update([&msg](TrainingUIState& s) {
                 s.correct_count++;
                 s.found_step_message = msg;
@@ -673,16 +673,17 @@ TrainingViewModel::EvalResult TrainingViewModel::evaluateElimination(const Train
     return {.result = AnswerResult::Incorrect, .matched_step = std::nullopt};
 }
 
-std::string TrainingViewModel::buildFeedback(AnswerResult result, const SolveStep& step) {
+std::string TrainingViewModel::buildFeedback(AnswerResult result, const SolveStep& step) const {
+    using namespace core::StringKeys;
     switch (result) {
         case AnswerResult::Correct:
-            return fmt::format("Correct! {}", step.explanation);
+            return locFormat(TrainingFeedbackCorrect, step.explanation);
         case AnswerResult::PartiallyCorrect:
-            return fmt::format("Partially correct. {}", step.explanation);
+            return locFormat(TrainingFeedbackPartial, step.explanation);
         case AnswerResult::Incorrect:
-            return fmt::format("Not quite. {}", step.explanation);
+            return locFormat(TrainingFeedbackIncorrect, step.explanation);
     }
-    return "Unknown result.";
+    return std::string(loc(TrainingFeedbackUnknown));
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — builds diff board with placement/elimination logic; nesting is inherent

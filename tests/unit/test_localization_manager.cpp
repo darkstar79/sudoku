@@ -17,7 +17,6 @@
 #include "core/i_localization_manager.h"
 #include "core/localization_manager.h"
 
-#include <cstring>
 #include <filesystem>
 #include <fstream>
 
@@ -94,15 +93,15 @@ TEST_CASE("LocalizationManager - Load and retrieve strings", "[localization]") {
         auto result = manager.setLocale("en");
 
         REQUIRE(result.has_value());
-        REQUIRE(std::strcmp(manager.getString("menu.game"), "Game") == 0);
-        REQUIRE(std::strcmp(manager.getString("menu.new_game"), "New Game") == 0);
+        REQUIRE(manager.getString("menu.game") == "Game");
+        REQUIRE(manager.getString("menu.new_game") == "New Game");
     }
 
     SECTION("getString returns parameterized template strings") {
         auto result = manager.setLocale("en");
 
         REQUIRE(result.has_value());
-        REQUIRE(std::strcmp(manager.getString("stats.games_played"), "Games Played: {0}") == 0);
+        REQUIRE(manager.getString("stats.games_played") == "Games Played: {0}");
     }
 
     SECTION("getCurrentLocale returns active locale code") {
@@ -122,14 +121,14 @@ TEST_CASE("LocalizationManager - Missing key handling", "[localization]") {
     REQUIRE(result.has_value());
 
     SECTION("Missing key returns the key itself") {
-        const char* value = manager.getString("nonexistent.key");
+        auto value = manager.getString("nonexistent.key");
 
-        REQUIRE(std::strcmp(value, "nonexistent.key") == 0);
+        REQUIRE(value == "nonexistent.key");
     }
 
-    SECTION("Missing key returns stable pointer on repeated calls") {
-        const char* first = manager.getString("missing.key");
-        const char* second = manager.getString("missing.key");
+    SECTION("Missing key returns stable view on repeated calls") {
+        auto first = manager.getString("missing.key");
+        auto second = manager.getString("missing.key");
 
         REQUIRE(first == second);
     }
@@ -145,11 +144,11 @@ TEST_CASE("LocalizationManager - Locale switching", "[localization]") {
     SECTION("Switching locale changes returned strings") {
         auto en_result = manager.setLocale("en");
         REQUIRE(en_result.has_value());
-        REQUIRE(std::strcmp(manager.getString("menu.game"), "Game") == 0);
+        REQUIRE(manager.getString("menu.game") == "Game");
 
         auto de_result = manager.setLocale("de");
         REQUIRE(de_result.has_value());
-        REQUIRE(std::strcmp(manager.getString("menu.game"), "Spiel") == 0);
+        REQUIRE(manager.getString("menu.game") == "Spiel");
         REQUIRE(manager.getCurrentLocale() == "de");
     }
 
@@ -161,7 +160,7 @@ TEST_CASE("LocalizationManager - Locale switching", "[localization]") {
         REQUIRE(de_result.has_value());
 
         // German YAML is missing stats.completion_rate, should fall back to English
-        REQUIRE(std::strcmp(manager.getString("stats.completion_rate"), "Completion Rate: {0:.1f}%") == 0);
+        REQUIRE(manager.getString("stats.completion_rate") == "Completion Rate: {0:.1f}%");
     }
 }
 
@@ -255,10 +254,10 @@ TEST_CASE("LocalizationManager - English fallback loading", "[localization]") {
         REQUIRE(result.has_value());
 
         // German key works
-        REQUIRE(std::strcmp(manager.getString("menu.game"), "Spiel") == 0);
+        REQUIRE(manager.getString("menu.game") == "Spiel");
 
         // Missing key in German falls back to English
-        REQUIRE(std::strcmp(manager.getString("stats.completion_rate"), "Completion Rate: {0:.1f}%") == 0);
+        REQUIRE(manager.getString("stats.completion_rate") == "Completion Rate: {0:.1f}%");
     }
 
     SECTION("English locale is used as its own fallback") {
@@ -268,8 +267,8 @@ TEST_CASE("LocalizationManager - English fallback loading", "[localization]") {
         REQUIRE(result.has_value());
 
         // All English keys should resolve
-        REQUIRE(std::strcmp(manager.getString("menu.game"), "Game") == 0);
-        REQUIRE(std::strcmp(manager.getString("stats.completion_rate"), "Completion Rate: {0:.1f}%") == 0);
+        REQUIRE(manager.getString("menu.game") == "Game");
+        REQUIRE(manager.getString("stats.completion_rate") == "Completion Rate: {0:.1f}%");
     }
 }
 
@@ -284,10 +283,10 @@ TEST_CASE("LocalizationManager - Fallback edge cases", "[localization]") {
 
         // Load should succeed (German locale still loads)
         REQUIRE(result.has_value());
-        REQUIRE(std::strcmp(manager.getString("menu.game"), "Spiel") == 0);
+        REQUIRE(manager.getString("menu.game") == "Spiel");
         // Missing key in German falls back to key name (no English fallback available)
-        const char* missing = manager.getString("stats.completion_rate");
-        REQUIRE(std::strcmp(missing, "stats.completion_rate") == 0);
+        auto missing = manager.getString("stats.completion_rate");
+        REQUIRE(missing == "stats.completion_rate");
     }
 
     SECTION("getString key missing in both active and fallback returns key name") {
@@ -300,8 +299,8 @@ TEST_CASE("LocalizationManager - Fallback edge cases", "[localization]") {
         REQUIRE(result.has_value());
 
         // This key is in neither German nor English YAML
-        const char* val = manager.getString("totally.unknown.key");
-        REQUIRE(std::strcmp(val, "totally.unknown.key") == 0);
+        auto val = manager.getString("totally.unknown.key");
+        REQUIRE(val == "totally.unknown.key");
     }
 }
 
@@ -331,7 +330,7 @@ TEST_CASE("LocalizationManager - Polymorphic usage through interface", "[localiz
 
         auto result = manager->setLocale("en");
         REQUIRE(result.has_value());
-        REQUIRE(std::strcmp(manager->getString("menu.game"), "Game") == 0);
+        REQUIRE(manager->getString("menu.game") == "Game");
     }
 }
 
@@ -352,7 +351,7 @@ TEST_CASE("LocalizationManager - Failed English fallback load is handled gracefu
     // German YAML is valid so setLocale should succeed; just no fallback available
     REQUIRE(result.has_value());
     // German key loads correctly
-    REQUIRE(std::strcmp(manager.getString("menu.game"), "Spiel") == 0);
+    REQUIRE(manager.getString("menu.game") == "Spiel");
 }
 
 TEST_CASE("LocalizationManager - Available locales sorted with many locales", "[localization]") {

@@ -79,13 +79,14 @@ void GameViewModel::redo() {
 void GameViewModel::undoToLastValid() {
     // Check if we have a recorded valid state
     if (last_valid_state_index_ < 0) {
-        uiState.update([this](auto& ui) { ui.status_message = loc(core::StringKeys::StatusNoValidState); });
+        uiState.update(
+            [this](auto& ui) { ui.status_message = std::string(loc(core::StringKeys::StatusNoValidState)); });
         return;
     }
 
     // Check if current state has errors (conflicts OR wrong values vs solution)
     if (!hasBoardErrors()) {
-        uiState.update([this](auto& ui) { ui.status_message = loc(core::StringKeys::StatusBoardValid); });
+        uiState.update([this](auto& ui) { ui.status_message = std::string(loc(core::StringKeys::StatusBoardValid)); });
         return;
     }
 
@@ -94,7 +95,7 @@ void GameViewModel::undoToLastValid() {
         undo();
     }
 
-    uiState.update([this](auto& ui) { ui.status_message = loc(core::StringKeys::StatusUndoneToValid); });
+    uiState.update([this](auto& ui) { ui.status_message = std::string(loc(core::StringKeys::StatusUndoneToValid)); });
 }
 
 bool GameViewModel::canUndo() const {
@@ -154,7 +155,8 @@ void GameViewModel::checkSolution() {
             }
         });
 
-        uiState.update([this](auto& ui) { ui.status_message = loc(core::StringKeys::StatusSolutionErrors); });
+        uiState.update(
+            [this](auto& ui) { ui.status_message = std::string(loc(core::StringKeys::StatusSolutionErrors)); });
     }
 }
 

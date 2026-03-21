@@ -28,10 +28,10 @@ namespace sudoku::core {
 /// that localization lookups are performed without needing YAML files.
 class MockLocalizationManager final : public ILocalizationManager {
 public:
-    [[nodiscard]] const char* getString(std::string_view key) const override {
-        // Cache the key string so we can return a stable const char*
+    [[nodiscard]] std::string_view getString(std::string_view key) const override {
+        // Cache the key string so we can return a stable string_view
         auto [it, _] = key_cache_.try_emplace(std::string(key), std::string(key));
-        return it->second.c_str();
+        return it->second;
     }
 
     [[nodiscard]] std::expected<void, std::string> setLocale(std::string_view /*locale_code*/) override {

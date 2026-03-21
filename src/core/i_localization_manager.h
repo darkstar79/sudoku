@@ -29,7 +29,7 @@ namespace sudoku::core {
 /// Production code uses LocalizationManager (loads YAML string files).
 /// Test code uses MockLocalizationManager (returns keys as-is).
 ///
-/// All getString() return values are null-terminated const char*.
+/// All getString() return values are std::string_view backed by stable storage.
 class ILocalizationManager {
 public:
     virtual ~ILocalizationManager() = default;
@@ -37,7 +37,7 @@ public:
     /// Get a localized string by its key.
     /// @param key String key (e.g., "menu.game")
     /// @return Localized string, or the key itself if not found
-    [[nodiscard]] virtual const char* getString(std::string_view key) const = 0;
+    [[nodiscard]] virtual std::string_view getString(std::string_view key) const = 0;
 
     /// Switch the active locale by loading its YAML file.
     /// @param locale_code Locale code (e.g., "en", "de")

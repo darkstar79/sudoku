@@ -34,7 +34,7 @@ namespace sudoku::core {
 
 /// Format a region name with 1-indexed number (e.g., "Row 3" in English)
 [[nodiscard]] inline std::string localizedRegion(const ILocalizationManager& loc, RegionType type, size_t idx) {
-    const char* name = nullptr;
+    std::string_view name;
     switch (type) {
         case RegionType::Row:
             name = loc.getString(StringKeys::RegionRow);
@@ -129,7 +129,7 @@ namespace sudoku::core {
                 return step.explanation;
             }
             // Template: "Pointing Pair: {0} in Box {1} confined to {2} {3} eliminates {0} from other cells in {2} {3}"
-            const char* sec_region_name = nullptr;
+            std::string_view sec_region_name;
             switch (data.secondary_region_type) {
                 case RegionType::Row:
                     sec_region_name = loc.getString(StringKeys::RegionRow);
@@ -151,7 +151,7 @@ namespace sudoku::core {
             }
             // Template: "Box/Line Reduction: {0} in {1} {2} confined to Box {3} eliminates {0} from other cells in Box
             // {3}"
-            const char* region_name = nullptr;
+            std::string_view region_name;
             switch (data.region_type) {
                 case RegionType::Row:
                     region_name = loc.getString(StringKeys::RegionRow);

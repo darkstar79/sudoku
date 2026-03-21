@@ -88,8 +88,12 @@ private:
     std::shared_ptr<core::ISettingsManager> settings_manager_;
     int selected_language_{0};
 
-    [[nodiscard]] const char* loc(std::string_view key) const {
-        return loc_manager_ ? loc_manager_->getString(key) : key.data();
+    [[nodiscard]] std::string_view loc(std::string_view key) const {
+        return loc_manager_ ? loc_manager_->getString(key) : key;
+    }
+
+    [[nodiscard]] static QString qstr(std::string_view sv) {
+        return QString::fromUtf8(sv.data(), static_cast<qsizetype>(sv.size()));
     }
 
     template <typename... Args>
@@ -97,7 +101,7 @@ private:
         return fmt::format(fmt::runtime(loc(key)), std::forward<Args>(args)...);
     }
 
-    [[nodiscard]] const char* difficultyString(core::Difficulty difficulty) const;
+    [[nodiscard]] std::string_view difficultyString(core::Difficulty difficulty) const;
 
     // UI components
     SudokuBoardWidget* board_widget_{nullptr};

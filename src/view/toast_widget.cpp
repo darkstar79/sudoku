@@ -16,6 +16,8 @@
 
 #include "toast_widget.h"
 
+#include "ui_colors.h"
+
 #include <QTimer>
 #include <QtCore/qobjectdefs.h>
 #include <qnamespace.h>
@@ -23,11 +25,12 @@
 namespace sudoku::view {
 
 ToastWidget::ToastWidget(QWidget* parent) : QLabel(parent), hide_timer_(new QTimer(this)) {
-    setStyleSheet("background-color: rgba(40, 40, 40, 230);"
-                  "color: #00cc00;"
-                  "padding: 10px 20px;"
-                  "border-radius: 6px;"
-                  "font-size: 14px;");
+    setStyleSheet(QString("background-color: %1;"
+                          "color: %2;"
+                          "padding: 10px 20px;"
+                          "border-radius: 6px;"
+                          "font-size: 14px;")
+                      .arg(UIColors::TOAST_BG, UIColors::TOAST_TEXT));
     setAlignment(Qt::AlignCenter);
     hide();
     hide_timer_->setSingleShot(true);

@@ -238,8 +238,8 @@ void GameViewModel::checkGameCompletion() {
     }
 }
 
-void GameViewModel::handleError(const std::string& message) {
-    errorMessage.set(message);
+void GameViewModel::handleError(std::string_view message) {
+    errorMessage.set(std::string(message));
     spdlog::error("GameViewModel error: {}", message);
 }
 
@@ -258,7 +258,7 @@ void GameViewModel::autoSaveIfNeeded() {
     }
 }
 
-StatsDisplay GameViewModel::createStatsDisplay(const core::AggregateStats& stats) {
+StatsDisplay GameViewModel::createStatsDisplay(const core::AggregateStats& stats) const {
     StatsDisplay display;
     display.games_played = stats.total_games;
     display.games_completed = stats.total_completed;
@@ -281,14 +281,14 @@ StatsDisplay GameViewModel::createStatsDisplay(const core::AggregateStats& stats
         std::chrono::milliseconds weighted_average = total_average_time / total_completed_games;
         display.average_time = formatTime(weighted_average);
     } else {
-        display.average_time = "N/A";
+        display.average_time = std::string(loc(core::StringKeys::StatsTimeNa));
     }
 
     // Use the first element from best_times array for overall best time
     if (stats.best_times[0].count() > 0) {
         display.best_time = formatTime(stats.best_times[0]);
     } else {
-        display.best_time = "N/A";
+        display.best_time = std::string(loc(core::StringKeys::StatsTimeNa));
     }
 
     return display;
@@ -317,7 +317,7 @@ void GameViewModel::setShowHints(bool show) {
 void GameViewModel::exportStatistics(const std::string& file_path) {
     auto export_result = stats_manager_->exportStats(file_path);
     if (!export_result) {
-        handleError(loc(core::StringKeys::ErrorExportStats));
+        handleError(std::string(loc(core::StringKeys::ErrorExportStats)));
     }
 }
 
@@ -330,7 +330,7 @@ std::expected<void, std::string> GameViewModel::exportAggregateStatsCsv() const 
     // Export aggregate statistics
     auto result = stats_manager_->exportAggregateStatsCsv(file_path.string());
     if (!result) {
-        std::string error_msg = loc(core::StringKeys::ErrorExportAggregate);
+        std::string error_msg(loc(core::StringKeys::ErrorExportAggregate));
         error_msg += ": ";
         error_msg += statisticsErrorToString(result.error());
         return std::unexpected(error_msg);
@@ -349,7 +349,7 @@ std::expected<void, std::string> GameViewModel::exportGameSessionsCsv() const {
     // Export game sessions
     auto result = stats_manager_->exportGameSessionsCsv(file_path.string());
     if (!result) {
-        std::string error_msg = loc(core::StringKeys::ErrorExportSessions);
+        std::string error_msg(loc(core::StringKeys::ErrorExportSessions));
         error_msg += ": ";
         error_msg += statisticsErrorToString(result.error());
         return std::unexpected(error_msg);

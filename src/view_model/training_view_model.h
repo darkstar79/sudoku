@@ -33,6 +33,9 @@
 #include <tuple>
 #include <vector>
 
+#include <fmt/base.h>
+#include <fmt/format.h>
+
 namespace sudoku::viewmodel {
 
 /// ViewModel for Training Mode — manages state machine, exercises, and answer evaluation
@@ -142,6 +145,15 @@ private:
     std::shared_ptr<core::ILocalizationManager> loc_manager_;
     std::shared_ptr<core::ITrainingStatisticsManager> stats_manager_;
 
+    [[nodiscard]] std::string_view loc(std::string_view key) const {
+        return loc_manager_ ? loc_manager_->getString(key) : key;
+    }
+
+    template <typename... Args>
+    [[nodiscard]] std::string locFormat(std::string_view key, Args&&... args) const {
+        return fmt::format(fmt::runtime(loc(key)), std::forward<Args>(args)...);
+    }
+
     // Exercise state
     std::vector<core::TrainingExercise> exercises_;
     int initial_step_count_{0};  ///< Number of valid steps when exercise loaded
@@ -182,7 +194,7 @@ private:
                                                  const core::TrainingExercise& exercise) const;
 
     /// Build feedback message based on result
-    [[nodiscard]] static std::string buildFeedback(core::AnswerResult result, const core::SolveStep& step);
+    [[nodiscard]] std::string buildFeedback(core::AnswerResult result, const core::SolveStep& step) const;
 
     /// Build a diff board highlighting correct/wrong/missed answers
     void buildDiffBoard(const core::TrainingBoard& player_board, const core::TrainingExercise& exercise,

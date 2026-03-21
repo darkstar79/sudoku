@@ -253,9 +253,9 @@ enum class SolvingTechnique : uint8_t {
 /// Returns localized technique name using the localization manager.
 /// @param loc Localization manager for string lookup
 /// @param technique The solving technique
-/// @return Localized technique name (e.g., "Naked Single" in English)
-[[nodiscard]] inline const char* getLocalizedTechniqueName(const ILocalizationManager& loc,
-                                                           SolvingTechnique technique) {
+/// @return Localized technique name as string_view (e.g., "Naked Single" in English)
+[[nodiscard]] inline std::string_view getLocalizedTechniqueName(const ILocalizationManager& loc,
+                                                                SolvingTechnique technique) {
     using enum SolvingTechnique;
     using namespace StringKeys;
     switch (technique) {

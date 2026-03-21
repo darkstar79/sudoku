@@ -42,7 +42,7 @@ namespace sudoku::viewmodel {
 void GameViewModel::getHint() {
     if (!isGameActive() || getHintCount() <= 0) {
         if (getHintCount() <= 0) {
-            errorMessage.set(loc(core::StringKeys::HintNoRemaining));
+            errorMessage.set(std::string(loc(core::StringKeys::HintNoRemaining)));
         }
         return;
     }
@@ -52,19 +52,19 @@ void GameViewModel::getHint() {
     auto pos_opt = state.getSelectedPosition();
 
     if (!pos_opt.has_value()) {
-        errorMessage.set(loc(core::StringKeys::HintSelectCell));
+        errorMessage.set(std::string(loc(core::StringKeys::HintSelectCell)));
         return;  // Don't consume hint
     }
 
     const auto& pos = *pos_opt;
 
     if (state.isGiven(pos)) {
-        errorMessage.set(loc(core::StringKeys::HintCannotRevealGiven));
+        errorMessage.set(std::string(loc(core::StringKeys::HintCannotRevealGiven)));
         return;  // Don't consume hint
     }
 
     if (state.getValue(pos) != 0) {
-        errorMessage.set(loc(core::StringKeys::HintCellHasValue));
+        errorMessage.set(std::string(loc(core::StringKeys::HintCellHasValue)));
         return;  // Don't consume hint
     }
 
@@ -76,7 +76,7 @@ void GameViewModel::getHint() {
     auto step_result = solver_->findNextStep(board, original_puzzle);
 
     if (!step_result.has_value()) {
-        errorMessage.set(loc(core::StringKeys::HintNoTechnique));
+        errorMessage.set(std::string(loc(core::StringKeys::HintNoTechnique)));
         return;  // Don't consume hint
     }
 

@@ -26,6 +26,7 @@
 #include "sudoku_board_widget.h"
 #include "toast_widget.h"
 #include "training_widget.h"
+#include "ui_colors.h"
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
 
@@ -75,7 +76,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     resize(800, 900);
 
     // Newspaper-like background
-    setStyleSheet("QMainWindow { background-color: #FAF8F0; }");
+    setStyleSheet(QString("QMainWindow { background-color: %1; }").arg(UIColors::BACKGROUND_WARM));
 
     setupCentralWidget();
     setupMenuBar();
@@ -103,23 +104,26 @@ void MainWindow::setupCentralWidget() {
 
     // Button panel
     auto* button_panel = new QWidget;
-    button_panel->setStyleSheet("QWidget { background-color: #f5f5f5; border-top: 1px solid #ddd; }");
+    button_panel->setStyleSheet(QString("QWidget { background-color: %1; border-top: 1px solid %2; }")
+                                    .arg(UIColors::SURFACE, UIColors::DIVIDER));
     auto* button_layout = new QHBoxLayout(button_panel);
     button_layout->setContentsMargins(20, 8, 20, 8);
 
-    static constexpr auto* BTN_STYLE =
-        "QPushButton { background-color: #e5e7eb; color: #374151; padding: 6px 14px; "
-        "border-radius: 4px; border: 1px solid #d1d5db; }"
-        "QPushButton:hover { background-color: #d1d5db; }"
-        "QPushButton:disabled { color: #9ca3af; background-color: #f3f4f6; border-color: #e5e7eb; }"
-        "QPushButton:checked { background-color: #2563eb; color: white; border-color: #1d4ed8; }";
+    static const auto BTN_STYLE =
+        QString("QPushButton { background-color: %1; color: %2; padding: 6px 14px; "
+                "border-radius: 4px; border: 1px solid %3; }"
+                "QPushButton:hover { background-color: %3; }"
+                "QPushButton:disabled { color: %4; background-color: %5; border-color: %1; }"
+                "QPushButton:checked { background-color: %6; color: white; border-color: %7; }")
+            .arg(UIColors::BTN_BG, UIColors::BTN_TEXT, UIColors::BTN_BORDER, UIColors::BTN_DISABLED_TEXT,
+                 UIColors::BTN_DISABLED_BG, UIColors::PRIMARY, UIColors::PRIMARY_DARK);
 
-    undo_btn_ = new QPushButton(loc(ButtonUndo));
-    redo_btn_ = new QPushButton(loc(ButtonRedo));
-    undo_valid_btn_ = new QPushButton(loc(ButtonUndoUntilValid));
-    auto_notes_btn_ = new QPushButton(loc(ButtonFillNotes));
-    mode_btn_ = new QPushButton(loc(ModeNormal));
-    mode_btn_->setToolTip("Input mode (Space to cycle, N for Notes)");
+    undo_btn_ = new QPushButton(qstr(loc(ButtonUndo)));
+    redo_btn_ = new QPushButton(qstr(loc(ButtonRedo)));
+    undo_valid_btn_ = new QPushButton(qstr(loc(ButtonUndoUntilValid)));
+    auto_notes_btn_ = new QPushButton(qstr(loc(ButtonFillNotes)));
+    mode_btn_ = new QPushButton(qstr(loc(ModeNormal)));
+    mode_btn_->setToolTip(qstr(loc(TooltipInputMode)));
 
     undo_btn_->setStyleSheet(BTN_STYLE);
     redo_btn_->setStyleSheet(BTN_STYLE);
@@ -147,33 +151,35 @@ void MainWindow::setupCentralWidget() {
 }
 
 void MainWindow::setupMenuBar() {
-    auto* game_menu = menuBar()->addMenu(QString("&%1").arg(loc(MenuGame)));
+    auto* game_menu = menuBar()->addMenu(QString("&%1").arg(qstr(loc(MenuGame))));
 
-    game_menu->addAction(QString("&%1").arg(loc(MenuNewGame)), QKeySequence("Ctrl+N"), this,
+    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuNewGame))), QKeySequence("Ctrl+N"), this,
                          &MainWindow::showNewGameDialog);
 
-    auto* reset_action = game_menu->addAction(QString("&%1").arg(loc(MenuResetPuzzle)), QKeySequence("Ctrl+R"), this,
-                                              &MainWindow::showResetDialog);
+    auto* reset_action = game_menu->addAction(QString("&%1").arg(qstr(loc(MenuResetPuzzle))), QKeySequence("Ctrl+R"),
+                                              this, &MainWindow::showResetDialog);
     reset_action->setEnabled(false);
 
     game_menu->addSeparator();
 
-    game_menu->addAction(QString("&%1").arg(loc(MenuSave)), QKeySequence("Ctrl+S"), this, &MainWindow::showSaveDialog);
-    game_menu->addAction(QString("&%1").arg(loc(MenuLoad)), QKeySequence("Ctrl+O"), this, &MainWindow::showLoadDialog);
+    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuSave))), QKeySequence("Ctrl+S"), this,
+                         &MainWindow::showSaveDialog);
+    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuLoad))), QKeySequence("Ctrl+O"), this,
+                         &MainWindow::showLoadDialog);
 
     game_menu->addSeparator();
 
-    game_menu->addAction(QString("&%1").arg(loc(MenuTrainingMode)), this,
+    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuTrainingMode))), this,
                          [this]() { central_stack_->setCurrentIndex(1); });
 
-    game_menu->addAction(QString("&%1").arg(loc(MenuAnalyzePosition)), QKeySequence("F2"), this, [this]() {
+    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuAnalyzePosition))), QKeySequence("F2"), this, [this]() {
         if (!view_model_ || !training_vm_) {
             return;
         }
         auto result = view_model_->analyzePosition();
         if (!result.has_value()) {
             if (toast_widget_) {
-                toast_widget_->show("No logical strategies found at this position.");
+                toast_widget_->show(qstr(loc(ToastNoStrategies)));
             }
             return;
         }
@@ -182,29 +188,29 @@ void MainWindow::setupMenuBar() {
         central_stack_->setCurrentIndex(1);
     });
 
-    game_menu->addAction(QString("&%1").arg(loc(MenuResumeGame)), this,
+    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuResumeGame))), this,
                          [this]() { central_stack_->setCurrentIndex(0); });
 
     game_menu->addSeparator();
 
-    game_menu->addAction(loc(MenuStatistics), this, &MainWindow::showStatisticsDialog);
-    game_menu->addAction(loc(MenuExportAggregate), this, &MainWindow::exportAggregateStatsCsv);
-    game_menu->addAction(loc(MenuExportSessions), this, &MainWindow::exportGameSessionsCsv);
+    game_menu->addAction(qstr(loc(MenuStatistics)), this, &MainWindow::showStatisticsDialog);
+    game_menu->addAction(qstr(loc(MenuExportAggregate)), this, &MainWindow::exportAggregateStatsCsv);
+    game_menu->addAction(qstr(loc(MenuExportSessions)), this, &MainWindow::exportGameSessionsCsv);
 
     game_menu->addSeparator();
-    game_menu->addAction(loc(MenuSettings), QKeySequence("Ctrl+,"), this, &MainWindow::showSettingsDialog);
+    game_menu->addAction(qstr(loc(MenuSettings)), QKeySequence("Ctrl+,"), this, &MainWindow::showSettingsDialog);
     game_menu->addSeparator();
-    game_menu->addAction(QString("&%1").arg(loc(MenuExit)), QKeySequence("Alt+F4"), this, &QWidget::close);
+    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuExit))), QKeySequence("Alt+F4"), this, &QWidget::close);
 
-    auto* edit_menu = menuBar()->addMenu(QString("&%1").arg(loc(MenuEdit)));
-    edit_menu->addAction(QString("&%1").arg(loc(MenuUndo)), QKeySequence("Ctrl+Z"), this, [this]() {
+    auto* edit_menu = menuBar()->addMenu(QString("&%1").arg(qstr(loc(MenuEdit))));
+    edit_menu->addAction(QString("&%1").arg(qstr(loc(MenuUndo))), QKeySequence("Ctrl+Z"), this, [this]() {
         if (view_model_) {
             view_model_->undo();
             board_widget_->update();
         }
     });
 
-    edit_menu->addAction(QString("&%1").arg(loc(MenuRedo)), QKeySequence("Ctrl+Y"), this, [this]() {
+    edit_menu->addAction(QString("&%1").arg(qstr(loc(MenuRedo))), QKeySequence("Ctrl+Y"), this, [this]() {
         if (view_model_) {
             view_model_->redo();
             board_widget_->update();
@@ -212,45 +218,47 @@ void MainWindow::setupMenuBar() {
     });
 
     edit_menu->addSeparator();
-    edit_menu->addAction(QString("&%1").arg(loc(MenuClearCell)), QKeySequence("Delete"), this, [this]() {
+    edit_menu->addAction(QString("&%1").arg(qstr(loc(MenuClearCell))), QKeySequence("Delete"), this, [this]() {
         if (view_model_) {
             view_model_->clearSelectedCell();
             board_widget_->update();
         }
     });
 
-    auto* help_menu = menuBar()->addMenu(QString("&%1").arg(loc(MenuHelp)));
-    help_menu->addAction(loc(MenuGetHint), QKeySequence("H"), this, [this]() {
+    auto* help_menu = menuBar()->addMenu(QString("&%1").arg(qstr(loc(MenuHelp))));
+    help_menu->addAction(qstr(loc(MenuGetHint)), QKeySequence("H"), this, [this]() {
         if (view_model_ && view_model_->getHintCount() > 0) {
             view_model_->getHint();
             board_widget_->update();
         }
     });
     help_menu->addSeparator();
-    help_menu->addAction(QString("&%1").arg(loc(MenuAbout)), this, &MainWindow::showAboutDialog);
-    help_menu->addAction(loc(MenuThirdPartyLicenses), this, &MainWindow::showThirdPartyLicensesDialog);
+    help_menu->addAction(QString("&%1").arg(qstr(loc(MenuAbout))), this, &MainWindow::showAboutDialog);
+    help_menu->addAction(qstr(loc(MenuThirdPartyLicenses)), this, &MainWindow::showThirdPartyLicensesDialog);
 }
 
 void MainWindow::setupToolBar() {
     auto* toolbar = addToolBar("Main");
     toolbar->setMovable(false);
-    toolbar->setStyleSheet(
-        "QToolBar { background-color: #f5f5f5; border-bottom: 1px solid #ddd; padding: 4px; spacing: 8px; }");
+    toolbar->setStyleSheet(QString("QToolBar { background-color: %1; border-bottom: 1px solid %2; "
+                                   "padding: 4px; spacing: 8px; }")
+                               .arg(UIColors::SURFACE, UIColors::DIVIDER));
 
-    new_game_btn_ = new QPushButton(loc(ToolbarNewGame));
+    new_game_btn_ = new QPushButton(qstr(loc(ToolbarNewGame)));
     new_game_btn_->setStyleSheet(
-        "QPushButton { background-color: #2563eb; color: white; padding: 6px 16px; border-radius: 4px; }"
-        "QPushButton:hover { background-color: #1d4ed8; }");
+        QString("QPushButton { background-color: %1; color: white; padding: 6px 16px; border-radius: 4px; }"
+                "QPushButton:hover { background-color: %2; }")
+            .arg(UIColors::PRIMARY, UIColors::PRIMARY_DARK));
     connect(new_game_btn_, &QPushButton::clicked, this, &MainWindow::showNewGameDialog);
     toolbar->addWidget(new_game_btn_);
 
     toolbar->addSeparator();
 
-    difficulty_label_ = new QLabel(QString(" %1 ").arg(loc(ToolbarDifficulty)));
+    difficulty_label_ = new QLabel(QString(" %1 ").arg(qstr(loc(ToolbarDifficulty))));
     toolbar->addWidget(difficulty_label_);
     difficulty_combo_ = new QComboBox;
-    difficulty_combo_->addItems({loc(DifficultyEasy), loc(DifficultyMedium), loc(DifficultyHard), loc(DifficultyExpert),
-                                 loc(DifficultyMaster)});
+    difficulty_combo_->addItems({qstr(loc(DifficultyEasy)), qstr(loc(DifficultyMedium)), qstr(loc(DifficultyHard)),
+                                 qstr(loc(DifficultyExpert)), qstr(loc(DifficultyMaster))});
     difficulty_combo_->setCurrentIndex(1);  // Medium
     toolbar->addWidget(difficulty_combo_);
 
@@ -259,8 +267,8 @@ void MainWindow::setupToolBar() {
             return;
         }
         auto result = QMessageBox::question(
-            this, QString("New Game"),
-            QString("Start a new %1 game?\nCurrent progress will be lost.").arg(difficulty_combo_->currentText()));
+            this, qstr(loc(DialogNewGame)),
+            QString::fromStdString(locFormat(DialogNewGameConfirm, difficulty_combo_->currentText().toStdString())));
         if (result == QMessageBox::Yes) {
             view_model_->startNewGame(static_cast<core::Difficulty>(index));
         } else {
@@ -274,10 +282,11 @@ void MainWindow::setupToolBar() {
 
     toolbar->addSeparator();
 
-    hints_text_label_ = new QLabel(QString(" %1 ").arg(loc(ToolbarHints)));
+    hints_text_label_ = new QLabel(QString(" %1 ").arg(qstr(loc(ToolbarHints))));
     toolbar->addWidget(hints_text_label_);
     hints_label_ = new QLabel("10");
-    hints_label_->setStyleSheet("background-color: #2563eb; color: white; padding: 2px 12px; border-radius: 12px;");
+    hints_label_->setStyleSheet(
+        QString("background-color: %1; color: white; padding: 2px 12px; border-radius: 12px;").arg(UIColors::PRIMARY));
     toolbar->addWidget(hints_label_);
 
     toolbar->addSeparator();
@@ -285,17 +294,19 @@ void MainWindow::setupToolBar() {
     rating_btn_ = new QPushButton;
     rating_btn_->setFlat(true);
     rating_btn_->setCursor(Qt::PointingHandCursor);
-    rating_btn_->setStyleSheet("QPushButton { border: none; padding: 2px 8px; text-decoration: underline; }"
-                               "QPushButton:hover { color: #2563eb; }");
+    rating_btn_->setStyleSheet(QString("QPushButton { border: none; padding: 2px 8px; text-decoration: underline; }"
+                                       "QPushButton:hover { color: %1; }")
+                                   .arg(UIColors::PRIMARY));
     connect(rating_btn_, &QPushButton::clicked, this, &MainWindow::showTechniquesDialog);
     rating_action_ = toolbar->addWidget(rating_btn_);
     rating_action_->setVisible(false);
 }
 
 void MainWindow::setupStatusBar() {
-    status_label_ = new QLabel(loc(StatusReady));
+    status_label_ = new QLabel(qstr(loc(StatusReady)));
     statusBar()->addWidget(status_label_, 1);
-    statusBar()->setStyleSheet("QStatusBar { background-color: #f0f0f0; border-top: 1px solid #ddd; color: #666; }");
+    statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; border-top: 1px solid %2; color: %3; }")
+                                   .arg(UIColors::SURFACE_STATUS, UIColors::DIVIDER, UIColors::TEXT_MUTED));
 }
 
 void MainWindow::setupAutoSaveTimer() {
@@ -389,6 +400,9 @@ void MainWindow::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewMod
 void MainWindow::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
     loc_manager_ = std::move(loc_manager);
     spdlog::debug("LocalizationManager bound to MainWindow (locale: {})", loc_manager_->getCurrentLocale());
+    if (board_widget_) {
+        board_widget_->setLocalizationManager(loc_manager_);
+    }
     if (training_widget_) {
         training_widget_->setLocalizationManager(loc_manager_);
         // Re-bind training VM since rebuildPages() destroyed the old page widgets
@@ -564,17 +578,17 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 
 void MainWindow::updateStatusBar() {
     if (!view_model_) {
-        status_label_->setText(loc(StatusReady));
+        status_label_->setText(qstr(loc(StatusReady)));
         return;
     }
 
     const auto& game_state = view_model_->gameState.get();
     if (game_state.isComplete()) {
-        status_label_->setText(QString("<span style='color: green;'>%1</span>").arg(loc(StatusCompleted)));
+        status_label_->setText(QString("<span style='color: green;'>%1</span>").arg(qstr(loc(StatusCompleted))));
     } else if (game_state.isTimerRunning()) {
-        status_label_->setText(loc(StatusPlaying));
+        status_label_->setText(qstr(loc(StatusPlaying)));
     } else {
-        status_label_->setText(loc(StatusReady));
+        status_label_->setText(qstr(loc(StatusReady)));
     }
 }
 
@@ -613,13 +627,13 @@ void MainWindow::updateButtonPanel() {
     // Update input mode indicator
     switch (view_model_->getInputMode()) {
         case viewmodel::InputMode::Normal:
-            mode_btn_->setText(loc(ModeNormal));
+            mode_btn_->setText(qstr(loc(ModeNormal)));
             break;
         case viewmodel::InputMode::Notes:
-            mode_btn_->setText(loc(ModeNotes));
+            mode_btn_->setText(qstr(loc(ModeNotes)));
             break;
         case viewmodel::InputMode::Color:
-            mode_btn_->setText(loc(ModeColor));
+            mode_btn_->setText(qstr(loc(ModeColor)));
             break;
     }
 }
@@ -632,10 +646,11 @@ void MainWindow::showNewGameDialog() {
     }
 
     int selected = difficulty_combo_ ? difficulty_combo_->currentIndex() : 1;
-    QString diff_name = difficulty_combo_ ? difficulty_combo_->currentText() : "Medium";
+    QString diff_name = difficulty_combo_ ? difficulty_combo_->currentText() : qstr(loc(DifficultyMedium));
 
-    auto result = QMessageBox::question(this, QString("New Game"),
-                                        QString("Start a new %1 game?\nCurrent progress will be lost.").arg(diff_name));
+    auto result =
+        QMessageBox::question(this, qstr(loc(DialogNewGame)),
+                              QString::fromStdString(locFormat(DialogNewGameConfirm, diff_name.toStdString())));
 
     if (result == QMessageBox::Yes) {
         view_model_->startNewGame(static_cast<core::Difficulty>(selected));
@@ -643,8 +658,7 @@ void MainWindow::showNewGameDialog() {
 }
 
 void MainWindow::showResetDialog() {
-    auto result = QMessageBox::warning(this, "Reset Puzzle",
-                                       "This will reset all your progress on the current puzzle. Are you sure?",
+    auto result = QMessageBox::warning(this, qstr(loc(DialogResetPuzzle)), qstr(loc(DialogResetWarning)),
                                        QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
     if (result == QMessageBox::Yes && view_model_) {
         view_model_->executeCommand(viewmodel::GameCommand::ResetGame);
@@ -653,11 +667,12 @@ void MainWindow::showResetDialog() {
 
 void MainWindow::showSaveDialog() {
     bool ok = false;
-    QString name = QInputDialog::getText(this, "Save Game", "Enter save name:", QLineEdit::Normal, "", &ok);
+    QString name = QInputDialog::getText(this, qstr(loc(DialogSaveGame)), qstr(loc(DialogEnterSaveName)),
+                                         QLineEdit::Normal, "", &ok);
     if (ok && !name.isEmpty() && view_model_) {
         bool success = view_model_->saveCurrentGame(name.toStdString());
         if (success) {
-            toast_widget_->show("Game saved!");
+            toast_widget_->show(qstr(loc(ToastGameSaved)));
         }
     }
 }
@@ -668,11 +683,11 @@ void MainWindow::showLoadDialog() {
     }
 
     QDialog dialog(this);
-    dialog.setWindowTitle("Load Game");
+    dialog.setWindowTitle(qstr(loc(DialogLoadGame)));
     dialog.setMinimumSize(300, 200);
 
     auto* layout = new QVBoxLayout(&dialog);
-    layout->addWidget(new QLabel("Recent Saves:"));
+    layout->addWidget(new QLabel(qstr(loc(DialogRecentSaves))));
 
     auto* list = new QListWidget;
     auto saves = view_model_->recentSaves.get();
@@ -700,29 +715,28 @@ void MainWindow::showStatisticsDialog() {
 
     auto stats = view_model_->statistics.get();
 
-    QString text = QString("Games Played: %1\nGames Completed: %2\nCompletion Rate: %3%\n"
-                           "Best Time: %4\nAverage Time: %5\nCurrent Streak: %6\nBest Streak: %7")
-                       .arg(stats.games_played)
-                       .arg(stats.games_completed)
-                       .arg(stats.completion_rate, 0, 'f', 1)
-                       .arg(QString::fromStdString(stats.best_time))
-                       .arg(QString::fromStdString(stats.average_time))
-                       .arg(stats.current_streak)
-                       .arg(stats.best_streak);
+    QString text = QString::fromStdString(locFormat(StatsGamesPlayed, stats.games_played)) + "\n" +
+                   QString::fromStdString(locFormat(StatsGamesCompleted, stats.games_completed)) + "\n" +
+                   QString::fromStdString(locFormat(StatsCompletionRate, stats.completion_rate)) + "\n" +
+                   QString::fromStdString(locFormat(StatsBestTime, stats.best_time)) + "\n" +
+                   QString::fromStdString(locFormat(StatsAverageTime, stats.average_time)) + "\n" +
+                   QString::fromStdString(locFormat(StatsCurrentStreak, stats.current_streak)) + "\n" +
+                   QString::fromStdString(locFormat(StatsBestStreak, stats.best_streak));
 
-    QMessageBox::information(this, "Statistics", text);
+    QMessageBox::information(this, qstr(loc(DialogStatistics)), text);
 }
 
 void MainWindow::showAboutDialog() {
-    QMessageBox::about(this, "About Sudoku",
-                       "Sudoku Game\n\nA feature-rich offline Sudoku application.\n\n"
-                       "Built with:\n- Qt6\n- C++23\n\n"
-                       "Copyright (C) 2025-2026 Alexander Bendlin");
+    QMessageBox::about(this, qstr(loc(DialogAbout)),
+                       QString("%1\n\n%2\n\n"
+                               "%3\n- Qt6\n- C++23\n\n"
+                               "Copyright (C) 2025-2026 Alexander Bendlin")
+                           .arg(qstr(loc(AboutSudokuGame)), qstr(loc(AboutDescription)), qstr(loc(AboutBuiltWith))));
 }
 
 void MainWindow::showThirdPartyLicensesDialog() {
     auto* dialog = new QDialog(this);
-    dialog->setWindowTitle("Third-Party Licenses");
+    dialog->setWindowTitle(qstr(loc(DialogThirdPartyLicenses)));
     dialog->resize(600, 480);
 
     auto* text = new QTextEdit(dialog);
@@ -788,15 +802,15 @@ void MainWindow::showTechniquesDialog() {
 
     const auto& techniques = ui_state.puzzle_techniques;
     if (!techniques.empty()) {
-        text += QString("%1\n\n").arg(loc(DialogTechniquesRequired));
+        text += QString("%1\n\n").arg(qstr(loc(DialogTechniquesRequired)));
         for (const auto& tech : techniques) {
             text += QString("  %1\n").arg(QString::fromStdString(tech));
         }
     } else {
-        text += loc(DialogNoTechniqueDetails);
+        text += qstr(loc(DialogNoTechniqueDetails));
     }
 
-    QMessageBox::information(this, loc(DialogPuzzleDifficulty), text);
+    QMessageBox::information(this, qstr(loc(DialogPuzzleDifficulty)), text);
 }
 
 void MainWindow::exportAggregateStatsCsv() {
@@ -806,9 +820,9 @@ void MainWindow::exportAggregateStatsCsv() {
 
     auto result = view_model_->exportAggregateStatsCsv();
     if (result) {
-        toast_widget_->show("Aggregate stats exported to CSV!");
+        toast_widget_->show(qstr(loc(ToastAggregateExported)));
     } else {
-        toast_widget_->show(QString("Export failed: %1").arg(QString::fromStdString(result.error())));
+        toast_widget_->show(QString::fromStdString(locFormat(ToastExportFailed, result.error())));
     }
 }
 
@@ -819,13 +833,13 @@ void MainWindow::exportGameSessionsCsv() {
 
     auto result = view_model_->exportGameSessionsCsv();
     if (result) {
-        toast_widget_->show("Game sessions exported to CSV!");
+        toast_widget_->show(qstr(loc(ToastSessionsExported)));
     } else {
-        toast_widget_->show(QString("Export failed: %1").arg(QString::fromStdString(result.error())));
+        toast_widget_->show(QString::fromStdString(locFormat(ToastExportFailed, result.error())));
     }
 }
 
-const char* MainWindow::difficultyString(core::Difficulty difficulty) const {
+std::string_view MainWindow::difficultyString(core::Difficulty difficulty) const {
     switch (difficulty) {
         case core::Difficulty::Easy:
             return loc(DifficultyEasy);
@@ -843,27 +857,31 @@ const char* MainWindow::difficultyString(core::Difficulty difficulty) const {
 }
 
 void MainWindow::retranslateUi() {
+    // Window title
+    setWindowTitle(qstr(loc(AppTitle)));
+
     // Menu bar: rebuild entirely (avoids storing ~15 action pointers)
     menuBar()->clear();
     setupMenuBar();
 
     // Toolbar labels
-    new_game_btn_->setText(loc(ToolbarNewGame));
-    difficulty_label_->setText(QString(" %1 ").arg(loc(ToolbarDifficulty)));
-    hints_text_label_->setText(QString(" %1 ").arg(loc(ToolbarHints)));
+    new_game_btn_->setText(qstr(loc(ToolbarNewGame)));
+    difficulty_label_->setText(QString(" %1 ").arg(qstr(loc(ToolbarDifficulty))));
+    hints_text_label_->setText(QString(" %1 ").arg(qstr(loc(ToolbarHints))));
 
     // Difficulty combo items
     difficulty_combo_->blockSignals(true);
     for (int i = 0; i < difficulty_combo_->count(); ++i) {
-        difficulty_combo_->setItemText(i, difficultyString(static_cast<core::Difficulty>(i)));
+        difficulty_combo_->setItemText(i, qstr(difficultyString(static_cast<core::Difficulty>(i))));
     }
     difficulty_combo_->blockSignals(false);
 
     // Button panel
-    undo_btn_->setText(loc(ButtonUndo));
-    redo_btn_->setText(loc(ButtonRedo));
-    undo_valid_btn_->setText(loc(ButtonUndoUntilValid));
-    auto_notes_btn_->setText(loc(ButtonFillNotes));
+    undo_btn_->setText(qstr(loc(ButtonUndo)));
+    redo_btn_->setText(qstr(loc(ButtonRedo)));
+    undo_valid_btn_->setText(qstr(loc(ButtonUndoUntilValid)));
+    auto_notes_btn_->setText(qstr(loc(ButtonFillNotes)));
+    mode_btn_->setToolTip(qstr(loc(TooltipInputMode)));
 
     // Training widget: rebuild pages with new locale, then re-bind VM
     if (training_widget_ && loc_manager_) {
@@ -885,7 +903,7 @@ void MainWindow::showSettingsDialog() {
     }
 
     auto* dialog = new QDialog(this);
-    dialog->setWindowTitle("Settings");
+    dialog->setWindowTitle(qstr(loc(DialogSettings)));
     dialog->setMinimumWidth(400);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
 
@@ -898,30 +916,31 @@ void MainWindow::showSettingsDialog() {
     auto* max_hints_spin = new QSpinBox();
     max_hints_spin->setRange(1, 50);
     max_hints_spin->setValue(settings_manager_->getSettings().max_hints);
-    gameplay_layout->addRow("Maximum Hints:", max_hints_spin);
+    gameplay_layout->addRow(qstr(loc(SettingsMaxHints)), max_hints_spin);
 
     auto* auto_save_spin = new QSpinBox();
     auto_save_spin->setRange(10, 300);
-    auto_save_spin->setSuffix(" seconds");
+    auto_save_spin->setSuffix(qstr(loc(SettingsSecondsSuffix)));
     auto_save_spin->setValue(settings_manager_->getSettings().auto_save_interval_ms / 1000);
-    gameplay_layout->addRow("Auto-save Interval:", auto_save_spin);
+    gameplay_layout->addRow(qstr(loc(SettingsAutoSaveInterval)), auto_save_spin);
 
     auto* difficulty_combo = new QComboBox();
-    difficulty_combo->addItems({"Easy", "Medium", "Hard", "Expert", "Master"});
+    difficulty_combo->addItems({qstr(loc(DifficultyEasy)), qstr(loc(DifficultyMedium)), qstr(loc(DifficultyHard)),
+                                qstr(loc(DifficultyExpert)), qstr(loc(DifficultyMaster))});
     difficulty_combo->setCurrentIndex(static_cast<int>(settings_manager_->getSettings().default_difficulty));
-    gameplay_layout->addRow("Default Difficulty:", difficulty_combo);
+    gameplay_layout->addRow(qstr(loc(SettingsDefaultDifficulty)), difficulty_combo);
 
-    tabs->addTab(gameplay_page, "Gameplay");
+    tabs->addTab(gameplay_page, qstr(loc(SettingsTabGameplay)));
 
     // === Display Tab ===
     auto* display_page = new QWidget();
     auto* display_layout = new QVBoxLayout(display_page);
 
-    auto* show_conflicts_cb = new QCheckBox("Highlight Conflicts");
+    auto* show_conflicts_cb = new QCheckBox(qstr(loc(SettingsHighlightConflicts)));
     show_conflicts_cb->setChecked(settings_manager_->getSettings().show_conflicts);
     display_layout->addWidget(show_conflicts_cb);
 
-    auto* show_hints_cb = new QCheckBox("Show Hints");
+    auto* show_hints_cb = new QCheckBox(qstr(loc(SettingsShowHints)));
     show_hints_cb->setChecked(settings_manager_->getSettings().show_hints);
     display_layout->addWidget(show_hints_cb);
 
@@ -929,7 +948,7 @@ void MainWindow::showSettingsDialog() {
     if (loc_manager_) {
         display_layout->addSpacing(10);
         auto* lang_layout = new QHBoxLayout();
-        lang_layout->addWidget(new QLabel("Language:"));
+        lang_layout->addWidget(new QLabel(qstr(loc(SidebarLanguage))));
         auto* lang_combo = new QComboBox();
         auto locales = loc_manager_->getAvailableLocales();
         int current_idx = 0;
@@ -950,7 +969,7 @@ void MainWindow::showSettingsDialog() {
     }
 
     display_layout->addStretch();
-    tabs->addTab(display_page, "Display");
+    tabs->addTab(display_page, qstr(loc(SettingsTabDisplay)));
 
     // === Dialog layout ===
     auto* main_layout = new QVBoxLayout(dialog);

@@ -21,6 +21,11 @@
 namespace sudoku::core::StringKeys {
 
 // =========================================================================
+// Application
+// =========================================================================
+inline constexpr std::string_view AppTitle = "app.title";
+
+// =========================================================================
 // Menu items
 // =========================================================================
 inline constexpr std::string_view MenuGame = "menu.game";
@@ -133,6 +138,13 @@ inline constexpr std::string_view TrainingApplicable = "training.applicable";
 inline constexpr std::string_view TrainingExcellent = "training.excellent";
 inline constexpr std::string_view TrainingGoodProgress = "training.good_progress";
 inline constexpr std::string_view TrainingKeepPracticing = "training.keep_practicing";
+inline constexpr std::string_view TrainingErrorBacktracking = "training.error_backtracking";
+inline constexpr std::string_view TrainingErrorNoStep = "training.error_no_step";
+inline constexpr std::string_view TrainingCorrectContinue = "training.correct_continue";
+inline constexpr std::string_view TrainingFeedbackCorrect = "training.feedback_correct";
+inline constexpr std::string_view TrainingFeedbackPartial = "training.feedback_partial";
+inline constexpr std::string_view TrainingFeedbackIncorrect = "training.feedback_incorrect";
+inline constexpr std::string_view TrainingFeedbackUnknown = "training.feedback_unknown";
 inline constexpr std::string_view MasteryBeginner = "mastery.beginner";
 inline constexpr std::string_view MasteryIntermediate = "mastery.intermediate";
 inline constexpr std::string_view MasteryProficient = "mastery.proficient";
@@ -159,6 +171,7 @@ inline constexpr std::string_view DialogNewGame = "dialog.new_game";
 inline constexpr std::string_view DialogSelectDifficulty = "dialog.select_difficulty";
 inline constexpr std::string_view DialogStartGame = "dialog.start_game";
 inline constexpr std::string_view DialogCancel = "dialog.cancel";
+inline constexpr std::string_view DialogNewGameConfirm = "dialog.new_game_confirm";
 
 // =========================================================================
 // Dialogs — Reset
@@ -192,20 +205,38 @@ inline constexpr std::string_view StatsBestTime = "stats.best_time";
 inline constexpr std::string_view StatsAverageTime = "stats.average_time";
 inline constexpr std::string_view StatsCurrentStreak = "stats.current_streak";
 inline constexpr std::string_view StatsBestStreak = "stats.best_streak";
+inline constexpr std::string_view StatsTimeNa = "stats.time_na";
 
 // =========================================================================
 // Dialogs — About
 // =========================================================================
 inline constexpr std::string_view DialogAbout = "dialog.about";
 inline constexpr std::string_view AboutSudokuGame = "about.sudoku_game";
-inline constexpr std::string_view AboutPhaseInfo = "about.phase_info";
 inline constexpr std::string_view AboutBuiltWith = "about.built_with";
+inline constexpr std::string_view AboutDescription = "about.description";
+
+// =========================================================================
+// Dialogs — Settings
+// =========================================================================
+inline constexpr std::string_view DialogSettings = "dialog.settings";
+inline constexpr std::string_view DialogThirdPartyLicenses = "dialog.third_party_licenses";
+inline constexpr std::string_view SettingsTabGameplay = "settings.tab_gameplay";
+inline constexpr std::string_view SettingsTabDisplay = "settings.tab_display";
+inline constexpr std::string_view SettingsMaxHints = "settings.max_hints";
+inline constexpr std::string_view SettingsAutoSaveInterval = "settings.auto_save_interval";
+inline constexpr std::string_view SettingsDefaultDifficulty = "settings.default_difficulty";
+inline constexpr std::string_view SettingsSecondsSuffix = "settings.seconds_suffix";
+inline constexpr std::string_view SettingsHighlightConflicts = "settings.highlight_conflicts";
+inline constexpr std::string_view SettingsShowHints = "settings.show_hints";
 
 // =========================================================================
 // Tooltips — Rating scale
 // =========================================================================
 inline constexpr std::string_view TooltipRatingScale = "tooltip.rating_scale";
 inline constexpr std::string_view TooltipTechniquesRequired = "tooltip.techniques_required";
+inline constexpr std::string_view TooltipInputMode = "tooltip.input_mode";
+inline constexpr std::string_view TooltipPlaceDigit = "tooltip.place_digit";
+inline constexpr std::string_view TooltipEliminateDigit = "tooltip.eliminate_digit";
 
 // =========================================================================
 // Dialogs — Puzzle Difficulty
@@ -228,6 +259,7 @@ inline constexpr std::string_view ToastGameSaved = "toast.game_saved";
 inline constexpr std::string_view ToastAggregateExported = "toast.aggregate_exported";
 inline constexpr std::string_view ToastSessionsExported = "toast.sessions_exported";
 inline constexpr std::string_view ToastExportFailed = "toast.export_failed";
+inline constexpr std::string_view ToastNoStrategies = "toast.no_strategies";
 
 // =========================================================================
 // Sidebar

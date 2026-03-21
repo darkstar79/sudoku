@@ -55,7 +55,7 @@ public:
     LocalizationManager(LocalizationManager&&) = delete;
     LocalizationManager& operator=(LocalizationManager&&) = delete;
 
-    [[nodiscard]] const char* getString(std::string_view key) const override;
+    [[nodiscard]] std::string_view getString(std::string_view key) const override;
 
     [[nodiscard]] std::expected<void, std::string> setLocale(std::string_view locale_code) override;
 

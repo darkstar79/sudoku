@@ -2,6 +2,9 @@ locale: en
 name: English
 
 strings:
+  # Application
+  app.title: "Sudoku"
+
   # Menu items
   menu.game: "Game"
   menu.new_game: "New Game"
@@ -103,6 +106,13 @@ strings:
   training.excellent: "Excellent! You've mastered this technique."
   training.good_progress: "Good progress. Try again for a higher score."
   training.keep_practicing: "Keep practicing! Review the theory and try again."
+  training.error_backtracking: "Cannot practice Backtracking — it is not a logical technique."
+  training.error_no_step: "No applicable step found for this technique."
+  training.correct_continue: "Correct! {0} Find the next one."
+  training.feedback_correct: "Correct! {0}"
+  training.feedback_partial: "Partially correct. {0}"
+  training.feedback_incorrect: "Not quite. {0}"
+  training.feedback_unknown: "Unknown result."
   mastery.beginner: "Beginner"
   mastery.intermediate: "Intermediate"
   mastery.proficient: "Proficient"
@@ -123,6 +133,7 @@ strings:
   dialog.select_difficulty: "Select difficulty:"
   dialog.start_game: "Start Game"
   dialog.cancel: "Cancel"
+  dialog.new_game_confirm: "Start a new {0} game?\nCurrent progress will be lost."
 
   # Dialogs — Reset
   dialog.reset_puzzle: "Reset Puzzle"
@@ -148,12 +159,25 @@ strings:
   stats.average_time: "Average Time: {0}"
   stats.current_streak: "Current Streak: {0}"
   stats.best_streak: "Best Streak: {0}"
+  stats.time_na: "N/A"
 
   # Dialogs — About
   dialog.about: "About"
   about.sudoku_game: "Sudoku Game"
-  about.phase_info: "Phase 1 Complete - MVVM Architecture"
   about.built_with: "Built with:"
+  about.description: "A feature-rich offline Sudoku application."
+
+  # Dialogs — Settings
+  dialog.settings: "Settings"
+  dialog.third_party_licenses: "Third-Party Licenses"
+  settings.tab_gameplay: "Gameplay"
+  settings.tab_display: "Display"
+  settings.max_hints: "Maximum Hints:"
+  settings.auto_save_interval: "Auto-save Interval:"
+  settings.default_difficulty: "Default Difficulty:"
+  settings.seconds_suffix: " seconds"
+  settings.highlight_conflicts: "Highlight Conflicts"
+  settings.show_hints: "Show Hints"
 
   # Dialogs — Puzzle Difficulty
   dialog.puzzle_difficulty: "Puzzle Difficulty"
@@ -168,12 +192,16 @@ strings:
   # Tooltips — Rating scale
   tooltip.rating_scale: "Sudoku Explainer Rating Scale:"
   tooltip.techniques_required: "Techniques Required:"
+  tooltip.input_mode: "Input mode (Space to cycle, N for Notes)"
+  tooltip.place_digit: "Place {0} in selected cell"
+  tooltip.eliminate_digit: "Eliminate {0} from selected cell"
 
   # Toast notifications
   toast.game_saved: "Game saved successfully"
   toast.aggregate_exported: "Aggregate stats exported to CSV"
   toast.sessions_exported: "Game sessions exported to CSV"
   toast.export_failed: "Export failed: {0}"
+  toast.no_strategies: "No logical strategies found at this position."
 
   # Sidebar
   sidebar.difficulty: "Difficulty: {0}"

@@ -63,7 +63,7 @@ GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
     refreshRecentSaves();
 }
 
-std::string GameViewModel::statisticsErrorToString(core::StatisticsError error) const {
+std::string_view GameViewModel::statisticsErrorToString(core::StatisticsError error) const {
     using core::StringKeys::StatsErrFileAccess;
     using core::StringKeys::StatsErrGameAlreadyEnded;
     using core::StringKeys::StatsErrGameNotStarted;

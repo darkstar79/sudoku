@@ -24,6 +24,7 @@
 #include "core/training_types.h"
 #include "training_board_widget.h"
 #include "training_number_pad.h"
+#include "ui_colors.h"
 #include "view_model/training_view_model.h"
 
 #include <array>
@@ -52,7 +53,7 @@ namespace {
 
 /// Format a technique button label with mastery badge and recommendation marker
 std::string formatTechniqueLabel(sudoku::core::SolvingTechnique technique, sudoku::core::MasteryLevel mastery,
-                                 bool is_recommended, const std::function<const char*(std::string_view)>& loc_fn) {
+                                 bool is_recommended, const std::function<std::string_view(std::string_view)>& loc_fn) {
     auto name = sudoku::core::getTechniqueName(technique);
     auto points = sudoku::core::getTechniqueRating(technique);
 
@@ -72,7 +73,8 @@ std::string formatTechniqueLabel(sudoku::core::SolvingTechnique technique, sudok
             break;
     }
 
-    return fmt::format("{}{} ({} pts){}", is_recommended ? ">> " : "", name, points, badge);
+    auto points_str = fmt::format(fmt::runtime(loc_fn(TrainingPointsFmt)), name, points);
+    return fmt::format("{}{}{}", is_recommended ? ">> " : "", points_str, badge);
 }
 
 }  // namespace
@@ -179,35 +181,35 @@ void TrainingWidget::buildTechniqueSelectionPage() {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);
 
-    auto* title = new QLabel(QString("<h1>%1</h1>").arg(loc(TrainingTitle)));
+    auto* title = new QLabel(QString("<h1>%1</h1>").arg(qstr(loc(TrainingTitle))));
     layout->addWidget(title);
-    layout->addWidget(new QLabel(loc(TrainingSelectTechnique)));
+    layout->addWidget(new QLabel(qstr(loc(TrainingSelectTechnique))));
 
     // clang-format off
     struct TechniqueGroup {
-        const char* name;
+        QString name;
         std::vector<core::SolvingTechnique> techniques;
     };
 
     std::array<TechniqueGroup, 9> groups = {{
-        {.name = loc(TrainingGroupFoundations), .techniques = {core::SolvingTechnique::NakedSingle, core::SolvingTechnique::HiddenSingle}},
-        {.name = loc(TrainingGroupSubsetBasics), .techniques = {core::SolvingTechnique::NakedPair, core::SolvingTechnique::NakedTriple,
+        {.name = qstr(loc(TrainingGroupFoundations)), .techniques = {core::SolvingTechnique::NakedSingle, core::SolvingTechnique::HiddenSingle}},
+        {.name = qstr(loc(TrainingGroupSubsetBasics)), .techniques = {core::SolvingTechnique::NakedPair, core::SolvingTechnique::NakedTriple,
                            core::SolvingTechnique::HiddenPair, core::SolvingTechnique::HiddenTriple}},
-        {.name = loc(TrainingGroupIntersections), .techniques = {core::SolvingTechnique::PointingPair, core::SolvingTechnique::BoxLineReduction,
+        {.name = qstr(loc(TrainingGroupIntersections)), .techniques = {core::SolvingTechnique::PointingPair, core::SolvingTechnique::BoxLineReduction,
                                     core::SolvingTechnique::NakedQuad, core::SolvingTechnique::HiddenQuad}},
-        {.name = loc(TrainingGroupBasicFish), .techniques = {core::SolvingTechnique::XWing, core::SolvingTechnique::XYWing,
+        {.name = qstr(loc(TrainingGroupBasicFish)), .techniques = {core::SolvingTechnique::XWing, core::SolvingTechnique::XYWing,
                                  core::SolvingTechnique::Swordfish, core::SolvingTechnique::Skyscraper,
                                  core::SolvingTechnique::TwoStringKite, core::SolvingTechnique::XYZWing}},
-        {.name = loc(TrainingGroupLinks), .techniques = {core::SolvingTechnique::UniqueRectangle, core::SolvingTechnique::WWing,
+        {.name = qstr(loc(TrainingGroupLinks)), .techniques = {core::SolvingTechnique::UniqueRectangle, core::SolvingTechnique::WWing,
                                  core::SolvingTechnique::SimpleColoring, core::SolvingTechnique::FinnedXWing,
                                  core::SolvingTechnique::RemotePairs, core::SolvingTechnique::BUG}},
-        {.name = loc(TrainingGroupAdvancedFish), .techniques = {core::SolvingTechnique::Jellyfish, core::SolvingTechnique::FinnedSwordfish,
+        {.name = qstr(loc(TrainingGroupAdvancedFish)), .techniques = {core::SolvingTechnique::Jellyfish, core::SolvingTechnique::FinnedSwordfish,
                                     core::SolvingTechnique::EmptyRectangle, core::SolvingTechnique::WXYZWing,
                                     core::SolvingTechnique::MultiColoring}},
-        {.name = loc(TrainingGroupFinnedFish), .techniques = {core::SolvingTechnique::FinnedJellyfish}},
-        {.name = loc(TrainingGroupChains), .techniques = {core::SolvingTechnique::XYChain, core::SolvingTechnique::ALSxZ,
+        {.name = qstr(loc(TrainingGroupFinnedFish)), .techniques = {core::SolvingTechnique::FinnedJellyfish}},
+        {.name = qstr(loc(TrainingGroupChains)), .techniques = {core::SolvingTechnique::XYChain, core::SolvingTechnique::ALSxZ,
                                  core::SolvingTechnique::SueDeCoq}},
-        {.name = loc(TrainingGroupInference), .techniques = {core::SolvingTechnique::ForcingChain, core::SolvingTechnique::NiceLoop}},
+        {.name = qstr(loc(TrainingGroupInference)), .techniques = {core::SolvingTechnique::ForcingChain, core::SolvingTechnique::NiceLoop}},
     }};
     // clang-format on
 
@@ -219,7 +221,7 @@ void TrainingWidget::buildTechniqueSelectionPage() {
         for (auto technique : group.techniques) {
             auto name = core::getTechniqueName(technique);
             auto points = core::getTechniqueRating(technique);
-            auto label = fmt::format("{} ({} pts)", name, points);
+            auto label = locFormat(TrainingPointsFmt, name, points);
 
             auto* btn = new QPushButton(QString::fromStdString(label));
             btn->setFlat(true);
@@ -237,7 +239,7 @@ void TrainingWidget::buildTechniqueSelectionPage() {
         layout->addWidget(group_box);
     }
 
-    auto* back_btn = new QPushButton(loc(TrainingBackToGame));
+    auto* back_btn = new QPushButton(qstr(loc(TrainingBackToGame)));
     connect(back_btn, &QPushButton::clicked, this, &TrainingWidget::backToGame);
     layout->addWidget(back_btn);
 
@@ -253,12 +255,12 @@ void TrainingWidget::buildTechniqueSelectionPage() {
         // Build set of applicable techniques in analysis mode
         std::set<core::SolvingTechnique> applicable_techniques;
         if (training_vm_->isAnalysisMode()) {
-            title->setText(QString("<h1>%1</h1>").arg(loc(TrainingAnalyzeTitle)));
+            title->setText(QString("<h1>%1</h1>").arg(qstr(loc(TrainingAnalyzeTitle))));
             for (const auto& step : training_vm_->analysisSteps()) {
                 applicable_techniques.insert(step.technique);
             }
         } else {
-            title->setText(QString("<h1>%1</h1>").arg(loc(TrainingTitle)));
+            title->setText(QString("<h1>%1</h1>").arg(qstr(loc(TrainingTitle))));
         }
 
         auto stats_mgr = training_vm_->statsManager();
@@ -280,7 +282,7 @@ void TrainingWidget::buildTechniqueSelectionPage() {
                 bool applicable = applicable_techniques.contains(technique);
                 btn->setEnabled(applicable);
                 btn->setVisible(applicable);
-                btn->setToolTip(applicable ? loc(TrainingApplicable) : "");
+                btn->setToolTip(applicable ? qstr(loc(TrainingApplicable)) : "");
             } else {
                 btn->setVisible(true);
                 auto mastery = stats_mgr ? stats_mgr->getMastery(technique) : core::MasteryLevel::Beginner;
@@ -292,9 +294,9 @@ void TrainingWidget::buildTechniqueSelectionPage() {
                 bool prereqs_met = !stats_mgr || core::arePrerequisitesMet(technique, *stats_mgr);
                 btn->setEnabled(prereqs_met);
                 if (!prereqs_met) {
-                    btn->setToolTip(loc(TrainingPrereqNotMet));
+                    btn->setToolTip(qstr(loc(TrainingPrereqNotMet)));
                 } else if (is_recommended) {
-                    btn->setToolTip(loc(TrainingRecommended));
+                    btn->setToolTip(qstr(loc(TrainingRecommended)));
                 } else {
                     btn->setToolTip("");
                 }
@@ -320,30 +322,30 @@ void TrainingWidget::buildTheoryPage() {
 
     auto* points_label = new QLabel;
     points_label->setObjectName("theoryPoints");
-    points_label->setStyleSheet("color: #666;");
+    points_label->setStyleSheet(QString("color: %1;").arg(UIColors::TEXT_MUTED));
     layout->addWidget(points_label);
 
     auto* prereqs_label = new QLabel;
     prereqs_label->setObjectName("theoryPrereqs");
     prereqs_label->setWordWrap(true);
-    prereqs_label->setStyleSheet("color: #555; font-style: italic;");
+    prereqs_label->setStyleSheet(QString("color: %1; font-style: italic;").arg(UIColors::TEXT_SUBTLE));
     layout->addWidget(prereqs_label);
 
-    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(loc(TrainingWhatItIs))));
+    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(qstr(loc(TrainingWhatItIs)))));
     auto* what_label = new QLabel;
     what_label->setObjectName("theoryWhat");
     what_label->setWordWrap(true);
     layout->addWidget(what_label);
 
-    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(loc(TrainingWhatToLookFor))));
+    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(qstr(loc(TrainingWhatToLookFor)))));
     auto* look_label = new QLabel;
     look_label->setObjectName("theoryLook");
     look_label->setWordWrap(true);
     layout->addWidget(look_label);
 
     auto* btn_layout = new QHBoxLayout;
-    auto* start_btn = new QPushButton(loc(TrainingStartExercises));
-    auto* back_btn = new QPushButton(loc(TrainingBack));
+    auto* start_btn = new QPushButton(qstr(loc(TrainingStartExercises)));
+    auto* back_btn = new QPushButton(qstr(loc(TrainingBack)));
     btn_layout->addWidget(start_btn);
     btn_layout->addWidget(back_btn);
     btn_layout->addStretch();
@@ -378,7 +380,7 @@ void TrainingWidget::buildTheoryPage() {
                 if (prereqs.empty()) {
                     prereqs_label->hide();
                 } else {
-                    std::string prereq_text = loc(TrainingPrerequisites);
+                    std::string prereq_text(loc(TrainingPrerequisites));
                     for (size_t i = 0; i < prereqs.size(); ++i) {
                         if (i > 0) {
                             prereq_text += ", ";
@@ -413,21 +415,26 @@ void TrainingWidget::buildExercisePage() {
 
     // Number pad
     number_pad_ = new TrainingNumberPad;
+    if (loc_manager_) {
+        number_pad_->setLocalizationManager(loc_manager_);
+    }
     layout->addWidget(number_pad_);
 
     // Color palette (hidden by default, shown only for Coloring exercises)
     color_palette_ = new QWidget;
     auto* color_layout = new QHBoxLayout(color_palette_);
     color_layout->setContentsMargins(0, 0, 0, 0);
-    auto* color_label = new QLabel(loc(TrainingColor));
+    auto* color_label = new QLabel(qstr(loc(TrainingColor)));
     color_a_btn_ = new QPushButton("A");
     color_a_btn_->setFixedSize(44, 44);
-    color_a_btn_->setStyleSheet("background-color: #a0c4ff; font-weight: bold; font-size: 16px;");
+    color_a_btn_->setStyleSheet(
+        QString("background-color: %1; font-weight: bold; font-size: 16px;").arg(UIColors::PALETTE_A));
     color_a_btn_->setCheckable(true);
     color_a_btn_->setChecked(true);
     color_b_btn_ = new QPushButton("B");
     color_b_btn_->setFixedSize(44, 44);
-    color_b_btn_->setStyleSheet("background-color: #a0ffcc; font-weight: bold; font-size: 16px;");
+    color_b_btn_->setStyleSheet(
+        QString("background-color: %1; font-weight: bold; font-size: 16px;").arg(UIColors::PALETTE_B));
     color_b_btn_->setCheckable(true);
     color_layout->addWidget(color_label);
     color_layout->addWidget(color_a_btn_);
@@ -440,20 +447,20 @@ void TrainingWidget::buildExercisePage() {
     auto* hint_label = new QLabel;
     hint_label->setObjectName("exerciseHint");
     hint_label->setWordWrap(true);
-    hint_label->setStyleSheet("color: #0052cc; font-style: italic; padding: 4px 0;");
+    hint_label->setStyleSheet(QString("color: %1; font-style: italic; padding: 4px 0;").arg(UIColors::HINT_TEXT));
     hint_label->setVisible(false);
     layout->addWidget(hint_label);
 
     // Action buttons
     auto* btn_layout = new QHBoxLayout;
-    undo_btn_ = new QPushButton(loc(ButtonUndo));
-    redo_btn_ = new QPushButton(loc(ButtonRedo));
+    undo_btn_ = new QPushButton(qstr(loc(ButtonUndo)));
+    redo_btn_ = new QPushButton(qstr(loc(ButtonRedo)));
     undo_btn_->setEnabled(false);
     redo_btn_->setEnabled(false);
-    auto* submit_btn = new QPushButton(loc(TrainingSubmit));
-    auto* hint_btn = new QPushButton(loc(TrainingHint));
-    auto* skip_btn = new QPushButton(loc(TrainingSkip));
-    auto* quit_btn = new QPushButton(loc(TrainingQuitLesson));
+    auto* submit_btn = new QPushButton(qstr(loc(TrainingSubmit)));
+    auto* hint_btn = new QPushButton(qstr(loc(TrainingHint)));
+    auto* skip_btn = new QPushButton(qstr(loc(TrainingSkip)));
+    auto* quit_btn = new QPushButton(qstr(loc(TrainingQuitLesson)));
     btn_layout->addWidget(undo_btn_);
     btn_layout->addWidget(redo_btn_);
     btn_layout->addWidget(submit_btn);
@@ -566,7 +573,8 @@ void TrainingWidget::buildExercisePage() {
             const auto& state = training_vm_->trainingState.get();
             if (state.phase == core::TrainingPhase::Exercise && !state.found_step_message.empty()) {
                 hint_label->setText(QString::fromStdString(state.found_step_message));
-                hint_label->setStyleSheet("color: #2e7d32; font-weight: bold; padding: 4px 0;");
+                hint_label->setStyleSheet(
+                    QString("color: %1; font-weight: bold; padding: 4px 0;").arg(UIColors::SUCCESS));
                 hint_label->setVisible(true);
             }
         }
@@ -660,10 +668,10 @@ void TrainingWidget::buildFeedbackPage() {
     layout->addWidget(feedback_board_, 1);
 
     auto* btn_layout = new QHBoxLayout;
-    auto* next_btn = new QPushButton(loc(TrainingNextExercise));
-    auto* retry_btn = new QPushButton(loc(TrainingRetry));
-    auto* solution_btn = new QPushButton(loc(TrainingShowSolution));
-    auto* quit_btn = new QPushButton(loc(TrainingQuitLesson));
+    auto* next_btn = new QPushButton(qstr(loc(TrainingNextExercise)));
+    auto* retry_btn = new QPushButton(qstr(loc(TrainingRetry)));
+    auto* solution_btn = new QPushButton(qstr(loc(TrainingShowSolution)));
+    auto* quit_btn = new QPushButton(qstr(loc(TrainingQuitLesson)));
     btn_layout->addWidget(next_btn);
     btn_layout->addWidget(retry_btn);
     btn_layout->addWidget(solution_btn);
@@ -702,16 +710,16 @@ void TrainingWidget::buildFeedbackPage() {
         QString color;
         switch (state.last_result) {
             case core::AnswerResult::Correct:
-                result_text = loc(TrainingCorrect);
-                color = "color: green;";
+                result_text = qstr(loc(TrainingCorrect));
+                color = QString("color: %1;").arg(UIColors::SUCCESS);
                 break;
             case core::AnswerResult::PartiallyCorrect:
-                result_text = loc(TrainingPartiallyCorrect);
-                color = "color: #cc9900;";
+                result_text = qstr(loc(TrainingPartiallyCorrect));
+                color = QString("color: %1;").arg(UIColors::WARNING);
                 break;
             case core::AnswerResult::Incorrect:
-                result_text = loc(TrainingIncorrect);
-                color = "color: red;";
+                result_text = qstr(loc(TrainingIncorrect));
+                color = QString("color: %1;").arg(UIColors::ERROR_COLOR);
                 break;
         }
 
@@ -735,7 +743,7 @@ void TrainingWidget::buildLessonCompletePage() {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);
 
-    auto* title = new QLabel(QString("<h1>%1</h1>").arg(loc(TrainingLessonComplete)));
+    auto* title = new QLabel(QString("<h1>%1</h1>").arg(qstr(loc(TrainingLessonComplete))));
     layout->addWidget(title);
 
     auto* info_label = new QLabel;
@@ -747,9 +755,9 @@ void TrainingWidget::buildLessonCompletePage() {
     layout->addWidget(verdict_label);
 
     auto* btn_layout = new QHBoxLayout;
-    auto* again_btn = new QPushButton(loc(TrainingTryAgain));
-    auto* pick_btn = new QPushButton(loc(TrainingPickTechnique));
-    auto* game_btn = new QPushButton(loc(TrainingReturnToGame));
+    auto* again_btn = new QPushButton(qstr(loc(TrainingTryAgain)));
+    auto* pick_btn = new QPushButton(qstr(loc(TrainingPickTechnique)));
+    auto* game_btn = new QPushButton(qstr(loc(TrainingReturnToGame)));
     btn_layout->addWidget(again_btn);
     btn_layout->addWidget(pick_btn);
     btn_layout->addWidget(game_btn);
@@ -790,7 +798,7 @@ void TrainingWidget::buildLessonCompletePage() {
         auto stats_mgr = training_vm_->statsManager();
         if (stats_mgr) {
             auto mastery = stats_mgr->getMastery(state.current_technique);
-            const char* mastery_text = loc(MasteryBeginner);
+            std::string_view mastery_text = loc(MasteryBeginner);
             switch (mastery) {
                 case core::MasteryLevel::Beginner:
                     mastery_text = loc(MasteryBeginner);
@@ -806,21 +814,22 @@ void TrainingWidget::buildLessonCompletePage() {
                     break;
             }
             verdict_label->setText(QString::fromStdString(locFormat(TrainingMastery, mastery_text)));
-            verdict_label->setStyleSheet(mastery == core::MasteryLevel::Mastered ? "color: green; font-weight: bold;"
-                                                                                 : "color: #333; font-weight: bold;");
+            verdict_label->setStyleSheet(mastery == core::MasteryLevel::Mastered
+                                             ? QString("color: %1; font-weight: bold;").arg(UIColors::SUCCESS)
+                                             : QString("color: %1; font-weight: bold;").arg(UIColors::TEXT_NEAR_BLACK));
         } else {
             float ratio = state.total_exercises > 0
                               ? static_cast<float>(state.correct_count) / static_cast<float>(state.total_exercises)
                               : 0.0f;
             if (ratio >= 0.8f) {
-                verdict_label->setText(loc(TrainingExcellent));
-                verdict_label->setStyleSheet("color: green; font-weight: bold;");
+                verdict_label->setText(qstr(loc(TrainingExcellent)));
+                verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(UIColors::SUCCESS));
             } else if (ratio >= 0.5f) {
-                verdict_label->setText(loc(TrainingGoodProgress));
-                verdict_label->setStyleSheet("color: #cc9900; font-weight: bold;");
+                verdict_label->setText(qstr(loc(TrainingGoodProgress)));
+                verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(UIColors::WARNING));
             } else {
-                verdict_label->setText(loc(TrainingKeepPracticing));
-                verdict_label->setStyleSheet("color: red; font-weight: bold;");
+                verdict_label->setText(qstr(loc(TrainingKeepPracticing)));
+                verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(UIColors::ERROR_COLOR));
             }
         }
     });

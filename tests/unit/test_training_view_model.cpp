@@ -98,8 +98,8 @@ public:
 /// Minimal localization manager for tests
 class MockLocManager : public ILocalizationManager {
 public:
-    [[nodiscard]] const char* getString(std::string_view key) const override {
-        return key.data();
+    [[nodiscard]] std::string_view getString(std::string_view key) const override {
+        return key;
     }
     [[nodiscard]] std::expected<void, std::string> setLocale(std::string_view /*locale_code*/) override {
         return {};

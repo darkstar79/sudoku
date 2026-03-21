@@ -29,17 +29,17 @@ LocalizationManager::LocalizationManager(std::filesystem::path locales_dir) : lo
     discoverLocales();
 }
 
-const char* LocalizationManager::getString(std::string_view key) const {
+std::string_view LocalizationManager::getString(std::string_view key) const {
     // Look up in active locale first
     auto it = strings_.find(std::string(key));
     if (it != strings_.end()) {
-        return it->second.c_str();
+        return it->second;
     }
 
     // Fall back to English
     auto fallback_it = fallback_strings_.find(std::string(key));
     if (fallback_it != fallback_strings_.end()) {
-        return fallback_it->second.c_str();
+        return fallback_it->second;
     }
 
     // Key not found in any locale — warn once and return the key itself
@@ -49,9 +49,9 @@ const char* LocalizationManager::getString(std::string_view key) const {
         warned_missing_keys_.insert(key_str);
     }
 
-    // Cache the key string so we can return a stable const char* pointer
+    // Cache the key string so we can return a stable string_view
     auto [cache_it, inserted] = missing_key_cache_.try_emplace(key_str, key_str);
-    return cache_it->second.c_str();
+    return cache_it->second;
 }
 
 std::expected<void, std::string> LocalizationManager::setLocale(std::string_view locale_code) {
