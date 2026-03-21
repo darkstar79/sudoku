@@ -87,13 +87,13 @@ struct ExplanationData {
 /// Represents a single step in solving a Sudoku puzzle
 /// Contains either a placement or a list of candidate eliminations
 struct SolveStep {
-    SolveStepType type;                     ///< Type of step (placement or elimination)
-    SolvingTechnique technique;             ///< Technique used to derive this step
+    SolveStepType type{};                   ///< Type of step (placement or elimination)
+    SolvingTechnique technique{};           ///< Technique used to derive this step
     Position position;                      ///< For placements: cell to fill; for eliminations: unused
-    int value;                              ///< For placements: value to place; for eliminations: unused
+    int value{};                            ///< For placements: value to place; for eliminations: unused
     std::vector<Elimination> eliminations;  ///< For eliminations: candidates to remove
     std::string explanation;                ///< Human-readable explanation of the step
-    double rating;                          ///< Sudoku Explainer (SE) difficulty rating
+    double rating{};                        ///< Sudoku Explainer (SE) difficulty rating
     ExplanationData explanation_data;       ///< Structured data for localized explanations
 
     bool operator==(const SolveStep& other) const = default;

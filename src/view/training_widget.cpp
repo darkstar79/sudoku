@@ -174,8 +174,7 @@ void TrainingWidget::refreshCurrentPage() {
     animatePageTransition(target);
 }
 
-// NOLINTNEXTLINE(readability-function-size) — UI builder: constructs grouped technique buttons with signal wiring
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) — page builder with group/button creation and analysis mode filtering
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) — UI builder: constructs grouped technique buttons with signal wiring
 void TrainingWidget::buildTechniqueSelectionPage() {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);

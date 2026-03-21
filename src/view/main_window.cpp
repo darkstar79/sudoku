@@ -437,7 +437,7 @@ bool MainWindow::event(QEvent* event) {
     return QMainWindow::event(event);
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) — event handler with inherent branching
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) — event handler with inherent branching
 void MainWindow::keyPressEvent(QKeyEvent* event) {
     if (!view_model_) {
         QMainWindow::keyPressEvent(event);

@@ -69,12 +69,12 @@ using TrainingBoard = std::array<std::array<TrainingCellState, 9>, 9>;
 
 /// A single training exercise: board state + expected solution step
 struct TrainingExercise {
-    BoardData board;                           ///< 9x9 board state at exercise point
-    std::vector<uint16_t> candidate_masks;     ///< 81 entries: per-cell candidate bitmasks
-    SolveStep expected_step;                   ///< The step the player must find
-    SolvingTechnique technique;                ///< Technique being practiced
-    TrainingInteractionMode interaction_mode;  ///< How to interact
-    bool is_guided_coloring{false};            ///< Exercises 1-2 show chain pre-colored
+    BoardData board;                             ///< 9x9 board state at exercise point
+    std::vector<uint16_t> candidate_masks;       ///< 81 entries: per-cell candidate bitmasks
+    SolveStep expected_step;                     ///< The step the player must find
+    SolvingTechnique technique{};                ///< Technique being practiced
+    TrainingInteractionMode interaction_mode{};  ///< How to interact
+    bool is_guided_coloring{false};              ///< Exercises 1-2 show chain pre-colored
 };
 
 /// Observable UI state for the training mode view model
