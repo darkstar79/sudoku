@@ -27,7 +27,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak install --user -y flathub org.kde.Platform//6.8 org.kde.Sdk//6.8
+          flatpak install --user -y flathub org.kde.Platform//6.10 org.kde.Sdk//6.10
 
       - name: Build Flatpak
         run: |
@@ -49,7 +49,7 @@ jobs:
 
   appimage:
     name: AppImage
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
@@ -119,13 +119,9 @@ jobs:
           version: '6.8.3'
           arch: win64_msvc2022_64
 
-      - name: Compute QT6_DIR
-        run: |
-          import os, pathlib
-          qt_root = str(pathlib.Path(os.environ["Qt6_DIR"]).parents[2])
-          with open(os.environ["GITHUB_ENV"], "a") as f:
-              f.write(f"QT6_DIR={qt_root}\n")
-        shell: python
+      - name: Set QT6_DIR
+        run: echo "QT6_DIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+        shell: bash
 
       - name: Install Conan
         run: |
