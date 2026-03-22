@@ -347,7 +347,7 @@ private:
 
     /// Collect eliminations from all weak links in a continuous loop.
     /// The loop is: chain[0] -link_types[0]-> chain[1] -link_types[1]-> ... -[weak]-> chain[0]
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity) — elimination collection iterates over loop weak links with two distinct cases
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — elimination collection iterates over loop weak links with two distinct cases
     [[nodiscard]] static std::optional<SolveStep> collectLoopEliminations(const BoardData& board,
                                                                           const CandidateGrid& candidates,
                                                                           const std::vector<uint16_t>& chain,

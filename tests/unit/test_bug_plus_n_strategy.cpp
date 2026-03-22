@@ -33,10 +33,9 @@ void keepOnly(CandidateGrid& grid, size_t row, size_t col, const std::vector<int
 
 }  // namespace
 
-TEST_CASE("BUGStrategy - BUG+2 detects two trivalue cells", "[bug][bug_plus_n]") {
-    // BUG+2: all empty cells bivalue except exactly 2 with 3 candidates.
-    // Trivalue cells must be in different rows, columns, and boxes so their
-    // odd candidates (which may be the same value) don't conflict.
+TEST_CASE("BUGStrategy - BUG+2 returns nullopt (disabled)", "[bug][bug_plus_n]") {
+    // BUG+n (n>1) disabled due to incorrect parity analysis.
+    // Two trivalue cells should return nullopt.
     BoardData board = BoardData::filled(1);
 
     // 6 empty cells: 4 bivalue + 2 trivalue
@@ -76,17 +75,10 @@ TEST_CASE("BUGStrategy - BUG+2 detects two trivalue cells", "[bug][bug_plus_n]")
     BUGStrategy strategy;
     auto result = strategy.findStep(board, state);
 
-    REQUIRE(result.has_value());
-    REQUIRE(result->type == SolveStepType::Placement);
-    REQUIRE(result->technique == SolvingTechnique::BUG);
-    REQUIRE(result->value > 0);
-    // The placement should be in one of the trivalue cells
-    bool is_trivalue_cell = (result->position.row == 0 && result->position.col == 6) ||
-                            (result->position.row == 6 && result->position.col == 0);
-    REQUIRE(is_trivalue_cell);
+    REQUIRE_FALSE(result.has_value());
 }
 
-TEST_CASE("BUGStrategy - BUG+3 detects three trivalue cells", "[bug][bug_plus_n]") {
+TEST_CASE("BUGStrategy - BUG+3 returns nullopt (disabled)", "[bug][bug_plus_n]") {
     BoardData board = BoardData::filled(1);
 
     // 7 empty cells: 4 bivalue + 3 trivalue (all in different rows/cols/boxes)
@@ -110,35 +102,69 @@ TEST_CASE("BUGStrategy - BUG+3 detects three trivalue cells", "[bug][bug_plus_n]
     BUGStrategy strategy;
     auto result = strategy.findStep(board, state);
 
-    REQUIRE(result.has_value());
-    REQUIRE(result->type == SolveStepType::Placement);
-    REQUIRE(result->technique == SolvingTechnique::BUG);
-    REQUIRE(result->value > 0);
+    REQUIRE_FALSE(result.has_value());
 }
 
-TEST_CASE("BUGStrategy - BUG+1 still works (regression)", "[bug][bug_plus_n]") {
-    // Existing BUG+1 behavior should not be affected
+TEST_CASE("BUGStrategy - BUG+2 returns nullopt (restricted to N=1)", "[bug][bug_plus_n]") {
+    // BUG+N restricted to N=1 only. Parity analysis for N>1 can produce wrong
+    // placements on non-genuine BUG states (18 false positives across 15000 puzzles).
+    // This test verifies BUG+2 is correctly rejected.
     BoardData board = BoardData::filled(1);
     board[0][0] = 0;
-    board[0][3] = 0;
+    board[0][1] = 0;
     board[3][0] = 0;
-    board[3][3] = 0;
+    board[3][1] = 0;
     board[6][6] = 0;
+    board[6][7] = 0;
+    board[7][6] = 0;
+    board[7][7] = 0;
 
     CandidateGrid state(board);
     keepOnly(state, 0, 0, {2, 5});
-    keepOnly(state, 0, 3, {2, 5});
+    keepOnly(state, 0, 1, {2, 5});
     keepOnly(state, 3, 0, {2, 5});
-    keepOnly(state, 3, 3, {2, 5});
-    keepOnly(state, 6, 6, {2, 5, 8});
+    keepOnly(state, 3, 1, {2, 5});
+    keepOnly(state, 6, 6, {2, 5, 8});  // trivalue
+    keepOnly(state, 6, 7, {2, 5});
+    keepOnly(state, 7, 6, {2, 5});
+    keepOnly(state, 7, 7, {2, 5, 7});  // trivalue
+
+    BUGStrategy strategy;
+    auto result = strategy.findStep(board, state);
+
+    REQUIRE_FALSE(result.has_value());
+}
+
+TEST_CASE("BUGStrategy - BUG+1 still works (regression)", "[bug][bug_plus_n]") {
+    // Valid BUG+1 with even cell counts per unit — same layout as main BUG+1 test
+    BoardData board = BoardData::filled(1);
+    board[0][0] = 0;
+    board[0][1] = 0;
+    board[3][0] = 0;
+    board[3][1] = 0;
+    board[6][6] = 0;
+    board[6][7] = 0;
+    board[7][6] = 0;
+    board[7][7] = 0;
+
+    CandidateGrid state(board);
+    keepOnly(state, 0, 0, {2, 5});
+    keepOnly(state, 0, 1, {2, 5});
+    keepOnly(state, 3, 0, {2, 5});
+    keepOnly(state, 3, 1, {2, 5});
+    keepOnly(state, 6, 6, {2, 5});
+    keepOnly(state, 6, 7, {2, 5});
+    keepOnly(state, 7, 6, {2, 5});
+    keepOnly(state, 7, 7, {2, 5, 8});
 
     BUGStrategy strategy;
     auto result = strategy.findStep(board, state);
 
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Placement);
-    REQUIRE(result->position.row == 6);
-    REQUIRE(result->position.col == 6);
+    REQUIRE(result->position.row == 7);
+    REQUIRE(result->position.col == 7);
+    REQUIRE(result->value == 8);
 }
 
 TEST_CASE("BUGStrategy - Returns nullopt for 4+ trivalue cells", "[bug][bug_plus_n]") {
@@ -168,7 +194,8 @@ TEST_CASE("BUGStrategy - Returns nullopt for 4+ trivalue cells", "[bug][bug_plus
     REQUIRE_FALSE(result.has_value());
 }
 
-TEST_CASE("BUGStrategy - BUG+2 explanation mentions BUG", "[bug][bug_plus_n]") {
+TEST_CASE("BUGStrategy - BUG+2 returns nullopt for explanation test (disabled)", "[bug][bug_plus_n]") {
+    // BUG+n disabled — 2 trivalue cells returns nullopt
     BoardData board = BoardData::filled(1);
     board[0][0] = 0;
     board[0][3] = 0;
@@ -187,7 +214,5 @@ TEST_CASE("BUGStrategy - BUG+2 explanation mentions BUG", "[bug][bug_plus_n]") {
 
     BUGStrategy strategy;
     auto result = strategy.findStep(board, state);
-
-    REQUIRE(result.has_value());
-    REQUIRE(result->explanation.find("BUG") != std::string::npos);
+    REQUIRE_FALSE(result.has_value());
 }

@@ -63,6 +63,7 @@ add_library(test_helpers STATIC
     helpers/test_utils.cpp
     helpers/memory_monitor.cpp
     helpers/benchmark_utils.cpp
+    helpers/fixture_serializer.cpp
 )
 
 target_include_directories(test_helpers PUBLIC

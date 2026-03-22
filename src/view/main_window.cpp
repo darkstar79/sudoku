@@ -792,7 +792,7 @@ void MainWindow::showLoadDialog() {
     }
 }
 
-// NOLINTNEXTLINE(readability-function-size) — UI builder: statistics dialog with tabs and tables
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) — UI builder: statistics dialog with tabs and tables
 void MainWindow::showStatisticsDialog() {
     if (!view_model_) {
         return;

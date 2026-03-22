@@ -87,6 +87,7 @@ enum class SolvingTechnique : uint8_t {
 /// Returns human-readable name for technique
 /// @param technique The solving technique
 /// @return Technique name (e.g., "Naked Single")
+// NOLINTNEXTLINE(readability-function-size) — exhaustive switch over 54 SolvingTechnique enum values; inherently large
 [[nodiscard]] constexpr std::string_view getTechniqueName(SolvingTechnique technique) {
     using enum SolvingTechnique;
     switch (technique) {
@@ -308,6 +309,7 @@ enum class SolvingTechnique : uint8_t {
 /// @param loc Localization manager for string lookup
 /// @param technique The solving technique
 /// @return Localized technique name as string_view (e.g., "Naked Single" in English)
+// NOLINTNEXTLINE(readability-function-size) — exhaustive switch over 54 SolvingTechnique enum values; inherently large
 [[nodiscard]] inline std::string_view getLocalizedTechniqueName(const ILocalizationManager& loc,
                                                                 SolvingTechnique technique) {
     using enum SolvingTechnique;

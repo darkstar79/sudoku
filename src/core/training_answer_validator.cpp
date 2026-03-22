@@ -254,7 +254,7 @@ CandidateGrid TrainingAnswerValidator::reconstructCandidates(const BoardData& bo
     return candidates;
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) — exhaustive switch over all techniques
+// NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — exhaustive switch over 54 techniques
 std::unique_ptr<ISolvingStrategy> TrainingAnswerValidator::createStrategy(SolvingTechnique technique) {
     using enum SolvingTechnique;
     switch (technique) {

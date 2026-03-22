@@ -53,30 +53,28 @@ TEST_CASE("BUGStrategy - Returns nullopt for complete board", "[bug]") {
 }
 
 TEST_CASE("BUGStrategy - Detects BUG+1 and produces placement", "[bug]") {
-    // BUG+1: all empty cells bivalue except exactly one trivalue.
-    // Use empty board + keepOnly to set up candidates, then mark cells as filled in board.
-    // This avoids CandidateGrid constraint propagation issues.
-    BoardData board;
-    CandidateGrid state(board);
-
-    // Mark all cells as filled except 5 target cells
-    for (size_t row = 0; row < 9; ++row) {
-        for (size_t col = 0; col < 9; ++col) {
-            board[row][col] = 1;
-        }
-    }
+    // Valid BUG+1: every unit has even number of empty cells so bivalue values
+    // {2,5} have even parity everywhere. Only the extra value 8 has odd parity.
+    //   Box 0: (0,0),(0,1)   Box 3: (3,0),(3,1)   Box 8: (6,6),(6,7),(7,6),(7,7)
+    BoardData board = BoardData::filled(1);
     board[0][0] = 0;
-    board[0][3] = 0;
+    board[0][1] = 0;
     board[3][0] = 0;
-    board[3][3] = 0;
+    board[3][1] = 0;
     board[6][6] = 0;
+    board[6][7] = 0;
+    board[7][6] = 0;
+    board[7][7] = 0;
 
-    // Set candidates: 4 bivalue, 1 trivalue
+    CandidateGrid state(board);
     keepOnly(state, 0, 0, {2, 5});
-    keepOnly(state, 0, 3, {2, 5});
+    keepOnly(state, 0, 1, {2, 5});
     keepOnly(state, 3, 0, {2, 5});
-    keepOnly(state, 3, 3, {2, 5});
-    keepOnly(state, 6, 6, {2, 5, 8});  // trivalue — BUG cell
+    keepOnly(state, 3, 1, {2, 5});
+    keepOnly(state, 6, 6, {2, 5});
+    keepOnly(state, 6, 7, {2, 5});
+    keepOnly(state, 7, 6, {2, 5});
+    keepOnly(state, 7, 7, {2, 5, 8});  // trivalue — BUG cell, extra is 8
 
     // Verify setup
     int bivalue_count = 0;
@@ -93,7 +91,7 @@ TEST_CASE("BUGStrategy - Detects BUG+1 and produces placement", "[bug]") {
             }
         }
     }
-    REQUIRE(bivalue_count == 4);
+    REQUIRE(bivalue_count == 7);
     REQUIRE(trivalue_count == 1);
 
     BUGStrategy strategy;
@@ -103,15 +101,15 @@ TEST_CASE("BUGStrategy - Detects BUG+1 and produces placement", "[bug]") {
     REQUIRE(result->type == SolveStepType::Placement);
     REQUIRE(result->technique == SolvingTechnique::BUG);
     REQUIRE(result->rating == 5.6);
-    REQUIRE(result->position.row == 6);
-    REQUIRE(result->position.col == 6);
-    // The odd candidate should be placed
-    REQUIRE(result->value > 0);
+    REQUIRE(result->position.row == 7);
+    REQUIRE(result->position.col == 7);
+    REQUIRE(result->value == 8);
 }
 
-TEST_CASE("BUGStrategy - Detects BUG+2 when two trivalue cells are non-conflicting", "[bug]") {
-    BoardData board = BoardData::filled(1);  // all filled
-    // Leave 4 cells empty — 2 bivalue, 2 trivalue
+TEST_CASE("BUGStrategy - Returns nullopt for invalid BUG state with multiple trivalue cells", "[bug]") {
+    // Invalid BUG state: bivalue values {2,5} have odd parity in boxes with single cells.
+    // Global parity analysis correctly rejects this — no valid extra assignment exists.
+    BoardData board = BoardData::filled(1);
     board[0][0] = 0;
     board[0][3] = 0;
     board[3][0] = 0;
@@ -126,26 +124,30 @@ TEST_CASE("BUGStrategy - Detects BUG+2 when two trivalue cells are non-conflicti
 
     BUGStrategy strategy;
     auto result = strategy.findStep(board, state);
-    // BUG+2: two trivalue cells in different rows/cols/boxes → should produce placement
-    REQUIRE(result.has_value());
-    REQUIRE(result->type == SolveStepType::Placement);
-    REQUIRE(result->technique == SolvingTechnique::BUG);
+    REQUIRE_FALSE(result.has_value());
 }
 
 TEST_CASE("BUGStrategy - Explanation contains relevant info", "[bug]") {
-    BoardData board = BoardData::filled(1);  // all filled
+    // Same valid BUG+1 layout as detection test
+    BoardData board = BoardData::filled(1);
     board[0][0] = 0;
-    board[0][3] = 0;
+    board[0][1] = 0;
     board[3][0] = 0;
-    board[3][3] = 0;
+    board[3][1] = 0;
     board[6][6] = 0;
+    board[6][7] = 0;
+    board[7][6] = 0;
+    board[7][7] = 0;
 
     CandidateGrid state(board);
     keepOnly(state, 0, 0, {2, 5});
-    keepOnly(state, 0, 3, {2, 5});
+    keepOnly(state, 0, 1, {2, 5});
     keepOnly(state, 3, 0, {2, 5});
-    keepOnly(state, 3, 3, {2, 5});
-    keepOnly(state, 6, 6, {2, 5, 8});
+    keepOnly(state, 3, 1, {2, 5});
+    keepOnly(state, 6, 6, {2, 5});
+    keepOnly(state, 6, 7, {2, 5});
+    keepOnly(state, 7, 6, {2, 5});
+    keepOnly(state, 7, 7, {2, 5, 8});
 
     BUGStrategy strategy;
     auto result = strategy.findStep(board, state);

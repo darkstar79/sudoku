@@ -127,6 +127,83 @@ TEST_CASE("UniqueLoopStrategy - No loop when fewer than 4 cells", "[unique_loop]
     REQUIRE_FALSE(result.has_value());
 }
 
+TEST_CASE("UniqueLoopStrategy - Rejects odd-length 5-cell cycle", "[unique_loop]") {
+    // 5-cell cycle: (1,0)-(1,3)-(2,5)-(5,5)-(5,0)
+    // Adjacency: row, box, col, row, col — closing back to start via col
+    // Odd-length cycles can't alternate A/B consistently → not a deadly pattern
+    BoardData board = BoardData::filled(1);
+    board[1][0] = 0;
+    board[1][3] = 0;
+    board[2][5] = 0;
+    board[5][5] = 0;
+    board[5][0] = 0;
+
+    CandidateGrid state(board);
+    keepOnly(state, 1, 0, {3, 4});
+    keepOnly(state, 1, 3, {3, 4});
+    keepOnly(state, 2, 5, {3, 4});
+    keepOnly(state, 5, 5, {3, 4});
+    keepOnly(state, 5, 0, {3, 4, 5});  // floor cell
+
+    UniqueLoopStrategy strategy;
+    auto result = strategy.findStep(board, state);
+    REQUIRE_FALSE(result.has_value());
+}
+
+TEST_CASE("UniqueLoopStrategy - Rejects 6-cell cycle with same-parity box sharing", "[unique_loop]") {
+    // 6-cell cycle: (0,0)-(0,2)-(1,2)-(1,5)-(4,5)-(4,0)
+    // Adjacency: row, col, row, col, row, col — valid cycle
+    // Even-parity group: {(0,0), (1,2), (4,5)} — cells (0,0) and (1,2) share box 0
+    // Both colorings put the same value in box 0 → not a deadly pattern
+    BoardData board = BoardData::filled(1);
+    board[0][0] = 0;
+    board[0][2] = 0;
+    board[1][2] = 0;
+    board[1][5] = 0;
+    board[4][5] = 0;
+    board[4][0] = 0;
+
+    CandidateGrid state(board);
+    keepOnly(state, 0, 0, {3, 4});
+    keepOnly(state, 0, 2, {3, 4});
+    keepOnly(state, 1, 2, {3, 4});
+    keepOnly(state, 1, 5, {3, 4});
+    keepOnly(state, 4, 5, {3, 4});
+    keepOnly(state, 4, 0, {3, 4, 5});  // floor cell
+
+    UniqueLoopStrategy strategy;
+    auto result = strategy.findStep(board, state);
+    REQUIRE_FALSE(result.has_value());
+}
+
+TEST_CASE("UniqueLoopStrategy - Rejects 6-cell loop with invalid unit pairing", "[unique_loop]") {
+    // 6-cell loop: (0,0)-(0,3)-(3,3)-(3,6)-(6,6)-(6,0)
+    // Adjacency: row 0, col 3, row 3, col 6, row 6, col 0 — valid cycle
+    // Rows: {0,3,6} each have exactly 2 cells — OK
+    // Cols: {0,3,6} each have exactly 2 cells — OK
+    // Boxes: {0,1,4,5,6,8} each have exactly 1 cell — NOT a valid deadly pattern
+    // A unit with 1 loop cell means swapping A↔B would conflict with non-loop cells
+    BoardData board = BoardData::filled(1);
+    board[0][0] = 0;
+    board[0][3] = 0;
+    board[3][3] = 0;
+    board[3][6] = 0;
+    board[6][6] = 0;
+    board[6][0] = 0;
+
+    CandidateGrid state(board);
+    keepOnly(state, 0, 0, {3, 4});
+    keepOnly(state, 0, 3, {3, 4});
+    keepOnly(state, 3, 3, {3, 4});
+    keepOnly(state, 3, 6, {3, 4});
+    keepOnly(state, 6, 6, {3, 4});
+    keepOnly(state, 6, 0, {3, 4, 5});  // floor cell
+
+    UniqueLoopStrategy strategy;
+    auto result = strategy.findStep(board, state);
+    REQUIRE_FALSE(result.has_value());
+}
+
 TEST_CASE("UniqueLoopStrategy - No elimination when all bivalue", "[unique_loop]") {
     // All 4 cells bivalue {3,4} — 0 floor cells, Type 1 requires exactly 1
     BoardData board = BoardData::filled(1);

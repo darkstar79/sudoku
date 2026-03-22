@@ -1,0 +1,41 @@
+default_target: 20
+
+targets:
+  # Common strategies — they appear in every puzzle, fewer examples needed
+  "Naked Single": 10
+  "Hidden Single": 10
+
+  # Rare strategies — hard to find, lower targets
+  "Junior Exocet": 5
+  "Kraken Fish": 5
+  "ALS Chain": 10
+  "Death Blossom": 10
+  "Continuous Nice Loop": 10
+  "Grouped Nice Loop": 10
+
+  # Per-variant targets for multi-subtype strategies
+  "Unique Rectangle/Type 1": 10
+  "Unique Rectangle/Type 2": 10
+  "Unique Rectangle/Type 3": 10
+  "Unique Rectangle/Type 4": 10
+  "Unique Rectangle/Type 6": 5
+
+  "Simple Coloring/Contradiction": 10
+  "Simple Coloring/Exclusion": 10
+
+  "3D Medusa/Contradiction": 10
+  "3D Medusa/Elimination": 10
+
+  "Multi-Coloring/Wrap": 10
+  "Multi-Coloring/Trap": 10
+
+  "X-Cycles/Rule 1": 10
+  "X-Cycles/Rule 2": 10
+  "X-Cycles/Rule 3": 10
+
+  "Grouped X-Cycles/Rule 1": 10
+  "Grouped X-Cycles/Rule 3": 10
+
+generation:
+  difficulties: [Hard, Expert, Master]
+  max_puzzles_per_difficulty: 5000

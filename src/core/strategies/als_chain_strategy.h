@@ -207,8 +207,8 @@ private:
     }
 
     /// Check if the current chain produces any eliminations
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity) — elimination search across board; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — elimination search across board; nesting is inherent
     tryChainElimination(const BoardData& board, const CandidateGrid& candidates, const std::vector<ALS>& als_list,
                         const std::vector<ChainNode>& chain, uint16_t used_rcs) {
         const auto& first_als = als_list[chain.front().als_index];

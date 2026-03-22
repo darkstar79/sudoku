@@ -88,6 +88,53 @@ private:
         return a.row == b.row || a.col == b.col || sameBox(a, b);
     }
 
+    /// Validates that a cycle forms a valid deadly pattern.
+    /// In a deadly pattern, cells alternate between two coloring groups (even/odd indices).
+    /// If two same-parity cells share a house, both A/B colorings conflict → not deadly.
+    [[nodiscard]] static bool isValidDeadlyPattern(const std::vector<Position>& loop) {
+        for (size_t i = 0; i < loop.size(); i += 2) {
+            for (size_t j = i + 2; j < loop.size(); j += 2) {
+                if (shareUnit(loop[i], loop[j])) {
+                    return false;
+                }
+            }
+        }
+        for (size_t i = 1; i < loop.size(); i += 2) {
+            for (size_t j = i + 2; j < loop.size(); j += 2) {
+                if (shareUnit(loop[i], loop[j])) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /// Validates that every row, column, and box containing loop cells has exactly 2.
+    /// A unit with 1 loop cell would see a value conflict after swapping A↔B
+    /// (the non-loop cell with the swapped-to value creates a duplicate).
+    [[nodiscard]] static bool hasValidUnitPairing(const std::vector<Position>& loop) {
+        std::array<int, BOARD_SIZE> row_count{};
+        std::array<int, BOARD_SIZE> col_count{};
+        std::array<int, BOARD_SIZE> box_count{};
+        for (const auto& pos : loop) {
+            row_count[pos.row]++;
+            col_count[pos.col]++;
+            box_count[getBoxIndex(pos.row, pos.col)]++;
+        }
+        for (size_t i = 0; i < BOARD_SIZE; ++i) {
+            if (row_count[i] != 0 && row_count[i] != 2) {
+                return false;
+            }
+            if (col_count[i] != 0 && col_count[i] != 2) {
+                return false;
+            }
+            if (box_count[i] != 0 && box_count[i] != 2) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /// Counts the number of unique boxes spanned by a set of positions
     [[nodiscard]] static size_t countUniqueBoxesInLoop(const std::vector<Position>& loop) {
         std::vector<size_t> boxes;
@@ -206,6 +253,21 @@ private:
         loop_positions.reserve(path.size());
         for (size_t idx : path) {
             loop_positions.push_back(ab_cells[idx]);
+        }
+
+        // Odd-length cycles can't alternate A/B consistently — not a deadly pattern
+        if (loop_positions.size() % 2 != 0) {
+            return std::nullopt;
+        }
+
+        // Every unit containing loop cells must have exactly 2 (one per color group)
+        if (!hasValidUnitPairing(loop_positions)) {
+            return std::nullopt;
+        }
+
+        // Same-parity cells sharing a house means both colorings conflict — not deadly
+        if (!isValidDeadlyPattern(loop_positions)) {
+            return std::nullopt;
         }
 
         // Must span at least 2 distinct boxes

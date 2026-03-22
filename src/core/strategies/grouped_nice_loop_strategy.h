@@ -331,8 +331,8 @@ private:
     }
 
     /// Recursive DFS with alternating strong/weak links.
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — recursive DFS with cycle detection; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — recursive DFS with cycle detection; nesting is inherent
     dfs(const BoardData& board, const CandidateGrid& candidates, const std::vector<GAICNode>& nodes, size_t start,
         std::vector<size_t>& chain, std::vector<bool>& visited, bool last_was_strong,
         const std::vector<std::vector<size_t>>& strong_adj, const std::vector<std::vector<size_t>>& weak_adj) {

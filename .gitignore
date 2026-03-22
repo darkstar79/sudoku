@@ -111,6 +111,10 @@ compile_commands.json
 # test stats
 test_stats_*/
 
+# Generated fixture data (reproducible from seeds, not committed)
+tests/data/fixtures/
+tests/data/generator_state.yaml
+
 autosave.yaml
 callgrind.out.*
 

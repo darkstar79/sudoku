@@ -42,6 +42,7 @@ struct TechniquePrerequisite {
 ///   Simple Coloring → Multi-Coloring → 3D Medusa
 ///   XY-Wing → XYZ-Wing → WXYZ-Wing → VWXYZ-Wing
 ///   ALS-XZ → ALS-XY-Wing, Death Blossom, Sue de Coq
+// NOLINTNEXTLINE(readability-function-size) — prerequisite map for 54 techniques; inherently large switch
 [[nodiscard]] inline std::vector<TechniquePrerequisite> getPrerequisites(SolvingTechnique technique) {
     using enum SolvingTechnique;
     switch (technique) {
