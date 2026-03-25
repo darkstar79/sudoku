@@ -298,11 +298,7 @@ private:
 
         // Check if value was eliminated from target cell's candidates
         auto bit = valueToBit(value);
-        if ((state.masks[target_idx] & bit) == 0) {
-            return true;
-        }
-
-        return false;
+        return (state.masks[target_idx] & bit) == 0;
     }
 };
 

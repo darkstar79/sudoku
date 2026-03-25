@@ -34,7 +34,7 @@ namespace sudoku::core {
 
 /// YAML-based implementation of IStatisticsManager
 /// Handles game statistics tracking and persistence
-class StatisticsManager : public IStatisticsManager {
+class StatisticsManager final : public IStatisticsManager {
 public:
     explicit StatisticsManager(std::filesystem::path stats_directory = {},
                                std::shared_ptr<ITimeProvider> time_provider = std::make_shared<SystemTimeProvider>());

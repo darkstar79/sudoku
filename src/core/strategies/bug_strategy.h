@@ -143,8 +143,8 @@ private:
     /// Find valid extra-value assignments for all trivalue cells using global parity analysis.
     /// For each combination of "extras" (one per trivalue cell), checks that removing them
     /// restores even parity in all 27 units. Returns the placements if a valid combo exists.
-    // NOLINTNEXTLINE(readability-function-cognitive-complexity) — brute-force parity check over 3^N combinations with nested validation loops; nesting is inherent
     [[nodiscard]] static std::optional<std::vector<BugPlacement>>
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity) — brute-force parity check over 3^N combinations with nested validation loops; nesting is inherent
     findGlobalPlacements(const CandidateGrid& candidates, const std::vector<Position>& trivalue_cells,
                          const std::array<std::array<std::array<uint8_t, 10>, BOARD_SIZE>, 3>& parity) {
         const int n = static_cast<int>(trivalue_cells.size());

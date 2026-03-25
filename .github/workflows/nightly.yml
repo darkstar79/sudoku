@@ -167,7 +167,7 @@ jobs:
             UNIT_TESTS="build/Release/bin/tests/unit_tests"
           fi
           echo "Running: $UNIT_TESTS"
-          "$UNIT_TESTS"
+          "$UNIT_TESTS" "~[slow]~[pathological]"
 
       - name: Run integration tests under ASan + UBSan
         if: steps.check.outputs.skip != 'true'

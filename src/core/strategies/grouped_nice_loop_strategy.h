@@ -203,7 +203,7 @@ private:
 
         // Precompute candidate cells per (digit, unit) for strong link detection
         // unit encoding: row=0..8, col=9..17, box=18..26
-        std::array<std::vector<size_t>, 27 * 9> unit_cand_cells{};  // [unit * 9 + (digit-1)]
+        std::array<std::vector<size_t>, size_t{27} * 9> unit_cand_cells{};  // [unit * 9 + (digit-1)]
         for (size_t r = 0; r < BOARD_SIZE; ++r) {
             for (size_t c = 0; c < BOARD_SIZE; ++c) {
                 if (board[r][c] != EMPTY_CELL) {
@@ -213,7 +213,7 @@ private:
                 size_t box = StrategyBase::getBoxIndex(r, c);
                 for (int d = MIN_VALUE; d <= MAX_VALUE; ++d) {
                     if (candidates.isAllowed(r, c, d)) {
-                        size_t di = static_cast<size_t>(d - MIN_VALUE);
+                        auto di = static_cast<size_t>(d - MIN_VALUE);
                         unit_cand_cells[(r * 9) + di].push_back(cell);
                         unit_cand_cells[((9 + c) * 9) + di].push_back(cell);
                         unit_cand_cells[((18 + box) * 9) + di].push_back(cell);
@@ -233,7 +233,7 @@ private:
         // all candidates for that digit in a shared unit
         for (size_t u = 0; u < 27; ++u) {
             for (int d = MIN_VALUE; d <= MAX_VALUE; ++d) {
-                size_t di = static_cast<size_t>(d - MIN_VALUE);
+                auto di = static_cast<size_t>(d - MIN_VALUE);
                 auto& uc = unit_cand_cells[(u * 9) + di];
                 if (uc.size() < 2) {
                     continue;

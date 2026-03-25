@@ -3,17 +3,21 @@
 [![CI](https://github.com/darkstar79/sudoku-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/darkstar79/sudoku-cpp/actions/workflows/ci.yml)
 [![Nightly](https://github.com/darkstar79/sudoku-cpp/actions/workflows/nightly.yml/badge.svg)](https://github.com/darkstar79/sudoku-cpp/actions/workflows/nightly.yml)
 
-An offline Sudoku game built with C++23 and Qt6.
+An offline Sudoku game built with C++23 and Qt6 for desktop users who prefer keyboard navigation and offline-only operation.
 
 This project is entirely **vibe coded** using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — no manual coding involved. It serves as a personal experiment to explore what's possible with AI-assisted development and how to work effectively with Claude Code on a non-trivial C++ codebase.
+
+![Sudoku C++ Screenshot](screenshot.png)
 
 ## Features
 
 - Puzzle generation with 5 difficulty levels and guaranteed unique solutions
 - 54 solving strategies with step-by-step hints
+- Training mode for learning solving techniques
 - Undo/redo, pencil marks, keyboard navigation
 - Encrypted save/load (YAML + zlib + libsodium)
 - Statistics tracking
+- Localization (English, German)
 - SIMD-accelerated solver (AVX2/AVX-512)
 
 ## Technology Stack
@@ -22,51 +26,32 @@ This project is entirely **vibe coded** using [Claude Code](https://docs.anthrop
 |---|---|
 | **Language** | C++23 |
 | **UI** | Qt6 Widgets |
-| **Build** | CMake + Conan |
+| **Build** | CMake + Ninja + Conan |
 | **Testing** | Catch2 |
 | **Architecture** | MVVM |
+| **Dependencies** | spdlog, yaml-cpp, zlib, libsodium |
 
 ## Prerequisites
 
-- C++23 compatible compiler (GCC 13+, Clang 16+, or MSVC 2022+)
-- CMake 3.25+
+- C++23 compatible compiler (GCC 14+, Clang 18+, or MSVC 2022+)
+- CMake 3.28+
 - Conan 2.0+
 - Python 3.8+ (for Conan)
-- **ccache** (optional, recommended for faster recompilation)
-
-### Installing Conan (if not already installed)
-
-```bash
-pip install conan
-```
-
-### Installing ccache (optional, for faster recompilation)
-
-ccache caches compilation results to speed up rebuilds:
-
-```bash
-# Fedora/RHEL
-sudo dnf install ccache
-
-# Ubuntu/Debian
-sudo apt install ccache
-
-# macOS
-brew install ccache
-```
-
-The build system will automatically detect and use ccache if installed.
-
-### Conan Profiles
-
-The project includes compiler-versioned Conan profiles for reproducible builds:
-
-- **GCC 15:** `gcc-15-release`, `gcc-15-debug`, `gcc-15-relwithdebinfo`
-- **Clang 21:** `clang-21-release`, `clang-21-debug`, `clang-21-relwithdebinfo`
-
-See [CONAN_PROFILES.md](docs/CONAN_PROFILES.md) for detailed profile documentation and usage examples.
+- **ccache** (optional, for faster recompilation)
 
 ## Building the Project
+
+### Quick Start (Linux/macOS)
+
+```bash
+# Install dependencies, configure, and build
+conan install . --build=missing
+cmake --preset release
+cmake --build --preset release
+
+# Run
+./build/Release/bin/sudoku
+```
 
 ### Windows (MSVC + Qt6)
 
@@ -75,18 +60,7 @@ See [CONAN_PROFILES.md](docs/CONAN_PROFILES.md) for detailed profile documentati
 1. **Visual Studio 2022/2026** with the *Desktop development with C++* workload
 2. **Qt6** — install via [Qt Online Installer](https://www.qt.io/download-qt-installer), selecting the **MSVC 2022 64-bit** component
 3. **Conan 2** — `pip install conan`
-4. **CMake** — bundled with Conan or install separately
-
-**One-time setup:**
-
-```bat
-REM Generate a Conan profile matching your MSVC installation
-conan profile detect --name msvc-release
-conan profile detect --name msvc-debug
-
-REM Point CMake to your Qt6 MSVC kit (adjust version path)
-set QT6_DIR=C:\Qt\6.10.0\msvc2022_64
-```
+4. **CMake** — install separately or provided via Conan `tool_requires`
 
 **Build and run:**
 
@@ -101,9 +75,7 @@ REM Run
 build\Release\bin\sudoku.exe
 ```
 
-The build scripts auto-detect the Visual Studio installation via `vswhere`. The `QT6_DIR` variable can also be set permanently in your system environment variables to avoid setting it each session.
-
-See [CONAN_PROFILES.md](docs/CONAN_PROFILES.md) for MSVC profile details and manual profile configuration.
+The build scripts auto-detect the Visual Studio installation via `vswhere`.
 
 **Creating a Windows installer:**
 
@@ -113,140 +85,72 @@ Requires [NSIS](https://nsis.sourceforge.io/Download) (`winget install NSIS.NSIS
 scripts\create_installer.bat
 ```
 
-Produces `Sudoku-1.0.0-win64.exe` — a standard installer with Start Menu shortcut and Add/Remove Programs entry.
-
----
-
-### Quick Start (Linux/macOS)
-
-```bash
-# Install dependencies and configure
-conan install . --build=missing
-cmake --preset conan-release
-
-# Build
-cmake --build --preset conan-release
-
-# Run
-./build/Release/bin/sudoku
-```
-
 ### Build Configurations
 
-The project supports three build configurations with compiler-specific profiles:
-
-#### 1. Release Build (Recommended for normal use)
-
-Optimized build without debug symbols:
-
 ```bash
-# GCC (default)
+# Release (default)
 conan install . --build=missing
-cmake --preset conan-release
-cmake --build --preset conan-release
-./build/Release/bin/sudoku
+cmake --preset release && cmake --build --preset release
 
-# Clang (alternative)
-conan install . --profile=clang-21-release --build=missing --output-folder=build/Clang-Release
-cmake -S . -B build/Clang-Release -DCMAKE_TOOLCHAIN_FILE=build/Clang-Release/conan_toolchain.cmake
-cmake --build build/Clang-Release
-./build/Clang-Release/bin/sudoku
+# Debug (full debug symbols in all dependencies)
+conan install . --profile=gcc-15-debug --build=missing
+cmake --preset debug && cmake --build --preset debug
+
+# RelWithDebInfo (optimized + debug symbols for profiling)
+conan install . --profile=gcc-15-relwithdebinfo --build=missing
+cmake --preset relwithdebinfo && cmake --build --preset relwithdebinfo
 ```
 
-#### 2. Debug Build
+To build with Clang instead, use the `clang-21-*` profiles (e.g. `clang-21-release`). GCC and Clang share the same build directory per build type — rebuild to switch.
 
-Unoptimized build with full debug symbols for development:
+See [CONAN_PROFILES.md](docs/CONAN_PROFILES.md) for profile details.
+
+### AppImage (Linux)
 
 ```bash
-# GCC (recommended for debugging)
-conan install . --profile=gcc-15-debug --build=missing --output-folder=build/Debug
-cmake --preset conan-debug
-cmake --build --preset conan-debug
-./build/Debug/bin/sudoku
-
-# Clang (alternative)
-conan install . --profile=clang-21-debug --build=missing --output-folder=build/Clang-Debug
-cmake -S . -B build/Clang-Debug -DCMAKE_TOOLCHAIN_FILE=build/Clang-Debug/conan_toolchain.cmake
-cmake --build build/Clang-Debug
-./build/Clang-Debug/bin/sudoku
+./scripts/build_appimage.sh
 ```
 
-Debug builds include:
-- Full debug symbols in **all dependencies** (yaml-cpp, spdlog, etc.)
-- Runtime bounds checking and assertions (`-D_GLIBCXX_ASSERTIONS`)
-- No optimization (`-O0`)
-- Complete stack traces (`-fno-omit-frame-pointer`)
-
-#### 3. RelWithDebInfo Build
-
-Optimized build with debug symbols for profiling:
+### Profile-Guided Optimization
 
 ```bash
-# GCC
-conan install . --profile=gcc-15-relwithdebinfo --build=missing --output-folder=build/RelWithDebInfo
-cmake -S . -B build/RelWithDebInfo -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DCMAKE_TOOLCHAIN_FILE=build/RelWithDebInfo/conan_toolchain.cmake
-cmake --build build/RelWithDebInfo
-./build/RelWithDebInfo/bin/sudoku
-
-# Clang
-conan install . --profile=clang-21-relwithdebinfo --build=missing --output-folder=build/Clang-RelWithDebInfo
-cmake -S . -B build/Clang-RelWithDebInfo -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DCMAKE_TOOLCHAIN_FILE=build/Clang-RelWithDebInfo/conan_toolchain.cmake
-cmake --build build/Clang-RelWithDebInfo
+./scripts/pgo_build.sh
 ```
 
 ## Testing
 
-### Running Tests
-
 ```bash
-# Run all tests (unit + integration)
-./build/Release/bin/tests/unit_tests && ./build/Release/bin/tests/integration_tests
+# Unit tests (904 test cases)
+./build/Release/bin/tests/unit_tests
 
-# Run specific test case by name
+# Integration tests
+./build/Release/bin/tests/integration_tests
+
+# UI tests (Qt6, headless)
+QT_QPA_PLATFORM=offscreen ctest --test-dir build/Release -R "^test_" --output-on-failure
+
+# Run specific test case or tag
 ./build/Release/bin/tests/unit_tests "GameValidator - Move Validation"
-
-# Run tests with specific tag
 ./build/Release/bin/tests/unit_tests "[game_validator]"
-
-# Verbose output for debugging
-./build/Release/bin/tests/unit_tests --success
 ```
 
 ### Code Coverage
 
-Generate test coverage reports:
-
 ```bash
-# Quick coverage summary
-./scripts/coverage.sh
-
-# HTML detailed report
-./scripts/coverage.sh html
-firefox coverage_html/index.html
-
-# All report formats
-./scripts/coverage.sh all
-
-# Clean rebuild with coverage
-./scripts/coverage.sh clean
+./scripts/coverage.sh              # Quick summary
+./scripts/coverage.sh html         # HTML report
 ```
 
 ### Code Quality Tools
 
 ```bash
-# Format code (clang-format)
-./scripts/format.sh
-
-# Check formatting without changes
-./scripts/format.sh check
-
-# Static analysis (clang-tidy)
-./scripts/tidy.sh check
-
-# Apply automatic fixes
-./scripts/tidy.sh fix
+./scripts/format.sh                # Format code (clang-format)
+./scripts/format.sh check          # Check formatting only
+./scripts/tidy.sh check            # clang-tidy analysis
+./scripts/cppcheck.sh              # Cppcheck analysis
+./scripts/cpd.sh                   # Copy-paste detection
+./scripts/dead-code.sh             # Dead code detection
+./scripts/iwyu.sh                  # Include-what-you-use
 ```
 
 ## Project Structure
@@ -259,14 +163,17 @@ sudoku-cpp/
 │   ├── view_model/        # Presentation logic
 │   ├── view/              # UI rendering (Qt6 Widgets)
 │   └── infrastructure/    # Cross-cutting concerns
-├── include/               # Shared headers
+├── include/               # Shared public headers
 ├── tests/
-│   ├── unit/              # Unit tests
+│   ├── unit/              # Unit tests (904 test cases)
 │   ├── integration/       # Integration tests
+│   ├── ui/                # Qt6 UI tests (offscreen)
+│   ├── benchmarks/        # Performance benchmarks
+│   ├── data/              # Test fixtures
 │   └── helpers/           # Test utilities
 ├── scripts/               # Build and analysis scripts
 ├── CMakeLists.txt         # Build configuration
-└── conanfile.py          # Dependency management
+└── conanfile.py           # Dependency management
 ```
 
 ## Architecture
@@ -285,101 +192,44 @@ Key architectural principles:
 
 ## Performance
 
-The puzzle generator achieves high performance through Zobrist hashing, memoization, SIMD constraint propagation, and runtime CPU dispatch (Scalar/AVX2/AVX-512):
+All puzzle generation runs **single-threaded** — no background workers or thread pools. Performance comes from Zobrist hashing, memoization, SIMD constraint propagation, and runtime CPU dispatch (Scalar/AVX2/AVX-512).
 
-- **Easy:** < 1ms (instant)
-- **Medium:** ~9ms
-- **Hard:** ~64ms median
-- **Expert:** < 50ms
-- **Master:** < 50ms
+Measured on AMD Ryzen 9 9950X (single core, AVX-512):
 
-Five optimization phases delivered 80-4000x speedup over naive backtracking. See [PERFORMANCE_MEASUREMENTS.md](docs/PERFORMANCE_MEASUREMENTS.md) for detailed benchmarks.
+- **Easy:** ~0.07ms
+- **Medium:** ~0.18ms
+- **Hard:** ~0.72ms
+- **Expert:** ~0.73ms
+- **Master:** ~0.74ms
 
 ## Development
 
 ### Pre-Commit Hook
 
-Install the pre-commit hook for automatic checks on every commit:
-
 ```bash
 ./scripts/setup-hooks.sh
 ```
 
-The hook checks GPLv3 license headers and code formatting on staged files (~instant). Optionally run clang-tidy on changed lines with `TIDY=1 git commit`.
-
-### Manual Quality Checks
-
-```bash
-# All tests pass
-./build/Release/bin/tests/unit_tests && ./build/Release/bin/tests/integration_tests
-
-# Coverage targets met (≥80% line, ≥70% function)
-./scripts/coverage.sh
-
-# Static analysis
-./scripts/tidy.sh check
-```
+Checks GPLv3 license headers and formatting on staged files. Optionally run clang-tidy with `TIDY=1 git commit`.
 
 ### Cross-Compiler Testing
 
-Test with both GCC and Clang to catch compiler-specific issues:
-
 ```bash
-# Build with GCC
-conan install . --profile=gcc-15-release --build=missing --output-folder=build/GCC-Release
-cmake -S . -B build/GCC-Release -DCMAKE_TOOLCHAIN_FILE=build/GCC-Release/conan_toolchain.cmake
-cmake --build build/GCC-Release
+# Build and test with GCC
+conan install . --profile=gcc-15-release --build=missing
+cmake --preset release
+cmake --build --preset release
+./build/Release/bin/tests/unit_tests
 
-# Build with Clang
-conan install . --profile=clang-21-release --build=missing --output-folder=build/Clang-Release
-cmake -S . -B build/Clang-Release -DCMAKE_TOOLCHAIN_FILE=build/Clang-Release/conan_toolchain.cmake
-cmake --build build/Clang-Release
-
-# Run tests with both compilers
-./build/GCC-Release/bin/tests/unit_tests
-./build/Clang-Release/bin/tests/unit_tests
+# Rebuild with Clang (shares build/Release directory)
+conan install . --profile=clang-21-release --build=missing
+cmake --preset release
+cmake --build --preset release
+./build/Release/bin/tests/unit_tests
 ```
-
-### Debugging
-
-For debugging crashes or investigating issues, use Debug builds with full debug symbols in all dependencies:
-
-```bash
-# Build debug version with GCC (recommended)
-conan install . --profile=gcc-15-debug --build=missing --output-folder=build/Debug
-cmake --preset conan-debug
-cmake --build --preset conan-debug
-
-# Run with GDB
-gdb --args ./build/Debug/bin/tests/unit_tests "Failing Test"
-(gdb) run
-(gdb) bt full
-(gdb) frame 5
-(gdb) print variable_name
-```
-
-**Why Debug builds matter:**
-- Debug symbols in **all dependencies** (yaml-cpp, spdlog, etc.)
-- Bounds checking catches bugs that Release builds miss (`std::vector::operator[]`)
-- No optimization prevents variables from being optimized away
-- Complete stack traces with `-fno-omit-frame-pointer`
-
-See [DEBUGGING_GUIDE.md](docs/DEBUGGING_GUIDE.md) for detailed debugging best practices.
 
 ## License
 
-This project is licensed under the **GNU General Public License v3.0** (GPLv3) - see the [LICENSE](LICENSE) file for details.
-
-GPLv3 is a copyleft license that ensures this software and all derivative works remain free and open source:
-- Use, study, and modify the software freely
-- Distribute copies and modified versions
-- Commercial use is allowed (source must be provided to recipients)
-- All derivatives must also be GPLv3-licensed
+This project is licensed under the **GNU General Public License v3.0** (GPLv3) — see the [LICENSE](LICENSE) file for details.
 
 See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for credits and [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for dependency licenses.
-
-## Target Users
-
-- Users who prefer keyboard navigation
-- Desktop users (Windows/Linux)
-- Offline-only operation

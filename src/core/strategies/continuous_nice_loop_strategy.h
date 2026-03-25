@@ -391,6 +391,7 @@ private:
                             continue;
                         }
                         Position pos{.row = row, .col = col};
+                        // NOLINTNEXTLINE(readability-suspicious-call-argument) — sees() is symmetric; pos/pos_a/pos_b naming is coincidental
                         if (sees(pos, pos_a) && sees(pos, pos_b) && candidates.isAllowed(row, col, digit)) {
                             eliminations.push_back(Elimination{.position = pos, .value = digit});
                         }

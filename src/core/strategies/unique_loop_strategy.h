@@ -180,7 +180,7 @@ private:
 
         for (size_t start = 0; start < n; ++start) {
             path.clear();
-            std::fill(in_path.begin(), in_path.end(), false);
+            std::ranges::fill(in_path, false);
             path.push_back(start);
             in_path[start] = true;
 

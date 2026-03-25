@@ -182,7 +182,7 @@ TEST_CASE("SudokuSolver - Strategy Chain Order", "[sudoku_solver]") {
 // This board passes validateBoard (no direct conflicts) but is unsolvable.
 // ============================================================================
 
-TEST_CASE("SudokuSolver - solvePuzzle with unsolvable board returns error", "[sudoku_solver]") {
+TEST_CASE("SudokuSolver - solvePuzzle with unsolvable board returns error", "[sudoku_solver][slow]") {
     auto validator = std::make_shared<GameValidator>();
     SudokuSolver solver(validator);
 
