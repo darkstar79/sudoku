@@ -27,8 +27,14 @@
 #include <catch2/matchers/catch_matchers.hpp>
 
 // Sanitizers add significant overhead (2-5x), so relax timing thresholds
-#if defined(__SANITIZE_ADDRESS__) || (defined(__has_feature) && __has_feature(address_sanitizer))
+#if defined(__SANITIZE_ADDRESS__)
 inline constexpr int kRatingTimeoutSeconds = 30;
+#elif defined(__has_feature)
+#    if __has_feature(address_sanitizer)
+inline constexpr int kRatingTimeoutSeconds = 30;
+#    else
+inline constexpr int kRatingTimeoutSeconds = 10;
+#    endif
 #else
 inline constexpr int kRatingTimeoutSeconds = 10;
 #endif
