@@ -26,6 +26,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
+// Sanitizers add significant overhead (2-5x), so relax timing thresholds
+#if defined(__SANITIZE_ADDRESS__) || (defined(__has_feature) && __has_feature(address_sanitizer))
+inline constexpr int kRatingTimeoutSeconds = 30;
+#else
+inline constexpr int kRatingTimeoutSeconds = 10;
+#endif
+
 using namespace sudoku::core;
 using namespace sudoku::test;
 
@@ -109,8 +116,8 @@ TEST_CASE("PuzzleRater - Medium/Hard puzzles complete safely", "[puzzle_rater][s
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 
         // Assertions
-        REQUIRE(result.has_value());                  // Should succeed
-        REQUIRE(elapsed < std::chrono::seconds(10));  // Reasonable timeout for medium
+        REQUIRE(result.has_value());                                     // Should succeed
+        REQUIRE(elapsed < std::chrono::seconds(kRatingTimeoutSeconds));  // Reasonable timeout for medium
 
         size_t memory_increase = memory.getMemoryIncrease();
         if (memory_increase > 0) {
@@ -157,7 +164,7 @@ TEST_CASE("PuzzleRater - Multiple generated puzzles (stress test)", "[puzzle_rat
             auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 
             // Safety assertions
-            if (elapsed > std::chrono::seconds(10)) {
+            if (elapsed > std::chrono::seconds(kRatingTimeoutSeconds)) {
                 FAIL("Rating timed out after " << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count()
                                                << "s");
             }
