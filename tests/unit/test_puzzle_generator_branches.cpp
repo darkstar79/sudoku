@@ -193,9 +193,7 @@ TEST_CASE("PuzzleGenerator - propagateConstraints Branch Coverage", "[puzzle_gen
 
     SECTION("Propagate constraints fills forced cells") {
         // Board with naked singles (forced moves)
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         // Tests applyIterativePropagation*() happy path
         auto result = generator.propagateConstraints(board);
@@ -366,9 +364,7 @@ TEST_CASE("PuzzleGenerator - selectCluesForDropping Edge Cases", "[puzzle_genera
     std::mt19937 rng(42);
 
     SECTION("Select 0 clues returns empty vector") {
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         // Tests boundary: num_clues = 0
         auto selected = generator.selectCluesForDropping(board, 0, rng);
@@ -399,9 +395,7 @@ TEST_CASE("PuzzleGenerator - selectCluesForDropping Edge Cases", "[puzzle_genera
     }
 
     SECTION("Select negative clues returns empty vector") {
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         // Tests error path: negative num_clues
         auto selected = generator.selectCluesForDropping(board, -5, rng);
@@ -543,9 +537,7 @@ TEST_CASE("PuzzleGenerator - Scalar vs SIMD Propagation Parity", "[puzzle_genera
     PuzzleGenerator generator;
 
     SECTION("Scalar propagation matches SIMD propagation") {
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         // Test both scalar and SIMD versions (SIMD may not be available)
         auto scalar_result = generator.propagateConstraintsScalar(board);
