@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/game_validator.h"
+#include "../helpers/candidate_test_utils.h"
 #include "../helpers/test_utils.h"
 
 #include <vector>
@@ -29,9 +30,7 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
 
     SECTION("validateMove on complete board returns GameComplete error") {
         // Create a complete board (all cells filled with valid values)
-        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = sudoku::testing::kSolvedBoard;
 
         // Verify board is complete
         REQUIRE(validator.isComplete(solution));
@@ -510,9 +509,7 @@ TEST_CASE("GameValidator - isComplete edge cases", "[game_validator][branches]")
 
     SECTION("isComplete on valid solution") {
         // Use the same complete solution from earlier test
-        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = sudoku::testing::kSolvedBoard;
 
         REQUIRE(validator.isComplete(solution));
     }

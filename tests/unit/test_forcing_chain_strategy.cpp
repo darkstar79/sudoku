@@ -16,22 +16,12 @@
 
 #include "../../src/core/candidate_grid.h"
 #include "../../src/core/strategies/forcing_chain_strategy.h"
+#include "../helpers/candidate_test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
-
-namespace {
-
-void keepOnly(CandidateGrid& grid, size_t row, size_t col, const std::vector<int>& keep) {
-    for (int v = 1; v <= 9; ++v) {
-        if (std::find(keep.begin(), keep.end(), v) == keep.end() && grid.isAllowed(row, col, v)) {
-            grid.eliminateCandidate(row, col, v);
-        }
-    }
-}
-
-}  // namespace
+using sudoku::testing::keepOnly;
 
 TEST_CASE("ForcingChainStrategy - Metadata", "[forcing_chain]") {
     ForcingChainStrategy strategy;
@@ -42,9 +32,7 @@ TEST_CASE("ForcingChainStrategy - Metadata", "[forcing_chain]") {
 }
 
 TEST_CASE("ForcingChainStrategy - Returns nullopt for complete board", "[forcing_chain]") {
-    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = sudoku::testing::kSolvedBoard;
     CandidateGrid state(board);
     ForcingChainStrategy strategy;
 
@@ -149,9 +137,7 @@ TEST_CASE("ForcingChainStrategy - Can be used through ISolvingStrategy interface
     REQUIRE(strategy->getName() == "Forcing Chain");
     REQUIRE(strategy->getDifficultyRating() == 7.5);
 
-    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = sudoku::testing::kSolvedBoard;
     CandidateGrid state(board);
     auto result = strategy->findStep(board, state);
     REQUIRE_FALSE(result.has_value());

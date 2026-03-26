@@ -16,27 +16,13 @@
 
 #include "../../src/core/candidate_grid.h"
 #include "../../src/core/strategies/unique_rectangle_strategy.h"
+#include "../helpers/candidate_test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
-
-namespace {
-
-[[nodiscard]] BoardData createEmptyBoard() {
-    return BoardData{};
-}
-
-/// Helper: keep only specified candidates for a cell
-void keepOnly(CandidateGrid& grid, size_t row, size_t col, const std::vector<int>& keep) {
-    for (int v = 1; v <= 9; ++v) {
-        if (std::find(keep.begin(), keep.end(), v) == keep.end() && grid.isAllowed(row, col, v)) {
-            grid.eliminateCandidate(row, col, v);
-        }
-    }
-}
-
-}  // namespace
+using sudoku::testing::createEmptyBoard;
+using sudoku::testing::keepOnly;
 
 TEST_CASE("UniqueRectangleStrategy - Col-based Type 1 detection", "[unique_rectangle]") {
     // Two bivalue {1,2} cells in same column (col 0), different boxes (box 0 and box 3):

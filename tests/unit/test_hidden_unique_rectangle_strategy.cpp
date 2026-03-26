@@ -16,27 +16,13 @@
 
 #include "../../src/core/candidate_grid.h"
 #include "../../src/core/strategies/hidden_unique_rectangle_strategy.h"
+#include "../helpers/candidate_test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
-
-namespace {
-
-[[nodiscard]] BoardData createEmptyBoard() {
-    return BoardData{};
-}
-
-/// Helper: keep only specified candidates for a cell
-void keepOnly(CandidateGrid& grid, size_t row, size_t col, const std::vector<int>& keep) {
-    for (int v = 1; v <= 9; ++v) {
-        if (std::find(keep.begin(), keep.end(), v) == keep.end() && grid.isAllowed(row, col, v)) {
-            grid.eliminateCandidate(row, col, v);
-        }
-    }
-}
-
-}  // namespace
+using sudoku::testing::createEmptyBoard;
+using sudoku::testing::keepOnly;
 
 TEST_CASE("HiddenUniqueRectangleStrategy - Metadata", "[hidden_unique_rectangle]") {
     HiddenUniqueRectangleStrategy strategy;
@@ -47,9 +33,7 @@ TEST_CASE("HiddenUniqueRectangleStrategy - Metadata", "[hidden_unique_rectangle]
 }
 
 TEST_CASE("HiddenUniqueRectangleStrategy - Returns nullopt for complete board", "[hidden_unique_rectangle]") {
-    BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                       {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                       {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = sudoku::testing::kSolvedBoard;
     CandidateGrid state(board);
     HiddenUniqueRectangleStrategy strategy;
 

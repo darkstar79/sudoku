@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/solution_counter.h"
+#include "../helpers/candidate_test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -24,9 +25,7 @@ TEST_CASE("SolutionCounter - countSolutions", "[solution_counter]") {
     SolutionCounter counter;
 
     SECTION("Complete valid board has exactly 1 solution") {
-        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = sudoku::testing::kSolvedBoard;
 
         int count = counter.countSolutions(board, 2);
         REQUIRE(count == 1);
@@ -69,9 +68,7 @@ TEST_CASE("SolutionCounter - hasUniqueSolution", "[solution_counter]") {
     SolutionCounter counter;
 
     SECTION("Complete board is unique") {
-        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = sudoku::testing::kSolvedBoard;
 
         REQUIRE(counter.hasUniqueSolution(board));
     }
@@ -107,9 +104,7 @@ TEST_CASE("SolutionCounter - countSolutionsWithTimeout", "[solution_counter]") {
     SolutionCounter counter;
 
     SECTION("Completes within timeout for solvable board") {
-        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = sudoku::testing::kSolvedBoard;
 
         int count = counter.countSolutionsWithTimeout(board, 2, std::chrono::milliseconds(5000));
         REQUIRE(count == 1);
@@ -129,9 +124,7 @@ TEST_CASE("SolutionCounter - countSolutionsWithTimeout", "[solution_counter]") {
 
 TEST_CASE("SolutionCounter - hasContradiction", "[solution_counter]") {
     SECTION("Valid board has no contradiction") {
-        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = sudoku::testing::kSolvedBoard;
 
         REQUIRE_FALSE(SolutionCounter::hasContradiction(board));
     }
@@ -242,9 +235,7 @@ TEST_CASE("SolutionCounter - solver path", "[solution_counter]") {
     SECTION("Scalar path produces correct results") {
         counter.setSolverPath(SolverPath::Scalar);
 
-        BoardData board = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                           {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                           {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData board = sudoku::testing::kSolvedBoard;
 
         REQUIRE(counter.hasUniqueSolution(board));
     }

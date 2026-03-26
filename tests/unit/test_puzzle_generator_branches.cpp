@@ -18,6 +18,7 @@
 #include "../../src/core/i_puzzle_rater.h"
 #include "../../src/core/puzzle_generator.h"
 #include "../../src/core/puzzle_rating.h"
+#include "../helpers/candidate_test_utils.h"
 
 #include <chrono>
 
@@ -108,10 +109,7 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution Branch Coverage", "[puzzle_genera
     }
 
     SECTION("Complete board has unique solution (itself)") {
-        BoardData complete_board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData complete_board = sudoku::testing::kSolvedBoard;
 
         // Tests findEmptyPosition() returning nullopt (no empty cells)
         // Tests countSolutionsHelper() base case with complete board
@@ -233,10 +231,7 @@ TEST_CASE("PuzzleGenerator - propagateConstraints Branch Coverage", "[puzzle_gen
     }
 
     SECTION("Propagate constraints on complete board is no-op") {
-        BoardData complete_board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData complete_board = sudoku::testing::kSolvedBoard;
 
         // Tests propagation on complete board (all cells filled)
         // Tests findEmptyPosition() returning nullopt
@@ -308,10 +303,7 @@ TEST_CASE("PuzzleGenerator - hasContradiction Branch Coverage", "[puzzle_generat
     }
 
     SECTION("Complete valid board has no contradiction") {
-        BoardData complete_board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData complete_board = sudoku::testing::kSolvedBoard;
 
         REQUIRE_FALSE(generator.hasContradiction(complete_board));
     }
@@ -323,9 +315,7 @@ TEST_CASE("PuzzleGenerator - removeCluesToTarget Boundary Testing", "[puzzle_gen
 
     SECTION("Remove clues to moderate target (25 clues)") {
         // Generate complete solution
-        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = sudoku::testing::kSolvedBoard;
 
         // Tests moderate target (25 clues, easier than 17)
         auto result = generator.removeCluesToTarget(solution, 25, 200, rng);
@@ -343,9 +333,7 @@ TEST_CASE("PuzzleGenerator - removeCluesToTarget Boundary Testing", "[puzzle_gen
     }
 
     SECTION("Remove clues to maximum (81 clues - complete board)") {
-        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = sudoku::testing::kSolvedBoard;
 
         // Tests boundary: 81 clues (no removal)
         auto result = generator.removeCluesToTarget(solution, 81, 10, rng);
@@ -356,9 +344,7 @@ TEST_CASE("PuzzleGenerator - removeCluesToTarget Boundary Testing", "[puzzle_gen
     }
 
     SECTION("Impossible target clues (0 clues) returns empty board") {
-        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = sudoku::testing::kSolvedBoard;
 
         // Tests error path: impossible to achieve 0 clues with unique solution
         // Use 2 attempts to keep Debug-mode runtime manageable (50 attempts × 81 uniqueness
@@ -373,9 +359,7 @@ TEST_CASE("PuzzleGenerator - removeCluesToTarget Boundary Testing", "[puzzle_gen
     }
 
     SECTION("Max attempts exceeded returns empty board") {
-        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = sudoku::testing::kSolvedBoard;
 
         // Tests max_attempts branch: very low attempts for difficult target
         auto result = generator.removeCluesToTarget(solution, 17, 1, rng);
@@ -491,9 +475,7 @@ TEST_CASE("PuzzleGenerator - removeCluesToCreatePuzzleIterative Coverage", "[puz
     std::mt19937 rng(42);
 
     SECTION("Iterative removal for Expert difficulty") {
-        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = sudoku::testing::kSolvedBoard;
 
         GenerationSettings settings;
         settings.difficulty = Difficulty::Expert;
@@ -513,9 +495,7 @@ TEST_CASE("PuzzleGenerator - removeCluesToCreatePuzzleIterative Coverage", "[puz
     }
 
     SECTION("Iterative removal for Easy difficulty (greedy path)") {
-        BoardData solution = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                              {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                              {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData solution = sudoku::testing::kSolvedBoard;
 
         GenerationSettings settings;
         settings.difficulty = Difficulty::Easy;
@@ -554,10 +534,7 @@ TEST_CASE("PuzzleGenerator - analyzeClueConstraints Edge Cases", "[puzzle_genera
     }
 
     SECTION("Analyze complete board (all clues)") {
-        BoardData complete_board = {
-            {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        BoardData complete_board = sudoku::testing::kSolvedBoard;
 
         auto analysis = generator.analyzeClueConstraints(complete_board);
 
@@ -873,10 +850,7 @@ TEST_CASE("PuzzleGenerator - Scalar solver path (countSolutions)", "[puzzle_gene
 
     const BoardData multi_solution_puzzle;
 
-    const BoardData complete_board = {
-        {5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    const BoardData complete_board = sudoku::testing::kSolvedBoard;
 
     PuzzleGenerator generator;
     generator.setSolverPath(SolverPath::Scalar);

@@ -81,6 +81,37 @@ findTwoEmptyCellsInColumn(const model::GameState& state);
 [[nodiscard]] std::optional<std::pair<core::Position, core::Position>>
 findTwoEmptyCellsInBox(const model::GameState& state);
 
+/// Find first cell matching a predicate
+/// @param predicate Callable taking const model::Cell& and returning bool
+/// @return Position of first matching cell, or nullopt if none found
+template <typename Predicate>
+[[nodiscard]] std::optional<core::Position> findCell(const model::GameState& state, Predicate predicate) {
+    for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
+        for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
+            if (predicate(state.getCell(row, col))) {
+                return core::Position{.row = row, .col = col};
+            }
+        }
+    }
+    return std::nullopt;
+}
+
+/// Find all cells matching a predicate
+/// @param predicate Callable taking const model::Cell& and returning bool
+/// @return Vector of positions for all matching cells
+template <typename Predicate>
+[[nodiscard]] std::vector<core::Position> findCells(const model::GameState& state, Predicate predicate) {
+    std::vector<core::Position> results;
+    for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
+        for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
+            if (predicate(state.getCell(row, col))) {
+                results.emplace_back(row, col);
+            }
+        }
+    }
+    return results;
+}
+
 // ============================================================================
 // Deterministic Puzzle Fixtures
 // ============================================================================
