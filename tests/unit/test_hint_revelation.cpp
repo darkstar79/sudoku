@@ -14,14 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "../../src/core/game_validator.h"
-#include "../../src/core/puzzle_generator.h"
-#include "../../src/core/save_manager.h"
-#include "../../src/core/statistics_manager.h"
-#include "../../src/core/sudoku_solver.h"
-#include "../../src/view_model/game_view_model.h"
-#include "../helpers/mock_localization_manager.h"
-#include "../helpers/test_utils.h"
+#include "../helpers/game_view_model_fixture.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -32,26 +25,7 @@ using namespace sudoku::model;
 
 namespace {
 
-struct HintTestFixture {
-    test::TempTestDir temp_dir;
-    std::shared_ptr<IGameValidator> validator;
-    std::shared_ptr<IPuzzleGenerator> generator;
-    std::shared_ptr<ISudokuSolver> solver;
-    std::shared_ptr<IStatisticsManager> stats_manager;
-    std::shared_ptr<ISaveManager> save_manager;
-    std::unique_ptr<GameViewModel> view_model;
-
-    HintTestFixture() {
-        validator = std::make_shared<GameValidator>();
-        generator = std::make_shared<PuzzleGenerator>();
-        solver = std::make_shared<SudokuSolver>(validator);
-        stats_manager = std::make_shared<StatisticsManager>(temp_dir.path());
-        save_manager = std::make_shared<SaveManager>(temp_dir.path());
-
-        view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
-                                                     std::make_shared<MockLocalizationManager>());
-    }
-};
+using HintTestFixture = test::GameViewModelFixture;
 
 /// Find a cell that became hint-revealed between two game state snapshots.
 [[nodiscard]] auto findNewHintCell(const GameState& before, const GameState& after) -> std::optional<Position> {

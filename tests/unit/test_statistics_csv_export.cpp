@@ -16,6 +16,7 @@
 
 #include "../../src/core/i_time_provider.h"
 #include "../../src/core/statistics_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <filesystem>
 #include <fstream>
@@ -33,17 +34,12 @@ class CsvExportTestFixture {
 public:
     CsvExportTestFixture()
         : mock_time_(std::make_shared<sudoku::core::MockTimeProvider>()),
-          test_dir_("./test_csv_export_" + std::to_string(std::random_device{}())),
-          stats_manager_(test_dir_.string(), mock_time_) {
-        fs::create_directories(test_dir_);
+          stats_manager_(test_dir_.path().string(), mock_time_) {
         stats_manager_.setCollectDetailedStats(true);
     }
 
     ~CsvExportTestFixture() {
         stats_manager_.flushSessions();
-        if (fs::exists(test_dir_)) {
-            fs::remove_all(test_dir_);
-        }
     }
 
     std::vector<std::string> readCsvLines(const std::string& file_path) {
@@ -103,7 +99,7 @@ public:
 
 protected:
     std::shared_ptr<sudoku::core::MockTimeProvider> mock_time_;
-    fs::path test_dir_;
+    sudoku::test::TempTestDir test_dir_;
     sudoku::core::StatisticsManager stats_manager_;
 };
 
@@ -117,7 +113,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Export aggregate sta
     createTestGameSessions(20);
 
     // Export aggregate stats to CSV
-    auto export_path = test_dir_ / "aggregate_stats.csv";
+    auto export_path = test_dir_.path() / "aggregate_stats.csv";
     auto result = stats_manager_.exportAggregateStatsCsv(export_path.string());
 
     REQUIRE(result.has_value());
@@ -155,7 +151,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Export game sessions
     createTestGameSessions(10);
 
     // Export sessions to CSV
-    auto export_path = test_dir_ / "game_sessions.csv";
+    auto export_path = test_dir_.path() / "game_sessions.csv";
     auto result = stats_manager_.exportGameSessionsCsv(export_path.string());
 
     REQUIRE(result.has_value());
@@ -191,8 +187,8 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV export with no g
     using namespace sudoku::core;
 
     // Export without any games
-    auto aggregate_path = test_dir_ / "aggregate_empty.csv";
-    auto sessions_path = test_dir_ / "sessions_empty.csv";
+    auto aggregate_path = test_dir_.path() / "aggregate_empty.csv";
+    auto sessions_path = test_dir_.path() / "sessions_empty.csv";
 
     auto agg_result = stats_manager_.exportAggregateStatsCsv(aggregate_path.string());
     auto sess_result = stats_manager_.exportGameSessionsCsv(sessions_path.string());
@@ -220,7 +216,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV export error han
     using namespace sudoku::core;
 
     // Try to export to read-only directory
-    auto readonly_dir = test_dir_ / "readonly";
+    auto readonly_dir = test_dir_.path() / "readonly";
     fs::create_directories(readonly_dir);
     fs::permissions(readonly_dir, fs::perms::owner_read | fs::perms::owner_exec);
 
@@ -255,7 +251,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV timestamp format
     stats_manager_.endGame(session_id, true);
 
     // Export sessions
-    auto export_path = test_dir_ / "sessions_timestamp.csv";
+    auto export_path = test_dir_.path() / "sessions_timestamp.csv";
     auto result = stats_manager_.exportGameSessionsCsv(export_path.string());
 
     REQUIRE(result.has_value());
@@ -274,7 +270,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV timestamp format
 TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV export file overwrite", "[statistics][csv_export]") {
     using namespace sudoku::core;
 
-    auto export_path = test_dir_ / "overwrite_test.csv";
+    auto export_path = test_dir_.path() / "overwrite_test.csv";
 
     // First export
     createTestGameSessions(5);
@@ -318,7 +314,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Aggregate CSV comple
     }
 
     // Export aggregate stats
-    auto export_path = test_dir_ / "completion_rate.csv";
+    auto export_path = test_dir_.path() / "completion_rate.csv";
     auto result = stats_manager_.exportAggregateStatsCsv(export_path.string());
     REQUIRE(result.has_value());
 
@@ -407,7 +403,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Rating in aggregate 
     REQUIRE(end_result2.has_value());
 
     // Export aggregate stats to CSV
-    auto export_path = test_dir_ / "aggregate_with_rating.csv";
+    auto export_path = test_dir_.path() / "aggregate_with_rating.csv";
     auto result = stats_manager_.exportAggregateStatsCsv(export_path.string());
     REQUIRE(result.has_value());
 
@@ -438,7 +434,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Rating in game sessi
     REQUIRE(end_result.has_value());
 
     // Export sessions to CSV
-    auto export_path = test_dir_ / "sessions_with_rating.csv";
+    auto export_path = test_dir_.path() / "sessions_with_rating.csv";
     auto result = stats_manager_.exportGameSessionsCsv(export_path.string());
     REQUIRE(result.has_value());
 

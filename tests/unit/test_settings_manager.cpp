@@ -15,29 +15,18 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/settings_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <filesystem>
 #include <fstream>
-#include <string>
 
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
 
-namespace {
-
-std::filesystem::path createTempDir() {
-    auto tmp = std::filesystem::temp_directory_path() / "sudoku_test_settings";
-    std::filesystem::remove_all(tmp);
-    std::filesystem::create_directories(tmp);
-    return tmp;
-}
-
-}  // namespace
-
 TEST_CASE("SettingsManager - Default values when no file exists", "[settings]") {
-    auto tmp = createTempDir();
-    auto path = tmp / "settings.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
 
     SettingsManager mgr(path);
     const auto& s = mgr.getSettings();
@@ -48,13 +37,11 @@ TEST_CASE("SettingsManager - Default values when no file exists", "[settings]") 
     CHECK(s.show_conflicts == true);
     CHECK(s.show_hints == true);
     CHECK(s.language == "en");
-
-    std::filesystem::remove_all(tmp);
 }
 
 TEST_CASE("SettingsManager - Save and load round-trip", "[settings]") {
-    auto tmp = createTempDir();
-    auto path = tmp / "settings.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
 
     {
         SettingsManager mgr(path);
@@ -76,13 +63,11 @@ TEST_CASE("SettingsManager - Save and load round-trip", "[settings]") {
     CHECK(s.show_conflicts == false);
     CHECK(s.show_hints == false);
     CHECK(s.language == "de");
-
-    std::filesystem::remove_all(tmp);
 }
 
 TEST_CASE("SettingsManager - Corrupt YAML falls back to defaults", "[settings]") {
-    auto tmp = createTempDir();
-    auto path = tmp / "settings.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
 
     {
         std::ofstream out(path);
@@ -91,13 +76,11 @@ TEST_CASE("SettingsManager - Corrupt YAML falls back to defaults", "[settings]")
 
     SettingsManager mgr(path);
     CHECK(mgr.getSettings() == Settings{});
-
-    std::filesystem::remove_all(tmp);
 }
 
 TEST_CASE("SettingsManager - Observable notifies on change", "[settings]") {
-    auto tmp = createTempDir();
-    auto path = tmp / "settings.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
 
     SettingsManager mgr(path);
 
@@ -119,13 +102,11 @@ TEST_CASE("SettingsManager - Observable notifies on change", "[settings]") {
     mgr.setShowConflicts(false);
     CHECK(notify_count == 2);
     CHECK(last_notified.show_conflicts == false);
-
-    std::filesystem::remove_all(tmp);
 }
 
 TEST_CASE("SettingsManager - Values are clamped to valid ranges", "[settings]") {
-    auto tmp = createTempDir();
-    auto path = tmp / "settings.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
 
     SettingsManager mgr(path);
 
@@ -140,17 +121,15 @@ TEST_CASE("SettingsManager - Values are clamped to valid ranges", "[settings]") 
 
     mgr.setAutoSaveInterval(999999);
     CHECK(mgr.getSettings().auto_save_interval_ms == 300000);
-
-    std::filesystem::remove_all(tmp);
 }
 
 TEST_CASE("SettingsManager - Migrate language.txt on first run", "[settings]") {
-    auto tmp = createTempDir();
-    auto path = tmp / "settings.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
 
     // Create a legacy language.txt
     {
-        std::ofstream out(tmp / "language.txt");
+        std::ofstream out(tmp.path() / "language.txt");
         out << "de";
     }
 
@@ -159,13 +138,11 @@ TEST_CASE("SettingsManager - Migrate language.txt on first run", "[settings]") {
 
     // Settings file should now exist
     CHECK(std::filesystem::exists(path));
-
-    std::filesystem::remove_all(tmp);
 }
 
 TEST_CASE("SettingsManager - No migration if settings.yaml already exists", "[settings]") {
-    auto tmp = createTempDir();
-    auto path = tmp / "settings.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
 
     // Create settings file by changing a setting (triggers save)
     {
@@ -175,20 +152,18 @@ TEST_CASE("SettingsManager - No migration if settings.yaml already exists", "[se
 
     // Create language.txt with different value
     {
-        std::ofstream out(tmp / "language.txt");
+        std::ofstream out(tmp.path() / "language.txt");
         out << "fr";
     }
 
     // Should NOT migrate — settings.yaml already exists
     SettingsManager mgr(path);
     CHECK(mgr.getSettings().language == "en");
-
-    std::filesystem::remove_all(tmp);
 }
 
 TEST_CASE("SettingsManager - All difficulty values round-trip", "[settings]") {
-    auto tmp = createTempDir();
-    auto path = tmp / "settings.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
 
     for (auto d : {Difficulty::Easy, Difficulty::Medium, Difficulty::Hard, Difficulty::Expert, Difficulty::Master}) {
         {
@@ -198,6 +173,4 @@ TEST_CASE("SettingsManager - All difficulty values round-trip", "[settings]") {
         SettingsManager mgr2(path);
         CHECK(mgr2.getSettings().default_difficulty == d);
     }
-
-    std::filesystem::remove_all(tmp);
 }

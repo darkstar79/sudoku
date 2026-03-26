@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/training_statistics_serializer.h"
+#include "../helpers/test_utils.h"
 
 #include <chrono>
 #include <filesystem>
@@ -25,23 +26,9 @@
 using namespace sudoku::core;
 using namespace sudoku::core::training_stats_serializer;
 
-namespace {
-
-std::filesystem::path createTempDir() {
-    auto tmp = std::filesystem::temp_directory_path() / "sudoku_test_serializer";
-    std::filesystem::create_directories(tmp);
-    return tmp;
-}
-
-void cleanupTempDir(const std::filesystem::path& path) {
-    std::filesystem::remove_all(path);
-}
-
-}  // namespace
-
 TEST_CASE("training_stats_serializer — round-trip serialize/deserialize", "[TrainingSerializer]") {
-    auto tmp = createTempDir();
-    auto file = tmp / "stats.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto file = tmp.path() / "stats.yaml";
 
     std::unordered_map<SolvingTechnique, TechniqueStats> stats;
     TechniqueStats ts;
@@ -72,8 +59,6 @@ TEST_CASE("training_stats_serializer — round-trip serialize/deserialize", "[Tr
     CHECK(loaded_ts.mastered_count == 0);
     CHECK(loaded_ts.average_hints == 1.5);
     CHECK(loaded_ts.last_practiced == std::chrono::system_clock::time_point(std::chrono::seconds(1700000000)));
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("training_stats_serializer — deserialize non-existent file returns empty", "[TrainingSerializer]") {
@@ -83,8 +68,8 @@ TEST_CASE("training_stats_serializer — deserialize non-existent file returns e
 }
 
 TEST_CASE("training_stats_serializer — deserialize empty YAML (no techniques key)", "[TrainingSerializer]") {
-    auto tmp = createTempDir();
-    auto file = tmp / "empty_stats.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto file = tmp.path() / "empty_stats.yaml";
     {
         std::ofstream f(file);
         f << "version: '1.0'\n";
@@ -93,13 +78,11 @@ TEST_CASE("training_stats_serializer — deserialize empty YAML (no techniques k
     auto result = deserializeFromYaml(file);
     REQUIRE(result.has_value());
     CHECK(result->empty());
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("training_stats_serializer — deserialize unknown technique is skipped", "[TrainingSerializer]") {
-    auto tmp = createTempDir();
-    auto file = tmp / "unknown_tech.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto file = tmp.path() / "unknown_tech.yaml";
     {
         std::ofstream f(file);
         f << "version: '1.0'\n"
@@ -118,13 +101,11 @@ TEST_CASE("training_stats_serializer — deserialize unknown technique is skippe
     auto result = deserializeFromYaml(file);
     REQUIRE(result.has_value());
     CHECK(result->empty());
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("training_stats_serializer — deserialize malformed YAML returns error", "[TrainingSerializer]") {
-    auto tmp = createTempDir();
-    auto file = tmp / "bad.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto file = tmp.path() / "bad.yaml";
     {
         std::ofstream f(file);
         f << "{{{{not valid yaml at all";
@@ -133,8 +114,6 @@ TEST_CASE("training_stats_serializer — deserialize malformed YAML returns erro
     auto result = deserializeFromYaml(file);
     REQUIRE_FALSE(result.has_value());
     CHECK(result.error() == TrainingStatsError::SerializationError);
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("training_stats_serializer — serialize to read-only path returns error", "[TrainingSerializer]") {
@@ -145,8 +124,8 @@ TEST_CASE("training_stats_serializer — serialize to read-only path returns err
 }
 
 TEST_CASE("training_stats_serializer — multiple techniques round-trip", "[TrainingSerializer]") {
-    auto tmp = createTempDir();
-    auto file = tmp / "multi.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto file = tmp.path() / "multi.yaml";
 
     std::unordered_map<SolvingTechnique, TechniqueStats> stats;
     stats[SolvingTechnique::NakedSingle].total_correct = 5;
@@ -161,13 +140,11 @@ TEST_CASE("training_stats_serializer — multiple techniques round-trip", "[Trai
     CHECK(result->at(SolvingTechnique::NakedSingle).total_correct == 5);
     CHECK(result->at(SolvingTechnique::XWing).total_correct == 3);
     CHECK(result->at(SolvingTechnique::ForcingChain).total_correct == 1);
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("training_stats_serializer — Backtracking technique round-trip", "[TrainingSerializer]") {
-    auto tmp = createTempDir();
-    auto file = tmp / "backtracking.yaml";
+    sudoku::test::TempTestDir tmp;
+    auto file = tmp.path() / "backtracking.yaml";
 
     std::unordered_map<SolvingTechnique, TechniqueStats> stats;
     stats[SolvingTechnique::Backtracking].total_correct = 1;
@@ -178,6 +155,4 @@ TEST_CASE("training_stats_serializer — Backtracking technique round-trip", "[T
     REQUIRE(result.has_value());
     CHECK(result->contains(SolvingTechnique::Backtracking));
     CHECK(result->at(SolvingTechnique::Backtracking).total_correct == 1);
-
-    cleanupTempDir(tmp);
 }

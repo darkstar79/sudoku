@@ -16,30 +16,15 @@
 
 #include "../../src/core/i_training_statistics_manager.h"
 #include "../../src/core/training_statistics_manager.h"
-
-#include <filesystem>
+#include "../helpers/test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
 
-namespace {
-
-std::filesystem::path createTempDir() {
-    auto tmp = std::filesystem::temp_directory_path() / "sudoku_test_training_stats";
-    std::filesystem::create_directories(tmp);
-    return tmp;
-}
-
-void cleanupTempDir(const std::filesystem::path& path) {
-    std::filesystem::remove_all(path);
-}
-
-}  // namespace
-
 TEST_CASE("TrainingStatisticsManager — fresh state", "[TrainingStatistics]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     SECTION("getStats returns empty for unpracticed technique") {
         auto stats = mgr.getStats(SolvingTechnique::NakedSingle);
@@ -57,13 +42,11 @@ TEST_CASE("TrainingStatisticsManager — fresh state", "[TrainingStatistics]") {
     SECTION("getMastery returns Beginner for unpracticed") {
         CHECK(mgr.getMastery(SolvingTechnique::XWing) == MasteryLevel::Beginner);
     }
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("TrainingStatisticsManager — recordLesson", "[TrainingStatistics]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     TrainingLessonResult result;
     result.technique = SolvingTechnique::NakedPair;
@@ -112,13 +95,11 @@ TEST_CASE("TrainingStatisticsManager — recordLesson", "[TrainingStatistics]") 
         CHECK(mgr.getStats(SolvingTechnique::NakedPair).total_correct == 3);
         CHECK(mgr.getStats(SolvingTechnique::XWing).total_correct == 5);
     }
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("TrainingStatisticsManager — mastery levels", "[TrainingStatistics]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     SECTION("Beginner: best_score < 3") {
         TrainingLessonResult result;
@@ -162,15 +143,13 @@ TEST_CASE("TrainingStatisticsManager — mastery levels", "[TrainingStatistics]"
         REQUIRE(mgr.recordLesson(result).has_value());
         CHECK(mgr.getMastery(SolvingTechnique::HiddenSingle) == MasteryLevel::Mastered);
     }
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("TrainingStatisticsManager — persistence", "[TrainingStatistics]") {
-    auto tmp = createTempDir();
+    sudoku::test::TempTestDir tmp;
 
     {
-        TrainingStatisticsManager mgr(tmp);
+        TrainingStatisticsManager mgr(tmp.path());
         TrainingLessonResult result;
         result.technique = SolvingTechnique::Swordfish;
         result.correct_count = 4;
@@ -180,18 +159,16 @@ TEST_CASE("TrainingStatisticsManager — persistence", "[TrainingStatistics]") {
     }
 
     // Reload from disk
-    TrainingStatisticsManager mgr2(tmp);
+    TrainingStatisticsManager mgr2(tmp.path());
     auto stats = mgr2.getStats(SolvingTechnique::Swordfish);
     CHECK(stats.total_exercises_attempted == 5);
     CHECK(stats.total_correct == 4);
     CHECK(stats.best_score == 4);
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("TrainingStatisticsManager — resetAllStats", "[TrainingStatistics]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     TrainingLessonResult result;
     result.technique = SolvingTechnique::NakedSingle;
@@ -206,10 +183,8 @@ TEST_CASE("TrainingStatisticsManager — resetAllStats", "[TrainingStatistics]")
     CHECK(mgr.getMastery(SolvingTechnique::NakedSingle) == MasteryLevel::Beginner);
 
     // Reload — should also be empty
-    TrainingStatisticsManager mgr2(tmp);
+    TrainingStatisticsManager mgr2(tmp.path());
     CHECK(mgr2.getAllStats().empty());
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("computeMastery — static method", "[TrainingStatistics]") {

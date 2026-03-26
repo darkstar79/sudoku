@@ -16,24 +16,13 @@
 
 #include "../../src/core/training_learning_path.h"
 #include "../../src/core/training_statistics_manager.h"
-
-#include <filesystem>
+#include "../helpers/test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
 
 namespace {
-
-std::filesystem::path createTempDir() {
-    auto tmp = std::filesystem::temp_directory_path() / "sudoku_test_learning_path";
-    std::filesystem::create_directories(tmp);
-    return tmp;
-}
-
-void cleanupTempDir(const std::filesystem::path& path) {
-    std::filesystem::remove_all(path);
-}
 
 void masterTechnique(TrainingStatisticsManager& mgr, SolvingTechnique technique) {
     TrainingLessonResult result;
@@ -107,8 +96,8 @@ TEST_CASE("getPrerequisites — coloring chain", "[LearningPath]") {
 }
 
 TEST_CASE("arePrerequisitesMet — fresh stats", "[LearningPath]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     SECTION("techniques with no prerequisites are always available") {
         CHECK(arePrerequisitesMet(SolvingTechnique::NakedSingle, mgr));
@@ -121,13 +110,11 @@ TEST_CASE("arePrerequisitesMet — fresh stats", "[LearningPath]") {
         CHECK_FALSE(arePrerequisitesMet(SolvingTechnique::Swordfish, mgr));
         CHECK_FALSE(arePrerequisitesMet(SolvingTechnique::MultiColoring, mgr));
     }
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("arePrerequisitesMet — unlocks after reaching Intermediate", "[LearningPath]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     reachIntermediate(mgr, SolvingTechnique::NakedPair);
     CHECK(arePrerequisitesMet(SolvingTechnique::NakedTriple, mgr));
@@ -137,25 +124,21 @@ TEST_CASE("arePrerequisitesMet — unlocks after reaching Intermediate", "[Learn
 
     reachIntermediate(mgr, SolvingTechnique::NakedTriple);
     CHECK(arePrerequisitesMet(SolvingTechnique::NakedQuad, mgr));
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("getRecommendedTechnique — fresh stats recommends HiddenSingle", "[LearningPath]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
     // HiddenSingle (SE 1.5) is the easiest technique in SE scale
     CHECK(*recommended == SolvingTechnique::HiddenSingle);
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("getRecommendedTechnique — advances after mastering", "[LearningPath]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     masterTechnique(mgr, SolvingTechnique::HiddenSingle);
 
@@ -163,13 +146,11 @@ TEST_CASE("getRecommendedTechnique — advances after mastering", "[LearningPath
     REQUIRE(recommended.has_value());
     // After mastering HiddenSingle (SE 1.5), NakedSingle (SE 2.3) is next
     CHECK(*recommended == SolvingTechnique::NakedSingle);
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("getRecommendedTechnique — skips techniques with unmet prerequisites", "[LearningPath]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     // Master HiddenSingle and NakedSingle
     masterTechnique(mgr, SolvingTechnique::HiddenSingle);
@@ -180,13 +161,11 @@ TEST_CASE("getRecommendedTechnique — skips techniques with unmet prerequisites
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
     CHECK(*recommended == SolvingTechnique::PointingPair);
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("getRecommendedTechnique — prefers least recently practiced at same difficulty", "[LearningPath]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     // Practice both PointingPair and BoxLineReduction (both 100 pts, no prereqs blocked)
     // Master lower-difficulty techniques first
@@ -202,13 +181,11 @@ TEST_CASE("getRecommendedTechnique — prefers least recently practiced at same 
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
     CHECK(*recommended == SolvingTechnique::PointingPair);
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("getRecommendedTechnique — returns nullopt when all mastered", "[LearningPath]") {
-    auto tmp = createTempDir();
-    TrainingStatisticsManager mgr(tmp);
+    sudoku::test::TempTestDir tmp;
+    TrainingStatisticsManager mgr(tmp.path());
 
     for (auto tech : kAllTechniques) {
         masterTechnique(mgr, tech);
@@ -216,8 +193,6 @@ TEST_CASE("getRecommendedTechnique — returns nullopt when all mastered", "[Lea
 
     auto recommended = getRecommendedTechnique(mgr);
     CHECK_FALSE(recommended.has_value());
-
-    cleanupTempDir(tmp);
 }
 
 TEST_CASE("kAllTechniques — contains all logical techniques", "[LearningPath]") {

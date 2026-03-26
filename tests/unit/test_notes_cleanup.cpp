@@ -14,16 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "../../src/core/game_validator.h"
-#include "../../src/core/puzzle_generator.h"
-#include "../../src/core/save_manager.h"
-#include "../../src/core/statistics_manager.h"
-#include "../../src/core/sudoku_solver.h"
-#include "../../src/view_model/game_view_model.h"
-#include "../helpers/mock_localization_manager.h"
+#include "../helpers/game_view_model_fixture.h"
 
 #include <algorithm>
-#include <memory>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -34,30 +27,17 @@ using namespace sudoku::model;
 
 TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
     SECTION("GameViewModel basic initialization") {
-        auto validator = std::make_shared<GameValidator>();
-        auto generator = std::make_shared<PuzzleGenerator>();
-        auto solver = std::make_shared<SudokuSolver>(validator);
-        auto stats_manager = std::make_shared<StatisticsManager>();
-        auto save_manager = std::make_shared<SaveManager>();
+        test::GameViewModelFixture f;
 
-        auto view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
-                                                          std::make_shared<MockLocalizationManager>());
-
-        REQUIRE(view_model != nullptr);
-        view_model->startNewGame(Difficulty::Easy);
-        auto& state = view_model->gameState.get();
+        REQUIRE(f.view_model != nullptr);
+        f.view_model->startNewGame(Difficulty::Easy);
+        auto& state = f.view_model->gameState.get();
         REQUIRE_FALSE(state.isComplete());
     }
 
     SECTION("Conflicting notes cleanup in same row, column, and block") {
-        auto validator = std::make_shared<GameValidator>();
-        auto generator = std::make_shared<PuzzleGenerator>();
-        auto solver = std::make_shared<SudokuSolver>(validator);
-        auto stats_manager = std::make_shared<StatisticsManager>();
-        auto save_manager = std::make_shared<SaveManager>();
-
-        auto view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
-                                                          std::make_shared<MockLocalizationManager>());
+        test::GameViewModelFixture f;
+        auto& view_model = f.view_model;
 
         // Create a custom game state with known empty cells for testing
         view_model->startNewGame(Difficulty::Easy);
@@ -134,14 +114,8 @@ TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
     }
 
     SECTION("Notes cleanup preserves other numbers") {
-        auto validator = std::make_shared<GameValidator>();
-        auto generator = std::make_shared<PuzzleGenerator>();
-        auto solver = std::make_shared<SudokuSolver>(validator);
-        auto stats_manager = std::make_shared<StatisticsManager>();
-        auto save_manager = std::make_shared<SaveManager>();
-
-        auto view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
-                                                          std::make_shared<MockLocalizationManager>());
+        test::GameViewModelFixture f;
+        auto& view_model = f.view_model;
 
         view_model->startNewGame(Difficulty::Easy);
         auto& initial_state = view_model->gameState.get();
