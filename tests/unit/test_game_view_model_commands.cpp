@@ -86,8 +86,8 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
         // Execute GetHint command
         fixture.view_model->executeCommand(GameCommand::GetHint);
 
-        // Hint result varies depending on board state (keep as-is)
-        REQUIRE(true);
+        // No cell selected, so getHint() sets an error message
+        CHECK(!fixture.view_model->errorMessage.get().empty());
     }
 
     SECTION("Execute ToggleInputMode command") {
@@ -109,8 +109,9 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
         // Execute ShowStatistics command
         fixture.view_model->executeCommand(GameCommand::ShowStatistics);
 
-        // UI-only command, no observable state change (keep as-is)
-        REQUIRE(true);
+        // ShowStatistics dispatches to refreshStatistics(), which populates the statistics observable
+        const auto& stats = fixture.view_model->statistics.get();
+        CHECK(stats.games_played >= 0);
     }
 }
 
@@ -171,25 +172,6 @@ TEST_CASE("GameViewModel - Can Execute Commands", "[game_view_model][commands]")
     }
 }
 
-TEST_CASE("GameViewModel - Error String Conversions", "[game_view_model][errors]") {
-    // These are namespace-level helper functions in game_view_model.cpp
-    // We can't call them directly, but we can trigger them through error paths
-
-    SECTION("Trigger statistics error handling") {
-        CommandTestFixture fixture;
-
-        // Try to perform operations that would trigger error handling
-        // The saveErrorToString and statisticsErrorToString functions will be called internally
-
-        // Start a game to initialize session
-        fixture.view_model->startNewGame(Difficulty::Easy);
-
-        // These operations exercise error handling paths
-        // Error handling is internal, no observable to verify (keep as-is)
-        REQUIRE(true);
-    }
-}
-
 TEST_CASE("GameViewModel - Cycle Input Mode", "[game_view_model][input_mode]") {
     CommandTestFixture fixture;
 
@@ -220,8 +202,8 @@ TEST_CASE("GameViewModel - Refresh Statistics", "[game_view_model][statistics]")
 
         fixture.view_model->refreshStatistics();
 
-        // No specific statistics value to assert (keep as-is)
-        REQUIRE(true);
+        const auto& stats = fixture.view_model->statistics.get();
+        CHECK(stats.games_played >= 0);
     }
 }
 

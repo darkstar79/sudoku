@@ -33,10 +33,8 @@ TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
 
         fixture.view_model->getHint();
 
-        // Should find a hint on a fresh game
-        [[maybe_unused]] const auto& ui = fixture.view_model->uiState.get();
-        // Hint may or may not be shown depending on board state - keep as-is (result varies)
-        REQUIRE(true);
+        // No cell selected, so getHint() sets "select a cell" error
+        CHECK(!fixture.view_model->errorMessage.get().empty());
     }
 
     SECTION("Get hint with no empty cells") {
@@ -54,10 +52,11 @@ TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
             }
         });
 
+        // Select a filled cell, then request hint — triggers "cell already has a value" error
+        fixture.view_model->selectCell({.row = 0, .col = 0});
         fixture.view_model->getHint();
 
-        // Should handle gracefully - no hint available on a full board (keep as-is)
-        REQUIRE(true);
+        CHECK(!fixture.view_model->errorMessage.get().empty());
     }
 }
 
@@ -264,8 +263,8 @@ TEST_CASE("GameViewModel - Save/Load Error Paths", "[game_view_model][save]") {
         // Don't start a game
         fixture.view_model->autoSave();
 
-        // No observable to verify auto-save without active game (keep as-is)
-        REQUIRE(true);
+        // autoSave() early-returns when no game is active; verify no error was set
+        CHECK(fixture.view_model->errorMessage.get().empty());
     }
 }
 
@@ -323,8 +322,7 @@ TEST_CASE("GameViewModel - Statistics Error Handling", "[game_view_model][stats_
         // Operations that might trigger statistics errors
         fixture.view_model->refreshStatistics();
 
-        // Verify statistics observable is accessible after refresh (keep as-is, no specific value to check)
-        [[maybe_unused]] const auto& stats = fixture.view_model->statistics.get();
-        REQUIRE(true);
+        const auto& stats = fixture.view_model->statistics.get();
+        CHECK(stats.games_played >= 0);
     }
 }

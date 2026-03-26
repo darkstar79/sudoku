@@ -130,14 +130,9 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution Branch Coverage", "[puzzle_genera
             overconstrained[1][col] = col + 1;
         }
 
-        // This board may have 0 or multiple solutions, but not exactly 1
-        // Tests countSolutions() not finding exactly 1 solution
-        bool has_unique = generator.hasUniqueSolution(overconstrained);
-
-        // Either unsolvable or has multiple solutions
-        // We just want to test the branch where it's not unique
-        (void)has_unique;  // Test executed, result varies
-        REQUIRE(true);     // Always pass - we're testing execution paths
+        // Board has duplicate values in every column (rows 0 and 1 share values),
+        // making it unsolvable — countSolutions() returns 0, not 1
+        REQUIRE_FALSE(generator.hasUniqueSolution(overconstrained));
     }
 }
 

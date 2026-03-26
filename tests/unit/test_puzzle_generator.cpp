@@ -81,12 +81,6 @@ TEST_CASE("PuzzleGenerator - Puzzle Validation", "[puzzle_generator]") {
         REQUIRE(generator.validatePuzzle(valid_board));
     }
 
-    SECTION("Invalid puzzle - wrong dimensions") {
-        // BoardData is always 9x9, so we skip invalid dimension test
-        // BoardData is a fixed 9x9 array; invalid dimensions are impossible
-        REQUIRE(true);  // Placeholder: BoardData always has valid dimensions
-    }
-
     SECTION("Invalid puzzle - out of range values") {
         BoardData invalid_board;
         invalid_board[0][0] = 10;  // Invalid value
@@ -225,12 +219,6 @@ TEST_CASE("PuzzleGenerator - Error Handling", "[puzzle_generator]") {
         // Empty board should still be solvable (finds one valid solution)
         REQUIRE(result.has_value());
         REQUIRE(generator.validatePuzzle(result.value()));
-    }
-
-    SECTION("solvePuzzle handles board with invalid dimensions") {
-        // BoardData is a fixed 9x9 array; invalid dimensions are impossible
-        // Skip this test as BoardData always has valid dimensions
-        REQUIRE(true);
     }
 }
 

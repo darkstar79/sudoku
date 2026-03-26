@@ -21,40 +21,6 @@
 using namespace sudoku::core;
 
 TEST_CASE("SolvingTechnique - Enum Values", "[solving_technique]") {
-    SECTION("All technique types are defined") {
-        // Verify all enum values exist (all 13 techniques)
-        auto naked_single = SolvingTechnique::NakedSingle;
-        auto hidden_single = SolvingTechnique::HiddenSingle;
-        auto naked_pair = SolvingTechnique::NakedPair;
-        auto naked_triple = SolvingTechnique::NakedTriple;
-        auto hidden_pair = SolvingTechnique::HiddenPair;
-        auto hidden_triple = SolvingTechnique::HiddenTriple;
-        auto pointing_pair = SolvingTechnique::PointingPair;
-        auto box_line_reduction = SolvingTechnique::BoxLineReduction;
-        auto naked_quad = SolvingTechnique::NakedQuad;
-        auto hidden_quad = SolvingTechnique::HiddenQuad;
-        auto x_wing = SolvingTechnique::XWing;
-        auto xy_wing = SolvingTechnique::XYWing;
-        auto backtracking = SolvingTechnique::Backtracking;
-
-        // Suppress unused variable warnings
-        (void)naked_single;
-        (void)hidden_single;
-        (void)naked_pair;
-        (void)naked_triple;
-        (void)hidden_pair;
-        (void)hidden_triple;
-        (void)pointing_pair;
-        (void)box_line_reduction;
-        (void)naked_quad;
-        (void)hidden_quad;
-        (void)x_wing;
-        (void)xy_wing;
-        (void)backtracking;
-
-        REQUIRE(true);  // Compilation success proves enum exists
-    }
-
     SECTION("Underlying type is uint8_t") {
         // Verify enum uses correct underlying type for memory efficiency
         REQUIRE(sizeof(SolvingTechnique) == sizeof(uint8_t));
