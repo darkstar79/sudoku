@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/puzzle_generator.h"
+#include "../helpers/test_utils.h"
 
 #include <chrono>
 
@@ -26,9 +27,7 @@ TEST_CASE("PuzzleGenerator - Memoization functionality", "[puzzle_generator][mem
     PuzzleGenerator generator;
 
     SECTION("hasUniqueSolution uses memoization correctly") {
-        BoardData puzzle1 = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                             {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                             {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData puzzle1 = sudoku::test::getEasyPuzzleWithPatterns();
 
         // Check twice - should be consistent
         bool unique1 = generator.hasUniqueSolution(puzzle1);
@@ -40,9 +39,7 @@ TEST_CASE("PuzzleGenerator - Memoization functionality", "[puzzle_generator][mem
     }
 
     SECTION("Memoization works across different puzzles") {
-        BoardData puzzle1 = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                             {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                             {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData puzzle1 = sudoku::test::getEasyPuzzleWithPatterns();
 
         BoardData puzzle2 = {{0, 0, 0, 7, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 4, 3, 0, 2, 0, 0},
                              {0, 0, 0, 0, 0, 0, 0, 0, 6}, {0, 0, 0, 5, 0, 9, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 4, 1, 8},
@@ -58,9 +55,7 @@ TEST_CASE("PuzzleGenerator - Memoization functionality", "[puzzle_generator][mem
     }
 
     SECTION("hasUniqueSolution uses memoization") {
-        BoardData puzzle = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData puzzle = sudoku::test::getEasyPuzzleWithPatterns();
 
         auto start = std::chrono::high_resolution_clock::now();
         bool has_unique = generator.hasUniqueSolution(puzzle);

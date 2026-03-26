@@ -19,6 +19,7 @@
 #include "../../src/core/puzzle_generator.h"
 #include "../../src/core/puzzle_rating.h"
 #include "../helpers/candidate_test_utils.h"
+#include "../helpers/test_utils.h"
 
 #include <chrono>
 
@@ -78,10 +79,7 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution Branch Coverage", "[puzzle_genera
     PuzzleGenerator generator;
 
     SECTION("Board with unique solution returns true") {
-        BoardData unique_puzzle = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData unique_puzzle = sudoku::test::getEasyPuzzleWithPatterns();
 
         // Tests countSolutions() → countSolutionsHelper() with max_solutions=2
         // Should find exactly 1 solution and return true
@@ -147,10 +145,7 @@ TEST_CASE("PuzzleGenerator - solvePuzzle Branch Coverage", "[puzzle_generator][b
     PuzzleGenerator generator;
 
     SECTION("Solve puzzle successfully") {
-        BoardData solvable_puzzle = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData solvable_puzzle = sudoku::test::getEasyPuzzleWithPatterns();
 
         // Tests solvePuzzle() success path, exercises countSolutionsHelper() indirectly
         auto result = generator.solvePuzzle(solvable_puzzle);

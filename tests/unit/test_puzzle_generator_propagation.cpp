@@ -29,6 +29,7 @@
  */
 
 #include "../helpers/candidate_test_utils.h"
+#include "../helpers/test_utils.h"
 #include "core/game_validator.h"
 #include "core/puzzle_generator.h"
 
@@ -65,11 +66,8 @@ static BoardData createBoardWithHiddenSingle() {
 static BoardData createBoardWithCascadingMoves() {
     // Use a real partial Sudoku with cascading singles
     // From a generated Medium puzzle with known forced moves
-    return {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0},
-            {0, 9, 8, 0, 0, 0, 0, 6, 0}, {8, 0, 0, 0, 6, 0, 0, 0, 3},
-            {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5},
-            {0, 0, 0, 0, 8, 0, 0, 7, 9}};  // This board has multiple naked/hidden singles that cascade
+    // This board has multiple naked/hidden singles that cascade
+    return sudoku::test::getEasyPuzzleWithPatterns();
 }
 
 // Helper: Create board with contradiction (empty domain)

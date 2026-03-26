@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include "../helpers/test_utils.h"
 #include "core/i_localization_manager.h"
 #include "core/localization_manager.h"
 
@@ -23,38 +24,15 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::test::TempTestDir;
 
 namespace {
 
-/// Helper to create a temporary directory with locale YAML files for testing.
-class TempLocaleDir {
-public:
-    TempLocaleDir() : dir_(std::filesystem::temp_directory_path() / "sudoku_test_locales") {
-        std::filesystem::create_directories(dir_);
-    }
-
-    ~TempLocaleDir() {
-        std::filesystem::remove_all(dir_);
-    }
-
-    TempLocaleDir(const TempLocaleDir&) = delete;
-    TempLocaleDir& operator=(const TempLocaleDir&) = delete;
-    TempLocaleDir(TempLocaleDir&&) = delete;
-    TempLocaleDir& operator=(TempLocaleDir&&) = delete;
-
-    /// Write a YAML file to the temp directory.
-    void writeFile(const std::string& filename, const std::string& content) const {
-        std::ofstream out(dir_ / filename);
-        out << content;
-    }
-
-    [[nodiscard]] const std::filesystem::path& path() const {
-        return dir_;
-    }
-
-private:
-    std::filesystem::path dir_;
-};
+/// Write a YAML file to the given directory.
+void writeFile(const std::filesystem::path& dir, const std::string& filename, const std::string& content) {
+    std::ofstream out(dir / filename);
+    out << content;
+}
 
 const std::string ENGLISH_YAML = R"(locale: en
 name: English
@@ -84,8 +62,8 @@ name: Français
 }  // namespace
 
 TEST_CASE("LocalizationManager - Load and retrieve strings", "[localization]") {
-    TempLocaleDir temp;
-    temp.writeFile("en.yaml", ENGLISH_YAML);
+    TempTestDir temp;
+    writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
 
     LocalizationManager manager(temp.path());
 
@@ -113,8 +91,8 @@ TEST_CASE("LocalizationManager - Load and retrieve strings", "[localization]") {
 }
 
 TEST_CASE("LocalizationManager - Missing key handling", "[localization]") {
-    TempLocaleDir temp;
-    temp.writeFile("en.yaml", ENGLISH_YAML);
+    TempTestDir temp;
+    writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
 
     LocalizationManager manager(temp.path());
     auto result = manager.setLocale("en");
@@ -135,9 +113,9 @@ TEST_CASE("LocalizationManager - Missing key handling", "[localization]") {
 }
 
 TEST_CASE("LocalizationManager - Locale switching", "[localization]") {
-    TempLocaleDir temp;
-    temp.writeFile("en.yaml", ENGLISH_YAML);
-    temp.writeFile("de.yaml", GERMAN_YAML);
+    TempTestDir temp;
+    writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
+    writeFile(temp.path(), "de.yaml", GERMAN_YAML);
 
     LocalizationManager manager(temp.path());
 
@@ -166,8 +144,8 @@ TEST_CASE("LocalizationManager - Locale switching", "[localization]") {
 
 TEST_CASE("LocalizationManager - Error handling", "[localization]") {
     SECTION("setLocale with non-existent locale returns error") {
-        TempLocaleDir temp;
-        temp.writeFile("en.yaml", ENGLISH_YAML);
+        TempTestDir temp;
+        writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
 
         LocalizationManager manager(temp.path());
 
@@ -186,8 +164,8 @@ TEST_CASE("LocalizationManager - Error handling", "[localization]") {
     }
 
     SECTION("setLocale with invalid YAML returns error") {
-        TempLocaleDir temp;
-        temp.writeFile("bad.yaml", INVALID_YAML);
+        TempTestDir temp;
+        writeFile(temp.path(), "bad.yaml", INVALID_YAML);
 
         LocalizationManager manager(temp.path());
         auto result = manager.setLocale("bad");
@@ -196,8 +174,8 @@ TEST_CASE("LocalizationManager - Error handling", "[localization]") {
     }
 
     SECTION("setLocale with YAML missing strings section returns error") {
-        TempLocaleDir temp;
-        temp.writeFile("fr.yaml", MISSING_STRINGS_YAML);
+        TempTestDir temp;
+        writeFile(temp.path(), "fr.yaml", MISSING_STRINGS_YAML);
 
         LocalizationManager manager(temp.path());
         auto result = manager.setLocale("fr");
@@ -208,9 +186,9 @@ TEST_CASE("LocalizationManager - Error handling", "[localization]") {
 }
 
 TEST_CASE("LocalizationManager - Available locales discovery", "[localization]") {
-    TempLocaleDir temp;
-    temp.writeFile("en.yaml", ENGLISH_YAML);
-    temp.writeFile("de.yaml", GERMAN_YAML);
+    TempTestDir temp;
+    writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
+    writeFile(temp.path(), "de.yaml", GERMAN_YAML);
 
     LocalizationManager manager(temp.path());
 
@@ -230,7 +208,7 @@ TEST_CASE("LocalizationManager - Available locales discovery", "[localization]")
     }
 
     SECTION("Invalid YAML files are skipped during discovery") {
-        temp.writeFile("broken.yaml", INVALID_YAML);
+        writeFile(temp.path(), "broken.yaml", INVALID_YAML);
 
         // Re-create manager to re-discover
         LocalizationManager manager2(temp.path());
@@ -242,9 +220,9 @@ TEST_CASE("LocalizationManager - Available locales discovery", "[localization]")
 }
 
 TEST_CASE("LocalizationManager - English fallback loading", "[localization]") {
-    TempLocaleDir temp;
-    temp.writeFile("en.yaml", ENGLISH_YAML);
-    temp.writeFile("de.yaml", GERMAN_YAML);
+    TempTestDir temp;
+    writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
+    writeFile(temp.path(), "de.yaml", GERMAN_YAML);
 
     SECTION("Direct non-English setLocale loads English fallback automatically") {
         LocalizationManager manager(temp.path());
@@ -275,8 +253,8 @@ TEST_CASE("LocalizationManager - English fallback loading", "[localization]") {
 TEST_CASE("LocalizationManager - Fallback edge cases", "[localization]") {
     SECTION("Non-English locale without en.yaml: no English fallback loaded") {
         // Only German, no English — the 'exists(en_file)' false branch
-        TempLocaleDir temp;
-        temp.writeFile("de.yaml", GERMAN_YAML);
+        TempTestDir temp;
+        writeFile(temp.path(), "de.yaml", GERMAN_YAML);
 
         LocalizationManager manager(temp.path());
         auto result = manager.setLocale("de");
@@ -290,9 +268,9 @@ TEST_CASE("LocalizationManager - Fallback edge cases", "[localization]") {
     }
 
     SECTION("getString key missing in both active and fallback returns key name") {
-        TempLocaleDir temp;
-        temp.writeFile("en.yaml", ENGLISH_YAML);
-        temp.writeFile("de.yaml", GERMAN_YAML);
+        TempTestDir temp;
+        writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
+        writeFile(temp.path(), "de.yaml", GERMAN_YAML);
 
         LocalizationManager manager(temp.path());
         auto result = manager.setLocale("de");
@@ -322,8 +300,8 @@ TEST_CASE("LocalizationManager - locales path is a file not a directory", "[loca
 }
 
 TEST_CASE("LocalizationManager - Polymorphic usage through interface", "[localization]") {
-    TempLocaleDir temp;
-    temp.writeFile("en.yaml", ENGLISH_YAML);
+    TempTestDir temp;
+    writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
 
     SECTION("Can use through ILocalizationManager pointer") {
         std::shared_ptr<ILocalizationManager> manager = std::make_shared<LocalizationManager>(temp.path());
@@ -338,9 +316,9 @@ TEST_CASE("LocalizationManager - Failed English fallback load is handled gracefu
     // Covers localization_manager.cpp line 50: warn branch when en.yaml fails to parse
     // while loading a non-English locale.
     // Setup: en.yaml is present but contains invalid YAML (parse fails → fallback warn)
-    TempLocaleDir temp;
-    temp.writeFile("en.yaml", INVALID_YAML);  // broken en.yaml
-    temp.writeFile("de.yaml", GERMAN_YAML);   // valid German locale
+    TempTestDir temp;
+    writeFile(temp.path(), "en.yaml", INVALID_YAML);  // broken en.yaml
+    writeFile(temp.path(), "de.yaml", GERMAN_YAML);   // valid German locale
 
     LocalizationManager manager(temp.path());
 
@@ -356,17 +334,17 @@ TEST_CASE("LocalizationManager - Failed English fallback load is handled gracefu
 
 TEST_CASE("LocalizationManager - Available locales sorted with many locales", "[localization]") {
     // Add 4 locales to exercise the sort lambda more thoroughly
-    TempLocaleDir temp;
-    temp.writeFile("en.yaml", ENGLISH_YAML);
-    temp.writeFile("de.yaml", GERMAN_YAML);
-    temp.writeFile("fr.yaml", R"(locale: fr
+    TempTestDir temp;
+    writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
+    writeFile(temp.path(), "de.yaml", GERMAN_YAML);
+    writeFile(temp.path(), "fr.yaml", R"(locale: fr
 name: Français
 
 strings:
   menu.game: "Jeu"
   menu.new_game: "Nouveau jeu"
 )");
-    temp.writeFile("es.yaml", R"(locale: es
+    writeFile(temp.path(), "es.yaml", R"(locale: es
 name: Español
 
 strings:
@@ -387,9 +365,9 @@ strings:
 
 TEST_CASE("LocalizationManager - Non-yaml files in locale directory are skipped", "[localization]") {
     // Covers the extension() != ".yaml" false branch (line 116) in discoverLocales.
-    TempLocaleDir temp;
-    temp.writeFile("en.yaml", ENGLISH_YAML);
-    temp.writeFile("readme.txt", "This is not a locale file");
+    TempTestDir temp;
+    writeFile(temp.path(), "en.yaml", ENGLISH_YAML);
+    writeFile(temp.path(), "readme.txt", "This is not a locale file");
 
     LocalizationManager manager(temp.path());
     auto locales = manager.getAvailableLocales();

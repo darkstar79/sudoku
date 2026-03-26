@@ -67,7 +67,7 @@ TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
 
         // Should find a hint on a fresh game
         [[maybe_unused]] const auto& ui = fixture.view_model->uiState.get();
-        // Hint may or may not be shown depending on board state
+        // Hint may or may not be shown depending on board state - keep as-is (result varies)
         REQUIRE(true);
     }
 
@@ -88,7 +88,7 @@ TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
 
         fixture.view_model->getHint();
 
-        // Should handle gracefully
+        // Should handle gracefully - no hint available on a full board (keep as-is)
         REQUIRE(true);
     }
 }
@@ -105,7 +105,7 @@ TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]")
         // Try to enter number - should not crash
         fixture.view_model->enterNumber(5);
 
-        REQUIRE(true);
+        REQUIRE(!fixture.view_model->gameState.get().hasSelection());
     }
 
     SECTION("Enter number on given cell") {
@@ -142,8 +142,8 @@ TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]")
                     fixture.view_model->selectCell({row, col});
                     fixture.view_model->enterNumber(0);
 
-                    // Should not crash
-                    REQUIRE(true);
+                    const auto& after = fixture.view_model->gameState.get();
+                    REQUIRE(after.getCell(row, col).value == 0);
                     return;
                 }
             }
@@ -161,8 +161,8 @@ TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]")
                     fixture.view_model->selectCell({row, col});
                     fixture.view_model->enterNumber(10);
 
-                    // Should not crash
-                    REQUIRE(true);
+                    const auto& after = fixture.view_model->gameState.get();
+                    REQUIRE(after.getCell(row, col).value == 0);
                     return;
                 }
             }
@@ -182,7 +182,7 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
         // Try to enter note - should not crash
         fixture.view_model->enterNote(5);
 
-        REQUIRE(true);
+        REQUIRE(!fixture.view_model->gameState.get().hasSelection());
     }
 
     SECTION("Enter note on given cell") {
@@ -241,8 +241,8 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
                     fixture.view_model->selectCell({row, col});
                     fixture.view_model->enterNote(0);
 
-                    // Should not crash
-                    REQUIRE(true);
+                    const auto& after = fixture.view_model->gameState.get();
+                    REQUIRE(after.getCell(row, col).notes.empty());
                     return;
                 }
             }
@@ -260,8 +260,8 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
                     fixture.view_model->selectCell({row, col});
                     fixture.view_model->enterNote(10);
 
-                    // Should not crash
-                    REQUIRE(true);
+                    const auto& after = fixture.view_model->gameState.get();
+                    REQUIRE(after.getCell(row, col).notes.empty());
                     return;
                 }
             }
@@ -279,8 +279,7 @@ TEST_CASE("GameViewModel - Undo/Redo Edge Cases", "[game_view_model][undo]") {
 
         fixture.view_model->undo();
 
-        // Should not crash
-        REQUIRE(true);
+        REQUIRE(!fixture.view_model->canUndo());
     }
 
     SECTION("Redo with no undone moves") {
@@ -290,8 +289,7 @@ TEST_CASE("GameViewModel - Undo/Redo Edge Cases", "[game_view_model][undo]") {
 
         fixture.view_model->redo();
 
-        // Should not crash
-        REQUIRE(true);
+        REQUIRE(!fixture.view_model->canRedo());
     }
 
     SECTION("Undo to last valid with no moves") {
@@ -299,8 +297,7 @@ TEST_CASE("GameViewModel - Undo/Redo Edge Cases", "[game_view_model][undo]") {
 
         fixture.view_model->undoToLastValid();
 
-        // Should handle gracefully
-        REQUIRE(true);
+        REQUIRE(fixture.view_model->getMoveCount() >= 0);
     }
 
     SECTION("Undo to last valid when already valid") {
@@ -309,10 +306,7 @@ TEST_CASE("GameViewModel - Undo/Redo Edge Cases", "[game_view_model][undo]") {
         // Fresh board should be valid
         fixture.view_model->undoToLastValid();
 
-        // Should handle gracefully
-        [[maybe_unused]] const auto& ui = fixture.view_model->uiState.get();
-        // Status message may indicate already valid
-        REQUIRE(true);
+        REQUIRE(fixture.view_model->getMoveCount() >= 0);
     }
 }
 
@@ -332,7 +326,7 @@ TEST_CASE("GameViewModel - Save/Load Error Paths", "[game_view_model][save]") {
         // Don't start a game
         fixture.view_model->autoSave();
 
-        // Should handle gracefully
+        // No observable to verify auto-save without active game (keep as-is)
         REQUIRE(true);
     }
 }
@@ -391,9 +385,8 @@ TEST_CASE("GameViewModel - Statistics Error Handling", "[game_view_model][stats_
         // Operations that might trigger statistics errors
         fixture.view_model->refreshStatistics();
 
-        // Check statistics observable
+        // Verify statistics observable is accessible after refresh (keep as-is, no specific value to check)
         [[maybe_unused]] const auto& stats = fixture.view_model->statistics.get();
-        // Should not crash
         REQUIRE(true);
     }
 }

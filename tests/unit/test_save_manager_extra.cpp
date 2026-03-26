@@ -22,6 +22,7 @@
 /// - saveGame empty display_name auto-generates name with localtime
 
 #include "../../src/core/save_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <chrono>
 #include <filesystem>
@@ -31,30 +32,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::test::TempTestDir;
 namespace fs = std::filesystem;
 
 namespace {
-
-class SaveExtraTmpDir {
-public:
-    SaveExtraTmpDir()
-        : path_(fs::temp_directory_path() / ("sudoku_save_extra_" + std::to_string(std::random_device{}()))) {
-        fs::create_directories(path_);
-    }
-    ~SaveExtraTmpDir() {
-        if (fs::exists(path_)) {
-            fs::remove_all(path_);
-        }
-    }
-    SaveExtraTmpDir(const SaveExtraTmpDir&) = delete;
-    SaveExtraTmpDir& operator=(const SaveExtraTmpDir&) = delete;
-    [[nodiscard]] const fs::path& path() const {
-        return path_;
-    }
-
-private:
-    fs::path path_;
-};
 
 SavedGame makeGame() {
     SavedGame game;
@@ -75,7 +56,7 @@ SavedGame makeGame() {
 // ============================================================================
 
 TEST_CASE("SaveManager - listSaves skips non-YAML files", "[save_manager_extra]") {
-    SaveExtraTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Save a real game first
@@ -106,7 +87,7 @@ TEST_CASE("SaveManager - listSaves skips non-YAML files", "[save_manager_extra]"
 // ============================================================================
 
 TEST_CASE("SaveManager - listSaves skips subdirectories", "[save_manager_extra]") {
-    SaveExtraTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Save a real game
@@ -127,7 +108,7 @@ TEST_CASE("SaveManager - listSaves skips subdirectories", "[save_manager_extra]"
 // ============================================================================
 
 TEST_CASE("SaveManager - listSaves skips YAML files that are not valid saves", "[save_manager_extra]") {
-    SaveExtraTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Write a YAML file that doesn't have the correct save format
@@ -146,7 +127,7 @@ TEST_CASE("SaveManager - listSaves skips YAML files that are not valid saves", "
 // ============================================================================
 
 TEST_CASE("SaveManager - listSaves returns multiple saves sorted newest first", "[save_manager_extra]") {
-    SaveExtraTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Save two games with different names
@@ -170,7 +151,7 @@ TEST_CASE("SaveManager - listSaves returns multiple saves sorted newest first", 
 // ============================================================================
 
 TEST_CASE("SaveManager - autoSave then loadAutoSave returns correct data", "[save_manager_extra]") {
-    SaveExtraTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     auto game = makeGame();
@@ -192,7 +173,7 @@ TEST_CASE("SaveManager - autoSave then loadAutoSave returns correct data", "[sav
 // ============================================================================
 
 TEST_CASE("SaveManager - saveGame with existing save_id overwrites same file", "[save_manager_extra]") {
-    SaveExtraTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // First save (generates an id)
@@ -226,7 +207,7 @@ TEST_CASE("SaveManager - saveGame with existing save_id overwrites same file", "
 // ============================================================================
 
 TEST_CASE("SaveManager - deleteSave removes save from list", "[save_manager_extra]") {
-    SaveExtraTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     auto game = makeGame();

@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/puzzle_generator.h"
+#include "../helpers/test_utils.h"
 
 #include <algorithm>
 #include <set>
@@ -26,9 +27,7 @@ using namespace sudoku::core;
 // Helper function to create a partially filled board for testing
 static BoardData createPartialBoard() {
     // Create a valid partial board with varying constraint levels
-    return {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+    return sudoku::test::getEasyPuzzleWithPatterns();
 }
 
 // Helper function to create a highly constrained board

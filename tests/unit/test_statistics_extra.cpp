@@ -23,6 +23,7 @@
 
 #include "../../src/core/i_time_provider.h"
 #include "../../src/core/statistics_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <array>
 #include <filesystem>
@@ -32,32 +33,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::test::TempTestDir;
 namespace fs = std::filesystem;
-
-namespace {
-
-class StatsTmpDir {
-public:
-    StatsTmpDir()
-        : path_(fs::temp_directory_path() / ("sudoku_stats_extra_" + std::to_string(std::random_device{}()))) {
-        fs::create_directories(path_);
-    }
-    ~StatsTmpDir() {
-        if (fs::exists(path_)) {
-            fs::remove_all(path_);
-        }
-    }
-    StatsTmpDir(const StatsTmpDir&) = delete;
-    StatsTmpDir& operator=(const StatsTmpDir&) = delete;
-    [[nodiscard]] const fs::path& path() const {
-        return path_;
-    }
-
-private:
-    fs::path path_;
-};
-
-}  // namespace
 
 // ============================================================================
 // Constructor path: sessions file exists but no aggregate file → recalculate
@@ -65,7 +42,7 @@ private:
 // ============================================================================
 
 TEST_CASE("StatisticsManager - recalculate is triggered when only sessions file present", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
 
     // First manager: play a game, persist sessions and aggregate
@@ -98,7 +75,7 @@ TEST_CASE("StatisticsManager - recalculate is triggered when only sessions file 
 // ============================================================================
 
 TEST_CASE("StatisticsManager - second faster completion updates best time", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -122,7 +99,7 @@ TEST_CASE("StatisticsManager - second faster completion updates best time", "[st
 }
 
 TEST_CASE("StatisticsManager - slower second game does not update best time", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -149,7 +126,7 @@ TEST_CASE("StatisticsManager - slower second game does not update best time", "[
 // ============================================================================
 
 TEST_CASE("StatisticsManager - fresh manager with sessions but no aggregate file recalculates", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
 
     // First manager: play two games
@@ -183,7 +160,7 @@ TEST_CASE("StatisticsManager - fresh manager with sessions but no aggregate file
 // ============================================================================
 
 TEST_CASE("StatisticsManager - aggregate tracks moves hints and mistakes", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -211,7 +188,7 @@ TEST_CASE("StatisticsManager - aggregate tracks moves hints and mistakes", "[sta
 // ============================================================================
 
 TEST_CASE("StatisticsManager - getRecentGames returns empty when no sessions file", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -226,7 +203,7 @@ TEST_CASE("StatisticsManager - getRecentGames returns empty when no sessions fil
 // ============================================================================
 
 TEST_CASE("StatisticsManager - exportStats then importStats merges data", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
     mgr.setCollectDetailedStats(true);
@@ -257,7 +234,7 @@ TEST_CASE("StatisticsManager - exportStats then importStats merges data", "[stat
 // ============================================================================
 
 TEST_CASE("StatisticsManager - getRecentGames returns error on corrupted sessions YAML", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -277,7 +254,7 @@ TEST_CASE("StatisticsManager - getRecentGames returns error on corrupted session
 // ============================================================================
 
 TEST_CASE("StatisticsManager - importStats returns error on corrupted YAML", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -300,7 +277,7 @@ TEST_CASE("StatisticsManager - importStats returns error on corrupted YAML", "[s
 // ============================================================================
 
 TEST_CASE("StatisticsManager - constructor handles both corrupted files gracefully", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
 
     // Write corrupted aggregate_stats.yaml (forces deserialization failure →
@@ -331,7 +308,7 @@ TEST_CASE("StatisticsManager - constructor handles both corrupted files graceful
 // ============================================================================
 
 TEST_CASE("StatisticsManager - exportGameSessionsCsv returns error on corrupted sessions", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -354,7 +331,7 @@ TEST_CASE("StatisticsManager - exportGameSessionsCsv returns error on corrupted 
 // ============================================================================
 
 TEST_CASE("StatisticsManager - destructor ends active sessions and buffers them", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
 
     {
@@ -382,7 +359,7 @@ TEST_CASE("StatisticsManager - destructor ends active sessions and buffers them"
 // ============================================================================
 
 TEST_CASE("StatisticsManager - deleteSessionHistory removes file and pending sessions", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
     mgr.setCollectDetailedStats(true);
@@ -418,7 +395,7 @@ TEST_CASE("StatisticsManager - deleteSessionHistory removes file and pending ses
 // ============================================================================
 
 TEST_CASE("StatisticsManager - getAllSessions handles corrupt encrypted file gracefully", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -442,7 +419,7 @@ TEST_CASE("StatisticsManager - getAllSessions handles corrupt encrypted file gra
 // ============================================================================
 
 TEST_CASE("StatisticsManager - getStatsForDifficulty propagates aggregate error", "[statistics_extra]") {
-    StatsTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
 
     // Write corrupted sessions file + no aggregate → constructor triggers

@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/save_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <algorithm>
 #include <chrono>
@@ -23,32 +24,8 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::test::TempTestDir;
 namespace fs = std::filesystem;
-
-// RAII temporary directory
-class TempDir {
-public:
-    TempDir()
-        : path_(
-              fs::temp_directory_path() /
-              ("sudoku_settings_test_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()))) {
-        fs::create_directories(path_);
-    }
-    ~TempDir() {
-        if (fs::exists(path_)) {
-            fs::remove_all(path_);
-        }
-    }
-    TempDir(const TempDir&) = delete;
-    TempDir& operator=(const TempDir&) = delete;
-
-    [[nodiscard]] const fs::path& path() const {
-        return path_;
-    }
-
-private:
-    fs::path path_;
-};
 
 // Helper: minimal valid SavedGame (all 9x9 boards initialised)
 static SavedGame makeValidGame() {
@@ -64,7 +41,7 @@ static SavedGame makeValidGame() {
 }
 
 TEST_CASE("SaveManager - Pre-existing save_id is reused", "[save_manager_settings]") {
-    TempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeValidGame();
@@ -83,7 +60,7 @@ TEST_CASE("SaveManager - Pre-existing save_id is reused", "[save_manager_setting
 }
 
 TEST_CASE("SaveManager - is_complete=true is serialized correctly", "[save_manager_settings]") {
-    TempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeValidGame();
@@ -101,7 +78,7 @@ TEST_CASE("SaveManager - is_complete=true is serialized correctly", "[save_manag
 }
 
 TEST_CASE("SaveManager - Empty notes skips 'notes' key in YAML", "[save_manager_settings]") {
-    TempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // All notes empty → has_notes remains false → no "notes" key serialized
@@ -122,7 +99,7 @@ TEST_CASE("SaveManager - Empty notes skips 'notes' key in YAML", "[save_manager_
 }
 
 TEST_CASE("SaveManager - Non-empty notes: 'notes' key is serialized", "[save_manager_settings]") {
-    TempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeValidGame();
@@ -140,7 +117,7 @@ TEST_CASE("SaveManager - Non-empty notes: 'notes' key is serialized", "[save_man
 }
 
 TEST_CASE("SaveManager - include_history=true with non-empty move_history", "[save_manager_settings]") {
-    TempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeValidGame();
@@ -165,7 +142,7 @@ TEST_CASE("SaveManager - include_history=true with non-empty move_history", "[sa
 }
 
 TEST_CASE("SaveManager - include_history=false with non-empty move_history", "[save_manager_settings]") {
-    TempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeValidGame();
@@ -188,7 +165,7 @@ TEST_CASE("SaveManager - include_history=false with non-empty move_history", "[s
 }
 
 TEST_CASE("SaveManager - Invalid board dimensions return SerializationError", "[save_manager_settings]") {
-    TempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SaveSettings settings;

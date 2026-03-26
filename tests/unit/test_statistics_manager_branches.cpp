@@ -27,6 +27,7 @@
 
 #include "../../src/core/i_time_provider.h"
 #include "../../src/core/statistics_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <chrono>
 #include <filesystem>
@@ -35,39 +36,15 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::test::TempTestDir;
 namespace fs = std::filesystem;
-
-namespace {
-
-class StatsTempDir {
-public:
-    StatsTempDir()
-        : path_(fs::temp_directory_path() / ("sudoku_stats_test_" + std::to_string(std::random_device{}()))) {
-        fs::create_directories(path_);
-    }
-    ~StatsTempDir() {
-        if (fs::exists(path_)) {
-            fs::remove_all(path_);
-        }
-    }
-    StatsTempDir(const StatsTempDir&) = delete;
-    StatsTempDir& operator=(const StatsTempDir&) = delete;
-    [[nodiscard]] const fs::path& path() const {
-        return path_;
-    }
-
-private:
-    fs::path path_;
-};
-
-}  // namespace
 
 // ============================================================================
 // Invalid difficulty
 // ============================================================================
 
 TEST_CASE("StatisticsManager - startGame with invalid difficulty returns error", "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -79,7 +56,7 @@ TEST_CASE("StatisticsManager - startGame with invalid difficulty returns error",
 
 TEST_CASE("StatisticsManager - getStatsForDifficulty with invalid difficulty returns error",
           "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -94,7 +71,7 @@ TEST_CASE("StatisticsManager - getStatsForDifficulty with invalid difficulty ret
 
 TEST_CASE("StatisticsManager - operations with invalid game_id return GameNotStarted",
           "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -130,7 +107,7 @@ TEST_CASE("StatisticsManager - operations with invalid game_id return GameNotSta
 // ============================================================================
 
 TEST_CASE("StatisticsManager - recordMove with is_mistake=true increments mistakes", "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -154,7 +131,7 @@ TEST_CASE("StatisticsManager - recordMove with is_mistake=true increments mistak
 // ============================================================================
 
 TEST_CASE("StatisticsManager - endGame completed=false resets win streak", "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -184,7 +161,7 @@ TEST_CASE("StatisticsManager - endGame completed=false resets win streak", "[sta
 
 TEST_CASE("StatisticsManager - updateAggregateStats tracks rating stats when puzzle_rating > 0",
           "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -205,7 +182,7 @@ TEST_CASE("StatisticsManager - updateAggregateStats tracks rating stats when puz
 // ============================================================================
 
 TEST_CASE("StatisticsManager - getRecentGames truncation and no-truncation", "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
     mgr.setCollectDetailedStats(true);
@@ -243,7 +220,7 @@ TEST_CASE("StatisticsManager - getRecentGames truncation and no-truncation", "[s
 
 TEST_CASE("StatisticsManager - getCompletionRates with played games shows non-zero rate",
           "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -270,7 +247,7 @@ TEST_CASE("StatisticsManager - getCompletionRates with played games shows non-ze
 // ============================================================================
 
 TEST_CASE("StatisticsManager - getBestTimes returns best time after completed game", "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -289,7 +266,7 @@ TEST_CASE("StatisticsManager - getBestTimes returns best time after completed ga
 
 TEST_CASE("StatisticsManager - fresh manager loads and recalculates from saved sessions",
           "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
 
     // First manager: play a game and persist it
@@ -314,7 +291,7 @@ TEST_CASE("StatisticsManager - fresh manager loads and recalculates from saved s
 // ============================================================================
 
 TEST_CASE("StatisticsManager - resetAllStats clears data and files", "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -339,7 +316,7 @@ TEST_CASE("StatisticsManager - resetAllStats clears data and files", "[statistic
 }
 
 TEST_CASE("StatisticsManager - resetAllStats on fresh manager is a no-op", "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -356,7 +333,7 @@ TEST_CASE("StatisticsManager - resetAllStats on fresh manager is a no-op", "[sta
 
 TEST_CASE("StatisticsManager - importStats with non-existent file returns FileAccessError",
           "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -370,11 +347,11 @@ TEST_CASE("StatisticsManager - importStats with non-existent file returns FileAc
 // ============================================================================
 
 TEST_CASE("StatisticsManager - importStats with valid file merges stats correctly", "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
 
     // First manager: play 2 Easy games, fast completions (10s and 20s)
-    StatsTempDir export_dir;
+    TempTestDir export_dir;
     {
         StatisticsManager src(export_dir.path().string(), time);
         auto id1 = src.startGame(Difficulty::Easy, 1, 200);
@@ -429,7 +406,7 @@ TEST_CASE("StatisticsManager - constructor with empty directory uses default", "
     // Use a throw-away unique dir to avoid polluting the default stats directory.
     // Since we can't pass empty string without side effects, we just test that
     // construction + getAggregateStats works with a non-empty tmp path:
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
     auto result = mgr.getAggregateStats();
@@ -442,7 +419,7 @@ TEST_CASE("StatisticsManager - constructor with empty directory uses default", "
 // ============================================================================
 
 TEST_CASE("StatisticsManager - getRecentGames returns empty when no sessions file", "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -458,7 +435,7 @@ TEST_CASE("StatisticsManager - getRecentGames returns empty when no sessions fil
 
 TEST_CASE("StatisticsManager - getStatsForDifficulty returns data for specific difficulty",
           "[statistics_manager_branches]") {
-    StatsTempDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 

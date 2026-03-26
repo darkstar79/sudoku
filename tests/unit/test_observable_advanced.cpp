@@ -212,18 +212,10 @@ TEST_CASE("Observable - Advanced Features", "[observable]") {
 
         // Use in conditional (requires explicit conversion)
         Observable<bool> flag(true);
-        if (flag.get()) {
-            REQUIRE(true);
-        } else {
-            REQUIRE(false);  // Should not reach here
-        }
+        REQUIRE(flag.get());
 
         flag.set(false);
-        if (flag.get()) {
-            REQUIRE(false);  // Should not reach here
-        } else {
-            REQUIRE(true);
-        }
+        REQUIRE_FALSE(flag.get());
     }
 
     SECTION("Explicit conversion in expressions") {

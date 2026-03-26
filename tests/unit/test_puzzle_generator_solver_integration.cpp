@@ -31,6 +31,7 @@
  */
 
 #include "../helpers/candidate_test_utils.h"
+#include "../helpers/test_utils.h"
 #include "core/game_validator.h"
 #include "core/puzzle_generator.h"
 
@@ -43,9 +44,7 @@ using namespace sudoku::core;
 
 // Helper: Create Medium difficulty puzzle (known to have unique solution)
 static BoardData createMediumPuzzle() {
-    return {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+    return sudoku::test::getEasyPuzzleWithPatterns();
 }
 
 // Helper: Create Hard difficulty puzzle with many cascading singles

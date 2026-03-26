@@ -16,6 +16,7 @@
 
 #include "../../src/core/solution_counter.h"
 #include "../helpers/candidate_test_utils.h"
+#include "../helpers/test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -39,9 +40,7 @@ TEST_CASE("SolutionCounter - countSolutions", "[solution_counter]") {
     }
 
     SECTION("Unique puzzle returns count of 1") {
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         int count = counter.countSolutions(board, 2);
         REQUIRE(count == 1);
@@ -152,9 +151,7 @@ TEST_CASE("SolutionCounter - hasContradiction", "[solution_counter]") {
 
 TEST_CASE("SolutionCounter - propagateConstraints", "[solution_counter]") {
     SECTION("Propagation on valid board succeeds") {
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         auto result = SolutionCounter::propagateConstraints(board);
         REQUIRE(result.has_value());
@@ -208,9 +205,7 @@ TEST_CASE("SolutionCounter - cache management", "[solution_counter]") {
     SolutionCounter counter;
 
     SECTION("clearCache does not affect correctness") {
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         int count1 = counter.countSolutions(board, 2);
         counter.clearCache();

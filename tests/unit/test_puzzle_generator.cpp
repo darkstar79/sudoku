@@ -16,6 +16,7 @@
 
 #include "../../src/core/puzzle_generator.h"
 #include "../helpers/candidate_test_utils.h"
+#include "../helpers/test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -75,9 +76,7 @@ TEST_CASE("PuzzleGenerator - Puzzle Validation", "[puzzle_generator]") {
     PuzzleGenerator generator;
 
     SECTION("Valid puzzle structure") {
-        BoardData valid_board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                                 {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                                 {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData valid_board = sudoku::test::getEasyPuzzleWithPatterns();
 
         REQUIRE(generator.validatePuzzle(valid_board));
     }
@@ -106,9 +105,7 @@ TEST_CASE("PuzzleGenerator - Puzzle Solving", "[puzzle_generator]") {
     PuzzleGenerator generator;
 
     SECTION("Solve simple puzzle") {
-        BoardData puzzle = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData puzzle = sudoku::test::getEasyPuzzleWithPatterns();
 
         auto result = generator.solvePuzzle(puzzle);
         REQUIRE(result.has_value());
@@ -242,9 +239,7 @@ TEST_CASE("PuzzleGenerator - Constraint Propagation", "[puzzle_generator]") {
 
     SECTION("Propagate constraints on simple board") {
         // Board with naked singles that can be propagated
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         auto result = generator.propagateConstraints(board);
         REQUIRE(result.has_value());
@@ -270,9 +265,7 @@ TEST_CASE("PuzzleGenerator - Constraint Propagation", "[puzzle_generator]") {
     }
 
     SECTION("hasContradiction on valid board returns false") {
-        BoardData valid_board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                                 {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                                 {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData valid_board = sudoku::test::getEasyPuzzleWithPatterns();
 
         REQUIRE_FALSE(generator.hasContradiction(valid_board));
     }
@@ -287,9 +280,7 @@ TEST_CASE("PuzzleGenerator - Clue Analysis", "[puzzle_generator]") {
     PuzzleGenerator generator;
 
     SECTION("Analyze clue constraints on partially filled board") {
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         auto analysis = generator.analyzeClueConstraints(board);
 
@@ -320,9 +311,7 @@ TEST_CASE("PuzzleGenerator - Clue Analysis", "[puzzle_generator]") {
     }
 
     SECTION("Select clues for dropping") {
-        BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                           {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                           {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
         std::mt19937 rng(42);
         int clue_count = generator.countClues(board);

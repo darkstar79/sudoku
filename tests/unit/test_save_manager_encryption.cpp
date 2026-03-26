@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/save_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <algorithm>
 #include <chrono>
@@ -24,39 +25,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::test::TempTestDir;
 namespace fs = std::filesystem;
-
-// RAII helper for temporary test directory management
-class TempTestDir {
-public:
-    TempTestDir()
-        : path_(fs::temp_directory_path() /
-                ("sudoku_encryption_test_" +
-                 std::to_string(std::chrono::system_clock::now().time_since_epoch().count()))) {
-        fs::create_directories(path_);
-    }
-
-    ~TempTestDir() {
-        if (fs::exists(path_)) {
-            fs::remove_all(path_);
-        }
-    }
-
-    const fs::path& path() const {
-        return path_;
-    }
-
-private:
-    fs::path path_;
-};
 
 // Helper: Create a SavedGame with test data
 SavedGame createTestGame() {
     SavedGame game;
 
-    game.current_state = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                          {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                          {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+    game.current_state = sudoku::test::getEasyPuzzleWithPatterns();
 
     game.original_puzzle = game.current_state;
 

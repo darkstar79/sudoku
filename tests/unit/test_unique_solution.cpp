@@ -16,6 +16,7 @@
 
 #include "../../src/core/puzzle_generator.h"
 #include "../helpers/candidate_test_utils.h"
+#include "../helpers/test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -57,9 +58,7 @@ TEST_CASE("hasUniqueSolution - Correctness Verification", "[puzzle_generator]") 
     }
 
     SECTION("Easy puzzle (~40 clues)") {
-        BoardData easy_puzzle = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                                 {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                                 {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData easy_puzzle = sudoku::test::getEasyPuzzleWithPatterns();
 
         bool unique = generator.hasUniqueSolution(easy_puzzle);
         REQUIRE(unique);

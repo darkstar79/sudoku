@@ -119,7 +119,7 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
         // Execute GetHint command
         fixture.view_model->executeCommand(GameCommand::GetHint);
 
-        // Just verify it doesn't crash - hint may or may not find a cell
+        // Hint result varies depending on board state (keep as-is)
         REQUIRE(true);
     }
 
@@ -142,7 +142,7 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
         // Execute ShowStatistics command
         fixture.view_model->executeCommand(GameCommand::ShowStatistics);
 
-        // Verify it doesn't crash
+        // UI-only command, no observable state change (keep as-is)
         REQUIRE(true);
     }
 }
@@ -218,7 +218,8 @@ TEST_CASE("GameViewModel - Error String Conversions", "[game_view_model][errors]
         fixture.view_model->startNewGame(Difficulty::Easy);
 
         // These operations exercise error handling paths
-        REQUIRE(true);  // Error handling is internal
+        // Error handling is internal, no observable to verify (keep as-is)
+        REQUIRE(true);
     }
 }
 
@@ -252,7 +253,7 @@ TEST_CASE("GameViewModel - Refresh Statistics", "[game_view_model][statistics]")
 
         fixture.view_model->refreshStatistics();
 
-        // Verify it doesn't crash
+        // No specific statistics value to assert (keep as-is)
         REQUIRE(true);
     }
 }
@@ -358,6 +359,6 @@ TEST_CASE("GameViewModel - Clear Selected Cell", "[game_view_model][clear]") {
         // Try to clear - should not crash
         fixture.view_model->clearSelectedCell();
 
-        REQUIRE(true);
+        REQUIRE(!fixture.view_model->gameState.get().hasSelection());
     }
 }

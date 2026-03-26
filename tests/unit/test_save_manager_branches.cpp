@@ -31,6 +31,7 @@
 /// - saveGame with empty display_name and no custom_name (auto-generated)
 
 #include "../../src/core/save_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <chrono>
 #include <filesystem>
@@ -39,31 +40,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::test::TempTestDir;
 namespace fs = std::filesystem;
 
 namespace {
-
-class SaveBranchTempDir {
-public:
-    SaveBranchTempDir()
-        : path_(fs::temp_directory_path() /
-                ("sudoku_save_branch_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()))) {
-        fs::create_directories(path_);
-    }
-    ~SaveBranchTempDir() {
-        if (fs::exists(path_)) {
-            fs::remove_all(path_);
-        }
-    }
-    SaveBranchTempDir(const SaveBranchTempDir&) = delete;
-    SaveBranchTempDir& operator=(const SaveBranchTempDir&) = delete;
-    [[nodiscard]] const fs::path& path() const {
-        return path_;
-    }
-
-private:
-    fs::path path_;
-};
 
 SavedGame makeMinimalGame() {
     SavedGame game;
@@ -84,7 +64,7 @@ SavedGame makeMinimalGame() {
 // ============================================================================
 
 TEST_CASE("SaveManager - loadGame with non-existent save_id returns FileNotFound", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     auto result = mgr.loadGame("does-not-exist");
@@ -97,7 +77,7 @@ TEST_CASE("SaveManager - loadGame with non-existent save_id returns FileNotFound
 // ============================================================================
 
 TEST_CASE("SaveManager - loadAutoSave returns FileNotFound when no auto-save exists", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     auto result = mgr.loadAutoSave();
@@ -110,7 +90,7 @@ TEST_CASE("SaveManager - loadAutoSave returns FileNotFound when no auto-save exi
 // ============================================================================
 
 TEST_CASE("SaveManager - hasAutoSave returns false when no auto-save, true after autoSave", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SECTION("hasAutoSave is false before any auto-save") {
@@ -130,7 +110,7 @@ TEST_CASE("SaveManager - hasAutoSave returns false when no auto-save, true after
 // ============================================================================
 
 TEST_CASE("SaveManager - deleteSave with non-existent save_id returns FileNotFound", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     auto result = mgr.deleteSave("nonexistent-id");
@@ -143,7 +123,7 @@ TEST_CASE("SaveManager - deleteSave with non-existent save_id returns FileNotFou
 // ============================================================================
 
 TEST_CASE("SaveManager - listSaves skips auto-save file", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Create an auto-save
@@ -163,7 +143,7 @@ TEST_CASE("SaveManager - listSaves skips auto-save file", "[save_manager_branche
 }
 
 TEST_CASE("SaveManager - listSaves returns empty when no saves exist", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     auto list = mgr.listSaves();
@@ -176,7 +156,7 @@ TEST_CASE("SaveManager - listSaves returns empty when no saves exist", "[save_ma
 // ============================================================================
 
 TEST_CASE("SaveManager - renameSave with non-existent save_id returns error", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     auto result = mgr.renameSave("nonexistent-id", "New Name");
@@ -185,7 +165,7 @@ TEST_CASE("SaveManager - renameSave with non-existent save_id returns error", "[
 }
 
 TEST_CASE("SaveManager - renameSave with valid save_id updates display_name", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -208,7 +188,7 @@ TEST_CASE("SaveManager - renameSave with valid save_id updates display_name", "[
 // ============================================================================
 
 TEST_CASE("SaveManager - exportSave with non-existent save_id returns error", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     auto result = mgr.exportSave("nonexistent-id", (tmp.path() / "export.yaml").string());
@@ -217,7 +197,7 @@ TEST_CASE("SaveManager - exportSave with non-existent save_id returns error", "[
 }
 
 TEST_CASE("SaveManager - exportSave with valid save_id creates export file", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -237,7 +217,7 @@ TEST_CASE("SaveManager - exportSave with valid save_id creates export file", "[s
 // ============================================================================
 
 TEST_CASE("SaveManager - importSave with non-existent file returns FileNotFound", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     auto result = mgr.importSave("/nonexistent/path/save.yaml", std::nullopt);
@@ -246,7 +226,7 @@ TEST_CASE("SaveManager - importSave with non-existent file returns FileNotFound"
 }
 
 TEST_CASE("SaveManager - importSave without new_name appends (Imported)", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Create and export a save first
@@ -270,7 +250,7 @@ TEST_CASE("SaveManager - importSave without new_name appends (Imported)", "[save
 }
 
 TEST_CASE("SaveManager - importSave with new_name uses provided name", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Create and export a save first
@@ -299,7 +279,7 @@ TEST_CASE("SaveManager - importSave with new_name uses provided name", "[save_ma
 
 TEST_CASE("SaveManager - saveGame with empty display_name and custom_name uses custom_name",
           "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -319,7 +299,7 @@ TEST_CASE("SaveManager - saveGame with empty display_name and custom_name uses c
 
 TEST_CASE("SaveManager - saveGame with empty display_name and no custom_name auto-generates name",
           "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -345,7 +325,7 @@ TEST_CASE("SaveManager - saveGame with empty display_name and no custom_name aut
 // ============================================================================
 
 TEST_CASE("SaveManager - cleanupOldSaves returns 0 when directory doesn't exist", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Remove the directory after construction
@@ -360,14 +340,14 @@ TEST_CASE("SaveManager - cleanupOldSaves returns 0 when directory doesn't exist"
 // ============================================================================
 
 TEST_CASE("SaveManager - validateSave returns false for non-existent save", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     REQUIRE_FALSE(mgr.validateSave("nonexistent-id"));
 }
 
 TEST_CASE("SaveManager - validateSave returns true for valid save", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -384,7 +364,7 @@ TEST_CASE("SaveManager - validateSave returns true for valid save", "[save_manag
 // ============================================================================
 
 TEST_CASE("SaveManager - autoSave then loadAutoSave roundtrip", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -404,7 +384,7 @@ TEST_CASE("SaveManager - autoSave then loadAutoSave roundtrip", "[save_manager_b
 // ============================================================================
 
 TEST_CASE("SaveManager - deleteSave removes existing save", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -429,7 +409,7 @@ TEST_CASE("SaveManager - deleteSave removes existing save", "[save_manager_branc
 // ============================================================================
 
 TEST_CASE("SaveManager - backward compat: load YAML without hint_revealed_cells", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Write a YAML file that is valid but lacks the hint_revealed_cells key
@@ -473,7 +453,7 @@ TEST_CASE("SaveManager - backward compat: load YAML without hint_revealed_cells"
 // ============================================================================
 
 TEST_CASE("SaveManager - cleanupOldSaves with negative days deletes all saves", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Create 2 saves
@@ -500,7 +480,7 @@ TEST_CASE("SaveManager - cleanupOldSaves with negative days deletes all saves", 
 }
 
 TEST_CASE("SaveManager - cleanupOldSaves with large days_old keeps all saves", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -518,14 +498,14 @@ TEST_CASE("SaveManager - cleanupOldSaves with large days_old keeps all saves", "
 // ============================================================================
 
 TEST_CASE("SaveManager - getSaveDirectorySize returns 0 for empty directory", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     REQUIRE(mgr.getSaveDirectorySize() == 0);
 }
 
 TEST_CASE("SaveManager - getSaveDirectorySize returns positive after saving", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -537,7 +517,7 @@ TEST_CASE("SaveManager - getSaveDirectorySize returns positive after saving", "[
 }
 
 TEST_CASE("SaveManager - getSaveDirectory returns configured path", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // getSaveDirectory() is a simple getter that was not yet tested
@@ -551,7 +531,7 @@ TEST_CASE("SaveManager - getSaveDirectory returns configured path", "[save_manag
 // ============================================================================
 
 TEST_CASE("SaveManager - saveGame with pre-set save_id reuses the same ID", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
@@ -574,7 +554,7 @@ TEST_CASE("SaveManager - saveGame with pre-set save_id reuses the same ID", "[sa
 // ============================================================================
 
 TEST_CASE("SaveManager - listSaves returns saves sorted newest first", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Create 3 saves with different last_modified times (set explicitly)
@@ -613,7 +593,7 @@ TEST_CASE("SaveManager - listSaves returns saves sorted newest first", "[save_ma
 // ============================================================================
 
 TEST_CASE("SaveManager - cleanupOldSaves skips autosave and non-yaml files", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     SaveSettings settings;
@@ -651,7 +631,7 @@ TEST_CASE("SaveManager - cleanupOldSaves skips autosave and non-yaml files", "[s
 // ============================================================================
 
 TEST_CASE("SaveManager - listSaves returns empty when save directory removed", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Remove the directory entirely
@@ -668,7 +648,7 @@ TEST_CASE("SaveManager - listSaves returns empty when save directory removed", "
 // ============================================================================
 
 TEST_CASE("SaveManager - importSave with corrupted YAML returns error", "[save_manager_branches]") {
-    SaveBranchTempDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Write a YAML file that exists but is unparseable

@@ -17,6 +17,7 @@
 #include "../../src/core/candidate_grid.h"
 #include "../../src/core/strategies/grouped_nice_loop_strategy.h"
 #include "../helpers/candidate_test_utils.h"
+#include "../helpers/test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -85,9 +86,7 @@ TEST_CASE("GroupedNiceLoopStrategy - Returns nullopt for empty board with no pat
 
 TEST_CASE("GroupedNiceLoopStrategy - Explanation contains technique name when step found", "[grouped_nice_loop]") {
     // Use a board with some values to constrain candidates
-    BoardData board = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-                       {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-                       {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+    BoardData board = sudoku::test::getEasyPuzzleWithPatterns();
 
     CandidateGrid candidates(board);
     GroupedNiceLoopStrategy strategy;

@@ -29,6 +29,7 @@
 /// - SaveManager("") default-directory constructor
 
 #include "../../src/core/save_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <filesystem>
 #include <fstream>
@@ -37,29 +38,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::test::TempTestDir;
 namespace fs = std::filesystem;
 
 namespace {
-
-class DeserTmpDir {
-public:
-    DeserTmpDir() : path_(fs::temp_directory_path() / ("sudoku_deser_" + std::to_string(std::random_device{}()))) {
-        fs::create_directories(path_);
-    }
-    ~DeserTmpDir() {
-        if (fs::exists(path_)) {
-            fs::remove_all(path_);
-        }
-    }
-    DeserTmpDir(const DeserTmpDir&) = delete;
-    DeserTmpDir& operator=(const DeserTmpDir&) = delete;
-    [[nodiscard]] const fs::path& path() const {
-        return path_;
-    }
-
-private:
-    fs::path path_;
-};
 
 // Write a YAML file and return the save_id (stem of filename)
 std::string writeYaml(const fs::path& dir, const std::string& name, const std::string& content) {
@@ -100,7 +82,7 @@ std::string validBaseYaml() {
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: YAML missing puzzle_data → SerializationError", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     writeYaml(tmp.path(), "no-puzzle-data",
@@ -120,7 +102,7 @@ TEST_CASE("SaveManager - deserialize: YAML missing puzzle_data → Serialization
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: YAML missing current_state → SerializationError", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     std::string yaml = "version: '1.0'\n"
@@ -146,7 +128,7 @@ TEST_CASE("SaveManager - deserialize: YAML missing current_state → Serializati
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: YAML missing original_puzzle → SerializationError", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     std::string yaml = "version: '1.0'\n"
@@ -172,7 +154,7 @@ TEST_CASE("SaveManager - deserialize: YAML missing original_puzzle → Serializa
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: invalid difficulty value → InvalidSaveData", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     std::string yaml = "version: '1.0'\n"
@@ -198,7 +180,7 @@ TEST_CASE("SaveManager - deserialize: invalid difficulty value → InvalidSaveDa
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: current_state has 8 rows → InvalidSaveData", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     std::string yaml = "version: '1.0'\n"
@@ -223,7 +205,7 @@ TEST_CASE("SaveManager - deserialize: current_state has 8 rows → InvalidSaveDa
 }
 
 TEST_CASE("SaveManager - deserialize: original_puzzle has 8 rows → InvalidSaveData", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     std::string yaml = "version: '1.0'\n"
@@ -252,7 +234,7 @@ TEST_CASE("SaveManager - deserialize: original_puzzle has 8 rows → InvalidSave
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: current_state row has 8 cols → InvalidSaveData", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     std::string yaml = "version: '1.0'\n"
@@ -278,7 +260,7 @@ TEST_CASE("SaveManager - deserialize: current_state row has 8 cols → InvalidSa
 }
 
 TEST_CASE("SaveManager - deserialize: original_puzzle row has 8 cols → InvalidSaveData", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     std::string yaml = "version: '1.0'\n"
@@ -308,7 +290,7 @@ TEST_CASE("SaveManager - deserialize: original_puzzle row has 8 cols → Invalid
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: invalid YAML content → SerializationError", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Write invalid YAML (tabs mixed with spaces, unclosed brackets, etc.)
@@ -330,7 +312,7 @@ TEST_CASE("SaveManager - deserialize: invalid YAML content → SerializationErro
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: YAML with move_history is loaded correctly", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     std::string yaml = validBaseYaml();
@@ -366,7 +348,7 @@ TEST_CASE("SaveManager - deserialize: YAML with move_history is loaded correctly
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: YAML without optional metadata loads with defaults", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Minimal YAML: only puzzle_data with required boards; no metadata fields
@@ -392,7 +374,7 @@ TEST_CASE("SaveManager - deserialize: YAML without optional metadata loads with 
 // ============================================================================
 
 TEST_CASE("SaveManager - getSaveDirectorySize returns 0 when directory removed", "[save_manager_deser]") {
-    DeserTmpDir tmp;
+    TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
     // Remove the directory after construction

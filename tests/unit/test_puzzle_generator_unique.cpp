@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/puzzle_generator.h"
+#include "../helpers/test_utils.h"
 
 #include <chrono>
 
@@ -145,10 +146,7 @@ TEST_CASE("PuzzleGenerator - MCV heuristic handles domain_size == 0", "[puzzle_g
 
     SECTION("hasUniqueSolution should work correctly") {
         // Test with a known valid puzzle
-        BoardData valid_puzzle = {
-            {5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
-            {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
-            {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+        BoardData valid_puzzle = sudoku::test::getEasyPuzzleWithPatterns();
 
         // This should not timeout or reject incorrectly
         auto start = std::chrono::high_resolution_clock::now();

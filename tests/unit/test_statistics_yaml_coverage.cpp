@@ -26,6 +26,7 @@
 
 #include "../../src/core/i_time_provider.h"
 #include "../../src/core/statistics_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <filesystem>
 #include <fstream>
@@ -34,29 +35,10 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::test::TempTestDir;
 namespace fs = std::filesystem;
 
 namespace {
-
-class YamlCovTmpDir {
-public:
-    YamlCovTmpDir() : path_(fs::temp_directory_path() / ("sudoku_yaml_cov_" + std::to_string(std::random_device{}()))) {
-        fs::create_directories(path_);
-    }
-    ~YamlCovTmpDir() {
-        if (fs::exists(path_)) {
-            fs::remove_all(path_);
-        }
-    }
-    YamlCovTmpDir(const YamlCovTmpDir&) = delete;
-    YamlCovTmpDir& operator=(const YamlCovTmpDir&) = delete;
-    [[nodiscard]] const fs::path& path() const {
-        return path_;
-    }
-
-private:
-    fs::path path_;
-};
 
 // Write content to a file
 void writeFile(const fs::path& path, const std::string& content) {
@@ -73,7 +55,7 @@ void writeFile(const fs::path& path, const std::string& content) {
 TEST_CASE("StatisticsManager YAML - missing difficulties section", "[statistics_yaml]") {
     // ARRANGE: YAML with only "overall" section, no "difficulties"
     // This covers line 677 false branch (root["difficulties"] is absent)
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -106,7 +88,7 @@ overall:
 TEST_CASE("StatisticsManager YAML - missing overall section", "[statistics_yaml]") {
     // ARRANGE: YAML with only "difficulties" section, no "overall"
     // This covers line 713 false branch (root["overall"] is absent)
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -137,7 +119,7 @@ difficulties:
 TEST_CASE("StatisticsManager YAML - missing specific difficulty nodes", "[statistics_yaml]") {
     // ARRANGE: YAML has "difficulties" but only "easy" — medium/hard/expert absent
     // Covers line 684 false branch for i=1,2,3 (medium, hard, expert not present)
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -181,7 +163,7 @@ TEST_CASE("StatisticsManager YAML - partial difficulty fields", "[statistics_yam
     // ARRANGE: difficulties.easy has only some fields (missing games_completed,
     // average_time, average_rating, min_rating, max_rating)
     // Covers false branches on lines 690, 696, 699, 702, 705
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -210,7 +192,7 @@ TEST_CASE("StatisticsManager YAML - partial overall fields", "[statistics_yaml]"
     // Covers false branches on lines 719, 722, 725, 728, 731, 734
     // (total_completed, total_moves, total_hints, total_mistakes, total_time_played,
     //  current_win_streak all absent)
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -242,7 +224,7 @@ TEST_CASE("StatisticsManager YAML - corrupted aggregate stats file triggers reca
     // ARRANGE: Write invalid YAML to aggregate_stats.yaml before constructing manager
     // Constructor calls loadStatistics() which tries deserializeStatsFromYaml().
     // On failure it warns and calls recalculateAggregateStats() (covers lines 549-551).
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
 
     // Write malformed YAML so deserialization fails
@@ -264,7 +246,7 @@ TEST_CASE("StatisticsManager YAML - corrupted aggregate stats file triggers reca
 TEST_CASE("StatisticsManager YAML - empty sessions file", "[statistics_yaml]") {
     // ARRANGE: sessions file is an empty YAML sequence
     // Covers line 813: loop body never entered (empty range)
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -284,7 +266,7 @@ TEST_CASE("StatisticsManager YAML - session with missing fields", "[statistics_y
     // Covers false branches on lines 819, 822, 826, 830, 836, 839, 842, 845
     // (puzzle_rating, start_time, end_time, time_played, moves_made,
     //  hints_used, mistakes, puzzle_seed all absent)
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
@@ -315,7 +297,7 @@ TEST_CASE("StatisticsManager YAML - session with missing fields", "[statistics_y
 
 TEST_CASE("StatisticsManager YAML - append mode saves two sessions", "[statistics_yaml]") {
     // ARRANGE
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
     mgr.setCollectDetailedStats(true);
@@ -351,7 +333,7 @@ TEST_CASE("StatisticsManager YAML - corrupted sessions file on append is handled
     // ARRANGE: write invalid YAML to sessions file, then play a game (append=true)
     // This covers the catch (const YAML::Exception&) at lines 763-765 in
     // serializeGameStatsToYaml: the LoadFile fails, so we start with a fresh sequence
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
     mgr.setCollectDetailedStats(true);
@@ -373,7 +355,7 @@ TEST_CASE("StatisticsManager YAML - corrupted sessions file on append is handled
 TEST_CASE("StatisticsManager YAML - getRecentGames with many sessions exercises sort", "[statistics_yaml]") {
     // ARRANGE: play 5 games so getRecentGames sort comparator is called multiple times
     // This exercises the sort lambda at line 210 with more iterations
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
     mgr.setCollectDetailedStats(true);
@@ -398,7 +380,7 @@ TEST_CASE("StatisticsManager YAML - getRecentGames with many sessions exercises 
 
 TEST_CASE("StatisticsManager YAML - getRecentGames with count limit trims results", "[statistics_yaml]") {
     // Covers the count limit branch (line 213: count >= 0 && count < sessions.size())
-    YamlCovTmpDir tmp;
+    TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
     mgr.setCollectDetailedStats(true);
