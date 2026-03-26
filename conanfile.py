@@ -38,7 +38,6 @@ class SudokuConan(ConanFile):
         self.requires("yaml-cpp/0.8.0")
         self.requires("zlib/1.3.1")  # For save file compression
         self.requires("libsodium/1.0.18")  # For save file encryption
-        # self.requires("openssl/3.5.1")  # Temporarily disabled due to Perl FindBin issue
 
         # Testing framework (conditional)
         if self.options.with_tests:

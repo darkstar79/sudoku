@@ -85,7 +85,6 @@ find_package(spdlog REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(libsodium REQUIRED)
-# find_package(OpenSSL REQUIRED)  # Temporarily disabled
 
 # Qt6 integration (system-installed)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Test)
@@ -160,8 +159,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     yaml-cpp::yaml-cpp
     ZLIB::ZLIB
     libsodium::libsodium
-    # OpenSSL::SSL
-    # OpenSSL::Crypto
 )
 
 # Platform-specific settings
@@ -194,40 +191,6 @@ if(Catch2_FOUND)
     add_subdirectory(tests)
 endif()
 
-# Benchmark executable (temporary) - DISABLED: source files don't exist
-# add_executable(benchmark_phase2
-#     benchmark_phase2.cpp
-#     "${SOURCES_DIR}/core/puzzle_generator.cpp"
-#     "${SOURCES_DIR}/core/game_validator.cpp"
-#     "${SOURCES_DIR}/core/sudoku_solver.cpp"
-#     "${SOURCES_DIR}/core/constraint_state.cpp"
-#     "${SOURCES_DIR}/core/simd_constraint_state.cpp"
-# )
-# target_include_directories(benchmark_phase2 PRIVATE ${SOURCES_DIR})
-# target_link_libraries(benchmark_phase2 PUBLIC
-#     spdlog::spdlog
-#     pthread
-# )
-# set_target_properties(benchmark_phase2 PROPERTIES
-#     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-# )
-#
-# add_executable(benchmark_phase3_quick
-#     benchmark_phase3_quick.cpp
-#     "${SOURCES_DIR}/core/puzzle_generator.cpp"
-#     "${SOURCES_DIR}/core/game_validator.cpp"
-#     "${SOURCES_DIR}/core/sudoku_solver.cpp"
-#     "${SOURCES_DIR}/core/constraint_state.cpp"
-#     "${SOURCES_DIR}/core/simd_constraint_state.cpp"
-# )
-# target_include_directories(benchmark_phase3_quick PRIVATE ${SOURCES_DIR})
-# target_link_libraries(benchmark_phase3_quick PUBLIC
-#     spdlog::spdlog
-#     pthread
-# )
-# set_target_properties(benchmark_phase3_quick PROPERTIES
-#     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-# )
 
 # ── Install rules (platform-specific)
 if(WIN32)
