@@ -20,6 +20,7 @@
 #include <limits>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 using namespace sudoku::core;
 
@@ -136,45 +137,23 @@ TEST_CASE("ratingToDifficulty - Converts SE rating to difficulty", "[puzzle_rati
 }
 
 TEST_CASE("getDifficultyRatingRange - Returns min/max SE rating for difficulty", "[puzzle_rating]") {
-    SECTION("Easy difficulty range") {
-        auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Easy);
+    struct RangeExpectation {
+        Difficulty difficulty;
+        double expected_min;
+        double expected_max;
+    };
 
-        REQUIRE(min_rating == 0.0);
-        REQUIRE(max_rating == 2.5);
-        REQUIRE(min_rating < max_rating);
-    }
+    auto expectation =
+        GENERATE(RangeExpectation{Difficulty::Easy, 0.0, 2.5}, RangeExpectation{Difficulty::Medium, 2.5, 3.8},
+                 RangeExpectation{Difficulty::Hard, 3.8, 5.5}, RangeExpectation{Difficulty::Expert, 5.5, 7.5},
+                 RangeExpectation{Difficulty::Master, 7.5, std::numeric_limits<double>::max()});
+    CAPTURE(expectation.difficulty);
 
-    SECTION("Medium difficulty range") {
-        auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Medium);
+    auto [min_rating, max_rating] = getDifficultyRatingRange(expectation.difficulty);
 
-        REQUIRE(min_rating == 2.5);
-        REQUIRE(max_rating == 3.8);
-        REQUIRE(min_rating < max_rating);
-    }
-
-    SECTION("Hard difficulty range") {
-        auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Hard);
-
-        REQUIRE(min_rating == 3.8);
-        REQUIRE(max_rating == 5.5);
-        REQUIRE(min_rating < max_rating);
-    }
-
-    SECTION("Expert difficulty range") {
-        auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Expert);
-
-        REQUIRE(min_rating == 5.5);
-        REQUIRE(max_rating == 7.5);
-        REQUIRE(min_rating < max_rating);
-    }
-
-    SECTION("Master difficulty range") {
-        auto [min_rating, max_rating] = getDifficultyRatingRange(Difficulty::Master);
-
-        REQUIRE(min_rating == 7.5);
-        REQUIRE(max_rating == std::numeric_limits<double>::max());
-        REQUIRE(min_rating < max_rating);
-    }
+    REQUIRE(min_rating == expectation.expected_min);
+    REQUIRE(max_rating == expectation.expected_max);
+    REQUIRE(min_rating < max_rating);
 }
 
 TEST_CASE("getDifficultyRatingRange - Range boundaries are consistent", "[puzzle_rating]") {

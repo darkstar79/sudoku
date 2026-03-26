@@ -199,18 +199,9 @@ TEST_CASE("Hint Revelation - Error Handling", "[hint][error]") {
         const auto& state = fixture.view_model->gameState.get();
 
         // Find a given cell
-        Position given_pos{0, 0};
-        bool found = false;
-        for (size_t row = 0; row < BOARD_SIZE && !found; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE && !found; ++col) {
-                if (state.getCell({row, col}).is_given) {
-                    given_pos = {row, col};
-                    found = true;
-                }
-            }
-        }
-
-        REQUIRE(found);
+        auto given_pos_opt = test::findCell(state, [](const auto& c) { return c.is_given; });
+        REQUIRE(given_pos_opt.has_value());
+        Position given_pos = given_pos_opt.value();
 
         fixture.view_model->selectCell(given_pos.row, given_pos.col);
         fixture.view_model->getHint();
@@ -332,20 +323,16 @@ TEST_CASE("Hint Revelation - Cell State Tracking", "[hint][cell_state]") {
         const auto& state = fixture.view_model->gameState.get();
 
         // Find empty cell and enter number manually
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (state.getCell({row, col}).value == 0) {
-                    fixture.view_model->selectCell(row, col);
-                    fixture.view_model->enterNumber(5);
+        auto empty_pos = test::findEmptyCell(state);
+        REQUIRE(empty_pos.has_value());
 
-                    const auto& updated_state = fixture.view_model->gameState.get();
-                    const auto& cell = updated_state.getCell({row, col});
+        fixture.view_model->selectCell(empty_pos->row, empty_pos->col);
+        fixture.view_model->enterNumber(5);
 
-                    REQUIRE(cell.is_hint_revealed == false);
-                    return;
-                }
-            }
-        }
+        const auto& updated_state = fixture.view_model->gameState.get();
+        const auto& cell = updated_state.getCell(empty_pos.value());
+
+        REQUIRE(cell.is_hint_revealed == false);
     }
 
     SECTION("Given cells are never marked as hint-revealed") {
@@ -465,21 +452,17 @@ TEST_CASE("Hint Revelation - Undo Behavior", "[hint][undo]") {
 
         // Try hint on given cell
         const auto& state = fixture.view_model->gameState.get();
-        for (size_t r = 0; r < BOARD_SIZE; ++r) {
-            for (size_t c = 0; c < BOARD_SIZE; ++c) {
-                if (state.getCell({r, c}).is_given) {
-                    fixture.view_model->selectCell({r, c});
-                    fixture.view_model->getHint();
+        auto given_pos = test::findCell(state, [](const auto& c) { return c.is_given; });
+        REQUIRE(given_pos.has_value());
 
-                    // Hint should NOT be consumed
-                    REQUIRE(fixture.view_model->getHintCount() == hints_initial);
+        fixture.view_model->selectCell(given_pos.value());
+        fixture.view_model->getHint();
 
-                    const auto& error = fixture.view_model->errorMessage.get();
-                    REQUIRE(error == "hint.cannot_reveal_given");
-                    return;
-                }
-            }
-        }
+        // Hint should NOT be consumed
+        REQUIRE(fixture.view_model->getHintCount() == hints_initial);
+
+        const auto& error = fixture.view_model->errorMessage.get();
+        REQUIRE(error == "hint.cannot_reveal_given");
     }
 
     SECTION("Hints not consumed on validation errors - filled cell") {
@@ -489,24 +472,20 @@ TEST_CASE("Hint Revelation - Undo Behavior", "[hint][undo]") {
 
         // Find empty cell and fill it
         const auto& state = fixture.view_model->gameState.get();
-        for (size_t r = 0; r < BOARD_SIZE; ++r) {
-            for (size_t c = 0; c < BOARD_SIZE; ++c) {
-                if (state.getCell({r, c}).value == 0) {
-                    fixture.view_model->selectCell({r, c});
-                    fixture.view_model->enterNumber(5);
+        auto empty_pos = test::findEmptyCell(state);
+        REQUIRE(empty_pos.has_value());
 
-                    // Now try to get hint on filled cell
-                    fixture.view_model->getHint();
+        fixture.view_model->selectCell(empty_pos.value());
+        fixture.view_model->enterNumber(5);
 
-                    // Hint should NOT be consumed
-                    REQUIRE(fixture.view_model->getHintCount() == hints_initial);
+        // Now try to get hint on filled cell
+        fixture.view_model->getHint();
 
-                    const auto& error = fixture.view_model->errorMessage.get();
-                    REQUIRE(error == "hint.cell_has_value");
-                    return;
-                }
-            }
-        }
+        // Hint should NOT be consumed
+        REQUIRE(fixture.view_model->getHintCount() == hints_initial);
+
+        const auto& error = fixture.view_model->errorMessage.get();
+        REQUIRE(error == "hint.cell_has_value");
     }
 
     SECTION("Multiple undo skips all hints") {

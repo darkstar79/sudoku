@@ -14,16 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "../../src/core/game_validator.h"
-#include "../../src/core/puzzle_generator.h"
-#include "../../src/core/save_manager.h"
-#include "../../src/core/statistics_manager.h"
-#include "../../src/core/sudoku_solver.h"
-#include "../../src/view_model/game_view_model.h"
-#include "../helpers/mock_localization_manager.h"
-
-#include <filesystem>
-#include <memory>
+#include "../helpers/game_view_model_fixture.h"
+#include "../helpers/test_utils.h"
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -31,31 +23,7 @@ using namespace sudoku;
 using namespace sudoku::viewmodel;
 using namespace sudoku::core;
 
-// Test fixture for edge case tests
-struct EdgeCaseTestFixture {
-    std::shared_ptr<IGameValidator> validator;
-    std::shared_ptr<IPuzzleGenerator> generator;
-    std::shared_ptr<ISudokuSolver> solver;
-    std::shared_ptr<ISaveManager> save_manager;
-    std::shared_ptr<IStatisticsManager> stats_manager;
-    std::unique_ptr<GameViewModel> view_model;
-    std::string test_dir;
-
-    EdgeCaseTestFixture()
-        : test_dir("./test_edge_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count())) {
-        validator = std::make_shared<GameValidator>();
-        generator = std::make_shared<PuzzleGenerator>();
-        solver = std::make_shared<SudokuSolver>(validator);
-        save_manager = std::make_shared<SaveManager>(test_dir);
-        stats_manager = std::make_shared<StatisticsManager>(test_dir);
-        view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
-                                                     std::make_shared<MockLocalizationManager>());
-    }
-
-    ~EdgeCaseTestFixture() {
-        std::filesystem::remove_all(test_dir);
-    }
-};
+using EdgeCaseTestFixture = sudoku::test::GameViewModelFixture;
 
 TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
     EdgeCaseTestFixture fixture;
@@ -113,22 +81,17 @@ TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]")
 
         // Find a given cell
         const auto& state = fixture.view_model->gameState.get();
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (state.getCell(row, col).is_given) {
-                    Position pos{row, col};
-                    int original_value = state.getCell(pos).value;
+        auto given_pos = test::findCell(state, [](const auto& c) { return c.is_given; });
+        REQUIRE(given_pos.has_value());
+        Position pos = given_pos.value();
+        int original_value = state.getCell(pos).value;
 
-                    fixture.view_model->selectCell(pos);
-                    fixture.view_model->enterNumber(9);
-                    fixture.view_model->enterNumber(9);  // Double-press
+        fixture.view_model->selectCell(pos);
+        fixture.view_model->enterNumber(9);
+        fixture.view_model->enterNumber(9);  // Double-press
 
-                    const auto& after = fixture.view_model->gameState.get();
-                    REQUIRE(after.getCell(pos).value == original_value);
-                    return;
-                }
-            }
-        }
+        const auto& after = fixture.view_model->gameState.get();
+        REQUIRE(after.getCell(pos).value == original_value);
     }
 
     SECTION("Enter invalid number (0)") {
@@ -136,18 +99,14 @@ TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]")
 
         // Find empty cell
         const auto& state = fixture.view_model->gameState.get();
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (state.getCell(row, col).value == 0) {
-                    fixture.view_model->selectCell({row, col});
-                    fixture.view_model->enterNumber(0);
+        auto empty_pos = test::findEmptyCell(state);
+        REQUIRE(empty_pos.has_value());
 
-                    const auto& after = fixture.view_model->gameState.get();
-                    REQUIRE(after.getCell(row, col).value == 0);
-                    return;
-                }
-            }
-        }
+        fixture.view_model->selectCell(empty_pos.value());
+        fixture.view_model->enterNumber(0);
+
+        const auto& after = fixture.view_model->gameState.get();
+        REQUIRE(after.getCell(empty_pos.value()).value == 0);
     }
 
     SECTION("Enter invalid number (10)") {
@@ -155,18 +114,14 @@ TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]")
 
         // Find empty cell
         const auto& state = fixture.view_model->gameState.get();
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (state.getCell(row, col).value == 0) {
-                    fixture.view_model->selectCell({row, col});
-                    fixture.view_model->enterNumber(10);
+        auto empty_pos = test::findEmptyCell(state);
+        REQUIRE(empty_pos.has_value());
 
-                    const auto& after = fixture.view_model->gameState.get();
-                    REQUIRE(after.getCell(row, col).value == 0);
-                    return;
-                }
-            }
-        }
+        fixture.view_model->selectCell(empty_pos.value());
+        fixture.view_model->enterNumber(10);
+
+        const auto& after = fixture.view_model->gameState.get();
+        REQUIRE(after.getCell(empty_pos.value()).value == 0);
     }
 }
 
@@ -190,20 +145,15 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
 
         // Find a given cell
         const auto& state = fixture.view_model->gameState.get();
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (state.getCell(row, col).is_given) {
-                    Position pos{row, col};
+        auto given_pos = test::findCell(state, [](const auto& c) { return c.is_given; });
+        REQUIRE(given_pos.has_value());
+        Position pos = given_pos.value();
 
-                    fixture.view_model->selectCell(pos);
-                    fixture.view_model->enterNote(5);
+        fixture.view_model->selectCell(pos);
+        fixture.view_model->enterNote(5);
 
-                    const auto& after = fixture.view_model->gameState.get();
-                    REQUIRE(after.getCell(pos).notes.empty());
-                    return;
-                }
-            }
-        }
+        const auto& after = fixture.view_model->gameState.get();
+        REQUIRE(after.getCell(pos).notes.empty());
     }
 
     SECTION("Enter note on cell with value") {
@@ -211,23 +161,19 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
 
         // Find empty cell and place value
         const auto& state = fixture.view_model->gameState.get();
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (state.getCell(row, col).value == 0) {
-                    Position pos{row, col};
-                    fixture.view_model->selectCell(pos);
-                    fixture.view_model->enterNumber(5);
-                    fixture.view_model->enterNumber(5);  // Double-press
+        auto empty_pos = test::findEmptyCell(state);
+        REQUIRE(empty_pos.has_value());
+        Position pos = empty_pos.value();
 
-                    // Try to add note - should not work
-                    fixture.view_model->enterNote(7);
+        fixture.view_model->selectCell(pos);
+        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(5);  // Double-press
 
-                    const auto& after = fixture.view_model->gameState.get();
-                    REQUIRE(after.getCell(pos).notes.empty());
-                    return;
-                }
-            }
-        }
+        // Try to add note - should not work
+        fixture.view_model->enterNote(7);
+
+        const auto& after = fixture.view_model->gameState.get();
+        REQUIRE(after.getCell(pos).notes.empty());
     }
 
     SECTION("Enter invalid note (0)") {
@@ -235,18 +181,14 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
 
         // Find empty cell
         const auto& state = fixture.view_model->gameState.get();
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (state.getCell(row, col).value == 0) {
-                    fixture.view_model->selectCell({row, col});
-                    fixture.view_model->enterNote(0);
+        auto empty_pos = test::findEmptyCell(state);
+        REQUIRE(empty_pos.has_value());
 
-                    const auto& after = fixture.view_model->gameState.get();
-                    REQUIRE(after.getCell(row, col).notes.empty());
-                    return;
-                }
-            }
-        }
+        fixture.view_model->selectCell(empty_pos.value());
+        fixture.view_model->enterNote(0);
+
+        const auto& after = fixture.view_model->gameState.get();
+        REQUIRE(after.getCell(empty_pos.value()).notes.empty());
     }
 
     SECTION("Enter invalid note (10)") {
@@ -254,18 +196,14 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
 
         // Find empty cell
         const auto& state = fixture.view_model->gameState.get();
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (state.getCell(row, col).value == 0) {
-                    fixture.view_model->selectCell({row, col});
-                    fixture.view_model->enterNote(10);
+        auto empty_pos = test::findEmptyCell(state);
+        REQUIRE(empty_pos.has_value());
 
-                    const auto& after = fixture.view_model->gameState.get();
-                    REQUIRE(after.getCell(row, col).notes.empty());
-                    return;
-                }
-            }
-        }
+        fixture.view_model->selectCell(empty_pos.value());
+        fixture.view_model->enterNote(10);
+
+        const auto& after = fixture.view_model->gameState.get();
+        REQUIRE(after.getCell(empty_pos.value()).notes.empty());
     }
 }
 

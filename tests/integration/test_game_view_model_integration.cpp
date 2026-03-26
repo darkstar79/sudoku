@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "../../src/core/game_validator.h"
-#include "../../src/core/puzzle_generator.h"
-#include "../../src/core/save_manager.h"
-#include "../../src/core/statistics_manager.h"
-#include "../../src/core/sudoku_solver.h"
-#include "../../src/view_model/game_view_model.h"
-#include "../helpers/mock_localization_manager.h"
+#include "../helpers/game_view_model_fixture.h"
 #include "../helpers/test_utils.h"
 
 #include <chrono>
@@ -31,50 +25,20 @@
 using namespace sudoku;
 using namespace sudoku::viewmodel;
 using namespace sudoku::core;
-namespace fs = std::filesystem;
 
-// Test fixture for GameViewModel integration tests
-class GameViewModelTestFixture {
-public:
-    GameViewModelTestFixture()
-        : test_dir_("./test_vm_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count())),
-          validator_(std::make_shared<GameValidator>()), generator_(std::make_shared<PuzzleGenerator>()),
-          solver_(std::make_shared<SudokuSolver>(validator_)),
-          stats_manager_(std::make_shared<StatisticsManager>(test_dir_ + "/stats")),
-          save_manager_(std::make_shared<SaveManager>(test_dir_ + "/saves")),
-          view_model_(validator_, generator_, solver_, stats_manager_, save_manager_,
-                      std::make_shared<MockLocalizationManager>()) {
-        // Create test directories
-        fs::create_directories(test_dir_);
-    }
-
-    ~GameViewModelTestFixture() {
-        // Clean up test directory
-        if (fs::exists(test_dir_)) {
-            fs::remove_all(test_dir_);
-        }
-    }
-
-    std::string test_dir_;
-    std::shared_ptr<IGameValidator> validator_;
-    std::shared_ptr<IPuzzleGenerator> generator_;
-    std::shared_ptr<ISudokuSolver> solver_;
-    std::shared_ptr<IStatisticsManager> stats_manager_;
-    std::shared_ptr<ISaveManager> save_manager_;
-    GameViewModel view_model_;
-};
+using GameViewModelTestFixture = sudoku::test::GameViewModelFixture;
 
 TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]") {
     GameViewModelTestFixture fixture;
 
     SECTION("Start new game and play") {
         // Start new game
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
-        REQUIRE(fixture.view_model_.isGameActive());
-        REQUIRE_FALSE(fixture.view_model_.isGameComplete());
+        REQUIRE(fixture.view_model->isGameActive());
+        REQUIRE_FALSE(fixture.view_model->isGameComplete());
 
-        const auto& game_state = fixture.view_model_.gameState.get();
+        const auto& game_state = fixture.view_model->gameState.get();
         // Verify game has been loaded with puzzle
         bool has_given_cells = false;
         for (int r = 0; r < 9 && !has_given_cells; ++r) {
@@ -88,7 +52,7 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(has_given_cells);
 
         // Select a cell
-        fixture.view_model_.selectCell(0, 0);
+        fixture.view_model->selectCell(0, 0);
 
         // Get selected position
         auto selected = game_state.getSelectedPosition();
@@ -98,9 +62,9 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
     }
 
     SECTION("Enter numbers and validate") {
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
-        auto& initial_state = fixture.view_model_.gameState.get();
+        auto& initial_state = fixture.view_model->gameState.get();
 
         // Find an empty cell
         int empty_row = -1, empty_col = -1;
@@ -120,19 +84,19 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(empty_row != -1);
 
         // Select empty cell and enter a number
-        fixture.view_model_.selectCell(empty_row, empty_col);
-        fixture.view_model_.enterNumber(5);
+        fixture.view_model->selectCell(empty_row, empty_col);
+        fixture.view_model->enterNumber(5);
 
-        [[maybe_unused]] const auto& updated_state = fixture.view_model_.gameState.get();
+        [[maybe_unused]] const auto& updated_state = fixture.view_model->gameState.get();
         // Note: The number may or may not be correct, but it should be entered
         // (The view model allows incorrect numbers)
     }
 
     SECTION("Undo and redo operations") {
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
         // Find empty cell
-        auto& initial_state = fixture.view_model_.gameState.get();
+        auto& initial_state = fixture.view_model->gameState.get();
         int empty_row = -1, empty_col = -1;
         for (int r = 0; r < 9; ++r) {
             for (int c = 0; c < 9; ++c) {
@@ -150,35 +114,35 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(empty_row != -1);
 
         // Make a move
-        fixture.view_model_.selectCell(empty_row, empty_col);
-        fixture.view_model_.enterNumber(7);
+        fixture.view_model->selectCell(empty_row, empty_col);
+        fixture.view_model->enterNumber(7);
 
         // Verify we can undo
-        REQUIRE(fixture.view_model_.canUndo());
+        REQUIRE(fixture.view_model->canUndo());
 
         // Undo the move
-        fixture.view_model_.undo();
+        fixture.view_model->undo();
 
         // Verify cell is empty again
-        auto& after_undo = fixture.view_model_.gameState.get();
+        auto& after_undo = fixture.view_model->gameState.get();
         REQUIRE(after_undo.getCell(empty_row, empty_col).value == 0);
 
         // Verify we can redo
-        REQUIRE(fixture.view_model_.canRedo());
+        REQUIRE(fixture.view_model->canRedo());
 
         // Redo the move
-        fixture.view_model_.redo();
+        fixture.view_model->redo();
 
         // Verify number is back
-        auto& after_redo = fixture.view_model_.gameState.get();
+        auto& after_redo = fixture.view_model->gameState.get();
         REQUIRE(after_redo.getCell(empty_row, empty_col).value == 7);
     }
 
     SECTION("Notes functionality") {
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
         // Find empty cell
-        auto& initial_state = fixture.view_model_.gameState.get();
+        auto& initial_state = fixture.view_model->gameState.get();
         int empty_row = -1, empty_col = -1;
         for (int r = 0; r < 9; ++r) {
             for (int c = 0; c < 9; ++c) {
@@ -196,12 +160,12 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(empty_row != -1);
 
         // Select cell and enter notes
-        fixture.view_model_.selectCell(empty_row, empty_col);
-        fixture.view_model_.enterNote(1);
-        fixture.view_model_.enterNote(2);
-        fixture.view_model_.enterNote(3);
+        fixture.view_model->selectCell(empty_row, empty_col);
+        fixture.view_model->enterNote(1);
+        fixture.view_model->enterNote(2);
+        fixture.view_model->enterNote(3);
 
-        auto& with_notes = fixture.view_model_.gameState.get();
+        auto& with_notes = fixture.view_model->gameState.get();
         auto cell = with_notes.getCell(empty_row, empty_col);
 
         REQUIRE(std::find(cell.notes.begin(), cell.notes.end(), 1) != cell.notes.end());
@@ -209,18 +173,18 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(std::find(cell.notes.begin(), cell.notes.end(), 3) != cell.notes.end());
 
         // Enter final number should clear notes
-        fixture.view_model_.enterNumber(5);
+        fixture.view_model->enterNumber(5);
 
-        auto& after_number = fixture.view_model_.gameState.get();
+        auto& after_number = fixture.view_model->gameState.get();
         REQUIRE(after_number.getCell(empty_row, empty_col).notes.empty());
         REQUIRE(after_number.getCell(empty_row, empty_col).value == 5);
     }
 
     SECTION("Clear cell functionality") {
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
         // Find empty cell and enter number
-        auto& initial_state = fixture.view_model_.gameState.get();
+        auto& initial_state = fixture.view_model->gameState.get();
         int empty_row = -1, empty_col = -1;
         for (int r = 0; r < 9; ++r) {
             for (int c = 0; c < 9; ++c) {
@@ -238,29 +202,29 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(empty_row != -1);
 
         // Enter number
-        fixture.view_model_.selectCell(empty_row, empty_col);
-        fixture.view_model_.enterNumber(8);
+        fixture.view_model->selectCell(empty_row, empty_col);
+        fixture.view_model->enterNumber(8);
 
-        auto& with_number = fixture.view_model_.gameState.get();
+        auto& with_number = fixture.view_model->gameState.get();
         REQUIRE(with_number.getCell(empty_row, empty_col).value == 8);
 
         // Clear cell
-        fixture.view_model_.clearSelectedCell();
+        fixture.view_model->clearSelectedCell();
 
-        auto& after_clear = fixture.view_model_.gameState.get();
+        auto& after_clear = fixture.view_model->gameState.get();
         REQUIRE(after_clear.getCell(empty_row, empty_col).value == 0);
     }
 
     SECTION("Save and load game") {
-        fixture.view_model_.startNewGame(Difficulty::Medium);
+        fixture.view_model->startNewGame(Difficulty::Medium);
 
         // Make some moves
-        auto& state = fixture.view_model_.gameState.get();
+        auto& state = fixture.view_model->gameState.get();
         for (int r = 0; r < 9; ++r) {
             for (int c = 0; c < 9; ++c) {
                 if (!state.getCell(r, c).is_given && state.getCell(r, c).value == 0) {
-                    fixture.view_model_.selectCell(r, c);
-                    fixture.view_model_.enterNumber(5);
+                    fixture.view_model->selectCell(r, c);
+                    fixture.view_model->enterNumber(5);
                     break;
                 }
             }
@@ -268,35 +232,35 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         }
 
         // Save game
-        bool save_result = fixture.view_model_.saveCurrentGame("Test Save");
+        bool save_result = fixture.view_model->saveCurrentGame("Test Save");
         REQUIRE(save_result);
 
         // Start new game
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
         // Load saved game
-        auto saves = fixture.save_manager_->listSaves();
+        auto saves = fixture.save_manager->listSaves();
         REQUIRE(saves.has_value());
         REQUIRE(saves->size() > 0);
 
         std::string save_id = (*saves)[0].save_id;
-        fixture.view_model_.loadGame(save_id);
+        fixture.view_model->loadGame(save_id);
 
         // Verify loaded state
-        auto& loaded_state = fixture.view_model_.gameState.get();
+        auto& loaded_state = fixture.view_model->gameState.get();
         REQUIRE(loaded_state.getDifficulty() == Difficulty::Medium);
     }
 
     SECTION("Auto-save functionality") {
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
         // Make a move
-        auto& state = fixture.view_model_.gameState.get();
+        auto& state = fixture.view_model->gameState.get();
         for (int r = 0; r < 9; ++r) {
             for (int c = 0; c < 9; ++c) {
                 if (!state.getCell(r, c).is_given && state.getCell(r, c).value == 0) {
-                    fixture.view_model_.selectCell(r, c);
-                    fixture.view_model_.enterNumber(3);
+                    fixture.view_model->selectCell(r, c);
+                    fixture.view_model->enterNumber(3);
                     break;
                 }
             }
@@ -304,17 +268,17 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         }
 
         // Trigger auto-save
-        fixture.view_model_.autoSave();
+        fixture.view_model->autoSave();
 
         // Verify auto-save exists
-        REQUIRE(fixture.save_manager_->hasAutoSave());
+        REQUIRE(fixture.save_manager->hasAutoSave());
     }
 
     SECTION("Hint system") {
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
         // Find empty cell
-        auto& state = fixture.view_model_.gameState.get();
+        auto& state = fixture.view_model->gameState.get();
         int empty_row = -1, empty_col = -1;
         for (int r = 0; r < 9; ++r) {
             for (int c = 0; c < 9; ++c) {
@@ -332,53 +296,53 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(empty_row != -1);
 
         // Select cell and get hint
-        fixture.view_model_.selectCell(empty_row, empty_col);
+        fixture.view_model->selectCell(empty_row, empty_col);
 
-        int initial_hints = fixture.view_model_.getHintCount();
+        int initial_hints = fixture.view_model->getHintCount();
         REQUIRE(initial_hints > 0);
 
         // Get hint (this shows possible values but may not decrement hint count in current implementation)
-        fixture.view_model_.getHint();
+        fixture.view_model->getHint();
 
         // Note: Hint system is basic - just shows possible values
         // The hint count is managed by game state, not statistics manager calls in this context
     }
 
     SECTION("Check solution") {
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
         // Check incomplete solution
-        fixture.view_model_.checkSolution();
+        fixture.view_model->checkSolution();
 
-        auto ui_state = fixture.view_model_.uiState.get();
+        auto ui_state = fixture.view_model->uiState.get();
         // Should not be marked as complete yet
-        REQUIRE_FALSE(fixture.view_model_.isGameComplete());
+        REQUIRE_FALSE(fixture.view_model->isGameComplete());
     }
 
     SECTION("Statistics tracking") {
-        fixture.view_model_.startNewGame(Difficulty::Medium);
+        fixture.view_model->startNewGame(Difficulty::Medium);
 
         // Make some moves using helper to find empty cells
-        auto empty_cells_opt = test::findEmptyCells(fixture.view_model_.gameState.get(), 5);
+        auto empty_cells_opt = test::findEmptyCells(fixture.view_model->gameState.get(), 5);
         REQUIRE(empty_cells_opt.has_value());
 
         auto empty_cells = empty_cells_opt.value();
         for (size_t i = 0; i < empty_cells.size(); ++i) {
-            fixture.view_model_.selectCell(empty_cells[i].row, empty_cells[i].col);
-            fixture.view_model_.enterNumber(static_cast<int>((i % 9) + 1));
+            fixture.view_model->selectCell(empty_cells[i].row, empty_cells[i].col);
+            fixture.view_model->enterNumber(static_cast<int>((i % 9) + 1));
         }
 
         // Refresh statistics
-        fixture.view_model_.refreshStatistics();
+        fixture.view_model->refreshStatistics();
 
-        auto stats = fixture.view_model_.statistics.get();
+        auto stats = fixture.view_model->statistics.get();
         REQUIRE(stats.games_played >= 0);
     }
 
     SECTION("UI state updates") {
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
-        auto ui_state = fixture.view_model_.uiState.get();
+        auto ui_state = fixture.view_model->uiState.get();
         REQUIRE(ui_state.is_game_active);
         REQUIRE_FALSE(ui_state.is_paused);
         REQUIRE_FALSE(ui_state.is_complete);
@@ -386,31 +350,31 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
 
     SECTION("Multiple game sessions") {
         // Start first game
-        fixture.view_model_.startNewGame(Difficulty::Easy);
-        REQUIRE(fixture.view_model_.isGameActive());
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        REQUIRE(fixture.view_model->isGameActive());
 
         // Verify first game difficulty and capture board state
-        const auto& first_state = fixture.view_model_.gameState.get();
+        const auto& first_state = fixture.view_model->gameState.get();
         REQUIRE(first_state.getDifficulty() == Difficulty::Easy);
         auto first_board = first_state.extractNumbers();  // Capture board data before starting new game
 
         // Make some moves using helper to find empty cells
-        auto empty_cells_opt = test::findEmptyCells(fixture.view_model_.gameState.get(), 3);
+        auto empty_cells_opt = test::findEmptyCells(fixture.view_model->gameState.get(), 3);
         REQUIRE(empty_cells_opt.has_value());
 
         auto empty_cells = empty_cells_opt.value();
         for (const auto& pos : empty_cells) {
-            fixture.view_model_.selectCell(pos.row, pos.col);
-            fixture.view_model_.enterNumber(5);
+            fixture.view_model->selectCell(pos.row, pos.col);
+            fixture.view_model->enterNumber(5);
         }
 
         // Start second game (should end first session)
         // Use Medium instead of Hard to avoid long puzzle generation times
-        fixture.view_model_.startNewGame(Difficulty::Medium);
-        REQUIRE(fixture.view_model_.isGameActive());
+        fixture.view_model->startNewGame(Difficulty::Medium);
+        REQUIRE(fixture.view_model->isGameActive());
 
         // Verify new game was created with correct difficulty
-        const auto& second_state = fixture.view_model_.gameState.get();
+        const auto& second_state = fixture.view_model->gameState.get();
         REQUIRE(second_state.getDifficulty() == Difficulty::Medium);
 
         // Verify it's actually a new game (different from first)
@@ -420,17 +384,17 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
 
     SECTION("Error message handling") {
         // Try to save without active game - should fail gracefully
-        REQUIRE_FALSE(fixture.view_model_.isGameActive());
+        REQUIRE_FALSE(fixture.view_model->isGameActive());
 
-        bool save_result = fixture.view_model_.saveCurrentGame("Invalid Save");
+        bool save_result = fixture.view_model->saveCurrentGame("Invalid Save");
         REQUIRE_FALSE(save_result);
 
         // Check error message
-        REQUIRE(fixture.view_model_.hasError());
+        REQUIRE(fixture.view_model->hasError());
 
         // Clear error
-        fixture.view_model_.clearErrorMessage();
-        REQUIRE_FALSE(fixture.view_model_.hasError());
+        fixture.view_model->clearErrorMessage();
+        REQUIRE_FALSE(fixture.view_model->hasError());
     }
 }
 
@@ -438,10 +402,10 @@ TEST_CASE("GameViewModel - Notes cleanup", "[game_view_model][integration]") {
     GameViewModelTestFixture fixture;
 
     SECTION("Notes are cleaned up when number is placed") {
-        fixture.view_model_.startNewGame(Difficulty::Easy);
+        fixture.view_model->startNewGame(Difficulty::Easy);
 
         // Find empty cell
-        auto& state = fixture.view_model_.gameState.get();
+        auto& state = fixture.view_model->gameState.get();
         int target_row = -1, target_col = -1;
         for (int r = 0; r < 9; ++r) {
             for (int c = 0; c < 9; ++c) {
@@ -461,17 +425,17 @@ TEST_CASE("GameViewModel - Notes cleanup", "[game_view_model][integration]") {
         // Add notes to related cells (same row)
         for (int c = 0; c < 9; ++c) {
             if (c != target_col && !state.getCell(target_row, c).is_given && state.getCell(target_row, c).value == 0) {
-                fixture.view_model_.selectCell(target_row, c);
-                fixture.view_model_.enterNote(7);
+                fixture.view_model->selectCell(target_row, c);
+                fixture.view_model->enterNote(7);
             }
         }
 
         // Place number 7 in target cell
-        fixture.view_model_.selectCell(target_row, target_col);
-        fixture.view_model_.enterNumber(7);
+        fixture.view_model->selectCell(target_row, target_col);
+        fixture.view_model->enterNumber(7);
 
         // Verify notes with value 7 are removed from same row
-        auto& after_placement = fixture.view_model_.gameState.get();
+        auto& after_placement = fixture.view_model->gameState.get();
         for (int c = 0; c < 9; ++c) {
             if (c != target_col && !after_placement.getCell(target_row, c).is_given &&
                 after_placement.getCell(target_row, c).value == 0) {

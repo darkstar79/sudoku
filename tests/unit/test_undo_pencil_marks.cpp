@@ -21,6 +21,7 @@
 #include "../../src/core/sudoku_solver.h"
 #include "../../src/view_model/game_view_model.h"
 #include "../helpers/mock_localization_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <memory>
 
@@ -45,23 +46,9 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
     SECTION("Placing number clears pencil marks, undo restores them") {
         // Find first empty cell
         const auto& game_state = view_model.gameState.get();
-        Position empty_cell;
-        bool found = false;
-
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (game_state.getCell(row, col).value == 0) {
-                    empty_cell = {row, col};
-                    found = true;
-                    break;
-                }
-            }
-            if (found) {
-                break;
-            }
-        }
-
-        REQUIRE(found);
+        auto empty_cell_opt = test::findEmptyCell(game_state);
+        REQUIRE(empty_cell_opt.has_value());
+        Position empty_cell = empty_cell_opt.value();
 
         // Select the empty cell
         view_model.selectCell(empty_cell.row, empty_cell.col);
@@ -102,24 +89,9 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
     SECTION("Clearing cell preserves notes on undo") {
         // Find a cell with a user-entered number
         const auto& game_state = view_model.gameState.get();
-        Position target_cell;
-        bool found = false;
-
-        // First, find an empty cell
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (game_state.getCell(row, col).value == 0) {
-                    target_cell = {row, col};
-                    found = true;
-                    break;
-                }
-            }
-            if (found) {
-                break;
-            }
-        }
-
-        REQUIRE(found);
+        auto target_cell_opt = test::findEmptyCell(game_state);
+        REQUIRE(target_cell_opt.has_value());
+        Position target_cell = target_cell_opt.value();
 
         // Select and place a number
         view_model.selectCell(target_cell.row, target_cell.col);
@@ -150,23 +122,9 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
     SECTION("Multiple undo/redo operations preserve notes") {
         // Find first empty cell
         const auto& game_state = view_model.gameState.get();
-        Position empty_cell;
-        bool found = false;
-
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                if (game_state.getCell(row, col).value == 0) {
-                    empty_cell = {row, col};
-                    found = true;
-                    break;
-                }
-            }
-            if (found) {
-                break;
-            }
-        }
-
-        REQUIRE(found);
+        auto empty_cell_opt = test::findEmptyCell(game_state);
+        REQUIRE(empty_cell_opt.has_value());
+        Position empty_cell = empty_cell_opt.value();
         view_model.selectCell(empty_cell.row, empty_cell.col);
 
         // Add notes
