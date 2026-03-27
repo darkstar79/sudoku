@@ -80,14 +80,30 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
         REQUIRE(after_redo.getCell(empty_pos).value == 5);
     }
 
-    SECTION("Execute GetHint command") {
+    SECTION("Execute GetHint command - no selection") {
         fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->gameState.update([](model::GameState& s) { s.clearSelection(); });
 
-        // Execute GetHint command
         fixture.view_model->executeCommand(GameCommand::GetHint);
 
-        // No cell selected, so getHint() sets an error message
-        CHECK(!fixture.view_model->errorMessage.get().empty());
+        // No cell selected — getHint requires selection
+        REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
+    }
+
+    SECTION("Execute GetHint command - with selection") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+
+        // Select an empty cell first
+        const auto& state = fixture.view_model->gameState.get();
+        auto empty = test::findEmptyCell(state);
+        REQUIRE(empty.has_value());
+        fixture.view_model->selectCell(empty.value());
+
+        int hints_before = fixture.view_model->getHintCount();
+        fixture.view_model->executeCommand(GameCommand::GetHint);
+
+        // Hint should succeed — cell gets filled and hint count decreases
+        REQUIRE(fixture.view_model->getHintCount() == hints_before - 1);
     }
 
     SECTION("Execute ToggleInputMode command") {

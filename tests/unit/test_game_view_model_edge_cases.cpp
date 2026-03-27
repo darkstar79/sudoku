@@ -28,13 +28,29 @@ using EdgeCaseTestFixture = sudoku::test::GameViewModelFixture;
 TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
     EdgeCaseTestFixture fixture;
 
-    SECTION("Get hint on fresh game") {
+    SECTION("Get hint without selection sets error") {
         fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->gameState.update([](model::GameState& s) { s.clearSelection(); });
 
         fixture.view_model->getHint();
 
-        // No cell selected, so getHint() sets "select a cell" error
-        CHECK(!fixture.view_model->errorMessage.get().empty());
+        // No cell selected — getHint requires selection
+        REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
+    }
+
+    SECTION("Get hint with empty cell selected succeeds") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+
+        const auto& state = fixture.view_model->gameState.get();
+        auto empty = test::findEmptyCell(state);
+        REQUIRE(empty.has_value());
+        fixture.view_model->selectCell(empty.value());
+
+        int hints_before = fixture.view_model->getHintCount();
+        fixture.view_model->getHint();
+
+        REQUIRE(fixture.view_model->getHintCount() == hints_before - 1);
+        REQUIRE(fixture.view_model->errorMessage.get().empty());
     }
 
     SECTION("Get hint with no empty cells") {
