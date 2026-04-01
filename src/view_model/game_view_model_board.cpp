@@ -191,6 +191,40 @@ void GameViewModel::colorCell(const core::Position& pos, uint8_t color_index) {
         [&pos, color_index](model::GameState& state) { state.setCellColor(pos.row, pos.col, color_index); });
 }
 
+void GameViewModel::handleNumberInput(const core::Position& pos, int number) {
+    if (!isGameActive() || number < 1 || number > 9) {
+        return;
+    }
+    const auto& state = gameState.get();
+    if (!state.isTimerRunning()) {
+        return;
+    }
+    const auto& cell = state.getCell(pos);
+    if (cell.is_given) {
+        return;
+    }
+
+    switch (getInputMode()) {
+        case InputMode::Normal:
+            if (cell.value == 0) {
+                enterNumber(pos, number);
+            } else if (cell.value == number) {
+                clearCell(pos);
+            }
+            break;
+        case InputMode::Notes:
+            if (cell.value == 0) {
+                enterNote(pos, number);
+            }
+            break;
+        case InputMode::Color:
+            if (number <= 6) {
+                colorCell(pos, static_cast<uint8_t>(number));
+            }
+            break;
+    }
+}
+
 void GameViewModel::clearAllCellColors() {
     gameState.update([](model::GameState& state) { state.clearAllCellColors(); });
 }

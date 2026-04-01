@@ -48,22 +48,22 @@ void TestKeyboardHandling::initTestCase() {
     QApplication::processEvents();
 
     // Select cell (4,4) as starting point
-    window_->board_widget_->selectCell(4, 4);
+    window_->board_widget_->setSelectedCell(core::Position{.row = 4, .col = 4});
     QApplication::processEvents();
 }
 
 void TestKeyboardHandling::arrowKeysNavigateSelection() {
-    window_->board_widget_->selectCell(4, 4);
+    window_->board_widget_->setSelectedCell(core::Position{.row = 4, .col = 4});
     QApplication::processEvents();
 
-    QTest::keyClick(window_.get(), Qt::Key_Right);
+    QTest::keyClick(window_->board_widget_, Qt::Key_Right);
     QApplication::processEvents();
 
     auto pos = selectedPos();
     QVERIFY(pos.has_value());
     QCOMPARE(pos->col, 5U);
 
-    QTest::keyClick(window_.get(), Qt::Key_Down);
+    QTest::keyClick(window_->board_widget_, Qt::Key_Down);
     QApplication::processEvents();
 
     pos = selectedPos();
@@ -72,10 +72,10 @@ void TestKeyboardHandling::arrowKeysNavigateSelection() {
 }
 
 void TestKeyboardHandling::arrowUpWrapsAround() {
-    window_->board_widget_->selectCell(0, 0);
+    window_->board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
     QApplication::processEvents();
 
-    QTest::keyClick(window_.get(), Qt::Key_Up);
+    QTest::keyClick(window_->board_widget_, Qt::Key_Up);
     QApplication::processEvents();
 
     auto pos = selectedPos();
@@ -88,15 +88,16 @@ void TestKeyboardHandling::deleteKeyClears() {
     auto pos = selectedPos();
     QVERIFY(pos.has_value());
 
-    // In Normal mode (default), single press places value
+    // In Normal mode (default), single press places value (number keys go to board widget)
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
-    QTest::keyClick(window_.get(), Qt::Key_5);
+    QTest::keyClick(window_->board_widget_, Qt::Key_5);
     QApplication::processEvents();
 
     auto cell_after_enter = ctx_->game_vm->gameState.get().getCell(pos->row, pos->col);
     QCOMPARE(cell_after_enter.value, 5);
 
-    QTest::keyClick(window_.get(), Qt::Key_Delete);
+    // Delete key propagates to MainWindow
+    QTest::keyClick(window_->board_widget_, Qt::Key_Delete);
     QApplication::processEvents();
 
     auto cell_after_delete = ctx_->game_vm->gameState.get().getCell(pos->row, pos->col);
@@ -110,14 +111,14 @@ void TestKeyboardHandling::normalModeNumberKeyPlacesValue() {
 
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
 
-    QTest::keyClick(window_.get(), Qt::Key_7);
+    QTest::keyClick(window_->board_widget_, Qt::Key_7);
     QApplication::processEvents();
 
     auto cell = ctx_->game_vm->gameState.get().getCell(pos->row, pos->col);
     QCOMPARE(cell.value, 7);
 
     // Clean up
-    QTest::keyClick(window_.get(), Qt::Key_Delete);
+    QTest::keyClick(window_->board_widget_, Qt::Key_Delete);
     QApplication::processEvents();
 }
 
@@ -129,7 +130,7 @@ void TestKeyboardHandling::notesModeNumberKeyTogglesNote() {
     // Switch to Notes mode
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Notes);
 
-    QTest::keyClick(window_.get(), Qt::Key_3);
+    QTest::keyClick(window_->board_widget_, Qt::Key_3);
     QApplication::processEvents();
 
     auto cell = ctx_->game_vm->gameState.get().getCell(pos->row, pos->col);
@@ -137,7 +138,7 @@ void TestKeyboardHandling::notesModeNumberKeyTogglesNote() {
     QVERIFY(cell.notes.contains(3));
 
     // Press again to toggle off
-    QTest::keyClick(window_.get(), Qt::Key_3);
+    QTest::keyClick(window_->board_widget_, Qt::Key_3);
     QApplication::processEvents();
 
     cell = ctx_->game_vm->gameState.get().getCell(pos->row, pos->col);
@@ -150,15 +151,16 @@ void TestKeyboardHandling::notesModeNumberKeyTogglesNote() {
 void TestKeyboardHandling::spaceKeyCyclesInputMode() {
     QCOMPARE(ctx_->game_vm->getInputMode(), viewmodel::InputMode::Normal);
 
-    QTest::keyClick(window_.get(), Qt::Key_Space);
+    // Space key propagates from board to MainWindow
+    QTest::keyClick(window_->board_widget_, Qt::Key_Space);
     QApplication::processEvents();
     QCOMPARE(ctx_->game_vm->getInputMode(), viewmodel::InputMode::Notes);
 
-    QTest::keyClick(window_.get(), Qt::Key_Space);
+    QTest::keyClick(window_->board_widget_, Qt::Key_Space);
     QApplication::processEvents();
     QCOMPARE(ctx_->game_vm->getInputMode(), viewmodel::InputMode::Color);
 
-    QTest::keyClick(window_.get(), Qt::Key_Space);
+    QTest::keyClick(window_->board_widget_, Qt::Key_Space);
     QApplication::processEvents();
     QCOMPARE(ctx_->game_vm->getInputMode(), viewmodel::InputMode::Normal);
 }
@@ -169,7 +171,7 @@ void TestKeyboardHandling::selectEmptyCell() {
         for (size_t c = 0; c < 9; ++c) {
             const auto& cell = state.getCell(r, c);
             if (cell.value == 0 && !cell.is_given) {
-                window_->board_widget_->selectCell(r, c);
+                window_->board_widget_->setSelectedCell(core::Position{.row = r, .col = c});
                 QApplication::processEvents();
                 return;
             }

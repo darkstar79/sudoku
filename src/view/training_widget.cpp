@@ -23,7 +23,7 @@
 #include "core/training_learning_path.h"
 #include "core/training_types.h"
 #include "style_colors.h"
-#include "training_board_widget.h"
+#include "sudoku_board_widget.h"
 #include "training_number_pad.h"
 #include "view_model/training_view_model.h"
 
@@ -90,6 +90,10 @@ TrainingWidget::TrainingWidget(QWidget* parent) : QWidget(parent), pages_(new QS
     rebuildPages();
 }
 
+TrainingWidget::~TrainingWidget() {
+    observer_.unsubscribeAll();
+}
+
 void TrainingWidget::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
     loc_manager_ = std::move(loc_manager);
     rebuildPages();
@@ -141,7 +145,7 @@ void TrainingWidget::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingVie
         observer_.observe(training_vm_->trainingBoard, [this](const auto&) { updateExerciseBoard(); });
         observer_.observe(training_vm_->feedbackBoard, [this](const auto&) {
             if (feedback_board_ && training_vm_) {
-                feedback_board_->setBoard(training_vm_->feedbackBoard.get());
+                feedback_board_->setBoard(toBoardRenderData(training_vm_->feedbackBoard.get()));
             }
         });
     }
@@ -410,7 +414,7 @@ void TrainingWidget::buildExercisePage() {
     layout->addWidget(header);
 
     // Interactive training board
-    training_board_ = new TrainingBoardWidget;
+    training_board_ = new SudokuBoardWidget({.max_size = 540.0F, .min_size = 360.0F, .padding = 20.0F});
     layout->addWidget(training_board_, 1);
 
     // Number pad
@@ -501,7 +505,7 @@ void TrainingWidget::buildExercisePage() {
     });
 
     // Keyboard number keys from board → ViewModel
-    connect(training_board_, &TrainingBoardWidget::numberPressed, this, [this](int value) {
+    connect(training_board_, &SudokuBoardWidget::numberKeyPressed, this, [this](int value) {
         if (training_vm_) {
             training_vm_->applyNumber(value);
             undo_btn_->setEnabled(training_vm_->canUndo());
@@ -510,7 +514,7 @@ void TrainingWidget::buildExercisePage() {
     });
 
     // Keyboard color keys from board → ViewModel
-    connect(training_board_, &TrainingBoardWidget::colorPressed, this, [this](int color) {
+    connect(training_board_, &SudokuBoardWidget::colorKeyPressed, this, [this](int color) {
         if (training_vm_) {
             training_vm_->applyColor(color);
             undo_btn_->setEnabled(training_vm_->canUndo());
@@ -529,7 +533,7 @@ void TrainingWidget::buildExercisePage() {
     });
 
     // Cell selection → ViewModel (auto-color in coloring mode)
-    connect(training_board_, &TrainingBoardWidget::cellSelected, this, [this](size_t row, size_t col) {
+    connect(training_board_, &SudokuBoardWidget::cellClicked, this, [this](size_t row, size_t col) {
         if (!training_vm_) {
             return;
         }
@@ -641,7 +645,7 @@ void TrainingWidget::updateExerciseBoard() {
     if (state.phase != core::TrainingPhase::Exercise) {
         return;
     }
-    training_board_->setBoard(training_vm_->trainingBoard.get());
+    training_board_->setBoard(toBoardRenderData(training_vm_->trainingBoard.get()));
 }
 
 void TrainingWidget::buildFeedbackPage() {
@@ -663,7 +667,7 @@ void TrainingWidget::buildFeedbackPage() {
     layout->addWidget(score_label);
 
     // Read-only diff board showing correct/wrong/missed highlights
-    feedback_board_ = new TrainingBoardWidget;
+    feedback_board_ = new SudokuBoardWidget({.max_size = 540.0F, .min_size = 360.0F, .padding = 20.0F});
     feedback_board_->setReadOnly(true);
     layout->addWidget(feedback_board_, 1);
 
@@ -731,7 +735,7 @@ void TrainingWidget::buildFeedbackPage() {
 
         // Update feedback board with diff highlights
         if (feedback_board_) {
-            feedback_board_->setBoard(training_vm_->feedbackBoard.get());
+            feedback_board_->setBoard(toBoardRenderData(training_vm_->feedbackBoard.get()));
         }
     });
 

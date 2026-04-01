@@ -42,8 +42,8 @@ Training Mode follows the project's MVVM pattern:
 │ TrainingExercise-   │────▶│ TrainingViewModel    │────▶│ TrainingWidget      │
 │   Generator         │     │   (state machine)    │     │   (5 pages)         │
 │                     │     │                      │     │                     │
-│ TechniqueDescrip-   │     │ Observable<          │     │ TrainingBoardWidget │
-│   tions             │     │   TrainingUIState>   │     │   (TODO)            │
+│ TechniqueDescrip-   │     │ Observable<          │     │ SudokuBoardWidget   │
+│   tions             │     │   TrainingUIState>   │     │   (unified)         │
 │                     │     │ Observable<          │     │                     │
 │ TrainingTypes       │     │   TrainingBoard>     │     │                     │
 └─────────────────────┘     └──────────────────────┘     └─────────────────────┘
@@ -252,7 +252,8 @@ Each button displays the technique name and Sudoku Explainer (SE) difficulty rat
 | File | Purpose |
 |------|---------|
 | `src/view/training_widget.h/.cpp` | 5-page `QStackedWidget` container with technique selection, theory, exercise, feedback, and lesson complete pages |
-| `src/view/training_board_widget.h/.cpp` | Interactive 9x9 board with cell selection, candidate rendering, CellRole highlighting, player coloring |
+| `src/view/sudoku_board_widget.h/.cpp` | Unified board widget (shared with game mode) with cell selection, candidate rendering, CellRole highlighting, player coloring via `BoardRenderData` |
+| `src/view/board_render_data.h` | `RenderCell`/`BoardRenderData` types and conversion functions from `GameState` and `TrainingBoard` |
 | `src/view/training_number_pad.h/.cpp` | 1-9 button strip with mode-aware tooltips and per-cell enable/disable |
 | `src/view/main_window.h/.cpp` | Integration: menu item "Training Mode", stacked widget page switching, ViewModel wiring |
 

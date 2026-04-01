@@ -15,7 +15,7 @@ Status overview and implementation roadmap for Training Mode.
 - [x] **MainWindow integration**: Menu item, stacked widget page switching, ViewModel wiring, error logging
 - [x] **Technique descriptions**: Theory text (title, what_it_is, what_to_look_for) for all 54 techniques
 - [x] **Unit tests**: Types, exercise generator (mock), ViewModel state machine
-- [x] **Interactive exercise board** (TrainingBoardWidget) — cell selection, candidate rendering, CellRole highlighting, player color support
+- [x] **Interactive exercise board** (unified SudokuBoardWidget) — cell selection, candidate rendering, CellRole highlighting, player color support
 - [x] **Number pad for training** (TrainingNumberPad) — 1-9 buttons with mode-aware tooltips and per-cell enable/disable
 - [x] **Color palette for coloring exercises** — Color A/B toggle buttons, shown only in Coloring mode
 - [x] **Custom per-technique hint progressions** — 11 technique categories with 3-level progressive hints via `getTrainingHint()`
@@ -37,9 +37,9 @@ Status overview and implementation roadmap for Training Mode.
 
 **Status**: Complete.
 
-### 1.1 TrainingBoardWidget
+### 1.1 Training Board (Unified SudokuBoardWidget)
 
-New `QWidget` rendering a 9x9 board from `TrainingBoard` data.
+Unified `SudokuBoardWidget` rendering from `BoardRenderData` (converted from `TrainingBoard` via `toBoardRenderData()`).
 
 **Rendering:**
 - Given cells: bold, non-interactive
@@ -54,9 +54,9 @@ New `QWidget` rendering a 9x9 board from `TrainingBoard` data.
 - Emit `cellSelected(row, col)` signal
 - Display selected cell highlight
 
-**Files to create:**
-- `src/view/training_board_widget.h`
-- `src/view/training_board_widget.cpp`
+**Files:**
+- `src/view/sudoku_board_widget.h/.cpp` — unified board widget (shared with game mode via `BoardRenderData`)
+- `src/view/board_render_data.h` — `RenderCell`/`BoardRenderData` types and conversion functions
 
 ### 1.2 TrainingNumberPad
 
@@ -80,12 +80,12 @@ Two toggle buttons (Color A / Color B) shown only during Coloring exercises.
 - Click cell on board → set `player_color` to active color
 - Visual: Color A = blue, Color B = green
 
-**Implementation**: Can be part of TrainingBoardWidget or a small companion widget in the exercise page layout.
+**Implementation**: Can be part of the board widget or a small companion widget in the exercise page layout.
 
 ### 1.4 Wire into TrainingWidget
 
-- Replace `QLabel("[ Training Board ]")` in `buildExercisePage()` with `TrainingBoardWidget` + `TrainingNumberPad`
-- Connect `TrainingBoardWidget` signals to update `TrainingViewModel::trainingBoard`
+- Replace `QLabel("[ Training Board ]")` in `buildExercisePage()` with `SudokuBoardWidget` + `TrainingNumberPad`
+- Connect `SudokuBoardWidget` signals to update `TrainingViewModel::trainingBoard`
 - Show/hide color palette based on `TrainingInteractionMode`
 
 **File to modify:**
@@ -248,7 +248,7 @@ Not implemented — deferred to future enhancement.
 
 ### 5.1 Visual Diff on Feedback Page
 
-After submitting an answer, a read-only `TrainingBoardWidget` on the feedback page shows the player's board with diff highlighting:
+After submitting an answer, a read-only `SudokuBoardWidget` on the feedback page shows the player's board with diff highlighting:
 
 - **Green** (`CorrectAnswer`): correctly identified cells/eliminations
 - **Red** (`WrongAnswer`): incorrectly marked cells
@@ -262,7 +262,7 @@ Both placement and elimination modes supported via `buildDiffBoard()`.
 
 ### 5.3 Candidate Hover Highlighting
 
-Mouse tracking on `TrainingBoardWidget` highlights all cells containing the hovered candidate value with a subtle blue tint. The hovered candidate itself is rendered bold. Disabled in read-only mode.
+Mouse tracking on the board widget highlights all cells containing the hovered candidate value with a subtle blue tint. The hovered candidate itself is rendered bold. Disabled in read-only mode.
 
 ### 5.4 Smooth Page Transitions
 
@@ -276,7 +276,7 @@ Mouse tracking on `TrainingBoardWidget` highlights all cells containing the hove
 ### 5.6 Files Modified
 
 - `src/core/solve_step.h` — added `CorrectAnswer`, `WrongAnswer`, `MissedAnswer` to `CellRole` enum
-- `src/view/training_board_widget.h/.cpp` — read-only mode, hover tracking, new CellRole colors
+- `src/view/sudoku_board_widget.h/.cpp` — unified board widget with read-only mode, CellRole rendering, `BoardRenderData` input
 - `src/view_model/training_view_model.h/.cpp` — `feedbackBoard` Observable, `buildDiffBoard()`, `revealSolution()`
 - `src/view/training_widget.h/.cpp` — feedback board widget, Show Solution button, page transitions
 

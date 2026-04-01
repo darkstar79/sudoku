@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cstddef>
 
+#include <QMouseEvent>
 #include <QPainter>
 #include <qbrush.h>
 #include <qnamespace.h>
@@ -99,6 +100,108 @@ int BoardPainter::candidateAtPosition(float local_x, float local_y, float cell_s
     int note_col = std::clamp(static_cast<int>(local_x / note_w), 0, 2);
     int note_row = std::clamp(static_cast<int>(local_y / note_h), 0, 2);
     return (note_row * 3) + note_col + 1;
+}
+
+std::optional<core::Position> BoardPainter::hitTestCell(const QMouseEvent* event, int widget_width,
+                                                        int widget_height) const {
+    QPointF origin = boardOrigin(widget_width, widget_height);
+    float cs = cellSize(widget_width, widget_height);
+
+    float mx = static_cast<float>(event->position().x()) - static_cast<float>(origin.x());
+    float my = static_cast<float>(event->position().y()) - static_cast<float>(origin.y());
+
+    if (mx < 0 || my < 0) {
+        return std::nullopt;
+    }
+
+    auto col = static_cast<size_t>(mx / cs);
+    auto row = static_cast<size_t>(my / cs);
+
+    if (row < core::BOARD_SIZE && col < core::BOARD_SIZE) {
+        return core::Position{.row = row, .col = col};
+    }
+    return std::nullopt;
+}
+
+std::optional<core::Position> BoardPainter::arrowNavigate(const core::Position& current, int qt_key) {
+    switch (qt_key) {
+        case Qt::Key_Up:
+            return core::Position{.row = current.row > 0 ? current.row - 1 : core::BOARD_SIZE - 1, .col = current.col};
+        case Qt::Key_Down:
+            return core::Position{.row = current.row < core::BOARD_SIZE - 1 ? current.row + 1 : 0, .col = current.col};
+        case Qt::Key_Left:
+            return core::Position{.row = current.row, .col = current.col > 0 ? current.col - 1 : core::BOARD_SIZE - 1};
+        case Qt::Key_Right:
+            return core::Position{.row = current.row, .col = current.col < core::BOARD_SIZE - 1 ? current.col + 1 : 0};
+        default:
+            return std::nullopt;
+    }
+}
+
+int BoardPainter::valueFontSize(float cell_height) {
+    return std::max(18, static_cast<int>(cell_height * 0.45F));
+}
+
+QRectF BoardPainter::CandidateLayout::noteRect(const QRectF& cell_rect, int value) const {
+    int note_row = (value - 1) / static_cast<int>(core::BOX_SIZE);
+    int note_col = (value - 1) % static_cast<int>(core::BOX_SIZE);
+    return {cell_rect.x() + (static_cast<float>(note_col) * note_w),
+            cell_rect.y() + (static_cast<float>(note_row) * note_h), note_w, note_h};
+}
+
+BoardPainter::CandidateLayout BoardPainter::candidateLayout(float cell_height) {
+    float note_size = cell_height / static_cast<float>(core::BOX_SIZE);
+    int font_size = std::max(8, static_cast<int>(cell_height / 3.0 * 0.55));
+    return {.note_w = note_size, .note_h = note_size, .font_size = font_size};
+}
+
+void BoardPainter::paintHoverTint(QPainter& painter, const QRectF& cell_rect) const {
+    painter.setBrush(BoardColors::HOVER_TINT);
+    painter.drawRect(cell_rect);
+}
+
+QColor BoardPainter::cellRoleColor(core::CellRole role) {
+    switch (role) {
+        case core::CellRole::Pivot:
+        case core::CellRole::LinkEndpoint:
+            return AnnotationColors::HIGHLIGHT_PIVOT;
+        case core::CellRole::Wing:
+            return AnnotationColors::HIGHLIGHT_WING;
+        case core::CellRole::Fin:
+            return AnnotationColors::HIGHLIGHT_FIN;
+        case core::CellRole::Roof:
+        case core::CellRole::Floor:
+            return AnnotationColors::HIGHLIGHT_PATTERN;
+        case core::CellRole::ChainA:
+            return AnnotationColors::HIGHLIGHT_CHAIN_A;
+        case core::CellRole::ChainB:
+            return AnnotationColors::HIGHLIGHT_CHAIN_B;
+        case core::CellRole::SetA:
+            return AnnotationColors::HIGHLIGHT_SET_A;
+        case core::CellRole::SetB:
+            return AnnotationColors::HIGHLIGHT_SET_B;
+        case core::CellRole::SetC:
+            return AnnotationColors::HIGHLIGHT_SET_C;
+        case core::CellRole::CorrectAnswer:
+            return AnnotationColors::HIGHLIGHT_CORRECT;
+        case core::CellRole::WrongAnswer:
+            return AnnotationColors::HIGHLIGHT_WRONG;
+        case core::CellRole::MissedAnswer:
+            return AnnotationColors::HIGHLIGHT_MISSED;
+        case core::CellRole::Pattern:
+        default:
+            return AnnotationColors::HIGHLIGHT_PATTERN;
+    }
+}
+
+QColor BoardPainter::playerColorBackground(int player_color) {
+    if (player_color == 1) {
+        return AnnotationColors::COLOR_A.lighter(170);
+    }
+    if (player_color == 2) {
+        return AnnotationColors::COLOR_B.lighter(170);
+    }
+    return BoardColors::CELL_BACKGROUND;
 }
 
 }  // namespace sudoku::view

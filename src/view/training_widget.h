@@ -39,7 +39,7 @@ class TestTrainingWidget;
 
 namespace sudoku::view {
 
-class TrainingBoardWidget;
+class SudokuBoardWidget;
 class TrainingNumberPad;
 
 class TrainingWidget : public QWidget {
@@ -47,6 +47,11 @@ class TrainingWidget : public QWidget {
 
 public:
     explicit TrainingWidget(QWidget* parent = nullptr);
+    ~TrainingWidget() override;
+    TrainingWidget(const TrainingWidget&) = delete;
+    TrainingWidget& operator=(const TrainingWidget&) = delete;
+    TrainingWidget(TrainingWidget&&) = delete;
+    TrainingWidget& operator=(TrainingWidget&&) = delete;
 
     void setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm);
     void setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager);
@@ -74,8 +79,8 @@ private:
     }
 
     // Exercise page widgets (owned by Qt parent)
-    TrainingBoardWidget* training_board_{nullptr};
-    TrainingBoardWidget* feedback_board_{nullptr};
+    SudokuBoardWidget* training_board_{nullptr};
+    SudokuBoardWidget* feedback_board_{nullptr};
     TrainingNumberPad* number_pad_{nullptr};
     QPushButton* color_a_btn_{nullptr};
     QPushButton* color_b_btn_{nullptr};

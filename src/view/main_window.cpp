@@ -96,7 +96,7 @@ MainWindow::~MainWindow() {
 void MainWindow::setupCentralWidget() {
     central_stack_ = new QStackedWidget;
 
-    board_widget_ = new SudokuBoardWidget;
+    board_widget_ = new SudokuBoardWidget({.max_size = 720.0F, .min_size = 450.0F, .padding = 40.0F});
     training_widget_ = new TrainingWidget;
     toast_widget_ = new ToastWidget(this);
 
@@ -152,6 +152,42 @@ void MainWindow::setupCentralWidget() {
     setCentralWidget(central_stack_);
 
     connect(training_widget_, &TrainingWidget::backToGame, this, [this]() { central_stack_->setCurrentIndex(0); });
+
+    // Button panel connections (wired once, lambdas read view_model_ at call time)
+    connect(undo_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->undo();
+        }
+    });
+    connect(redo_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->redo();
+        }
+    });
+    connect(undo_valid_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->undoToLastValid();
+        }
+    });
+    connect(auto_notes_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->fillNotes();
+        }
+    });
+    connect(mode_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->cycleInputMode();
+            updateButtonPanel();
+        }
+    });
+
+    // Board signals → ViewModel commands (wired once)
+    connect(board_widget_, &SudokuBoardWidget::numberKeyPressed, this, [this](int number) {
+        auto pos_opt = board_widget_->selectedCell();
+        if (view_model_ && pos_opt.has_value()) {
+            view_model_->handleNumberInput(pos_opt.value(), number);
+        }
+    });
 }
 
 void MainWindow::setupMenuBar() {
@@ -210,14 +246,12 @@ void MainWindow::setupMenuBar() {
     edit_menu->addAction(QString("&%1").arg(qstr(loc(MenuUndo))), QKeySequence("Ctrl+Z"), this, [this]() {
         if (view_model_) {
             view_model_->undo();
-            board_widget_->update();
         }
     });
 
     edit_menu->addAction(QString("&%1").arg(qstr(loc(MenuRedo))), QKeySequence("Ctrl+Y"), this, [this]() {
         if (view_model_) {
             view_model_->redo();
-            board_widget_->update();
         }
     });
 
@@ -228,7 +262,6 @@ void MainWindow::setupMenuBar() {
             if (pos.has_value()) {
                 view_model_->clearCell(pos.value());
             }
-            board_widget_->update();
         }
     });
 
@@ -236,7 +269,6 @@ void MainWindow::setupMenuBar() {
     help_menu->addAction(qstr(loc(MenuGetHint)), QKeySequence("H"), this, [this]() {
         if (view_model_ && view_model_->getHintCount() > 0) {
             view_model_->getHint(board_widget_->selectedCell());
-            board_widget_->update();
         }
     });
     help_menu->addSeparator();
@@ -278,7 +310,7 @@ void MainWindow::setupToolBar() {
             QString::fromStdString(locFormat(DialogNewGameConfirm, difficulty_combo_->currentText().toStdString())));
         if (result == QMessageBox::Yes) {
             view_model_->startNewGame(static_cast<core::Difficulty>(index));
-            board_widget_->selectCell(0, 0);
+            board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
         } else {
             // Revert combo without triggering signal again
             difficulty_combo_->blockSignals(true);
@@ -340,46 +372,15 @@ void MainWindow::onAutoSave() {
 }
 
 void MainWindow::setViewModel(std::shared_ptr<viewmodel::GameViewModel> view_model) {
+    observer_.unsubscribeAll();
     view_model_ = std::move(view_model);
 
     if (view_model_) {
-        board_widget_->setViewModel(view_model_);
+        board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
 
-        // Connect button panel
-        connect(undo_btn_, &QPushButton::clicked, this, [this]() {
-            if (view_model_) {
-                view_model_->undo();
-                board_widget_->update();
-            }
-        });
-        connect(redo_btn_, &QPushButton::clicked, this, [this]() {
-            if (view_model_) {
-                view_model_->redo();
-                board_widget_->update();
-            }
-        });
-        connect(undo_valid_btn_, &QPushButton::clicked, this, [this]() {
-            if (view_model_) {
-                view_model_->undoToLastValid();
-                board_widget_->update();
-            }
-        });
-        connect(auto_notes_btn_, &QPushButton::clicked, this, [this]() {
-            if (view_model_) {
-                view_model_->fillNotes();
-                board_widget_->update();
-            }
-        });
-        connect(mode_btn_, &QPushButton::clicked, this, [this]() {
-            if (view_model_) {
-                view_model_->cycleInputMode();
-                updateButtonPanel();
-                board_widget_->update();
-            }
-        });
-
-        observer_.observe(view_model_->gameState, [this](const auto&) {
-            board_widget_->update();
+        // Push render data on every game state change
+        observer_.observe(view_model_->gameState, [this](const auto& state) {
+            board_widget_->setBoard(toBoardRenderData(state));
             updateStatusBar();
             updateToolBar();
             updateButtonPanel();
@@ -466,7 +467,6 @@ bool MainWindow::event(QEvent* event) {
     return QMainWindow::event(event);
 }
 
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) — event handler with inherent branching
 void MainWindow::keyPressEvent(QKeyEvent* event) {
     if (!view_model_) {
         QMainWindow::keyPressEvent(event);
@@ -483,7 +483,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
     if (key == Qt::Key_Space) {
         view_model_->cycleInputMode();
         updateButtonPanel();
-        board_widget_->update();
         return;
     }
 
@@ -493,49 +492,10 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         view_model_->setInputMode(current == viewmodel::InputMode::Notes ? viewmodel::InputMode::Normal
                                                                          : viewmodel::InputMode::Notes);
         updateButtonPanel();
-        board_widget_->update();
         return;
     }
 
-    // Number keys 1-9: action depends on input mode
-    if (key >= Qt::Key_1 && key <= Qt::Key_9) {
-        int number = key - Qt::Key_1 + 1;
-        const auto& game_state = view_model_->gameState.get();
-        if (!game_state.isTimerRunning()) {
-            return;
-        }
-        auto pos_opt = board_widget_->selectedCell();
-        if (!pos_opt.has_value()) {
-            return;
-        }
-        const auto& pos = pos_opt.value();
-        const auto& cell = game_state.getCell(pos.row, pos.col);
-        if (cell.is_given) {
-            return;
-        }
-
-        switch (view_model_->getInputMode()) {
-            case viewmodel::InputMode::Normal:
-                if (cell.value == 0) {
-                    view_model_->enterNumber(pos, number);
-                } else if (cell.value == number) {
-                    view_model_->clearCell(pos);
-                }
-                break;
-            case viewmodel::InputMode::Notes:
-                if (cell.value == 0) {
-                    view_model_->enterNote(pos, number);
-                }
-                break;
-            case viewmodel::InputMode::Color:
-                if (number <= 6) {
-                    view_model_->colorCell(pos, static_cast<uint8_t>(number));
-                }
-                break;
-        }
-        board_widget_->update();
-        return;
-    }
+    // Number keys 1-9 are handled by board widget signals (numberKeyPressed)
 
     // Editing keys
     if (key == Qt::Key_Delete || key == Qt::Key_Backspace || key == Qt::Key_0) {
@@ -547,14 +507,12 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
                 view_model_->clearCell(edit_pos.value());
             }
         }
-        board_widget_->update();
         return;
     }
 
     // Ctrl+Shift+Z = undo to last valid
     if (key == Qt::Key_Z && event->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier)) {
         view_model_->undoToLastValid();
-        board_widget_->update();
         return;
     }
 
@@ -649,7 +607,7 @@ void MainWindow::showNewGameDialog() {
 
     if (result == QMessageBox::Yes) {
         view_model_->startNewGame(static_cast<core::Difficulty>(selected));
-        board_widget_->selectCell(0, 0);
+        board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
     }
 }
 

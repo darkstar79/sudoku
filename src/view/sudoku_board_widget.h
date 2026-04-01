@@ -17,9 +17,8 @@
 #pragma once
 
 #include "../core/i_localization_manager.h"
-#include "../model/game_state.h"
-#include "../view_model/game_view_model.h"
 #include "board_painter.h"
+#include "board_render_data.h"
 
 #include <cstddef>
 #include <memory>
@@ -27,7 +26,6 @@
 
 #include <QWidget>
 #include <qcolor.h>
-#include <qicon.h>
 #include <qpoint.h>
 #include <qrect.h>
 #include <qtmetamacros.h>
@@ -38,7 +36,7 @@ class TestBoardInteraction;
 
 namespace sudoku::view {
 
-/// Widget-specific color constants (shared colors are in BoardColors in board_painter.h).
+/// Game-specific color constants for cell values and analysis.
 namespace SudokuBoardColors {
 inline constexpr QColor TEXT_USER{0, 82, 204};
 inline constexpr QColor TEXT_ERROR{220, 38, 38};
@@ -54,26 +52,40 @@ inline constexpr QColor ANALYSIS_COLOR_5{255, 190, 190};  // Soft red
 inline constexpr QColor ANALYSIS_COLOR_6{255, 245, 170};  // Soft yellow
 }  // namespace SudokuBoardColors
 
+/// Unified Sudoku board widget for both game and training modes.
+/// Renders from BoardRenderData — a passive view that emits signals for user interaction.
 class SudokuBoardWidget : public QWidget {
     Q_OBJECT
 
 public:
-    explicit SudokuBoardWidget(QWidget* parent = nullptr);
+    explicit SudokuBoardWidget(BoardPainter::Config config, QWidget* parent = nullptr);
 
-    void setViewModel(std::shared_ptr<viewmodel::GameViewModel> view_model);
+    /// Set the board data to render
+    void setBoard(const BoardRenderData& data);
+
+    /// Clear the board (shows "no game loaded" state)
+    void clearBoard();
+
     void setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager);
+
+    /// Set read-only mode (disables all interaction)
+    void setReadOnly(bool read_only);
 
     [[nodiscard]] float cellSize() const;
     [[nodiscard]] QPointF boardOrigin() const;
     void clearHoverHighlight();
 
-    void selectCell(const core::Position& pos);
-    void selectCell(size_t row, size_t col);
+    void setSelectedCell(std::optional<core::Position> cell);
     [[nodiscard]] std::optional<core::Position> selectedCell() const;
     void clearSelection();
 
     [[nodiscard]] QSize minimumSizeHint() const override;
     [[nodiscard]] QSize sizeHint() const override;
+
+signals:
+    void cellClicked(size_t row, size_t col);
+    void numberKeyPressed(int value);
+    void colorKeyPressed(int color);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -83,9 +95,11 @@ protected:
     void leaveEvent(QEvent* event) override;
 
 private:
-    std::shared_ptr<viewmodel::GameViewModel> view_model_;
     std::shared_ptr<core::ILocalizationManager> loc_manager_;
     BoardPainter painter_;
+    BoardRenderData board_{};
+    bool has_board_{false};
+    bool read_only_{false};
 
     [[nodiscard]] std::string_view loc(std::string_view key) const {
         return loc_manager_ ? loc_manager_->getString(key) : key;
@@ -94,10 +108,10 @@ private:
     std::optional<core::Position> hovered_cell_;   ///< Currently hovered cell (nullopt = mouse outside board)
     std::optional<core::Position> selected_cell_;  ///< Currently selected cell for editing
 
-    void paintCell(QPainter& painter, const model::Cell& cell, size_t row, size_t col, const QPointF& origin,
+    void paintCell(QPainter& painter, const RenderCell& cell, size_t row, size_t col, const QPointF& origin,
                    float cell_size, bool is_selected, bool is_region_highlight, bool is_same_value_highlight);
-    void paintCellValue(QPainter& painter, const model::Cell& cell, const QRectF& cell_rect);
-    void paintCellNotes(QPainter& painter, const model::Cell& cell, const QRectF& cell_rect);
+    void paintCellValue(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect);
+    void paintCellNotes(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect);
 
 #ifdef SUDOKU_UI_TESTING
     friend class ::TestBoardInteraction;

@@ -141,6 +141,9 @@ public:
     void enterNote(const core::Position& pos, int number);
     void clearCell(const core::Position& pos);
 
+    /// Mode-aware number input: validates and routes to enterNumber/enterNote/colorCell
+    void handleNumberInput(const core::Position& pos, int number);
+
     // Analysis cell coloring (ephemeral, not saved/undoable)
     void colorCell(const core::Position& pos, uint8_t color_index);
     void clearAllCellColors();

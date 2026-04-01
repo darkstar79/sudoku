@@ -153,4 +153,5 @@ jobs:
             test_training_widget
           ctest --preset relwithdebinfo \
             --tests-regex "test_(main_window|board|keyboard|menu|view_model|training)" \
-            --output-on-failure
+            --output-on-failure \
+            --no-tests=error

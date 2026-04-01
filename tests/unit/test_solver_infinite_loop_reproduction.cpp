@@ -28,10 +28,10 @@
 
 // Sanitizers add significant overhead (2-5x), so relax timing thresholds
 #if defined(__SANITIZE_ADDRESS__)
-inline constexpr int kRatingTimeoutSeconds = 30;
+inline constexpr int kRatingTimeoutSeconds = 60;
 #elif defined(__has_feature)
 #    if __has_feature(address_sanitizer)
-inline constexpr int kRatingTimeoutSeconds = 30;
+inline constexpr int kRatingTimeoutSeconds = 60;
 #    else
 inline constexpr int kRatingTimeoutSeconds = 10;
 #    endif

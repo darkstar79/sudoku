@@ -18,7 +18,7 @@
 
 /// CSS color constants for Qt stylesheet use.
 /// Board-level paint colors (QColor) live in BoardColors (board_painter.h),
-/// SudokuBoardColors (sudoku_board_widget.h), and TrainingBoardColors (training_board_widget.h).
+/// SudokuBoardColors (sudoku_board_widget.h), and AnnotationColors (board_painter.h).
 namespace sudoku::view::StyleColors {
 
 // Primary action (blue buttons, badges, highlights)
