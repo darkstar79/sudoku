@@ -37,9 +37,8 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
         REQUIRE(empty_pos_opt.has_value());  // Fail loudly if no empty cells
         auto empty_pos = empty_pos_opt.value();
 
-        fixture.view_model->selectCell(empty_pos);
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->enterNumber(5);  // Double-press to place
+        fixture.view_model->enterNumber(empty_pos, 5);
+        fixture.view_model->enterNumber(empty_pos, 5);  // Double-press to place
 
         // Verify number was placed - assert instead of skip
         const auto& after_place = fixture.view_model->gameState.get();
@@ -68,9 +67,8 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
         REQUIRE(empty_cell.has_value());
         Position empty_pos = empty_cell.value();
 
-        fixture.view_model->selectCell(empty_pos);
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(empty_pos, 5);
+        fixture.view_model->enterNumber(empty_pos, 5);
         fixture.view_model->undo();
 
         // Execute Redo command
@@ -82,9 +80,8 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
 
     SECTION("Execute GetHint command - no selection") {
         fixture.view_model->startNewGame(Difficulty::Easy);
-        fixture.view_model->gameState.update([](model::GameState& s) { s.clearSelection(); });
 
-        fixture.view_model->executeCommand(GameCommand::GetHint);
+        fixture.view_model->getHint(std::nullopt);
 
         // No cell selected — getHint requires selection
         REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
@@ -93,14 +90,13 @@ TEST_CASE("GameViewModel - Execute Commands", "[game_view_model][commands]") {
     SECTION("Execute GetHint command - with selection") {
         fixture.view_model->startNewGame(Difficulty::Easy);
 
-        // Select an empty cell first
+        // Find an empty cell
         const auto& state = fixture.view_model->gameState.get();
         auto empty = test::findEmptyCell(state);
         REQUIRE(empty.has_value());
-        fixture.view_model->selectCell(empty.value());
 
         int hints_before = fixture.view_model->getHintCount();
-        fixture.view_model->executeCommand(GameCommand::GetHint);
+        fixture.view_model->getHint(empty.value());
 
         // Hint should succeed — cell gets filled and hint count decreases
         REQUIRE(fixture.view_model->getHintCount() == hints_before - 1);
@@ -144,10 +140,9 @@ TEST_CASE("GameViewModel - Can Execute Commands", "[game_view_model][commands]")
         auto empty_cell = test::findEmptyCell(state);
         REQUIRE(empty_cell.has_value());
 
-        const auto& [row, col] = empty_cell.value();
-        fixture.view_model->selectCell({row, col});
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->enterNumber(5);
+        Position pos = empty_cell.value();
+        fixture.view_model->enterNumber(pos, 5);
+        fixture.view_model->enterNumber(pos, 5);
 
         REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::Undo) == true);
     }
@@ -162,10 +157,9 @@ TEST_CASE("GameViewModel - Can Execute Commands", "[game_view_model][commands]")
         auto empty_cell = test::findEmptyCell(state);
         REQUIRE(empty_cell.has_value());
 
-        const auto& [row, col] = empty_cell.value();
-        fixture.view_model->selectCell({row, col});
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->enterNumber(5);
+        Position pos = empty_cell.value();
+        fixture.view_model->enterNumber(pos, 5);
+        fixture.view_model->enterNumber(pos, 5);
         fixture.view_model->undo();
 
         REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::Redo) == true);
@@ -223,7 +217,7 @@ TEST_CASE("GameViewModel - Refresh Statistics", "[game_view_model][statistics]")
     }
 }
 
-TEST_CASE("GameViewModel - Clear Selected Cell", "[game_view_model][clear]") {
+TEST_CASE("GameViewModel - Clear Cell", "[game_view_model][clear]") {
     CommandTestFixture fixture;
 
     SECTION("Clear empty cell does nothing") {
@@ -233,12 +227,12 @@ TEST_CASE("GameViewModel - Clear Selected Cell", "[game_view_model][clear]") {
         const auto& state = fixture.view_model->gameState.get();
         auto empty_pos = test::findEmptyCell(state);
         REQUIRE(empty_pos.has_value());
+        Position pos = empty_pos.value();
 
-        fixture.view_model->selectCell(empty_pos.value());
-        fixture.view_model->clearSelectedCell();
+        fixture.view_model->clearCell(pos);
 
         const auto& after = fixture.view_model->gameState.get();
-        REQUIRE(after.getCell(empty_pos.value()).value == 0);
+        REQUIRE(after.getCell(pos).value == 0);
     }
 
     SECTION("Clear cell with value") {
@@ -250,12 +244,11 @@ TEST_CASE("GameViewModel - Clear Selected Cell", "[game_view_model][clear]") {
         REQUIRE(empty_pos.has_value());
         Position pos = empty_pos.value();
 
-        fixture.view_model->selectCell(pos);
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->enterNumber(5);  // Double-press
+        fixture.view_model->enterNumber(pos, 5);
+        fixture.view_model->enterNumber(pos, 5);  // Double-press
 
         // Clear it
-        fixture.view_model->clearSelectedCell();
+        fixture.view_model->clearCell(pos);
 
         const auto& after = fixture.view_model->gameState.get();
         REQUIRE(after.getCell(pos).value == 0);
@@ -270,19 +263,17 @@ TEST_CASE("GameViewModel - Clear Selected Cell", "[game_view_model][clear]") {
         REQUIRE(empty_pos.has_value());
         Position pos = empty_pos.value();
 
-        fixture.view_model->selectCell(pos);
-        fixture.view_model->enterNote(5);
-        fixture.view_model->enterNote(7);
+        fixture.view_model->enterNote(pos, 5);
+        fixture.view_model->enterNote(pos, 7);
 
         // Verify notes were added
         const auto& mid = fixture.view_model->gameState.get();
         REQUIRE_FALSE(mid.getCell(pos).notes.empty());
 
-        // Clear it — note: clearSelectedCell uses RemoveNumber move type,
+        // Clear it — note: clearCell uses RemoveNumber move type,
         // which clears the value but does not clear notes (known limitation).
         // Test verifies the cell remains empty (value == 0) after clear.
-        fixture.view_model->selectCell(pos);
-        fixture.view_model->clearSelectedCell();
+        fixture.view_model->clearCell(pos);
 
         const auto& after = fixture.view_model->gameState.get();
         REQUIRE(after.getCell(pos).value == 0);
@@ -298,22 +289,9 @@ TEST_CASE("GameViewModel - Clear Selected Cell", "[game_view_model][clear]") {
         Position pos = given_pos.value();
         int original_value = state.getCell(pos).value;
 
-        fixture.view_model->selectCell(pos);
-        fixture.view_model->clearSelectedCell();
+        fixture.view_model->clearCell(pos);
 
         const auto& after = fixture.view_model->gameState.get();
         REQUIRE(after.getCell(pos).value == original_value);
-    }
-
-    SECTION("Clear with no selection does nothing") {
-        fixture.view_model->startNewGame(Difficulty::Easy);
-
-        // Clear selection first
-        fixture.view_model->gameState.update([](model::GameState& state) { state.clearSelection(); });
-
-        // Try to clear - should not crash
-        fixture.view_model->clearSelectedCell();
-
-        REQUIRE(!fixture.view_model->gameState.get().hasSelection());
     }
 }

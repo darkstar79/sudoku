@@ -54,9 +54,8 @@ TEST_CASE("Note Restoration - Undo Restores Notes", "[note_restoration]") {
         REQUIRE(note_added);
 
         // Place number 5 at target_pos (should clean up note at note_cell if related)
-        fixture.view_model->selectCell(target_pos);
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->enterNumber(5);  // Double-press to finalize
+        fixture.view_model->enterNumber(target_pos, 5);
+        fixture.view_model->enterNumber(target_pos, 5);  // Double-press to finalize
 
         // Check if note was cleaned up (only if cells are in same row/column/box)
         const auto& state_after = fixture.view_model->gameState.get();
@@ -99,17 +98,14 @@ TEST_CASE("Note Restoration - Undo Restores Notes", "[note_restoration]") {
         fixture.view_model->gameState.update([&](model::GameState& state) { state.addNote(note_pos, 5); });
 
         // Place 5 at first_pos (cleans up note at note_pos)
-        fixture.view_model->selectCell(first_pos);
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(first_pos, 5);
+        fixture.view_model->enterNumber(first_pos, 5);
 
         // Place 5 at second_pos (before undoing first placement)
-        fixture.view_model->selectCell(second_pos);
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(second_pos, 5);
+        fixture.view_model->enterNumber(second_pos, 5);
 
         // Undo first placement
-        fixture.view_model->selectCell(first_pos);
         fixture.view_model->undo();
 
         // Note 5 should NOT be restored at note_pos because second_pos still has 5

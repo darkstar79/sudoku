@@ -66,9 +66,7 @@ enum class GameCommand : std::uint8_t {
     ResetGame,
     ShowStatistics,
     ToggleInputMode,
-    ClearNotes,
-    HighlightNumber,
-    ClearHighlights
+    ClearNotes
 };
 
 /// UI state information
@@ -139,15 +137,12 @@ public:
     void autoSave();
 
     // Board interactions
-    void selectCell(size_t row, size_t col);
-    void selectCell(const core::Position& pos);
-    void enterNumber(int number);
-    void enterNote(int number);
-    void clearCell();
-    void clearSelectedCell();
+    void enterNumber(const core::Position& pos, int number);
+    void enterNote(const core::Position& pos, int number);
+    void clearCell(const core::Position& pos);
 
     // Analysis cell coloring (ephemeral, not saved/undoable)
-    void colorSelectedCell(uint8_t color_index);
+    void colorCell(const core::Position& pos, uint8_t color_index);
     void clearAllCellColors();
 
     // Position analysis — finds all applicable strategies for the current board state
@@ -171,7 +166,7 @@ public:
     [[nodiscard]] bool canRedo() const;
 
     // Hint system
-    void getHint();
+    void getHint(std::optional<core::Position> pos);
     [[nodiscard]] int getHintCount() const;
 
     // Game state queries

@@ -37,31 +37,12 @@
 
 namespace sudoku::viewmodel {
 
-void GameViewModel::selectCell(size_t row, size_t col) {
-    selectCell({.row = row, .col = col});
-}
-
-void GameViewModel::selectCell(const core::Position& pos) {
-    if (pos.row >= core::BOARD_SIZE || pos.col >= core::BOARD_SIZE) {
-        return;  // Invalid position
-    }
-
-    gameState.update([&pos](model::GameState& state) { state.setSelectedPosition(pos); });
-
-    spdlog::debug("Cell selected: ({}, {})", pos.row, pos.col);
-}
-
-void GameViewModel::enterNumber(int number) {
+void GameViewModel::enterNumber(const core::Position& pos, int number) {
     if (number < 1 || number > 9 || !isGameActive()) {
         return;
     }
 
     const auto& current_state = gameState.get();
-    auto pos_opt = current_state.getSelectedPosition();
-    if (!pos_opt.has_value()) {
-        return;  // No cell selected
-    }
-    const auto& pos = pos_opt.value();
 
     // Don't allow editing given numbers
     if (current_state.isGiven(pos)) {
@@ -108,17 +89,12 @@ void GameViewModel::enterNumber(int number) {
     autoSaveIfNeeded();
 }
 
-void GameViewModel::enterNote(int number) {
+void GameViewModel::enterNote(const core::Position& pos, int number) {
     if (number < 1 || number > 9 || !isGameActive()) {
         return;
     }
 
     const auto& current_state = gameState.get();
-    auto pos_opt = current_state.getSelectedPosition();
-    if (!pos_opt.has_value()) {
-        return;  // No cell selected
-    }
-    const auto& pos = pos_opt.value();
 
     // Don't allow notes on given numbers or filled cells
     if (current_state.isGiven(pos) || current_state.getValue(pos) != 0) {
@@ -149,21 +125,12 @@ void GameViewModel::enterNote(int number) {
     spdlog::debug("Note {} {} at ({}, {})", number, note_exists ? "removed" : "added", pos.row, pos.col);
 }
 
-void GameViewModel::clearCell() {
-    clearSelectedCell();
-}
-
-void GameViewModel::clearSelectedCell() {
+void GameViewModel::clearCell(const core::Position& pos) {
     if (!isGameActive()) {
         return;
     }
 
     const auto& current_state = gameState.get();
-    auto pos_opt = current_state.getSelectedPosition();
-    if (!pos_opt.has_value()) {
-        return;  // No cell selected
-    }
-    const auto& pos = pos_opt.value();
 
     // Don't allow clearing given numbers
     if (current_state.isGiven(pos)) {
@@ -219,14 +186,7 @@ void GameViewModel::fillNotes() {
     spdlog::info("Filled pencil marks for all empty cells");
 }
 
-void GameViewModel::colorSelectedCell(uint8_t color_index) {
-    const auto& current_state = gameState.get();
-    auto pos_opt = current_state.getSelectedPosition();
-    if (!pos_opt.has_value()) {
-        return;
-    }
-    const auto& pos = pos_opt.value();
-
+void GameViewModel::colorCell(const core::Position& pos, uint8_t color_index) {
     gameState.update(
         [&pos, color_index](model::GameState& state) { state.setCellColor(pos.row, pos.col, color_index); });
 }

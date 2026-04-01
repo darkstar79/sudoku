@@ -39,7 +39,7 @@
 
 namespace sudoku::viewmodel {
 
-void GameViewModel::getHint() {
+void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
     if (!isGameActive() || getHintCount() <= 0) {
         if (getHintCount() <= 0) {
             errorMessage.set(std::string(loc(core::StringKeys::HintNoRemaining)));
@@ -49,7 +49,6 @@ void GameViewModel::getHint() {
 
     // VALIDATE FIRST - Don't consume hint if validation fails
     const auto& state = gameState.get();
-    auto pos_opt = state.getSelectedPosition();
 
     if (!pos_opt.has_value()) {
         errorMessage.set(std::string(loc(core::StringKeys::HintSelectCell)));

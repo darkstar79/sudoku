@@ -116,6 +116,7 @@ private:
     QPushButton* rating_btn_{nullptr};
     QAction* rating_action_{nullptr};
     QLabel* status_label_{nullptr};
+    QLabel* timer_label_{nullptr};
 
     // Button panel below board
     QPushButton* undo_btn_{nullptr};
@@ -124,8 +125,9 @@ private:
     QPushButton* auto_notes_btn_{nullptr};
     QPushButton* mode_btn_{nullptr};
 
-    // Auto-save timer
+    // Timers
     QTimer* auto_save_timer_{nullptr};
+    QTimer* clock_timer_{nullptr};
 
     // Difficulty combo tracking
     int last_difficulty_index_{1};  // Medium default

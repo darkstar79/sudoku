@@ -40,8 +40,7 @@ TEST_CASE("GameViewModel - Reset Game", "[game_view_model][reset]") {
         REQUIRE(empty_pos_opt.has_value());
         auto empty_pos = empty_pos_opt.value();
 
-        fixture.view_model->selectCell(empty_pos);
-        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(empty_pos, 5);
 
         // Verify number was placed
         const auto& state_after_place = fixture.view_model->gameState.get();
@@ -68,10 +67,9 @@ TEST_CASE("GameViewModel - Reset Game", "[game_view_model][reset]") {
         REQUIRE(empty_pos_opt.has_value());
         auto empty_pos = empty_pos_opt.value();
 
-        fixture.view_model->selectCell(empty_pos);
-        fixture.view_model->enterNote(1);
-        fixture.view_model->enterNote(3);
-        fixture.view_model->enterNote(7);
+        fixture.view_model->enterNote(empty_pos, 1);
+        fixture.view_model->enterNote(empty_pos, 3);
+        fixture.view_model->enterNote(empty_pos, 7);
 
         // Verify notes were added
         const auto& state_with_notes = fixture.view_model->gameState.get();
@@ -92,8 +90,7 @@ TEST_CASE("GameViewModel - Reset Game", "[game_view_model][reset]") {
         const auto& state = fixture.view_model->gameState.get();
         auto empty_pos_opt = test::findEmptyCell(state);
         REQUIRE(empty_pos_opt.has_value());
-        fixture.view_model->selectCell(empty_pos_opt.value());
-        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(empty_pos_opt.value(), 5);
 
         // Reset the game
         fixture.view_model->resetGame();
@@ -115,10 +112,8 @@ TEST_CASE("GameViewModel - Reset Game", "[game_view_model][reset]") {
         REQUIRE(empty_cells_opt.has_value());
         auto empty_cells = empty_cells_opt.value();
 
-        fixture.view_model->selectCell(empty_cells[0]);
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->selectCell(empty_cells[1]);
-        fixture.view_model->enterNumber(3);
+        fixture.view_model->enterNumber(empty_cells[0], 5);
+        fixture.view_model->enterNumber(empty_cells[1], 3);
 
         // Verify undo is possible
         REQUIRE(fixture.view_model->canUndo());
@@ -177,8 +172,7 @@ TEST_CASE("GameViewModel - Reset Game", "[game_view_model][reset]") {
         const auto& state = fixture.view_model->gameState.get();
         auto empty_pos_opt = test::findEmptyCell(state);
         REQUIRE(empty_pos_opt.has_value());
-        fixture.view_model->selectCell(empty_pos_opt.value());
-        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(empty_pos_opt.value(), 5);
 
         fixture.view_model->resetGame();
 
@@ -189,8 +183,7 @@ TEST_CASE("GameViewModel - Reset Game", "[game_view_model][reset]") {
         const auto& reset_state = fixture.view_model->gameState.get();
         auto new_empty_opt = test::findEmptyCell(reset_state);
         REQUIRE(new_empty_opt.has_value());
-        fixture.view_model->selectCell(new_empty_opt.value());
-        fixture.view_model->enterNumber(7);
+        fixture.view_model->enterNumber(new_empty_opt.value(), 7);
 
         const auto& after_play = fixture.view_model->gameState.get();
         REQUIRE(after_play.getCell(new_empty_opt.value()).value == 7);
@@ -203,8 +196,7 @@ TEST_CASE("GameViewModel - Reset Game", "[game_view_model][reset]") {
         const auto& state = fixture.view_model->gameState.get();
         auto empty_pos_opt = test::findEmptyCell(state);
         REQUIRE(empty_pos_opt.has_value());
-        fixture.view_model->selectCell(empty_pos_opt.value());
-        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(empty_pos_opt.value(), 5);
 
         // Reset — this should end the session as not completed
         fixture.view_model->resetGame();
@@ -225,8 +217,7 @@ TEST_CASE("GameViewModel - Reset Game", "[game_view_model][reset]") {
         const auto& state = fixture.view_model->gameState.get();
         auto empty_pos_opt = test::findEmptyCell(state);
         REQUIRE(empty_pos_opt.has_value());
-        fixture.view_model->selectCell(empty_pos_opt.value());
-        fixture.view_model->getHint();
+        fixture.view_model->getHint(empty_pos_opt.value());
 
         int hints_before_reset = fixture.view_model->getHintCount();
 
@@ -247,8 +238,7 @@ TEST_CASE("GameViewModel - Reset Game", "[game_view_model][reset]") {
         auto empty_pos_opt = test::findEmptyCell(state);
         REQUIRE(empty_pos_opt.has_value());
         auto empty_pos = empty_pos_opt.value();
-        fixture.view_model->selectCell(empty_pos);
-        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(empty_pos, 5);
 
         // Reset via command
         fixture.view_model->executeCommand(GameCommand::ResetGame);

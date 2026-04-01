@@ -8,6 +8,7 @@
 
 #include "test_fixture.h"
 #include "view/main_window.h"
+#include "view/sudoku_board_widget.h"
 
 #include <QTest>
 
@@ -30,7 +31,7 @@ private:
     std::unique_ptr<view::MainWindow> window_;
 
     [[nodiscard]] std::optional<core::Position> selectedPos() const {
-        return ctx_->game_vm->gameState.get().getSelectedPosition();
+        return window_->board_widget_->selectedCell();
     }
 
     void selectEmptyCell();
@@ -47,12 +48,12 @@ void TestKeyboardHandling::initTestCase() {
     QApplication::processEvents();
 
     // Select cell (4,4) as starting point
-    ctx_->game_vm->selectCell(4, 4);
+    window_->board_widget_->selectCell(4, 4);
     QApplication::processEvents();
 }
 
 void TestKeyboardHandling::arrowKeysNavigateSelection() {
-    ctx_->game_vm->selectCell(4, 4);
+    window_->board_widget_->selectCell(4, 4);
     QApplication::processEvents();
 
     QTest::keyClick(window_.get(), Qt::Key_Right);
@@ -71,7 +72,7 @@ void TestKeyboardHandling::arrowKeysNavigateSelection() {
 }
 
 void TestKeyboardHandling::arrowUpWrapsAround() {
-    ctx_->game_vm->selectCell(0, 0);
+    window_->board_widget_->selectCell(0, 0);
     QApplication::processEvents();
 
     QTest::keyClick(window_.get(), Qt::Key_Up);
@@ -168,7 +169,7 @@ void TestKeyboardHandling::selectEmptyCell() {
         for (size_t c = 0; c < 9; ++c) {
             const auto& cell = state.getCell(r, c);
             if (cell.value == 0 && !cell.is_given) {
-                ctx_->game_vm->selectCell(r, c);
+                window_->board_widget_->selectCell(r, c);
                 QApplication::processEvents();
                 return;
             }

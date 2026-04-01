@@ -78,11 +78,9 @@ TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
             const int test_number = 7;
 
             // Add notes to cells that should be cleaned up
-            view_model->selectCell(same_row_cell.value());
-            view_model->enterNote(test_number);
+            view_model->enterNote(same_row_cell.value(), test_number);
 
-            view_model->selectCell(same_col_cell.value());
-            view_model->enterNote(test_number);
+            view_model->enterNote(same_col_cell.value(), test_number);
 
             // Verify notes were added
             auto& state_with_notes = view_model->gameState.get();
@@ -94,8 +92,7 @@ TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
             REQUIRE(std::find(col_notes.begin(), col_notes.end(), test_number) != col_notes.end());
 
             // Place the number in target cell - this should trigger cleanup
-            view_model->selectCell(target_cell.value());
-            view_model->enterNumber(test_number);
+            view_model->enterNumber(target_cell.value(), test_number);
 
             // Verify the cleanup worked
             auto& final_state = view_model->gameState.get();
@@ -145,9 +142,8 @@ TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
             const int other_note = 3;
 
             // Add multiple notes to test cell
-            view_model->selectCell(test_cell.value());
-            view_model->enterNote(number_to_place);  // This should be cleaned up
-            view_model->enterNote(other_note);       // This should remain
+            view_model->enterNote(test_cell.value(), number_to_place);  // This should be cleaned up
+            view_model->enterNote(test_cell.value(), other_note);       // This should remain
 
             // Verify both notes are present
             auto& state_with_notes = view_model->gameState.get();
@@ -157,8 +153,7 @@ TEST_CASE("Notes Cleanup - Comprehensive Testing", "[notes-cleanup]") {
             REQUIRE(std::find(test_notes.begin(), test_notes.end(), other_note) != test_notes.end());
 
             // Place number - should clean up only the matching note
-            view_model->selectCell(target_cell.value());
-            view_model->enterNumber(number_to_place);
+            view_model->enterNumber(target_cell.value(), number_to_place);
 
             // Verify selective cleanup
             auto& final_state = view_model->gameState.get();

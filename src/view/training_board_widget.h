@@ -21,7 +21,6 @@
 
 #include <cstddef>
 #include <optional>
-#include <utility>
 
 #include <QWidget>
 #include <qcolor.h>
@@ -63,7 +62,7 @@ public:
     void setBoard(const core::TrainingBoard& board);
 
     /// Update the selected cell highlight
-    void setSelectedCell(std::optional<std::pair<size_t, size_t>> cell);
+    void setSelectedCell(std::optional<core::Position> cell);
 
     /// Set read-only mode (disables interaction, used on feedback page)
     void setReadOnly(bool read_only);
@@ -89,7 +88,7 @@ protected:
 
 private:
     core::TrainingBoard board_{};
-    std::optional<std::pair<size_t, size_t>> selected_cell_;
+    std::optional<core::Position> selected_cell_;
     bool read_only_{false};
     int hovered_candidate_{0};  ///< Currently hovered candidate value (0 = none)
     BoardPainter painter_;

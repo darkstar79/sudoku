@@ -23,7 +23,6 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace sudoku::core {
@@ -89,7 +88,7 @@ struct TrainingUIState {
     std::string feedback_message;
     std::string found_step_message;  ///< Brief message when a step is applied mid-exercise
     AnswerResult last_result{AnswerResult::Incorrect};
-    std::optional<std::pair<size_t, size_t>> selected_cell;  ///< Currently selected cell (row, col)
+    std::optional<Position> selected_cell;                                           ///< Currently selected cell
     TrainingInteractionMode interaction_mode{TrainingInteractionMode::Elimination};  ///< Current interaction mode
 
     bool operator==(const TrainingUIState& other) const = default;

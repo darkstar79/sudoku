@@ -30,6 +30,7 @@
 #include <vector>
 
 #include <QFont>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <qbrush.h>
@@ -50,6 +51,7 @@ SudokuBoardWidget::SudokuBoardWidget(QWidget* parent)
 
 void SudokuBoardWidget::setViewModel(std::shared_ptr<viewmodel::GameViewModel> view_model) {
     view_model_ = std::move(view_model);
+    selected_cell_ = core::Position{.row = 0, .col = 0};
     update();
 }
 
@@ -91,14 +93,36 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
 
     painter_.paintBackground(painter, origin, board_size);
 
-    auto selected_pos_opt = game_state.getSelectedPosition();
+    // Highlight source: hover takes priority, falls back to selection
+    auto highlight_source = hovered_cell_.has_value() ? hovered_cell_ : selected_cell_;
+
+    int focus_value = 0;
+    size_t focus_box_row = 0;
+    size_t focus_box_col = 0;
+    if (highlight_source.has_value()) {
+        focus_value = game_state.getValue(highlight_source->row, highlight_source->col);
+        focus_box_row = (highlight_source->row / core::BOX_SIZE) * core::BOX_SIZE;
+        focus_box_col = (highlight_source->col / core::BOX_SIZE) * core::BOX_SIZE;
+    }
 
     for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
         for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
             const auto cell = game_state.getCell(row, col);
-            bool is_selected =
-                selected_pos_opt.has_value() && selected_pos_opt->row == row && selected_pos_opt->col == col;
-            paintCell(painter, cell, row, col, origin, cs, is_selected);
+            bool is_selected = selected_cell_.has_value() && selected_cell_->row == row && selected_cell_->col == col;
+
+            bool is_region_highlight = false;
+            bool is_same_value_highlight = false;
+            if (highlight_source.has_value()) {
+                size_t cell_box_row = (row / core::BOX_SIZE) * core::BOX_SIZE;
+                size_t cell_box_col = (col / core::BOX_SIZE) * core::BOX_SIZE;
+                is_region_highlight = (row == highlight_source->row) || (col == highlight_source->col) ||
+                                      (cell_box_row == focus_box_row && cell_box_col == focus_box_col);
+                if (focus_value > 0 && cell.value == focus_value) {
+                    is_same_value_highlight = true;
+                }
+            }
+
+            paintCell(painter, cell, row, col, origin, cs, is_selected, is_region_highlight, is_same_value_highlight);
         }
     }
 
@@ -124,9 +148,43 @@ void SudokuBoardWidget::mousePressEvent(QMouseEvent* event) {
     auto row = static_cast<int>(my / cs);
 
     if (row >= 0 && col >= 0 && std::cmp_less(row, core::BOARD_SIZE) && std::cmp_less(col, core::BOARD_SIZE)) {
-        view_model_->selectCell(row, col);
-        update();
+        selectCell(static_cast<size_t>(row), static_cast<size_t>(col));
     }
+}
+
+void SudokuBoardWidget::keyPressEvent(QKeyEvent* event) {
+    if (event->isAutoRepeat()) {
+        return;
+    }
+
+    if (!selected_cell_.has_value()) {
+        QWidget::keyPressEvent(event);
+        return;
+    }
+
+    const auto& pos = selected_cell_.value();
+    switch (event->key()) {
+        case Qt::Key_Up:
+            selectCell(pos.row > 0 ? pos.row - 1 : core::BOARD_SIZE - 1, pos.col);
+            clearHoverHighlight();
+            return;
+        case Qt::Key_Down:
+            selectCell(pos.row < core::BOARD_SIZE - 1 ? pos.row + 1 : 0, pos.col);
+            clearHoverHighlight();
+            return;
+        case Qt::Key_Left:
+            selectCell(pos.row, pos.col > 0 ? pos.col - 1 : core::BOARD_SIZE - 1);
+            clearHoverHighlight();
+            return;
+        case Qt::Key_Right:
+            selectCell(pos.row, pos.col < core::BOARD_SIZE - 1 ? pos.col + 1 : 0);
+            clearHoverHighlight();
+            return;
+        default:
+            break;
+    }
+
+    QWidget::keyPressEvent(event);
 }
 
 void SudokuBoardWidget::mouseMoveEvent(QMouseEvent* event) {
@@ -141,12 +199,15 @@ void SudokuBoardWidget::mouseMoveEvent(QMouseEvent* event) {
     float my = static_cast<float>(event->position().y()) - static_cast<float>(origin.y());
 
     int new_hover = 0;
+    std::optional<core::Position> new_hovered_cell;
 
     if (mx >= 0 && my >= 0) {
         auto col = static_cast<size_t>(mx / cs);
         auto row = static_cast<size_t>(my / cs);
 
         if (row < core::BOARD_SIZE && col < core::BOARD_SIZE) {
+            new_hovered_cell = core::Position{.row = row, .col = col};
+
             const auto& game_state = view_model_->gameState.get();
             const auto cell = game_state.getCell(row, col);
             if (cell.value == 0 && !cell.notes.empty()) {
@@ -160,14 +221,64 @@ void SudokuBoardWidget::mouseMoveEvent(QMouseEvent* event) {
         }
     }
 
+    bool needs_update = false;
     if (new_hover != hovered_candidate_) {
         hovered_candidate_ = new_hover;
+        needs_update = true;
+    }
+    if (new_hovered_cell != hovered_cell_) {
+        hovered_cell_ = new_hovered_cell;
+        needs_update = true;
+    }
+    if (needs_update) {
         update();
     }
 }
 
+void SudokuBoardWidget::selectCell(const core::Position& pos) {
+    if (pos.row < core::BOARD_SIZE && pos.col < core::BOARD_SIZE) {
+        selected_cell_ = pos;
+        update();
+    }
+}
+
+void SudokuBoardWidget::selectCell(size_t row, size_t col) {
+    selectCell({.row = row, .col = col});
+}
+
+std::optional<core::Position> SudokuBoardWidget::selectedCell() const {
+    return selected_cell_;
+}
+
+void SudokuBoardWidget::clearSelection() {
+    if (selected_cell_.has_value()) {
+        selected_cell_ = std::nullopt;
+        update();
+    }
+}
+
+void SudokuBoardWidget::clearHoverHighlight() {
+    bool needs_update = false;
+    if (hovered_candidate_ != 0) {
+        hovered_candidate_ = 0;
+        needs_update = true;
+    }
+    if (hovered_cell_.has_value()) {
+        hovered_cell_ = std::nullopt;
+        needs_update = true;
+    }
+    if (needs_update) {
+        update();
+    }
+}
+
+void SudokuBoardWidget::leaveEvent(QEvent* /*event*/) {
+    clearHoverHighlight();
+}
+
 void SudokuBoardWidget::paintCell(QPainter& painter, const model::Cell& cell, size_t row, size_t col,
-                                  const QPointF& origin, float cell_size, bool is_selected) {
+                                  const QPointF& origin, float cell_size, bool is_selected, bool is_region_highlight,
+                                  bool is_same_value_highlight) {
     QRectF cell_rect(origin.x() + (static_cast<float>(col) * cell_size),
                      origin.y() + (static_cast<float>(row) * cell_size), cell_size, cell_size);
 
@@ -190,6 +301,10 @@ void SudokuBoardWidget::paintCell(QPainter& painter, const model::Cell& cell, si
         }
     } else if (is_selected) {
         bg = BoardColors::CELL_SELECTED;
+    } else if (is_same_value_highlight) {
+        bg = BoardColors::HIGHLIGHT_SAME_VALUE;
+    } else if (is_region_highlight) {
+        bg = BoardColors::HIGHLIGHT_REGION;
     }
     painter.setPen(Qt::NoPen);
     painter.setBrush(bg);

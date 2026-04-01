@@ -123,7 +123,6 @@ void GameViewModel::startNewGame(core::Difficulty difficulty) {
     new_state.loadPuzzle(puzzle_result->board);
     new_state.setDifficulty(difficulty);
     new_state.setSolutionBoard(puzzle_result->solution);  // Store solution for hints
-    new_state.setSelectedPosition({.row = 0, .col = 0});
 
     gameState.set(new_state);
 
@@ -163,7 +162,6 @@ void GameViewModel::resetGame() {
     new_state.loadPuzzle(original_puzzle);
     new_state.setDifficulty(difficulty);
     new_state.setSolutionBoard(solution);
-    new_state.setSelectedPosition({.row = 0, .col = 0});
 
     gameState.set(new_state);
 
@@ -250,8 +248,6 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
             loaded_state.setHintRevealed({.row = row, .col = col}, saved_game.hint_revealed_cells.get(row, col));
         });
     }
-
-    loaded_state.setSelectedPosition({.row = 0, .col = 0});
 
     gameState.set(loaded_state);
 

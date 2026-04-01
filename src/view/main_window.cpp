@@ -224,7 +224,10 @@ void MainWindow::setupMenuBar() {
     edit_menu->addSeparator();
     edit_menu->addAction(QString("&%1").arg(qstr(loc(MenuClearCell))), QKeySequence("Delete"), this, [this]() {
         if (view_model_) {
-            view_model_->clearSelectedCell();
+            auto pos = board_widget_->selectedCell();
+            if (pos.has_value()) {
+                view_model_->clearCell(pos.value());
+            }
             board_widget_->update();
         }
     });
@@ -232,7 +235,7 @@ void MainWindow::setupMenuBar() {
     auto* help_menu = menuBar()->addMenu(QString("&%1").arg(qstr(loc(MenuHelp))));
     help_menu->addAction(qstr(loc(MenuGetHint)), QKeySequence("H"), this, [this]() {
         if (view_model_ && view_model_->getHintCount() > 0) {
-            view_model_->getHint();
+            view_model_->getHint(board_widget_->selectedCell());
             board_widget_->update();
         }
     });
@@ -275,6 +278,7 @@ void MainWindow::setupToolBar() {
             QString::fromStdString(locFormat(DialogNewGameConfirm, difficulty_combo_->currentText().toStdString())));
         if (result == QMessageBox::Yes) {
             view_model_->startNewGame(static_cast<core::Difficulty>(index));
+            board_widget_->selectCell(0, 0);
         } else {
             // Revert combo without triggering signal again
             difficulty_combo_->blockSignals(true);
@@ -307,10 +311,17 @@ void MainWindow::setupToolBar() {
 }
 
 void MainWindow::setupStatusBar() {
+    timer_label_ = new QLabel();
+    statusBar()->addWidget(timer_label_);
     status_label_ = new QLabel(qstr(loc(StatusReady)));
     statusBar()->addWidget(status_label_, 1);
     statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; border-top: 1px solid %2; color: %3; }")
                                    .arg(StyleColors::SURFACE_STATUS, StyleColors::DIVIDER, StyleColors::TEXT_MUTED));
+
+    clock_timer_ = new QTimer(this);
+    clock_timer_->setInterval(1000);
+    connect(clock_timer_, &QTimer::timeout, this, &MainWindow::updateStatusBar);
+    clock_timer_->start();
 }
 
 void MainWindow::setupAutoSaveTimer() {
@@ -493,11 +504,12 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         if (!game_state.isTimerRunning()) {
             return;
         }
-        auto pos_opt = game_state.getSelectedPosition();
+        auto pos_opt = board_widget_->selectedCell();
         if (!pos_opt.has_value()) {
             return;
         }
-        const auto& cell = game_state.getCell(pos_opt->row, pos_opt->col);
+        const auto& pos = pos_opt.value();
+        const auto& cell = game_state.getCell(pos.row, pos.col);
         if (cell.is_given) {
             return;
         }
@@ -505,19 +517,19 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         switch (view_model_->getInputMode()) {
             case viewmodel::InputMode::Normal:
                 if (cell.value == 0) {
-                    view_model_->enterNumber(number);
+                    view_model_->enterNumber(pos, number);
                 } else if (cell.value == number) {
-                    view_model_->clearSelectedCell();
+                    view_model_->clearCell(pos);
                 }
                 break;
             case viewmodel::InputMode::Notes:
                 if (cell.value == 0) {
-                    view_model_->enterNote(number);
+                    view_model_->enterNote(pos, number);
                 }
                 break;
             case viewmodel::InputMode::Color:
                 if (number <= 6) {
-                    view_model_->colorSelectedCell(static_cast<uint8_t>(number));
+                    view_model_->colorCell(pos, static_cast<uint8_t>(number));
                 }
                 break;
         }
@@ -525,40 +537,15 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         return;
     }
 
-    // Navigation
-    const auto& game_state = view_model_->gameState.get();
-    auto pos_opt = game_state.getSelectedPosition();
-
-    if (pos_opt.has_value()) {
-        const auto& pos = pos_opt.value();
-        switch (key) {
-            case Qt::Key_Up:
-                view_model_->selectCell(pos.row > 0 ? pos.row - 1 : core::BOARD_SIZE - 1, pos.col);
-                board_widget_->update();
-                return;
-            case Qt::Key_Down:
-                view_model_->selectCell(pos.row < core::BOARD_SIZE - 1 ? pos.row + 1 : 0, pos.col);
-                board_widget_->update();
-                return;
-            case Qt::Key_Left:
-                view_model_->selectCell(pos.row, pos.col > 0 ? pos.col - 1 : core::BOARD_SIZE - 1);
-                board_widget_->update();
-                return;
-            case Qt::Key_Right:
-                view_model_->selectCell(pos.row, pos.col < core::BOARD_SIZE - 1 ? pos.col + 1 : 0);
-                board_widget_->update();
-                return;
-            default:
-                break;
-        }
-    }
-
     // Editing keys
     if (key == Qt::Key_Delete || key == Qt::Key_Backspace || key == Qt::Key_0) {
-        if (view_model_->getInputMode() == viewmodel::InputMode::Color) {
-            view_model_->colorSelectedCell(0);  // Clear color
-        } else {
-            view_model_->clearSelectedCell();
+        auto edit_pos = board_widget_->selectedCell();
+        if (edit_pos.has_value()) {
+            if (view_model_->getInputMode() == viewmodel::InputMode::Color) {
+                view_model_->colorCell(edit_pos.value(), 0);  // Clear color
+            } else {
+                view_model_->clearCell(edit_pos.value());
+            }
         }
         board_widget_->update();
         return;
@@ -582,16 +569,20 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 
 void MainWindow::updateStatusBar() {
     if (!view_model_) {
+        timer_label_->clear();
         status_label_->setText(qstr(loc(StatusReady)));
         return;
     }
 
     const auto& game_state = view_model_->gameState.get();
     if (game_state.isComplete()) {
+        timer_label_->setText(QString::fromStdString(view_model_->getFormattedTime()));
         status_label_->setText(QString("<span style='color: green;'>%1</span>").arg(qstr(loc(StatusCompleted))));
     } else if (game_state.isTimerRunning()) {
+        timer_label_->setText(QString::fromStdString(view_model_->getFormattedTime()));
         status_label_->setText(qstr(loc(StatusPlaying)));
     } else {
+        timer_label_->clear();
         status_label_->setText(qstr(loc(StatusReady)));
     }
 }
@@ -658,6 +649,7 @@ void MainWindow::showNewGameDialog() {
 
     if (result == QMessageBox::Yes) {
         view_model_->startNewGame(static_cast<core::Difficulty>(selected));
+        board_widget_->selectCell(0, 0);
     }
 }
 

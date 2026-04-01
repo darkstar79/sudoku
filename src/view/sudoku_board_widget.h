@@ -65,6 +65,12 @@ public:
 
     [[nodiscard]] float cellSize() const;
     [[nodiscard]] QPointF boardOrigin() const;
+    void clearHoverHighlight();
+
+    void selectCell(const core::Position& pos);
+    void selectCell(size_t row, size_t col);
+    [[nodiscard]] std::optional<core::Position> selectedCell() const;
+    void clearSelection();
 
     [[nodiscard]] QSize minimumSizeHint() const override;
     [[nodiscard]] QSize sizeHint() const override;
@@ -73,6 +79,8 @@ protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void leaveEvent(QEvent* event) override;
 
 private:
     std::shared_ptr<viewmodel::GameViewModel> view_model_;
@@ -82,10 +90,12 @@ private:
     [[nodiscard]] std::string_view loc(std::string_view key) const {
         return loc_manager_ ? loc_manager_->getString(key) : key;
     }
-    int hovered_candidate_{0};  ///< Currently hovered candidate value (0 = none)
+    int hovered_candidate_{0};                     ///< Currently hovered candidate value (0 = none)
+    std::optional<core::Position> hovered_cell_;   ///< Currently hovered cell (nullopt = mouse outside board)
+    std::optional<core::Position> selected_cell_;  ///< Currently selected cell for editing
 
     void paintCell(QPainter& painter, const model::Cell& cell, size_t row, size_t col, const QPointF& origin,
-                   float cell_size, bool is_selected);
+                   float cell_size, bool is_selected, bool is_region_highlight, bool is_same_value_highlight);
     void paintCellValue(QPainter& painter, const model::Cell& cell, const QRectF& cell_rect);
     void paintCellNotes(QPainter& painter, const model::Cell& cell, const QRectF& cell_rect);
 

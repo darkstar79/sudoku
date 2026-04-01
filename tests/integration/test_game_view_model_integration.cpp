@@ -51,14 +51,8 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         }
         REQUIRE(has_given_cells);
 
-        // Select a cell
-        fixture.view_model->selectCell(0, 0);
-
-        // Get selected position
-        auto selected = game_state.getSelectedPosition();
-        REQUIRE(selected.has_value());
-        REQUIRE(selected->row == 0);
-        REQUIRE(selected->col == 0);
+        // Verify the game state has given cells (puzzle loaded)
+        REQUIRE(has_given_cells);
     }
 
     SECTION("Enter numbers and validate") {
@@ -83,9 +77,9 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
 
         REQUIRE(empty_row != -1);
 
-        // Select empty cell and enter a number
-        fixture.view_model->selectCell(empty_row, empty_col);
-        fixture.view_model->enterNumber(5);
+        // Enter a number at the empty cell
+        Position pos{.row = static_cast<size_t>(empty_row), .col = static_cast<size_t>(empty_col)};
+        fixture.view_model->enterNumber(pos, 5);
 
         [[maybe_unused]] const auto& updated_state = fixture.view_model->gameState.get();
         // Note: The number may or may not be correct, but it should be entered
@@ -114,8 +108,8 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(empty_row != -1);
 
         // Make a move
-        fixture.view_model->selectCell(empty_row, empty_col);
-        fixture.view_model->enterNumber(7);
+        Position undo_pos{.row = static_cast<size_t>(empty_row), .col = static_cast<size_t>(empty_col)};
+        fixture.view_model->enterNumber(undo_pos, 7);
 
         // Verify we can undo
         REQUIRE(fixture.view_model->canUndo());
@@ -159,11 +153,11 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
 
         REQUIRE(empty_row != -1);
 
-        // Select cell and enter notes
-        fixture.view_model->selectCell(empty_row, empty_col);
-        fixture.view_model->enterNote(1);
-        fixture.view_model->enterNote(2);
-        fixture.view_model->enterNote(3);
+        // Enter notes at the cell
+        Position notes_pos{.row = static_cast<size_t>(empty_row), .col = static_cast<size_t>(empty_col)};
+        fixture.view_model->enterNote(notes_pos, 1);
+        fixture.view_model->enterNote(notes_pos, 2);
+        fixture.view_model->enterNote(notes_pos, 3);
 
         auto& with_notes = fixture.view_model->gameState.get();
         auto cell = with_notes.getCell(empty_row, empty_col);
@@ -173,7 +167,7 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(std::find(cell.notes.begin(), cell.notes.end(), 3) != cell.notes.end());
 
         // Enter final number should clear notes
-        fixture.view_model->enterNumber(5);
+        fixture.view_model->enterNumber(notes_pos, 5);
 
         auto& after_number = fixture.view_model->gameState.get();
         REQUIRE(after_number.getCell(empty_row, empty_col).notes.empty());
@@ -202,14 +196,14 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         REQUIRE(empty_row != -1);
 
         // Enter number
-        fixture.view_model->selectCell(empty_row, empty_col);
-        fixture.view_model->enterNumber(8);
+        Position clear_pos{.row = static_cast<size_t>(empty_row), .col = static_cast<size_t>(empty_col)};
+        fixture.view_model->enterNumber(clear_pos, 8);
 
         auto& with_number = fixture.view_model->gameState.get();
         REQUIRE(with_number.getCell(empty_row, empty_col).value == 8);
 
         // Clear cell
-        fixture.view_model->clearSelectedCell();
+        fixture.view_model->clearCell(clear_pos);
 
         auto& after_clear = fixture.view_model->gameState.get();
         REQUIRE(after_clear.getCell(empty_row, empty_col).value == 0);
@@ -223,8 +217,7 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         for (int r = 0; r < 9; ++r) {
             for (int c = 0; c < 9; ++c) {
                 if (!state.getCell(r, c).is_given && state.getCell(r, c).value == 0) {
-                    fixture.view_model->selectCell(r, c);
-                    fixture.view_model->enterNumber(5);
+                    fixture.view_model->enterNumber({.row = static_cast<size_t>(r), .col = static_cast<size_t>(c)}, 5);
                     break;
                 }
             }
@@ -259,8 +252,7 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
         for (int r = 0; r < 9; ++r) {
             for (int c = 0; c < 9; ++c) {
                 if (!state.getCell(r, c).is_given && state.getCell(r, c).value == 0) {
-                    fixture.view_model->selectCell(r, c);
-                    fixture.view_model->enterNumber(3);
+                    fixture.view_model->enterNumber({.row = static_cast<size_t>(r), .col = static_cast<size_t>(c)}, 3);
                     break;
                 }
             }
@@ -279,33 +271,17 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
 
         // Find empty cell
         auto& state = fixture.view_model->gameState.get();
-        int empty_row = -1, empty_col = -1;
-        for (int r = 0; r < 9; ++r) {
-            for (int c = 0; c < 9; ++c) {
-                if (!state.getCell(r, c).is_given && state.getCell(r, c).value == 0) {
-                    empty_row = r;
-                    empty_col = c;
-                    break;
-                }
-            }
-            if (empty_row != -1) {
-                break;
-            }
-        }
-
-        REQUIRE(empty_row != -1);
-
-        // Select cell and get hint
-        fixture.view_model->selectCell(empty_row, empty_col);
+        auto empty_opt = test::findEmptyCell(state);
+        REQUIRE(empty_opt.has_value());
 
         int initial_hints = fixture.view_model->getHintCount();
         REQUIRE(initial_hints > 0);
 
-        // Get hint (this shows possible values but may not decrement hint count in current implementation)
-        fixture.view_model->getHint();
+        // Get hint
+        fixture.view_model->getHint(empty_opt.value());
 
-        // Note: Hint system is basic - just shows possible values
-        // The hint count is managed by game state, not statistics manager calls in this context
+        // Note: Hint system places values when solver finds a Placement step
+        // The hint count is managed by game state
     }
 
     SECTION("Check solution") {
@@ -328,8 +304,7 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
 
         auto empty_cells = empty_cells_opt.value();
         for (size_t i = 0; i < empty_cells.size(); ++i) {
-            fixture.view_model->selectCell(empty_cells[i].row, empty_cells[i].col);
-            fixture.view_model->enterNumber(static_cast<int>((i % 9) + 1));
+            fixture.view_model->enterNumber(empty_cells[i], static_cast<int>((i % 9) + 1));
         }
 
         // Refresh statistics
@@ -364,8 +339,7 @@ TEST_CASE("GameViewModel - Complete game flow", "[game_view_model][integration]"
 
         auto empty_cells = empty_cells_opt.value();
         for (const auto& pos : empty_cells) {
-            fixture.view_model->selectCell(pos.row, pos.col);
-            fixture.view_model->enterNumber(5);
+            fixture.view_model->enterNumber(pos, 5);
         }
 
         // Start second game (should end first session)
@@ -425,14 +399,14 @@ TEST_CASE("GameViewModel - Notes cleanup", "[game_view_model][integration]") {
         // Add notes to related cells (same row)
         for (int c = 0; c < 9; ++c) {
             if (c != target_col && !state.getCell(target_row, c).is_given && state.getCell(target_row, c).value == 0) {
-                fixture.view_model->selectCell(target_row, c);
-                fixture.view_model->enterNote(7);
+                fixture.view_model->enterNote({.row = static_cast<size_t>(target_row), .col = static_cast<size_t>(c)},
+                                              7);
             }
         }
 
         // Place number 7 in target cell
-        fixture.view_model->selectCell(target_row, target_col);
-        fixture.view_model->enterNumber(7);
+        fixture.view_model->enterNumber(
+            {.row = static_cast<size_t>(target_row), .col = static_cast<size_t>(target_col)}, 7);
 
         // Verify notes with value 7 are removed from same row
         auto& after_placement = fixture.view_model->gameState.get();
@@ -478,7 +452,6 @@ TEST_CASE("GameViewModel - Hint-Revealed State Persists After Save/Load", "[game
     initial_state.setDifficulty(core::Difficulty::Easy);
     initial_state.setSolutionBoard(puzzle_result->solution);
     initial_state.startTimer();
-    initial_state.setSelectedPosition({.row = 0, .col = 0});
     view_model.gameState.set(initial_state);
 
     // Find empty cell for hint
@@ -490,8 +463,7 @@ TEST_CASE("GameViewModel - Hint-Revealed State Persists After Save/Load", "[game
     hint_pos = empty_cell_opt.value();
 
     // Apply hint — getHint() now places the value when the solver finds a Placement step
-    view_model.selectCell(hint_pos);
-    view_model.getHint();
+    view_model.getHint(hint_pos);
 
     // Either hint message or error message must be set (hint system responded)
     bool hint_system_responded = !view_model.hintMessage.get().empty() || !view_model.errorMessage.get().empty();
@@ -506,7 +478,7 @@ TEST_CASE("GameViewModel - Hint-Revealed State Persists After Save/Load", "[game
         for (size_t c = 0; c < 9 && !hint_was_placed; ++c) {
             const auto& cell = state_after.getCell({r, c});
             if (cell.is_hint_revealed) {
-                hint_placed_pos = {r, c};
+                hint_placed_pos = {.row = r, .col = c};
                 hint_placed_value = cell.value;
                 hint_was_placed = true;
             }

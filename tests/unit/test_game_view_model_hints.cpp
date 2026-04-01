@@ -40,10 +40,9 @@ TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]")
         // Find and select an empty cell
         auto empty_cell_opt = sudoku::test::findEmptyCell(state);
         REQUIRE(empty_cell_opt.has_value());
-        fixture.view_model->selectCell(empty_cell_opt.value());
 
         // Get hint
-        fixture.view_model->getHint();
+        fixture.view_model->getHint(empty_cell_opt.value());
 
         // Verify hint message contains technique information
         const auto& hint = fixture.view_model->hintMessage.get();
@@ -65,8 +64,7 @@ TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]")
         const auto& state = fixture.view_model->gameState.get();
         auto empty_cell_opt = sudoku::test::findEmptyCell(state);
         REQUIRE(empty_cell_opt.has_value());
-        fixture.view_model->selectCell(empty_cell_opt.value());
-        fixture.view_model->getHint();
+        fixture.view_model->getHint(empty_cell_opt.value());
 
         int after_hints = fixture.view_model->getHintCount();
         REQUIRE(after_hints == 9);
@@ -80,15 +78,14 @@ TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]")
             const auto& current_state = fixture.view_model->gameState.get();
             auto empty_cell_opt = sudoku::test::findEmptyCell(current_state);
             REQUIRE(empty_cell_opt.has_value());
-            fixture.view_model->selectCell(empty_cell_opt.value());
-            fixture.view_model->getHint();
+            fixture.view_model->getHint(empty_cell_opt.value());
         }
 
         REQUIRE(fixture.view_model->getHintCount() == 0);
 
         // Try to get another hint
         fixture.view_model->hintMessage.set("");  // Clear previous message
-        fixture.view_model->getHint();
+        fixture.view_model->getHint(std::nullopt);
 
         // Should show error, not hint
         REQUIRE(fixture.view_model->hintMessage.get().empty());
@@ -117,8 +114,7 @@ TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]")
 
         auto empty_opt = sudoku::test::findEmptyCell(state);
         REQUIRE(empty_opt.has_value());
-        fixture.view_model->selectCell(empty_opt.value());
-        fixture.view_model->getHint();
+        fixture.view_model->getHint(empty_opt.value());
 
         // Hint message is still set (educational explanation)
         REQUIRE_FALSE(fixture.view_model->hintMessage.get().empty());
@@ -145,20 +141,19 @@ TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]")
         const auto& state = fixture.view_model->gameState.get();
 
         // Find a given cell
-        bool found_given = false;
-        for (size_t r = 0; r < 9 && !found_given; ++r) {
-            for (size_t c = 0; c < 9 && !found_given; ++c) {
+        std::optional<Position> given_pos;
+        for (size_t r = 0; r < 9 && !given_pos.has_value(); ++r) {
+            for (size_t c = 0; c < 9 && !given_pos.has_value(); ++c) {
                 if (state.getCell({r, c}).is_given) {
-                    fixture.view_model->selectCell({r, c});
-                    found_given = true;
+                    given_pos = Position{.row = r, .col = c};
                 }
             }
         }
 
-        REQUIRE(found_given);
+        REQUIRE(given_pos.has_value());
 
         // Try to get hint
-        fixture.view_model->getHint();
+        fixture.view_model->getHint(given_pos.value());
 
         // Should show error
         REQUIRE(fixture.view_model->hintMessage.get().empty());
@@ -176,8 +171,7 @@ TEST_CASE("GameViewModel - Hint Message Format", "[game_view_model][hints]") {
         const auto& state = fixture.view_model->gameState.get();
         auto empty_cell_opt = sudoku::test::findEmptyCell(state);
         REQUIRE(empty_cell_opt.has_value());
-        fixture.view_model->selectCell(empty_cell_opt.value());
-        fixture.view_model->getHint();
+        fixture.view_model->getHint(empty_cell_opt.value());
 
         const auto& hint = fixture.view_model->hintMessage.get();
 

@@ -30,9 +30,8 @@ TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
 
     SECTION("Get hint without selection sets error") {
         fixture.view_model->startNewGame(Difficulty::Easy);
-        fixture.view_model->gameState.update([](model::GameState& s) { s.clearSelection(); });
 
-        fixture.view_model->getHint();
+        fixture.view_model->getHint(std::nullopt);
 
         // No cell selected — getHint requires selection
         REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
@@ -44,10 +43,9 @@ TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
         const auto& state = fixture.view_model->gameState.get();
         auto empty = test::findEmptyCell(state);
         REQUIRE(empty.has_value());
-        fixture.view_model->selectCell(empty.value());
 
         int hints_before = fixture.view_model->getHintCount();
-        fixture.view_model->getHint();
+        fixture.view_model->getHint(empty.value());
 
         REQUIRE(fixture.view_model->getHintCount() == hints_before - 1);
         REQUIRE(fixture.view_model->errorMessage.get().empty());
@@ -68,9 +66,8 @@ TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
             }
         });
 
-        // Select a filled cell, then request hint — triggers "cell already has a value" error
-        fixture.view_model->selectCell({.row = 0, .col = 0});
-        fixture.view_model->getHint();
+        // Request hint on a filled cell — triggers "cell already has a value" error
+        fixture.view_model->getHint(Position{.row = 0, .col = 0});
 
         CHECK(!fixture.view_model->errorMessage.get().empty());
     }
@@ -78,18 +75,6 @@ TEST_CASE("GameViewModel - Hint Edge Cases", "[game_view_model][hint]") {
 
 TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]") {
     EdgeCaseTestFixture fixture;
-
-    SECTION("Enter number with no selection") {
-        fixture.view_model->startNewGame(Difficulty::Easy);
-
-        // Clear selection
-        fixture.view_model->gameState.update([](model::GameState& state) { state.clearSelection(); });
-
-        // Try to enter number - should not crash
-        fixture.view_model->enterNumber(5);
-
-        REQUIRE(!fixture.view_model->gameState.get().hasSelection());
-    }
 
     SECTION("Enter number on given cell") {
         fixture.view_model->startNewGame(Difficulty::Easy);
@@ -101,9 +86,8 @@ TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]")
         Position pos = given_pos.value();
         int original_value = state.getCell(pos).value;
 
-        fixture.view_model->selectCell(pos);
-        fixture.view_model->enterNumber(9);
-        fixture.view_model->enterNumber(9);  // Double-press
+        fixture.view_model->enterNumber(pos, 9);
+        fixture.view_model->enterNumber(pos, 9);  // Double-press
 
         const auto& after = fixture.view_model->gameState.get();
         REQUIRE(after.getCell(pos).value == original_value);
@@ -116,12 +100,12 @@ TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]")
         const auto& state = fixture.view_model->gameState.get();
         auto empty_pos = test::findEmptyCell(state);
         REQUIRE(empty_pos.has_value());
+        Position pos = empty_pos.value();
 
-        fixture.view_model->selectCell(empty_pos.value());
-        fixture.view_model->enterNumber(0);
+        fixture.view_model->enterNumber(pos, 0);
 
         const auto& after = fixture.view_model->gameState.get();
-        REQUIRE(after.getCell(empty_pos.value()).value == 0);
+        REQUIRE(after.getCell(pos).value == 0);
     }
 
     SECTION("Enter invalid number (10)") {
@@ -131,29 +115,17 @@ TEST_CASE("GameViewModel - Enter Number Edge Cases", "[game_view_model][enter]")
         const auto& state = fixture.view_model->gameState.get();
         auto empty_pos = test::findEmptyCell(state);
         REQUIRE(empty_pos.has_value());
+        Position pos = empty_pos.value();
 
-        fixture.view_model->selectCell(empty_pos.value());
-        fixture.view_model->enterNumber(10);
+        fixture.view_model->enterNumber(pos, 10);
 
         const auto& after = fixture.view_model->gameState.get();
-        REQUIRE(after.getCell(empty_pos.value()).value == 0);
+        REQUIRE(after.getCell(pos).value == 0);
     }
 }
 
 TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
     EdgeCaseTestFixture fixture;
-
-    SECTION("Enter note with no selection") {
-        fixture.view_model->startNewGame(Difficulty::Easy);
-
-        // Clear selection
-        fixture.view_model->gameState.update([](model::GameState& state) { state.clearSelection(); });
-
-        // Try to enter note - should not crash
-        fixture.view_model->enterNote(5);
-
-        REQUIRE(!fixture.view_model->gameState.get().hasSelection());
-    }
 
     SECTION("Enter note on given cell") {
         fixture.view_model->startNewGame(Difficulty::Easy);
@@ -164,8 +136,7 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
         REQUIRE(given_pos.has_value());
         Position pos = given_pos.value();
 
-        fixture.view_model->selectCell(pos);
-        fixture.view_model->enterNote(5);
+        fixture.view_model->enterNote(pos, 5);
 
         const auto& after = fixture.view_model->gameState.get();
         REQUIRE(after.getCell(pos).notes.empty());
@@ -180,12 +151,11 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
         REQUIRE(empty_pos.has_value());
         Position pos = empty_pos.value();
 
-        fixture.view_model->selectCell(pos);
-        fixture.view_model->enterNumber(5);
-        fixture.view_model->enterNumber(5);  // Double-press
+        fixture.view_model->enterNumber(pos, 5);
+        fixture.view_model->enterNumber(pos, 5);  // Double-press
 
         // Try to add note - should not work
-        fixture.view_model->enterNote(7);
+        fixture.view_model->enterNote(pos, 7);
 
         const auto& after = fixture.view_model->gameState.get();
         REQUIRE(after.getCell(pos).notes.empty());
@@ -198,12 +168,12 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
         const auto& state = fixture.view_model->gameState.get();
         auto empty_pos = test::findEmptyCell(state);
         REQUIRE(empty_pos.has_value());
+        Position pos = empty_pos.value();
 
-        fixture.view_model->selectCell(empty_pos.value());
-        fixture.view_model->enterNote(0);
+        fixture.view_model->enterNote(pos, 0);
 
         const auto& after = fixture.view_model->gameState.get();
-        REQUIRE(after.getCell(empty_pos.value()).notes.empty());
+        REQUIRE(after.getCell(pos).notes.empty());
     }
 
     SECTION("Enter invalid note (10)") {
@@ -213,12 +183,12 @@ TEST_CASE("GameViewModel - Enter Note Edge Cases", "[game_view_model][note]") {
         const auto& state = fixture.view_model->gameState.get();
         auto empty_pos = test::findEmptyCell(state);
         REQUIRE(empty_pos.has_value());
+        Position pos = empty_pos.value();
 
-        fixture.view_model->selectCell(empty_pos.value());
-        fixture.view_model->enterNote(10);
+        fixture.view_model->enterNote(pos, 10);
 
         const auto& after = fixture.view_model->gameState.get();
-        REQUIRE(after.getCell(empty_pos.value()).notes.empty());
+        REQUIRE(after.getCell(pos).notes.empty());
     }
 }
 
@@ -281,35 +251,6 @@ TEST_CASE("GameViewModel - Save/Load Error Paths", "[game_view_model][save]") {
 
         // autoSave() early-returns when no game is active; verify no error was set
         CHECK(fixture.view_model->errorMessage.get().empty());
-    }
-}
-
-TEST_CASE("GameViewModel - Cell Navigation", "[game_view_model][navigation]") {
-    EdgeCaseTestFixture fixture;
-
-    SECTION("Select cell with valid coordinates") {
-        fixture.view_model->startNewGame(Difficulty::Easy);
-
-        fixture.view_model->selectCell(4, 5);
-
-        const auto& state = fixture.view_model->gameState.get();
-        auto selected = state.getSelectedPosition();
-        REQUIRE(selected.has_value());
-        REQUIRE(selected->row == 4);
-        REQUIRE(selected->col == 5);
-    }
-
-    SECTION("Select cell with Position struct") {
-        fixture.view_model->startNewGame(Difficulty::Easy);
-
-        Position pos{.row = 3, .col = 7};
-        fixture.view_model->selectCell(pos);
-
-        const auto& state = fixture.view_model->gameState.get();
-        auto selected = state.getSelectedPosition();
-        REQUIRE(selected.has_value());
-        REQUIRE(selected->row == 3);
-        REQUIRE(selected->col == 7);
     }
 }
 

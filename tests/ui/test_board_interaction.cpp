@@ -56,7 +56,7 @@ void TestBoardInteraction::clickSelectsCell() {
     QTest::mouseClick(board, Qt::LeftButton, Qt::NoModifier, cellCenter(3, 4));
     QApplication::processEvents();
 
-    auto pos = ctx_->game_vm->gameState.get().getSelectedPosition();
+    auto pos = window_->board_widget_->selectedCell();
     QVERIFY(pos.has_value());
     QCOMPARE(pos->row, 3U);
     QCOMPARE(pos->col, 4U);
@@ -68,7 +68,7 @@ void TestBoardInteraction::clickDifferentCellMovesSelection() {
     QTest::mouseClick(board, Qt::LeftButton, Qt::NoModifier, cellCenter(7, 2));
     QApplication::processEvents();
 
-    auto pos = ctx_->game_vm->gameState.get().getSelectedPosition();
+    auto pos = window_->board_widget_->selectedCell();
     QVERIFY(pos.has_value());
     QCOMPARE(pos->row, 7U);
     QCOMPARE(pos->col, 2U);

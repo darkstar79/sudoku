@@ -68,11 +68,9 @@ TEST_CASE("GameViewModel - Conflict Highlighting", "[game_view_model][conflicts]
         REQUIRE(setup.has_value());
 
         // Place same value in two cells of the same row
-        fixture.view_model->selectCell(setup->cell_a);
-        fixture.view_model->enterNumber(setup->value);
+        fixture.view_model->enterNumber(setup->cell_a, setup->value);
 
-        fixture.view_model->selectCell(setup->cell_b);
-        fixture.view_model->enterNumber(setup->value);
+        fixture.view_model->enterNumber(setup->cell_b, setup->value);
 
         // Both cells should be marked as conflicting
         const auto& state = fixture.view_model->gameState.get();
@@ -88,8 +86,7 @@ TEST_CASE("GameViewModel - Conflict Highlighting", "[game_view_model][conflicts]
                     Position pos{row, col};
                     auto possible = fixture.validator->getPossibleValues(state.extractNumbers(), pos);
                     if (!possible.empty()) {
-                        fixture.view_model->selectCell(pos);
-                        fixture.view_model->enterNumber(possible[0]);
+                        fixture.view_model->enterNumber(pos, possible[0]);
 
                         const auto& after = fixture.view_model->gameState.get();
                         REQUIRE_FALSE(after.getCell(pos).has_conflict);
@@ -105,10 +102,8 @@ TEST_CASE("GameViewModel - Conflict Highlighting", "[game_view_model][conflicts]
         REQUIRE(setup.has_value());
 
         // Create a conflict
-        fixture.view_model->selectCell(setup->cell_a);
-        fixture.view_model->enterNumber(setup->value);
-        fixture.view_model->selectCell(setup->cell_b);
-        fixture.view_model->enterNumber(setup->value);
+        fixture.view_model->enterNumber(setup->cell_a, setup->value);
+        fixture.view_model->enterNumber(setup->cell_b, setup->value);
 
         // Verify conflict exists
         REQUIRE(fixture.view_model->gameState.get().getCell(setup->cell_b).has_conflict);
@@ -126,10 +121,8 @@ TEST_CASE("GameViewModel - Conflict Highlighting", "[game_view_model][conflicts]
         REQUIRE(setup.has_value());
 
         // Create a conflict
-        fixture.view_model->selectCell(setup->cell_a);
-        fixture.view_model->enterNumber(setup->value);
-        fixture.view_model->selectCell(setup->cell_b);
-        fixture.view_model->enterNumber(setup->value);
+        fixture.view_model->enterNumber(setup->cell_a, setup->value);
+        fixture.view_model->enterNumber(setup->cell_b, setup->value);
 
         // Undo then redo
         fixture.view_model->undo();
@@ -148,16 +141,13 @@ TEST_CASE("GameViewModel - Conflict Highlighting", "[game_view_model][conflicts]
         REQUIRE(setup.has_value());
 
         // Create a conflict
-        fixture.view_model->selectCell(setup->cell_a);
-        fixture.view_model->enterNumber(setup->value);
-        fixture.view_model->selectCell(setup->cell_b);
-        fixture.view_model->enterNumber(setup->value);
+        fixture.view_model->enterNumber(setup->cell_a, setup->value);
+        fixture.view_model->enterNumber(setup->cell_b, setup->value);
 
         REQUIRE(fixture.view_model->gameState.get().getCell(setup->cell_a).has_conflict);
 
         // Clear the second cell
-        fixture.view_model->selectCell(setup->cell_b);
-        fixture.view_model->clearSelectedCell();
+        fixture.view_model->clearCell(setup->cell_b);
 
         // Conflict should be cleared for both cells
         const auto& state = fixture.view_model->gameState.get();
@@ -181,8 +171,8 @@ TEST_CASE("GameViewModel - Mistake Counter", "[game_view_model][mistakes]") {
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (size_t col = 0; col < BOARD_SIZE; ++col) {
                 if (state.getCell(row, col).value == 0) {
-                    fixture.view_model->selectCell({.row = row, .col = col});
-                    fixture.view_model->enterNumber(solution[row][col]);
+                    Position pos1{.row = row, .col = col};
+                    fixture.view_model->enterNumber(pos1, solution[row][col]);
                     REQUIRE(fixture.view_model->getMistakeCount() == 0);
 
                     // Now find another empty cell and place a wrong value — mistake
@@ -191,8 +181,8 @@ TEST_CASE("GameViewModel - Mistake Counter", "[game_view_model][mistakes]") {
                         for (size_t c2 = 0; c2 < BOARD_SIZE; ++c2) {
                             if (state2.getCell(r2, c2).value == 0) {
                                 int wrong = (solution[r2][c2] % 9) + 1;
-                                fixture.view_model->selectCell({.row = r2, .col = c2});
-                                fixture.view_model->enterNumber(wrong);
+                                Position pos2{.row = r2, .col = c2};
+                                fixture.view_model->enterNumber(pos2, wrong);
                                 REQUIRE(fixture.view_model->getMistakeCount() == 1);
                                 return;
                             }
@@ -211,10 +201,9 @@ TEST_CASE("GameViewModel - Mistake Counter", "[game_view_model][mistakes]") {
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (size_t col = 0; col < BOARD_SIZE; ++col) {
                 if (state.getCell(row, col).value == 0) {
-                    Position pos{row, col};
+                    Position pos{.row = row, .col = col};
                     int correct_value = solution[row][col];
-                    fixture.view_model->selectCell(pos);
-                    fixture.view_model->enterNumber(correct_value);
+                    fixture.view_model->enterNumber(pos, correct_value);
 
                     REQUIRE(fixture.view_model->getMistakeCount() == 0);
                     return;
@@ -234,8 +223,8 @@ TEST_CASE("GameViewModel - Mistake Counter", "[game_view_model][mistakes]") {
                 if (state.getCell(row, col).value == 0) {
                     int correct = solution[row][col];
                     int wrong = (correct % 9) + 1;  // Different from correct
-                    fixture.view_model->selectCell({.row = row, .col = col});
-                    fixture.view_model->enterNumber(wrong);
+                    Position pos{.row = row, .col = col};
+                    fixture.view_model->enterNumber(pos, wrong);
                     REQUIRE(fixture.view_model->getMistakeCount() == 1);
 
                     // Undo the mistake

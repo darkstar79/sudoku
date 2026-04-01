@@ -50,13 +50,10 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
         REQUIRE(empty_cell_opt.has_value());
         Position empty_cell = empty_cell_opt.value();
 
-        // Select the empty cell
-        view_model.selectCell(empty_cell.row, empty_cell.col);
-
         // Add some pencil marks (notes)
-        view_model.enterNote(1);
-        view_model.enterNote(2);
-        view_model.enterNote(3);
+        view_model.enterNote(empty_cell, 1);
+        view_model.enterNote(empty_cell, 2);
+        view_model.enterNote(empty_cell, 3);
 
         // Verify notes were added
         const auto& cell_with_notes = view_model.gameState.get().getCell(empty_cell);
@@ -67,7 +64,7 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
         REQUIRE(cell_with_notes.value == 0);
 
         // Place a number (this should clear notes)
-        view_model.enterNumber(5);
+        view_model.enterNumber(empty_cell, 5);
 
         // Verify number was placed and notes were cleared
         const auto& cell_after_place = view_model.gameState.get().getCell(empty_cell);
@@ -93,15 +90,14 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
         REQUIRE(target_cell_opt.has_value());
         Position target_cell = target_cell_opt.value();
 
-        // Select and place a number
-        view_model.selectCell(target_cell.row, target_cell.col);
-        view_model.enterNumber(7);
+        // Place a number
+        view_model.enterNumber(target_cell, 7);
 
         // Verify number was placed
         REQUIRE(view_model.gameState.get().getCell(target_cell).value == 7);
 
         // Clear the cell
-        view_model.clearSelectedCell();
+        view_model.clearCell(target_cell);
 
         // Verify cell was cleared
         REQUIRE(view_model.gameState.get().getCell(target_cell).value == 0);
@@ -125,18 +121,17 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
         auto empty_cell_opt = test::findEmptyCell(game_state);
         REQUIRE(empty_cell_opt.has_value());
         Position empty_cell = empty_cell_opt.value();
-        view_model.selectCell(empty_cell.row, empty_cell.col);
 
         // Add notes
-        view_model.enterNote(4);
-        view_model.enterNote(5);
+        view_model.enterNote(empty_cell, 4);
+        view_model.enterNote(empty_cell, 5);
 
         // Verify notes
         const auto& cell = view_model.gameState.get().getCell(empty_cell);
         REQUIRE(cell.notes.count() == 2);
 
         // Place number
-        view_model.enterNumber(9);
+        view_model.enterNumber(empty_cell, 9);
         REQUIRE(view_model.gameState.get().getCell(empty_cell).value == 9);
         REQUIRE(view_model.gameState.get().getCell(empty_cell).notes.empty());
 

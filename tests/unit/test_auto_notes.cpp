@@ -103,8 +103,7 @@ TEST_CASE("GameViewModel - fillNotes updates after placing a number", "[game_vie
     auto solution = state.getSolutionBoard();
     int correct_value = solution[pos.row][pos.col];
 
-    f.base.view_model->selectCell(pos);
-    f.base.view_model->enterNumber(correct_value);
+    f.base.view_model->enterNumber(pos, correct_value);
 
     // Fill again — should reflect the new board state
     f.base.view_model->fillNotes();
@@ -123,8 +122,7 @@ TEST_CASE("GameViewModel - manual notes work independently of fillNotes", "[game
     auto pos = empty_opt.value();
 
     // Manual note entry works
-    f.base.view_model->selectCell(pos);
-    f.base.view_model->enterNote(5);
+    f.base.view_model->enterNote(pos, 5);
 
     auto notes = f.base.view_model->gameState.get().getCell(pos).notes;
     REQUIRE(std::find(notes.begin(), notes.end(), 5) != notes.end());
@@ -148,8 +146,7 @@ TEST_CASE("GameViewModel - fillNotes is one-shot, not persistent", "[game_view_m
     auto pos = empty_opt.value();
     auto solution = state.getSolutionBoard();
 
-    f.base.view_model->selectCell(pos);
-    f.base.view_model->enterNumber(solution[pos.row][pos.col]);
+    f.base.view_model->enterNumber(pos, solution[pos.row][pos.col]);
 
     // Notes were cleaned up (conflicting removed) but not fully recomputed
     // Some cells may have stale notes — this is expected (one-shot behavior)

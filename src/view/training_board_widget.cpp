@@ -22,7 +22,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <utility>
 #include <vector>
 
 #include <QFont>
@@ -51,7 +50,7 @@ void TrainingBoardWidget::setBoard(const core::TrainingBoard& board) {
     update();
 }
 
-void TrainingBoardWidget::setSelectedCell(std::optional<std::pair<size_t, size_t>> cell) {
+void TrainingBoardWidget::setSelectedCell(std::optional<core::Position> cell) {
     if (selected_cell_ != cell) {
         selected_cell_ = cell;
         update();
@@ -70,8 +69,8 @@ void TrainingBoardWidget::keyPressEvent(QKeyEvent* event) {
         size_t row = 0;
         size_t col = 0;
         if (selected_cell_.has_value()) {
-            row = selected_cell_->first;
-            col = selected_cell_->second;
+            row = selected_cell_->row;
+            col = selected_cell_->col;
         }
 
         switch (key) {
@@ -212,7 +211,7 @@ void TrainingBoardWidget::paintCell(QPainter& painter, size_t row, size_t col, c
     QRectF cell_rect(origin.x() + (static_cast<float>(col) * cell_size),
                      origin.y() + (static_cast<float>(row) * cell_size), cell_size, cell_size);
 
-    bool is_selected = selected_cell_.has_value() && selected_cell_->first == row && selected_cell_->second == col;
+    bool is_selected = selected_cell_.has_value() && selected_cell_->row == row && selected_cell_->col == col;
 
     // Determine background color (priority: selection > found > player color > highlight role > hover > default)
     QColor bg = BoardColors::CELL_BACKGROUND;

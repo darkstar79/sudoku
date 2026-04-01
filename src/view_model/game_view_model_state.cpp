@@ -51,7 +51,7 @@ void GameViewModel::executeCommand(GameCommand command) {
             redo();
             break;
         case GameCommand::GetHint:
-            getHint();
+            getHint(std::nullopt);
             break;
         case GameCommand::ResetGame:
             resetGame();
@@ -220,11 +220,11 @@ std::vector<std::string> GameViewModel::formatTechniques(const std::set<core::So
 }
 
 std::string GameViewModel::getFormattedTime() const {
-    if (!isGameActive()) {
+    const auto& current_state = gameState.get();
+    if (!current_state.isTimerRunning() && !current_state.isComplete()) {
         return "00:00:00";
     }
 
-    const auto& current_state = gameState.get();
     auto elapsed = current_state.getElapsedTime();
     return formatTime(elapsed);
 }

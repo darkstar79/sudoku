@@ -284,7 +284,7 @@ void TrainingViewModel::selectCell(size_t row, size_t col) {
     if (row >= BOARD_SIZE || col >= BOARD_SIZE) {
         return;
     }
-    trainingState.update([row, col](TrainingUIState& s) { s.selected_cell = std::pair{row, col}; });
+    trainingState.update([row, col](TrainingUIState& s) { s.selected_cell = Position{.row = row, .col = col}; });
 }
 
 void TrainingViewModel::applyNumber(int value) {
@@ -293,9 +293,9 @@ void TrainingViewModel::applyNumber(int value) {
         return;
     }
 
-    auto [row, col] = *state.selected_cell;
+    const auto& pos = *state.selected_cell;
     auto board = trainingBoard.get();
-    auto& cell = board[row][col];
+    auto& cell = board[pos.row][pos.col];
 
     if (cell.is_given || cell.is_found || cell.value != 0) {
         return;
@@ -315,7 +315,7 @@ void TrainingViewModel::applyNumber(int value) {
             cell.player_selected = true;
         } else {
             // Restore only if this candidate was present in the original board
-            const auto& orig = original_board_[row][col];
+            const auto& orig = original_board_[pos.row][pos.col];
             if (std::ranges::find(orig.candidates, value) != orig.candidates.end()) {
                 cell.candidates.push_back(value);
                 std::ranges::sort(cell.candidates);
@@ -333,9 +333,9 @@ void TrainingViewModel::applyColor(int color) {
         return;
     }
 
-    auto [row, col] = *state.selected_cell;
+    const auto& pos = *state.selected_cell;
     auto board = trainingBoard.get();
-    auto& cell = board[row][col];
+    auto& cell = board[pos.row][pos.col];
 
     if (cell.is_given) {
         return;

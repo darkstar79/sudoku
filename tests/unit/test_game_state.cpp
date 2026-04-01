@@ -310,69 +310,6 @@ TEST_CASE("GameState - Note Management", "[game_state][notes]") {
     }
 }
 
-TEST_CASE("GameState - Highlight Management", "[game_state][highlight]") {
-    GameState state;
-
-    SECTION("Highlight number") {
-        state.setValue({.row = 0, .col = 0}, 5);
-        state.setValue({.row = 1, .col = 1}, 5);
-        state.setValue({.row = 2, .col = 2}, 3);
-
-        state.highlightNumber(5);
-
-        REQUIRE(state.getCell({.row = 0, .col = 0}).is_highlighted == true);
-        REQUIRE(state.getCell({.row = 1, .col = 1}).is_highlighted == true);
-        REQUIRE(state.getCell({.row = 2, .col = 2}).is_highlighted == false);
-    }
-
-    SECTION("Clear highlights") {
-        state.setHighlighted({.row = 0, .col = 0}, true);
-        state.setHighlighted({.row = 1, .col = 1}, true);
-
-        state.clearHighlights();
-
-        REQUIRE(state.getCell({.row = 0, .col = 0}).is_highlighted == false);
-        REQUIRE(state.getCell({.row = 1, .col = 1}).is_highlighted == false);
-    }
-
-    SECTION("Highlight related cells") {
-        state.highlightRelated({.row = 4, .col = 4});
-
-        // Check same row
-        REQUIRE(state.getCell({.row = 4, .col = 0}).is_highlighted == true);
-        REQUIRE(state.getCell({.row = 4, .col = 8}).is_highlighted == true);
-
-        // Check same column
-        REQUIRE(state.getCell({.row = 0, .col = 4}).is_highlighted == true);
-        REQUIRE(state.getCell({.row = 8, .col = 4}).is_highlighted == true);
-
-        // Check same 3x3 box (middle box)
-        REQUIRE(state.getCell({.row = 3, .col = 3}).is_highlighted == true);
-        REQUIRE(state.getCell({.row = 5, .col = 5}).is_highlighted == true);
-
-        // Check unrelated cell
-        REQUIRE(state.getCell({.row = 0, .col = 0}).is_highlighted == false);
-    }
-
-    SECTION("Highlight related with invalid position") {
-        state.highlightRelated({.row = 100, .col = 100});
-        // Should not crash, no highlights
-        REQUIRE(state.getCell({.row = 0, .col = 0}).is_highlighted == false);
-    }
-
-    SECTION("Highlight number 0 (invalid)") {
-        state.highlightNumber(0);
-        // Should clear highlights only
-        REQUIRE(state.getCell({.row = 0, .col = 0}).is_highlighted == false);
-    }
-
-    SECTION("Highlight number 10 (invalid)") {
-        state.highlightNumber(10);
-        // Should clear highlights only
-        REQUIRE(state.getCell({.row = 0, .col = 0}).is_highlighted == false);
-    }
-}
-
 TEST_CASE("GameState - Board Operations", "[game_state][board]") {
     GameState state;
 
@@ -382,8 +319,6 @@ TEST_CASE("GameState - Board Operations", "[game_state][board]") {
         state.setComplete(true);
         state.incrementMoves();
         state.incrementMistakes();
-        state.setSelectedPosition({.row = 2, .col = 2});
-
         state.clearBoard();
 
         REQUIRE(state.getCell({.row = 0, .col = 0}).value == 0);
@@ -391,7 +326,6 @@ TEST_CASE("GameState - Board Operations", "[game_state][board]") {
         REQUIRE(state.isComplete() == false);
         REQUIRE(state.getMoveCount() == 0);
         REQUIRE(state.getMistakeCount() == 0);
-        REQUIRE(state.getSelectedPosition().has_value() == false);
     }
 
     SECTION("Load puzzle") {
@@ -425,37 +359,6 @@ TEST_CASE("GameState - Board Operations", "[game_state][board]") {
         REQUIRE(numbers[1][1] == 2);
         REQUIRE(numbers[2][2] == 3);
         REQUIRE(numbers[3][3] == 0);
-    }
-}
-
-TEST_CASE("GameState - Selection", "[game_state][selection]") {
-    GameState state;
-
-    SECTION("Initial selection") {
-        REQUIRE(state.getSelectedPosition().has_value() == false);
-    }
-
-    SECTION("Select cell") {
-        state.setSelectedPosition({.row = 3, .col = 4});
-        auto pos = state.getSelectedPosition();
-        REQUIRE(pos.has_value() == true);
-        REQUIRE(pos->row == 3);
-        REQUIRE(pos->col == 4);
-    }
-
-    SECTION("Clear selection") {
-        state.setSelectedPosition({.row = 1, .col = 2});
-        state.clearSelection();
-        REQUIRE(state.getSelectedPosition().has_value() == false);
-    }
-
-    SECTION("Set selected position") {
-        Position pos{.row = 5, .col = 6};
-        state.setSelectedPosition(pos);
-        auto selected = state.getSelectedPosition();
-        REQUIRE(selected.has_value() == true);
-        REQUIRE(selected->row == 5);
-        REQUIRE(selected->col == 6);
     }
 }
 
@@ -506,11 +409,6 @@ TEST_CASE("GameState - Equality Operator", "[game_state][equality]") {
 
     SECTION("Not equal after mistake count change") {
         state1.incrementMistakes();
-        REQUIRE(!(state1 == state2));
-    }
-
-    SECTION("Not equal after selection change") {
-        state1.setSelectedPosition({.row = 0, .col = 0});
         REQUIRE(!(state1 == state2));
     }
 }

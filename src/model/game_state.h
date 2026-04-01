@@ -37,7 +37,6 @@ struct Cell {
     bool is_given{false};          // True if this was part of original puzzle
     bool is_hint_revealed{false};  // True if value was revealed by hint
     bool has_conflict{false};      // True if this cell has a conflict
-    bool is_highlighted{false};    // True if cell is highlighted in UI
 
     bool operator==(const Cell& other) const = default;
 };
@@ -61,7 +60,6 @@ public:
             .is_given = givens_(row, col),
             .is_hint_revealed = hints_revealed_(row, col),
             .has_conflict = conflicts_(row, col),
-            .is_highlighted = highlights_(row, col),
         };
     }
 
@@ -106,16 +104,6 @@ public:
     void incrementMoves();
     void incrementMistakes();
 
-    // Selection state
-    [[nodiscard]] std::optional<core::Position> getSelectedPosition() const {
-        return selected_position_;
-    }
-    void setSelectedPosition(const core::Position& pos);
-    void clearSelection();
-    [[nodiscard]] bool hasSelection() const {
-        return selected_position_.has_value();
-    }
-
     // Board operations
     void clearBoard();
     void loadPuzzle(const core::BoardData& puzzle);
@@ -133,7 +121,6 @@ public:
     [[nodiscard]] bool isGiven(const core::Position& pos) const;
     void setGiven(const core::Position& pos, bool given);
     void setConflict(const core::Position& pos, bool conflict);
-    void setHighlighted(const core::Position& pos, bool highlighted);
     void setHintRevealed(const core::Position& pos, bool revealed);
 
     // Per-cell notes access
@@ -151,11 +138,6 @@ public:
     void removeNote(const core::Position& pos, int value);
     void clearNotes(const core::Position& pos);
     void toggleNote(const core::Position& pos, int value);
-
-    // Highlighting
-    void highlightNumber(int number);
-    void clearHighlights();
-    void highlightRelated(const core::Position& pos);  // Same row/col/box
 
     // Hint tracking
     void markCellAsHintRevealed(const core::Position& pos);
@@ -208,7 +190,6 @@ private:
     core::CellFlags givens_;
     core::CellFlags hints_revealed_;
     core::CellFlags conflicts_;
-    core::CellFlags highlights_;
     std::optional<core::BoardData> solution_board_;  // Complete solution for hints
 
     // Game metadata
@@ -225,9 +206,6 @@ private:
     // Move tracking
     int move_count_{0};
     int mistake_count_{0};
-
-    // UI state
-    std::optional<core::Position> selected_position_;
 
     // Analysis cell colors (ephemeral — not saved/loaded, not part of undo)
     std::array<std::array<uint8_t, core::BOARD_SIZE>, core::BOARD_SIZE> cell_colors_{};
