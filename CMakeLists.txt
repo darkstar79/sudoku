@@ -187,6 +187,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 )
 
 # Testing
+enable_testing()
 if(Catch2_FOUND)
     add_subdirectory(tests)
 endif()

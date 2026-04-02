@@ -6,9 +6,6 @@ if(NOT Catch2_FOUND)
     return()
 endif()
 
-# Test configuration
-enable_testing()
-
 # Include source directories for testing
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
