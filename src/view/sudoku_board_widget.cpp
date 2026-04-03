@@ -336,9 +336,7 @@ void SudokuBoardWidget::paintCell(QPainter& painter, const RenderCell& cell, siz
 }
 
 void SudokuBoardWidget::paintCellValue(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect) {
-    bool is_locked = cell.is_given || cell.is_found;
-    QFont font("Sans", BoardPainter::valueFontSize(static_cast<float>(cell_rect.height())),
-               is_locked ? QFont::Bold : QFont::Normal);
+    QFont font("Sans", BoardPainter::valueFontSize(static_cast<float>(cell_rect.height())), QFont::Bold);
     painter.setFont(font);
 
     QColor text_color = BoardColors::TEXT_GIVEN;
