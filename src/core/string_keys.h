@@ -80,6 +80,7 @@ inline constexpr std::string_view ButtonUndoToValid = "button.undo_to_valid";
 inline constexpr std::string_view ButtonAutoNotesOn = "button.auto_notes_on";
 inline constexpr std::string_view ButtonAutoNotesOff = "button.auto_notes_off";
 inline constexpr std::string_view ButtonFillNotes = "button.fill_notes";
+inline constexpr std::string_view ButtonClearNotes = "button.clear_notes";
 inline constexpr std::string_view ButtonUndoUntilValid = "button.undo_until_valid";
 
 // =========================================================================

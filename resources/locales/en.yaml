@@ -52,6 +52,7 @@ strings:
   button.auto_notes_on: "Auto Notes: ON"
   button.auto_notes_off: "Auto Notes: OFF"
   button.fill_notes: "Fill Notes"
+  button.clear_notes: "Clear Notes"
   button.undo_until_valid: "Undo Until Valid"
 
   # Input modes

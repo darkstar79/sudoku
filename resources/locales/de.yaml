@@ -52,6 +52,7 @@ strings:
   button.auto_notes_on: "Auto-Notizen: EIN"
   button.auto_notes_off: "Auto-Notizen: AUS"
   button.fill_notes: "Notizen füllen"
+  button.clear_notes: "Notizen löschen"
   button.undo_until_valid: "Bis gültig rückgängig"
 
   # Eingabemodi

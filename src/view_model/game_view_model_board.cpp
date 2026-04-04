@@ -82,6 +82,9 @@ void GameViewModel::enterNumber(const core::Position& pos, int number) {
 
     spdlog::debug("Placed {} at ({}, {}){}", number, pos.row, pos.col, is_mistake ? " [MISTAKE]" : "");
 
+    // Notes are now stale — reset toggle so next press re-fills
+    uiState.update([](UIState& state) { state.notes_filled = false; });
+
     // Check for completion
     checkGameCompletion();
 
@@ -158,6 +161,9 @@ void GameViewModel::clearCell(const core::Position& pos) {
     applyMove(move);
     recordMove(move, false);  // Clearing is not a mistake
 
+    // Notes are now stale — reset toggle so next press re-fills
+    uiState.update([](UIState& state) { state.notes_filled = false; });
+
     updateUIState();
     spdlog::debug("Cell cleared at ({}, {})", pos.row, pos.col);
 }
@@ -182,8 +188,24 @@ void GameViewModel::recomputeAutoNotes() {
 }
 
 void GameViewModel::fillNotes() {
-    recomputeAutoNotes();
-    spdlog::info("Filled pencil marks for all empty cells");
+    if (uiState.get().notes_filled) {
+        clearAllNotes();
+        uiState.update([](UIState& state) { state.notes_filled = false; });
+        spdlog::info("Cleared all pencil marks");
+    } else {
+        recomputeAutoNotes();
+        uiState.update([](UIState& state) { state.notes_filled = true; });
+        spdlog::info("Filled pencil marks for all empty cells");
+    }
+}
+
+void GameViewModel::clearAllNotes() {
+    gameState.update([](model::GameState& state) {
+        core::forEachCell([&](size_t row, size_t col) {
+            core::Position pos{.row = row, .col = col};
+            state.clearNotes(pos);
+        });
+    });
 }
 
 void GameViewModel::colorCell(const core::Position& pos, uint8_t color_index) {

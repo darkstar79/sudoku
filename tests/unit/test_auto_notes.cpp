@@ -132,6 +132,48 @@ TEST_CASE("GameViewModel - manual notes work independently of fillNotes", "[game
     REQUIRE(f.allNotesMatchPossibleValues());
 }
 
+TEST_CASE("GameViewModel - fillNotes toggles between fill and clear", "[game_view_model][fill_notes]") {
+    FillNotesFixture f;
+    f.startGame();
+
+    // First press fills notes
+    f.base.view_model->fillNotes();
+    REQUIRE(f.countTotalNotes() > 0);
+    REQUIRE(f.base.view_model->uiState.get().notes_filled);
+
+    // Second press clears all notes
+    f.base.view_model->fillNotes();
+    REQUIRE(f.countTotalNotes() == 0);
+    REQUIRE_FALSE(f.base.view_model->uiState.get().notes_filled);
+
+    // Third press fills again
+    f.base.view_model->fillNotes();
+    REQUIRE(f.countTotalNotes() > 0);
+    REQUIRE(f.base.view_model->uiState.get().notes_filled);
+}
+
+TEST_CASE("GameViewModel - placing number resets notes_filled toggle", "[game_view_model][fill_notes]") {
+    FillNotesFixture f;
+    f.startGame();
+    f.base.view_model->fillNotes();
+    REQUIRE(f.base.view_model->uiState.get().notes_filled);
+
+    // Place a number — toggle resets so next press re-fills
+    const auto& state = f.base.view_model->gameState.get();
+    auto empty_opt = test::findEmptyCell(state);
+    REQUIRE(empty_opt.has_value());
+    auto pos = empty_opt.value();
+    auto solution = state.getSolutionBoard();
+    f.base.view_model->enterNumber(pos, solution[pos.row][pos.col]);
+
+    REQUIRE_FALSE(f.base.view_model->uiState.get().notes_filled);
+
+    // Next fillNotes re-fills (not clears)
+    f.base.view_model->fillNotes();
+    REQUIRE(f.countTotalNotes() > 0);
+    REQUIRE(f.allNotesMatchPossibleValues());
+}
+
 TEST_CASE("GameViewModel - fillNotes is one-shot, not persistent", "[game_view_model][fill_notes]") {
     FillNotesFixture f;
     f.startGame();

@@ -192,6 +192,7 @@ void GameViewModel::updateUIState() {
     // Preserve user preferences across UI state updates
     const auto& prev = uiState.get();
     ui.input_mode = prev.input_mode;
+    ui.notes_filled = prev.notes_filled;
 
     uiState.set(ui);
 }

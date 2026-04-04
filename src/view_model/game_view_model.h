@@ -77,6 +77,7 @@ struct UIState {
     InputMode input_mode{InputMode::Normal};
     bool show_conflicts{true};
     bool show_hints{true};
+    bool notes_filled{false};
     std::string status_message;
     std::string time_display;
     double puzzle_rating{0.0};                   // Sudoku Explainer rating (SE 1.0-12.0 scale)
@@ -261,6 +262,7 @@ private:
     [[nodiscard]] static std::string formatTime(std::chrono::milliseconds time);
     void autoSaveIfNeeded();
     void recomputeAutoNotes();
+    void clearAllNotes();
     void updateConflictHighlighting();
     [[nodiscard]] bool hasBoardErrors() const;
 

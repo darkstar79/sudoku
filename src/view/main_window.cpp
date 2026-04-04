@@ -126,6 +126,7 @@ void MainWindow::setupCentralWidget() {
     redo_btn_ = new QPushButton(qstr(loc(ButtonRedo)));
     undo_valid_btn_ = new QPushButton(qstr(loc(ButtonUndoUntilValid)));
     auto_notes_btn_ = new QPushButton(qstr(loc(ButtonFillNotes)));
+    auto_notes_btn_->setCheckable(true);
     mode_btn_ = new QPushButton(qstr(loc(ModeNormal)));
     mode_btn_->setToolTip(qstr(loc(TooltipInputMode)));
 
@@ -589,6 +590,11 @@ void MainWindow::updateButtonPanel() {
             mode_btn_->setText(qstr(loc(ModeColor)));
             break;
     }
+
+    // Update fill notes toggle state
+    const auto& ui = view_model_->uiState.get();
+    auto_notes_btn_->setChecked(ui.notes_filled);
+    auto_notes_btn_->setText(qstr(loc(ui.notes_filled ? ButtonClearNotes : ButtonFillNotes)));
 }
 
 // Dialog methods
@@ -1041,7 +1047,7 @@ void MainWindow::retranslateUi() {
     undo_btn_->setText(qstr(loc(ButtonUndo)));
     redo_btn_->setText(qstr(loc(ButtonRedo)));
     undo_valid_btn_->setText(qstr(loc(ButtonUndoUntilValid)));
-    auto_notes_btn_->setText(qstr(loc(ButtonFillNotes)));
+    auto_notes_btn_->setText(qstr(loc(auto_notes_btn_->isChecked() ? ButtonClearNotes : ButtonFillNotes)));
     mode_btn_->setToolTip(qstr(loc(TooltipInputMode)));
 
     // Training widget: rebuild pages with new locale, then re-bind VM
