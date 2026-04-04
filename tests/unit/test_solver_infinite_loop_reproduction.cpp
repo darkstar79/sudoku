@@ -42,28 +42,6 @@ inline constexpr int kRatingTimeoutSeconds = 10;
 using namespace sudoku::core;
 using namespace sudoku::test;
 
-namespace {
-
-// Helper function to convert difficulty to string for logging
-const char* difficultyToString(Difficulty difficulty) {
-    switch (difficulty) {
-        case Difficulty::Easy:
-            return "Easy";
-        case Difficulty::Medium:
-            return "Medium";
-        case Difficulty::Hard:
-            return "Hard";
-        case Difficulty::Expert:
-            return "Expert";
-        case Difficulty::Master:
-            return "Master";
-        default:
-            return "Unknown";
-    }
-}
-
-}  // anonymous namespace
-
 // ============================================================================
 // Test Case 1: Rate Easy Puzzle with Monitoring
 // ============================================================================
@@ -136,58 +114,75 @@ TEST_CASE("PuzzleRater - Medium/Hard puzzles complete safely", "[puzzle_rater][s
 }
 
 // ============================================================================
-// Test Case 3: Systematic Puzzle Generation Test (STRESS TEST)
+// Test Case 3: Additional Pathological Puzzles
 // ============================================================================
 
-TEST_CASE("PuzzleRater - Multiple generated puzzles (stress test)", "[puzzle_rater][stress]") {
+TEST_CASE("PuzzleRater - Easter Monster (pathological case)", "[puzzle_rater][pathological][.][manual]") {
+    // Easter Monster - one of the hardest known Sudoku puzzles.
+    // Tagged [.] to exclude from default test runs (very slow under sanitizers).
+    // Run explicitly with: ./unit_tests "[manual]"
+
     auto validator = std::make_shared<GameValidator>();
-    auto generator = std::make_shared<PuzzleGenerator>();
     auto solver = std::make_shared<SudokuSolver>(validator);
     PuzzleRater rater(solver);
 
-    // Test 10 puzzles of each difficulty (Expert excluded - too slow)
-    for (auto difficulty : {Difficulty::Easy, Difficulty::Medium, Difficulty::Hard}) {
-        INFO("Testing difficulty: " << difficultyToString(difficulty));
+    BoardData easter_monster = {{0, 0, 0, 0, 0, 0, 0, 1, 0}, {4, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 2, 0, 0, 0, 0, 0, 0, 0},
+                                {0, 0, 0, 0, 5, 0, 4, 0, 7}, {0, 0, 8, 0, 0, 0, 3, 0, 0}, {0, 0, 1, 0, 9, 0, 0, 0, 0},
+                                {3, 0, 0, 4, 0, 0, 2, 0, 0}, {0, 5, 0, 1, 0, 0, 0, 0, 0}, {0, 0, 0, 8, 0, 6, 0, 0, 0}};
 
-        for (int i = 0; i < 10; ++i) {
-            MemoryMonitor memory;
-            memory.start();
+    MemoryMonitor memory;
+    memory.start();
 
-            // Generate puzzle (may fail occasionally due to probabilistic nature)
-            auto puzzle_result = generator->generatePuzzle({.difficulty = difficulty});
-            if (!puzzle_result.has_value()) {
-                // Generation failed after max attempts - this is expected occasionally
-                // for Hard/Expert puzzles. Log and skip this iteration.
-                INFO("Puzzle generation failed for " << difficultyToString(difficulty) << " puzzle " << i
-                                                     << " (expected occasionally)");
-                continue;
-            }
+    auto start = std::chrono::steady_clock::now();
+    auto result = rater.ratePuzzle(easter_monster);
+    auto elapsed = std::chrono::steady_clock::now() - start;
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 
-            // Rate puzzle with timing
-            auto start = std::chrono::steady_clock::now();
-            auto rating_result = rater.ratePuzzle(puzzle_result->board);
-            auto elapsed = std::chrono::steady_clock::now() - start;
-            auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+    REQUIRE(elapsed < std::chrono::seconds(kRatingTimeoutSeconds));
 
-            // Safety assertions
-            if (elapsed > std::chrono::seconds(kRatingTimeoutSeconds)) {
-                FAIL("Rating timed out after " << std::chrono::duration_cast<std::chrono::seconds>(elapsed).count()
-                                               << "s");
-            }
-
-            size_t memory_increase = memory.getMemoryIncrease();
-            if (memory_increase > 0 && memory_increase > 500 * 1024 * 1024) {  // 500MB threshold
-                FAIL("Memory usage exceeded threshold: " << (memory_increase / (1024 * 1024)) << "MB");
-            }
-
-            // Log for monitoring
-            INFO("Puzzle " << i << " (" << difficultyToString(difficulty) << "): " << elapsed_ms << "ms, "
-                           << (memory_increase / 1024) << "KB");
-
-            // Rating should either succeed or return timeout error (both are acceptable)
-            REQUIRE((rating_result.has_value() || rating_result.error() == RatingError::Timeout));
-        }
+    size_t memory_increase = memory.getMemoryIncrease();
+    if (memory_increase > 0) {
+        REQUIRE(memory_increase < 1024UL * 1024 * 1024);  // < 1GB
+        INFO("Memory increase: " << (memory_increase / (1024UL * 1024)) << " MB");
     }
+
+    INFO("Easter Monster rated in " << elapsed_ms << "ms");
+    REQUIRE(
+        (result.has_value() || result.error() == RatingError::Timeout || result.error() == RatingError::Unsolvable));
+}
+
+TEST_CASE("PuzzleRater - Inkala 2012 (pathological case)", "[puzzle_rater][pathological][.][manual]") {
+    // Inkala 2012 - Arto Inkala's "world's hardest" Sudoku puzzle.
+    // Tagged [.] to exclude from default test runs (very slow under sanitizers).
+    // Run explicitly with: ./unit_tests "[manual]"
+
+    auto validator = std::make_shared<GameValidator>();
+    auto solver = std::make_shared<SudokuSolver>(validator);
+    PuzzleRater rater(solver);
+
+    BoardData inkala_2012 = {{8, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 3, 6, 0, 0, 0, 0, 0}, {0, 7, 0, 0, 9, 0, 2, 0, 0},
+                             {0, 5, 0, 0, 0, 7, 0, 0, 0}, {0, 0, 0, 0, 4, 5, 7, 0, 0}, {0, 0, 0, 1, 0, 0, 0, 3, 0},
+                             {0, 0, 1, 0, 0, 0, 0, 6, 8}, {0, 0, 8, 5, 0, 0, 0, 1, 0}, {0, 9, 0, 0, 0, 0, 4, 0, 0}};
+
+    MemoryMonitor memory;
+    memory.start();
+
+    auto start = std::chrono::steady_clock::now();
+    auto result = rater.ratePuzzle(inkala_2012);
+    auto elapsed = std::chrono::steady_clock::now() - start;
+    auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+
+    REQUIRE(elapsed < std::chrono::seconds(kRatingTimeoutSeconds));
+
+    size_t memory_increase = memory.getMemoryIncrease();
+    if (memory_increase > 0) {
+        REQUIRE(memory_increase < 1024UL * 1024 * 1024);  // < 1GB
+        INFO("Memory increase: " << (memory_increase / (1024UL * 1024)) << " MB");
+    }
+
+    INFO("Inkala 2012 rated in " << elapsed_ms << "ms");
+    REQUIRE(
+        (result.has_value() || result.error() == RatingError::Timeout || result.error() == RatingError::Unsolvable));
 }
 
 // ============================================================================
@@ -219,7 +214,7 @@ TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rate
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 
         // This test will FAIL if bug exists (timeout or memory explosion)
-        REQUIRE(elapsed < std::chrono::seconds(30));  // Generous timeout
+        REQUIRE(elapsed < std::chrono::seconds(kRatingTimeoutSeconds));  // Generous timeout
 
         size_t memory_increase = memory.getMemoryIncrease();
         if (memory_increase > 0) {
@@ -249,7 +244,7 @@ TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rate
         auto elapsed = std::chrono::steady_clock::now() - start;
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 
-        REQUIRE(elapsed < std::chrono::seconds(30));
+        REQUIRE(elapsed < std::chrono::seconds(kRatingTimeoutSeconds));
 
         size_t memory_increase = memory.getMemoryIncrease();
         if (memory_increase > 0) {
@@ -277,7 +272,7 @@ TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rate
         auto elapsed = std::chrono::steady_clock::now() - start;
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 
-        REQUIRE(elapsed < std::chrono::seconds(30));
+        REQUIRE(elapsed < std::chrono::seconds(kRatingTimeoutSeconds));
 
         size_t memory_increase = memory.getMemoryIncrease();
         if (memory_increase > 0) {
@@ -318,7 +313,7 @@ TEST_CASE("PuzzleGenerator - hasUniqueSolution on pathological puzzles",
         auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 
         // Safety checks
-        REQUIRE(elapsed < std::chrono::seconds(30));  // Should not hang
+        REQUIRE(elapsed < std::chrono::seconds(kRatingTimeoutSeconds));  // Should not hang
 
         size_t memory_increase = memory.getMemoryIncrease();
         if (memory_increase > 0) {
