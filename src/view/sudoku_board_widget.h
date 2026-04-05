@@ -109,9 +109,10 @@ private:
     std::optional<core::Position> selected_cell_;  ///< Currently selected cell for editing
 
     void paintCell(QPainter& painter, const RenderCell& cell, size_t row, size_t col, const QPointF& origin,
-                   float cell_size, bool is_selected, bool is_region_highlight, bool is_same_value_highlight);
+                   float cell_size, bool is_selected, bool is_region_highlight, bool is_same_value_highlight,
+                   int highlight_value);
     void paintCellValue(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect);
-    void paintCellNotes(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect);
+    void paintCellNotes(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect, int highlight_value);
 
 #ifdef SUDOKU_UI_TESTING
     friend class ::TestBoardInteraction;

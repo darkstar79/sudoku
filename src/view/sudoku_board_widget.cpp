@@ -112,6 +112,9 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
         focus_box_col = (highlight_source->col / core::BOX_SIZE) * core::BOX_SIZE;
     }
 
+    // Unified highlight: cell value takes priority, fallback to hovered candidate
+    int highlight_value = focus_value > 0 ? focus_value : hovered_candidate_;
+
     for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
         for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
             const auto& cell = board_[row][col];
@@ -129,7 +132,8 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
                 }
             }
 
-            paintCell(painter, cell, row, col, origin, cs, is_selected, is_region_highlight, is_same_value_highlight);
+            paintCell(painter, cell, row, col, origin, cs, is_selected, is_region_highlight, is_same_value_highlight,
+                      highlight_value);
         }
     }
 
@@ -265,7 +269,7 @@ void SudokuBoardWidget::leaveEvent(QEvent* /*event*/) {
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — cell painting with multiple visual states
 void SudokuBoardWidget::paintCell(QPainter& painter, const RenderCell& cell, size_t row, size_t col,
                                   const QPointF& origin, float cell_size, bool is_selected, bool is_region_highlight,
-                                  bool is_same_value_highlight) {
+                                  bool is_same_value_highlight, int highlight_value) {
     QRectF cell_rect(origin.x() + (static_cast<float>(col) * cell_size),
                      origin.y() + (static_cast<float>(row) * cell_size), cell_size, cell_size);
 
@@ -331,7 +335,7 @@ void SudokuBoardWidget::paintCell(QPainter& painter, const RenderCell& cell, siz
     if (cell.value > 0) {
         paintCellValue(painter, cell, cell_rect);
     } else if (!cell.candidates.empty()) {
-        paintCellNotes(painter, cell, cell_rect);
+        paintCellNotes(painter, cell, cell_rect, highlight_value);
     }
 }
 
@@ -350,7 +354,8 @@ void SudokuBoardWidget::paintCellValue(QPainter& painter, const RenderCell& cell
     painter.drawText(cell_rect, Qt::AlignCenter, QString::number(cell.value));
 }
 
-void SudokuBoardWidget::paintCellNotes(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect) {
+void SudokuBoardWidget::paintCellNotes(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect,
+                                       int highlight_value) {
     auto layout = BoardPainter::candidateLayout(static_cast<float>(cell_rect.height()));
     QFont font("Sans", layout.font_size);
     painter.setFont(font);
@@ -359,7 +364,7 @@ void SudokuBoardWidget::paintCellNotes(QPainter& painter, const RenderCell& cell
         if (note >= core::MIN_VALUE && note <= core::MAX_VALUE) {
             QRectF note_rect = layout.noteRect(cell_rect, note);
 
-            if (note == hovered_candidate_) {
+            if (note == highlight_value) {
                 QFont bold_font("Sans", layout.font_size, QFont::Bold);
                 painter.setFont(bold_font);
                 painter.setPen(SudokuBoardColors::TEXT_USER);
