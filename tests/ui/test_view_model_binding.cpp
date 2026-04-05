@@ -133,8 +133,8 @@ void TestViewModelBinding::autoNotesButtonToggles() {
     ctx.game_vm->startNewGame(core::Difficulty::Easy);
     QApplication::processEvents();
 
-    // Fill Notes button is not checkable (one-shot action)
-    QVERIFY(!window.auto_notes_btn_->isCheckable());
+    // Fill Notes button is checkable (toggle: fill on first click, clear on second)
+    QVERIFY(window.auto_notes_btn_->isCheckable());
 
     // Clicking fills notes
     ctx.game_vm->fillNotes();

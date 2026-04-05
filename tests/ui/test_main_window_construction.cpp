@@ -94,7 +94,7 @@ void TestMainWindowConstruction::buttonPanelInitialState() {
     QCOMPARE(window.redo_btn_->text(), QString("button.redo"));
     QCOMPARE(window.undo_valid_btn_->text(), QString("button.undo_until_valid"));
     QCOMPARE(window.auto_notes_btn_->text(), QString("button.fill_notes"));
-    QVERIFY(!window.auto_notes_btn_->isCheckable());
+    QVERIFY(window.auto_notes_btn_->isCheckable());
 }
 
 void TestMainWindowConstruction::ratingButtonExists() {
