@@ -613,3 +613,382 @@ TEST_CASE("getLocalizedExplanation - NiceLoop fallback", "[localized_explanation
     auto step = makeStep(SolvingTechnique::NiceLoop, {.positions = {{.row = 0, .col = 0}}, .values = {}}, "raw nl");
     REQUIRE(getLocalizedExplanation(*loc, step) == "raw nl");
 }
+
+// ============================================================================
+// XCycles
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - XCycles Type1", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::XCycles, {.values = {5}, .technique_subtype = 0});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("X-Cycles on value 5") != std::string::npos);
+    REQUIRE(result.find("continuous loop") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - XCycles Type2", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::XCycles,
+                         {.positions = {{.row = 2, .col = 3}}, .values = {7}, .technique_subtype = 1});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("strong-strong discontinuity at R3C4") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - XCycles Type3", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::XCycles,
+                         {.positions = {{.row = 1, .col = 1}}, .values = {3}, .technique_subtype = 2});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("weak-weak discontinuity at R2C2") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - XCycles fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::XCycles, {}, "raw xc");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw xc");
+}
+
+// ============================================================================
+// ThreeDMedusa
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - ThreeDMedusa", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::ThreeDMedusa, {.values = {4}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("3D Medusa") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - ThreeDMedusa fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::ThreeDMedusa, {}, "raw 3dm");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw 3dm");
+}
+
+// ============================================================================
+// HiddenUniqueRectangle
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - HiddenUniqueRectangle", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step =
+        makeStep(SolvingTechnique::HiddenUniqueRectangle,
+                 {.positions = {{.row = 0, .col = 0}, {.row = 0, .col = 1}, {.row = 1, .col = 0}, {.row = 1, .col = 1}},
+                  .values = {1, 2, 3, 2}});  // values[3]=2 is index into positions for target cell
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Hidden Unique Rectangle") != std::string::npos);
+    REQUIRE(result.find("deadly pattern") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - HiddenUniqueRectangle fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::HiddenUniqueRectangle, {}, "raw hur");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw hur");
+}
+
+// ============================================================================
+// AvoidableRectangle
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - AvoidableRectangle", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step =
+        makeStep(SolvingTechnique::AvoidableRectangle,
+                 {.positions = {{.row = 2, .col = 2}, {.row = 2, .col = 5}, {.row = 5, .col = 2}, {.row = 5, .col = 5}},
+                  .values = {4, 6, 4, 3}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Avoidable Rectangle") != std::string::npos);
+    REQUIRE(result.find("deadly pattern") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - AvoidableRectangle fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::AvoidableRectangle, {}, "raw ar");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw ar");
+}
+
+// ============================================================================
+// ALSXYWing
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - ALSXYWing", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    // values = {X, Y, Z, als_a_size, als_b_size, als_c_size}
+    // positions = {als_a cells, als_b cells, als_c cells}
+    auto step = makeStep(SolvingTechnique::ALSXYWing,
+                         {.positions = {{.row = 0, .col = 0}, {.row = 1, .col = 1}, {.row = 2, .col = 2}},
+                          .values = {3, 5, 7, 1, 1, 1}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("ALS-XY-Wing") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - ALSXYWing fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::ALSXYWing, {}, "raw alsxy");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw alsxy");
+}
+
+// ============================================================================
+// DeathBlossom
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - DeathBlossom", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::DeathBlossom, {.positions = {{.row = 3, .col = 3}}, .values = {5, 2}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Death Blossom") != std::string::npos);
+    REQUIRE(result.find("stem R4C4") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - DeathBlossom fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::DeathBlossom, {}, "raw db");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw db");
+}
+
+// ============================================================================
+// VWXYZWing
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - VWXYZWing", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::VWXYZWing, {.positions = {{.row = 0, .col = 0},
+                                                                     {.row = 0, .col = 1},
+                                                                     {.row = 0, .col = 2},
+                                                                     {.row = 0, .col = 3},
+                                                                     {.row = 0, .col = 4}},
+                                                       .values = {9}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("VWXYZ-Wing") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - VWXYZWing fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::VWXYZWing, {}, "raw vw");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw vw");
+}
+
+// ============================================================================
+// FrankenFish
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - FrankenFish", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::FrankenFish,
+                         {.positions = {{.row = 0, .col = 0}, {.row = 1, .col = 1}}, .values = {2, 7, 3}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Franken") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - FrankenFish fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::FrankenFish, {.values = {1}}, "raw ff");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw ff");
+}
+
+// ============================================================================
+// MutantFish
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - MutantFish", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::MutantFish, {.positions = {{.row = 3, .col = 3}}, .values = {6}});
+    step.eliminations = {{.position = {.row = 4, .col = 4}, .value = 6},
+                         {.position = {.row = 5, .col = 5}, .value = 6}};
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Mutant Fish") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - MutantFish fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::MutantFish, {}, "raw mf");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw mf");
+}
+
+// ============================================================================
+// GroupedXCycles
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - GroupedXCycles", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::GroupedXCycles, {.values = {8, 12}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Grouped X-Cycles") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - GroupedXCycles fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::GroupedXCycles, {}, "raw gxc");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw gxc");
+}
+
+// ============================================================================
+// SashimiXWing
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - SashimiXWing fallback empty values", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::SashimiXWing, {}, "raw sxw");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw sxw");
+}
+
+TEST_CASE("getLocalizedExplanation - SashimiXWing fallback insufficient values", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::SashimiXWing,
+                         {.positions = {{.row = 1, .col = 3}}, .values = {5, 2}, .region_type = RegionType::Row},
+                         "raw sxw partial");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw sxw partial");
+}
+
+// ============================================================================
+// SashimiSwordfish
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - SashimiSwordfish fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::SashimiSwordfish, {}, "raw ssf");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw ssf");
+}
+
+// ============================================================================
+// SashimiJellyfish
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - SashimiJellyfish fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::SashimiJellyfish, {}, "raw sjf");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw sjf");
+}
+
+// ============================================================================
+// KrakenFish
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - KrakenFish", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::KrakenFish,
+                         {.positions = {{.row = 0, .col = 0}, {.row = 8, .col = 8}}, .values = {4}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Kraken Fish") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - KrakenFish fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::KrakenFish, {}, "raw kf");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw kf");
+}
+
+// ============================================================================
+// ALSChain
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - ALSChain", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    // values = [rc1, rc2, ..., z, chain_length]; positions = all ALS cells
+    auto step = makeStep(
+        SolvingTechnique::ALSChain,
+        {.positions = {{.row = 1, .col = 1}, {.row = 2, .col = 2}, {.row = 3, .col = 3}}, .values = {1, 2, 5, 3}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("ALS Chain") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - ALSChain fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::ALSChain, {}, "raw alsc");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw alsc");
+}
+
+// ============================================================================
+// JuniorExocet
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - JuniorExocet", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step =
+        makeStep(SolvingTechnique::JuniorExocet,
+                 {.positions = {{.row = 0, .col = 0}, {.row = 0, .col = 1}, {.row = 1, .col = 3}, {.row = 2, .col = 6}},
+                  .values = {3, 5, 7}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Junior Exocet") != std::string::npos);
+    REQUIRE(result.find("base cells") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - JuniorExocet fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::JuniorExocet, {}, "raw je");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw je");
+}
+
+// ============================================================================
+// UniqueLoop
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - UniqueLoop", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step =
+        makeStep(SolvingTechnique::UniqueLoop,
+                 {.positions = {{.row = 0, .col = 0}, {.row = 0, .col = 3}, {.row = 3, .col = 3}, {.row = 3, .col = 0}},
+                  .values = {1, 2}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Unique Loop") != std::string::npos);
+    REQUIRE(result.find("deadly pattern") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - UniqueLoop fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::UniqueLoop, {}, "raw ul");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw ul");
+}
+
+// ============================================================================
+// ContinuousNiceLoop
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - ContinuousNiceLoop", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::ContinuousNiceLoop, {.values = {12, 4}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Continuous Nice Loop") != std::string::npos);
+    REQUIRE(result.find("12 nodes") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - ContinuousNiceLoop fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::ContinuousNiceLoop, {}, "raw cnl");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw cnl");
+}
+
+// ============================================================================
+// GroupedNiceLoop
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - GroupedNiceLoop", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::GroupedNiceLoop,
+                         {.positions = {{.row = 0, .col = 0}, {.row = 8, .col = 8}}, .values = {7}});
+    auto result = getLocalizedExplanation(*loc, step);
+    REQUIRE(result.find("Grouped Nice Loop") != std::string::npos);
+}
+
+TEST_CASE("getLocalizedExplanation - GroupedNiceLoop fallback", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step =
+        makeStep(SolvingTechnique::GroupedNiceLoop, {.positions = {{.row = 0, .col = 0}}, .values = {}}, "raw gnl");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "raw gnl");
+}
+
+// ============================================================================
+// UnitForcingChain / RegionForcingChain (direct passthrough)
+// ============================================================================
+
+TEST_CASE("getLocalizedExplanation - UnitForcingChain passthrough", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::UnitForcingChain, {}, "unit forcing result");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "unit forcing result");
+}
+
+TEST_CASE("getLocalizedExplanation - RegionForcingChain passthrough", "[localized_explanations_advanced]") {
+    auto loc = makeEnglishLoc();
+    auto step = makeStep(SolvingTechnique::RegionForcingChain, {}, "region forcing result");
+    REQUIRE(getLocalizedExplanation(*loc, step) == "region forcing result");
+}

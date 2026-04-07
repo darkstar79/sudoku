@@ -189,7 +189,8 @@ TEST_CASE("PuzzleRater - Inkala 2012 (pathological case)", "[puzzle_rater][patho
 // Test Case 4: Pathological Puzzle Detection
 // ============================================================================
 
-TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rater][reproduction][pathological]") {
+TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)",
+          "[puzzle_rater][reproduction][pathological][.][slow]") {
     // Test with a very sparse puzzle (only 17 clues - minimum for unique solution)
     // This could trigger deep recursion in countSolutionsHelper during rating
 

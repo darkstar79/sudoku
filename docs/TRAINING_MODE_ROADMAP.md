@@ -103,10 +103,8 @@ Two toggle buttons (Color A / Color B) shown only during Coloring exercises.
 
 ```cpp
 struct TrainingHint {
-    std::string text;                      // Hint message to display
-    std::vector<Position> highlight_cells;  // Cells to highlight on the board
-    std::vector<CellRole> highlight_roles;  // Color role per highlighted cell
-    std::vector<int> highlight_values;      // Candidate values to emphasize (optional)
+    std::string text;                          // Hint message to display
+    std::vector<CellHighlight> highlights;     // Cells to highlight on the board with their roles
 };
 ```
 

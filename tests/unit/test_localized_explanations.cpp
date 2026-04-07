@@ -844,6 +844,16 @@ TEST_CASE("getLocalizedExplanation - UniqueRectangle", "[localized_explanations]
         REQUIRE(!result.empty());
     }
 
+    SECTION("Type 6 (subtype=5)") {
+        auto step = makeStep(SolvingTechnique::UniqueRectangle, {.positions = four_pos,
+                                                                 .values = {1, 2, 3},
+                                                                 .secondary_region_type = RegionType::Row,
+                                                                 .secondary_region_index = 0,
+                                                                 .technique_subtype = 5});
+        auto result = getLocalizedExplanation(*loc, step);
+        REQUIRE(!result.empty());
+    }
+
     SECTION("Fallback: positions too few") {
         auto step =
             makeStep(SolvingTechnique::UniqueRectangle, {.positions = {{0, 0}}, .values = {1, 2}}, "ur fallback");
@@ -853,7 +863,8 @@ TEST_CASE("getLocalizedExplanation - UniqueRectangle", "[localized_explanations]
 
 TEST_CASE("getLocalizedExplanation - WWing", "[localized_explanations]") {
     auto loc = createEnglishLocManager();
-    const std::vector<Position> four_pos = {{0, 0}, {0, 4}, {3, 0}, {6, 4}};
+    const std::vector<Position> four_pos = {
+        {.row = 0, .col = 0}, {.row = 0, .col = 4}, {.row = 3, .col = 0}, {.row = 6, .col = 4}};
 
     SECTION("Happy path") {
         auto step = makeStep(SolvingTechnique::WWing, {.positions = four_pos, .values = {1, 2}});
@@ -904,7 +915,7 @@ TEST_CASE("getLocalizedExplanation - FinnedXWing", "[localized_explanations]") {
     auto loc = createEnglishLocManager();
     // values[0..4] = {candidate, row1, row2, col1, col2}; positions.back() = fin
     const std::vector<int> vals = {5, 1, 2, 3, 4};
-    const std::vector<Position> fin_pos = {{0, 5}};
+    const std::vector<Position> fin_pos = {{.row = 0, .col = 5}};
 
     SECTION("Row-based FinnedXWing") {
         auto step = makeStep(SolvingTechnique::FinnedXWing,
@@ -997,7 +1008,7 @@ TEST_CASE("getLocalizedExplanation - FinnedSwordfish", "[localized_explanations]
     auto loc = createEnglishLocManager();
     // values = {candidate, row/col1..3}; positions.back() = fin
     const std::vector<int> vals = {5, 1, 2, 3};
-    const std::vector<Position> fin_pos = {{0, 5}};
+    const std::vector<Position> fin_pos = {{.row = 0, .col = 5}};
 
     SECTION("Row-based FinnedSwordfish") {
         auto step = makeStep(SolvingTechnique::FinnedSwordfish,
@@ -1024,9 +1035,9 @@ TEST_CASE("getLocalizedExplanation - EmptyRectangle", "[localized_explanations]"
     auto loc = createEnglishLocManager();
 
     SECTION("Happy path") {
-        auto step =
-            makeStep(SolvingTechnique::EmptyRectangle,
-                     {.positions = {{4, 4}}, .values = {5, 3}, .region_type = RegionType::Row, .region_index = 2});
+        auto step = makeStep(
+            SolvingTechnique::EmptyRectangle,
+            {.positions = {{.row = 4, .col = 4}}, .values = {5, 3}, .region_type = RegionType::Row, .region_index = 2});
         auto result = getLocalizedExplanation(*loc, step);
         REQUIRE(!result.empty());
     }

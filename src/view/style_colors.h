@@ -59,4 +59,9 @@ inline constexpr auto TOAST_TEXT = "#00cc00";
 // Hint text
 inline constexpr auto HINT_TEXT = "#0052cc";
 
+// Coaching panel
+inline constexpr auto COACHING_BG = "#e8f0fe";
+inline constexpr auto COACHING_BORDER = "#c2d7f2";
+inline constexpr auto COACHING_TEXT = "#1a3a5c";
+
 }  // namespace sudoku::view::StyleColors

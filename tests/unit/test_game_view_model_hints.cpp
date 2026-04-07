@@ -30,6 +30,15 @@ TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]")
         REQUIRE(fixture.view_model->hintMessage.get().empty());
     }
 
+    SECTION("Hint count is zero without active game") {
+        REQUIRE(fixture.view_model->getHintCount() == 0);
+    }
+
+    SECTION("Hint does nothing without active game") {
+        fixture.view_model->getHint(core::Position{.row = 0, .col = 0});
+        REQUIRE(fixture.view_model->hintMessage.get().empty());
+    }
+
     SECTION("Get hint shows technique explanation") {
         // Start a new game
         fixture.view_model->startNewGame(Difficulty::Easy);
@@ -133,6 +142,36 @@ TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]")
         }
         REQUIRE(found);
         REQUIRE(after.getMoveCount() == moves_before + 1);
+    }
+
+    SECTION("Hint requires cell selection") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        REQUIRE(fixture.view_model->getHintCount() > 0);
+
+        int hints_before = fixture.view_model->getHintCount();
+        fixture.view_model->getHint(std::nullopt);
+
+        // Should show error and not consume hint
+        REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
+        REQUIRE(fixture.view_model->getHintCount() == hints_before);
+    }
+
+    SECTION("Hint doesn't work on user-filled cells") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+
+        // Place a number in an empty cell
+        const auto& state = fixture.view_model->gameState.get();
+        auto empty_opt = sudoku::test::findEmptyCell(state);
+        REQUIRE(empty_opt.has_value());
+        fixture.view_model->enterNumber(empty_opt.value(), 1);
+
+        // Try to get hint on that cell
+        int hints_before = fixture.view_model->getHintCount();
+        fixture.view_model->getHint(empty_opt.value());
+
+        // Should show error and not consume hint
+        REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
+        REQUIRE(fixture.view_model->getHintCount() == hints_before);
     }
 
     SECTION("Hint doesn't work on given cells") {

@@ -35,6 +35,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include <QCheckBox>
@@ -76,7 +77,7 @@ namespace sudoku::view {
 using namespace core::StringKeys;
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
-    setWindowTitle("Sudoku");
+    setWindowTitle(qstr(loc(AppTitle)));
     resize(800, 900);
 
     // Newspaper-like background
@@ -93,20 +94,79 @@ MainWindow::~MainWindow() {
     observer_.unsubscribeAll();
 }
 
-void MainWindow::setupCentralWidget() {
-    central_stack_ = new QStackedWidget;
+void MainWindow::setupCoachingPanel() {
+    coaching_panel_ = new QWidget;
+    coaching_panel_->setStyleSheet(
+        QString("QWidget { background-color: %1; border: 1px solid %2; border-radius: 6px; }")
+            .arg(StyleColors::COACHING_BG, StyleColors::COACHING_BORDER));
+    auto* coaching_layout = new QHBoxLayout(coaching_panel_);
+    coaching_layout->setContentsMargins(12, 8, 12, 8);
 
-    board_widget_ = new SudokuBoardWidget({.max_size = 720.0F, .min_size = 450.0F, .padding = 40.0F});
-    training_widget_ = new TrainingWidget;
-    toast_widget_ = new ToastWidget(this);
+    coaching_prev_btn_ = new QPushButton(QStringLiteral("\u25C0"));  // ◀
+    coaching_next_btn_ = new QPushButton(QStringLiteral("\u25B6"));  // ▶
+    coaching_check_btn_ = new QPushButton(qstr(loc(CoachingButtonCheck)));
+    coaching_apply_btn_ = new QPushButton(qstr(loc(CoachingButtonApply)));
+    coaching_dismiss_btn_ = new QPushButton(QStringLiteral("\u2715"));  // ✕
 
-    // Wrap board + button panel in a container
-    auto* game_page = new QWidget;
-    auto* game_layout = new QVBoxLayout(game_page);
-    game_layout->setContentsMargins(0, 0, 0, 0);
-    game_layout->addWidget(board_widget_, 1);
+    static const auto COACHING_BTN_STYLE =
+        QString("QPushButton { background: transparent; border: none; font-size: 14px; "
+                "padding: 2px 6px; color: %1; }"
+                "QPushButton:hover { background-color: %2; border-radius: 3px; }")
+            .arg(StyleColors::COACHING_TEXT, StyleColors::COACHING_BORDER);
+    coaching_prev_btn_->setStyleSheet(COACHING_BTN_STYLE);
+    coaching_next_btn_->setStyleSheet(COACHING_BTN_STYLE);
+    coaching_check_btn_->setStyleSheet(COACHING_BTN_STYLE);
+    coaching_apply_btn_->setStyleSheet(COACHING_BTN_STYLE);
+    coaching_dismiss_btn_->setStyleSheet(COACHING_BTN_STYLE);
 
-    // Button panel
+    coaching_level_label_ = new QLabel;
+    coaching_level_label_->setStyleSheet(QString("QLabel { color: %1; font-size: 11px; font-weight: bold; "
+                                                 "background: transparent; border: none; }")
+                                             .arg(StyleColors::COACHING_TEXT));
+
+    coaching_label_ = new QLabel;
+    coaching_label_->setWordWrap(true);
+    coaching_label_->setStyleSheet(
+        QString("QLabel { color: %1; font-size: 13px; background: transparent; border: none; }")
+            .arg(StyleColors::COACHING_TEXT));
+
+    coaching_layout->addWidget(coaching_prev_btn_);
+    coaching_layout->addWidget(coaching_level_label_);
+    coaching_layout->addWidget(coaching_label_, 1);
+    coaching_layout->addWidget(coaching_next_btn_);
+    coaching_layout->addWidget(coaching_check_btn_);
+    coaching_layout->addWidget(coaching_apply_btn_);
+    coaching_layout->addWidget(coaching_dismiss_btn_);
+    coaching_panel_->hide();
+
+    connect(coaching_prev_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->navigateCoachingLevel(-1);
+        }
+    });
+    connect(coaching_next_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->navigateCoachingLevel(1);
+        }
+    });
+    connect(coaching_check_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->checkCoachingAnswer();
+        }
+    });
+    connect(coaching_apply_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->applyCoachingStep();
+        }
+    });
+    connect(coaching_dismiss_btn_, &QPushButton::clicked, this, [this]() {
+        if (view_model_) {
+            view_model_->dismissCoaching();
+        }
+    });
+}
+
+void MainWindow::setupButtonPanel(QVBoxLayout* game_layout) {
     auto* button_panel = new QWidget;
     button_panel->setStyleSheet(QString("QWidget { background-color: %1; border-top: 1px solid %2; }")
                                     .arg(StyleColors::SURFACE, StyleColors::DIVIDER));
@@ -146,15 +206,6 @@ void MainWindow::setupCentralWidget() {
 
     game_layout->addWidget(button_panel);
 
-    central_stack_->addWidget(game_page);
-    central_stack_->addWidget(training_widget_);
-    central_stack_->setCurrentIndex(0);
-
-    setCentralWidget(central_stack_);
-
-    connect(training_widget_, &TrainingWidget::backToGame, this, [this]() { central_stack_->setCurrentIndex(0); });
-
-    // Button panel connections (wired once, lambdas read view_model_ at call time)
     connect(undo_btn_, &QPushButton::clicked, this, [this]() {
         if (view_model_) {
             view_model_->undo();
@@ -181,8 +232,33 @@ void MainWindow::setupCentralWidget() {
             updateButtonPanel();
         }
     });
+}
 
-    // Board signals → ViewModel commands (wired once)
+void MainWindow::setupCentralWidget() {
+    central_stack_ = new QStackedWidget;
+
+    board_widget_ = new SudokuBoardWidget({.max_size = 720.0F, .min_size = 450.0F, .padding = 40.0F});
+    training_widget_ = new TrainingWidget;
+    toast_widget_ = new ToastWidget(this);
+
+    setupCoachingPanel();
+
+    auto* game_page = new QWidget;
+    auto* game_layout = new QVBoxLayout(game_page);
+    game_layout->setContentsMargins(0, 0, 0, 0);
+    game_layout->addWidget(coaching_panel_);
+    game_layout->addWidget(board_widget_, 1);
+
+    setupButtonPanel(game_layout);
+
+    central_stack_->addWidget(game_page);
+    central_stack_->addWidget(training_widget_);
+    central_stack_->setCurrentIndex(0);
+
+    setCentralWidget(central_stack_);
+
+    connect(training_widget_, &TrainingWidget::backToGame, this, [this]() { central_stack_->setCurrentIndex(0); });
+
     connect(board_widget_, &SudokuBoardWidget::numberKeyPressed, this, [this](int number) {
         auto pos_opt = board_widget_->selectedCell();
         if (view_model_ && pos_opt.has_value()) {
@@ -270,6 +346,11 @@ void MainWindow::setupMenuBar() {
     help_menu->addAction(qstr(loc(MenuGetHint)), QKeySequence("H"), this, [this]() {
         if (view_model_ && view_model_->getHintCount() > 0) {
             view_model_->getHint(board_widget_->selectedCell());
+        }
+    });
+    help_menu->addAction(qstr(loc(MenuGetCoachingHint)), QKeySequence("Shift+H"), this, [this]() {
+        if (view_model_) {
+            view_model_->requestCoachingHint();
         }
     });
     help_menu->addSeparator();
@@ -396,9 +477,53 @@ void MainWindow::setViewModel(std::shared_ptr<viewmodel::GameViewModel> view_mod
                 spdlog::error("UI Error: {}", error);
             }
         });
+        observer_.observe(view_model_->coachingState,
+                          [this](const viewmodel::CoachingState& coaching) { onCoachingStateChanged(coaching); });
 
         spdlog::debug("ViewModel bound to MainWindow");
     }
+}
+
+void MainWindow::onCoachingStateChanged(const viewmodel::CoachingState& coaching) {
+    if (!coaching.active) {
+        if (coaching_panel_) {
+            coaching_panel_->hide();
+        }
+        board_widget_->setBoard(toBoardRenderData(view_model_->gameState.get()));
+        return;
+    }
+
+    if (coaching_panel_) {
+        coaching_label_->setText(QString::fromStdString(coaching.message));
+
+        const bool is_tryit = (coaching.phase == viewmodel::CoachingPhase::TryIt);
+
+        if (is_tryit) {
+            coaching_level_label_->setText(qstr(loc(CoachingTryItLabel)));
+        } else {
+            coaching_level_label_->setText(QString::fromStdString(locFormat(CoachingLevelHeader, coaching.level)));
+        }
+        coaching_level_label_->setVisible(true);
+
+        // Hinting phase: show prev/next, hide check/apply
+        coaching_prev_btn_->setVisible(!is_tryit && coaching.max_level > 1);
+        coaching_next_btn_->setVisible(!is_tryit && coaching.max_level > 1);
+        coaching_prev_btn_->setEnabled(coaching.level > 1);
+        coaching_next_btn_->setEnabled(coaching.level < coaching.max_level);
+
+        // TryIt phase: show check/apply, hide prev/next
+        coaching_check_btn_->setVisible(is_tryit);
+        coaching_apply_btn_->setVisible(is_tryit);
+
+        coaching_panel_->show();
+    }
+
+    // Overlay coaching highlights onto the current board render data
+    auto render = toBoardRenderData(view_model_->gameState.get());
+    for (const auto& [pos, role] : coaching.highlights) {
+        render[pos.row][pos.col].highlight_role = role;
+    }
+    board_widget_->setBoard(render);
 }
 
 void MainWindow::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm) {
@@ -479,6 +604,12 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
     }
 
     int key = event->key();
+
+    // Escape dismisses coaching hints
+    if (key == Qt::Key_Escape && view_model_->isCoachingActive()) {
+        view_model_->dismissCoaching();
+        return;
+    }
 
     // Space cycles input mode (Normal → Notes → Color → Normal)
     if (key == Qt::Key_Space) {
@@ -712,7 +843,7 @@ void MainWindow::showLoadDialog() {
     table->horizontalHeader()->setStretchLastSection(true);
     table->verticalHeader()->setVisible(false);
 
-    for (int row = 0; row < static_cast<int>(saves.size()); ++row) {
+    for (int row = 0; std::cmp_less(row, saves.size()); ++row) {
         const auto& s = saves[row];
         auto* name_item = new QTableWidgetItem(QString::fromStdString(s.display_name));
         name_item->setData(Qt::UserRole, QString::fromStdString(s.save_id));
@@ -726,8 +857,10 @@ void MainWindow::showLoadDialog() {
             row, 3,
             new QTableWidgetItem(QString::fromStdString(viewmodel::GameViewModel::formatDuration(s.elapsed_time))));
         table->setItem(row, 4,
-                       new QTableWidgetItem(s.puzzle_rating > 0.0 ? QString("SE %1").arg(s.puzzle_rating, 0, 'f', 1)
-                                                                  : qstr(loc(StatsTimeNa))));
+                       new QTableWidgetItem(
+                           s.puzzle_rating > 0.0
+                               ? QString::fromStdString(locFormat(RatingFormat, fmt::format("{:.1f}", s.puzzle_rating)))
+                               : qstr(loc(StatsTimeNa))));
     }
     table->resizeColumnsToContents();
     layout->addWidget(table);
@@ -831,7 +964,8 @@ void MainWindow::showStatisticsDialog() {
 
             table->setItem(4, d,
                            new QTableWidgetItem(agg.average_ratings[d] > 0.0
-                                                    ? QString("SE %1").arg(agg.average_ratings[d], 0, 'f', 1)
+                                                    ? QString::fromStdString(locFormat(
+                                                          RatingFormat, fmt::format("{:.1f}", agg.average_ratings[d])))
                                                     : qstr(loc(StatsTimeNa))));
         }
 
@@ -856,7 +990,7 @@ void MainWindow::showStatisticsDialog() {
                                                      qstr(loc(StatsColTime)), qstr(loc(StatsColRating)),
                                                      qstr(loc(StatsColMoves)), qstr(loc(StatsColMistakes))});
 
-            for (int row = 0; row < static_cast<int>(recent.size()); ++row) {
+            for (int row = 0; std::cmp_less(row, recent.size()); ++row) {
                 const auto& g = recent[row];
                 auto tt = std::chrono::system_clock::to_time_t(g.end_time);
                 recent_table->setItem(
@@ -867,10 +1001,12 @@ void MainWindow::showStatisticsDialog() {
                 recent_table->setItem(row, 2,
                                       new QTableWidgetItem(QString::fromStdString(
                                           viewmodel::GameViewModel::formatDuration(g.time_played))));
-                recent_table->setItem(row, 3,
-                                      new QTableWidgetItem(g.puzzle_rating > 0.0
-                                                               ? QString("SE %1").arg(g.puzzle_rating, 0, 'f', 1)
-                                                               : "-"));
+                recent_table->setItem(
+                    row, 3,
+                    new QTableWidgetItem(
+                        g.puzzle_rating > 0.0
+                            ? QString::fromStdString(locFormat(RatingFormat, fmt::format("{:.1f}", g.puzzle_rating)))
+                            : qstr(loc(StatsTimeNa))));
                 recent_table->setItem(row, 4, new QTableWidgetItem(QString::number(g.moves_made)));
                 recent_table->setItem(row, 5, new QTableWidgetItem(QString::number(g.mistakes)));
             }

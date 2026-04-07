@@ -59,6 +59,14 @@ enum class CellRole : uint8_t {
     MissedAnswer    ///< Feedback: expected answer the player missed
 };
 
+/// A cell position paired with its visual role in a technique explanation
+struct CellHighlight {
+    Position position;
+    CellRole role{CellRole::Pattern};
+
+    bool operator==(const CellHighlight& other) const = default;
+};
+
 /// Region type for solving step explanations
 enum class RegionType : std::int8_t {
     Row = 0,

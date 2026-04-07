@@ -40,6 +40,7 @@ class QComboBox;
 class QLabel;
 class QPushButton;
 class QStackedWidget;
+class QVBoxLayout;
 
 #ifdef SUDOKU_UI_TESTING
 class TestMainWindowConstruction;
@@ -107,6 +108,16 @@ private:
     SudokuBoardWidget* board_widget_{nullptr};
     TrainingWidget* training_widget_{nullptr};
     ToastWidget* toast_widget_{nullptr};
+
+    // Coaching panel (persistent, above board)
+    QWidget* coaching_panel_{nullptr};
+    QLabel* coaching_level_label_{nullptr};
+    QLabel* coaching_label_{nullptr};
+    QPushButton* coaching_prev_btn_{nullptr};
+    QPushButton* coaching_next_btn_{nullptr};
+    QPushButton* coaching_check_btn_{nullptr};
+    QPushButton* coaching_apply_btn_{nullptr};
+    QPushButton* coaching_dismiss_btn_{nullptr};
     QStackedWidget* central_stack_{nullptr};
     QPushButton* new_game_btn_{nullptr};
     QLabel* difficulty_label_{nullptr};
@@ -137,6 +148,8 @@ private:
     void setupToolBar();
     void setupStatusBar();
     void setupCentralWidget();
+    void setupCoachingPanel();
+    void setupButtonPanel(QVBoxLayout* game_layout);
     void setupAutoSaveTimer();
 
     // Dialog handlers
@@ -159,6 +172,7 @@ private:
     void updateStatusBar();
     void updateToolBar();
     void updateButtonPanel();
+    void onCoachingStateChanged(const viewmodel::CoachingState& coaching);
 
     void onAutoSave();
 

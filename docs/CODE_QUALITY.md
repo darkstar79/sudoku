@@ -4,13 +4,14 @@ This document describes the code quality tools and processes for the sudoku-cpp 
 
 ## Overview
 
-The project uses five main code quality tools:
+The project uses six main code quality tools:
 
 1. **clang-format** - Automated code formatting
 2. **clang-tidy** - Static analysis and linting
 3. **cppcheck** - Complementary static analysis (buffer overflows, null derefs, memory leaks)
 4. **PMD CPD** - Copy-paste detection
 5. **gcovr** - Test coverage analysis
+6. **AddressSanitizer + UBSan** - Runtime memory error and undefined behavior detection
 
 All tools automatically **exclude third-party code** and build artifacts.
 
@@ -665,3 +666,50 @@ release April 23, 2026), the following CI/tooling simplifications become possibl
 
 3. **`.clang-tidy` / `conanfile.py`** — No changes needed; C++23 settings
    remain correct.
+
+---
+
+## AddressSanitizer + UBSan
+
+The nightly CI pipeline runs the full test suite under ASan (AddressSanitizer) and UBSan (Undefined Behavior Sanitizer) to detect memory errors at runtime: buffer overflows, use-after-free, stack-use-after-return, uninitialized reads, and undefined behavior.
+
+### Running Locally
+
+```bash
+# Build with sanitizers
+conan install . --build=missing -s build_type=Release -s compiler.cppstd=gnu23
+cmake --preset release -DENABLE_SANITIZERS=ON
+cmake --build --preset release
+
+# Run with sanitizer options
+export ASAN_OPTIONS="detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1:halt_on_error=1"
+export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=1"
+
+./build/Release/bin/tests/unit_tests "~[slow]~[pathological]"
+./build/Release/bin/tests/integration_tests
+```
+
+The `~[slow]~[pathological]` filter excludes tests that are too expensive under sanitizer instrumentation (the unsolvable-board solver test takes 10+ minutes normally).
+
+### CI Configuration
+
+The nightly `sanitizer-check` job (`.github/workflows/nightly.yml`) runs:
+
+- Unit tests with `~[slow]~[pathological]` filter
+- All integration tests
+- Timeout: 45 minutes
+
+### Known Third-Party Leak Reports
+
+ASan's leak detector reports ~444 KB in ~7,000 allocations at exit. **All of these are in third-party libraries, not in project code.** They are one-time "allocate and never free" patterns -- global caches and singletons that the OS reclaims on exit. They do not grow over time and are not real leaks.
+
+| Library                        | Source                                                                 | Description                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **libfontconfig**              | `FcConfigValues`, `FcConfigEvaluate`, `FcPatternObjectAddWithBinding`  | Font configuration cache -- global singleton, allocated once during font matching |
+| **libxkbcommon**               | `xkb_context_new`, `xkb_keymap_new_from_buffer`, `CompileSymbols`     | Keyboard layout compilation -- one-time allocation during Wayland keyboard init   |
+| **libpango / libpangocairo**   | `pango_itemize_with_font`, `pango_layout_check_lines`                  | Font rendering layout caches                                                     |
+| **libgtk-3**                   | `gtk_entry_init`, `find_invisible_char`                                | GTK widget init via Qt's `libqgtk3.so` platform theme plugin                     |
+| **Qt6WaylandClient**           | `QWaylandDisplay::setupConnection`, `QWaylandInputDevice::Keyboard`    | Wayland display/input device setup -- one-time platform initialization            |
+| **Qt6Gui / Qt6Widgets**        | `QGuiApplicationPrivate::init`, `QApplicationPrivate::init`            | Qt application bootstrap -- never freed by design                                |
+
+These leaks appear regardless of which features are used and are present even with a minimal Qt application on Wayland + GTK theme. If ASan leak reports grow significantly beyond this baseline or show stacks through project code (`src/`), that indicates a real leak to investigate.

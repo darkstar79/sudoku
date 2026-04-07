@@ -43,6 +43,10 @@
 #include <fmt/base.h>
 #include <fmt/format.h>
 
+namespace sudoku::core {
+struct TrainingHint;  // Forward declaration (defined in training_hints.h)
+}  // namespace sudoku::core
+
 namespace sudoku::viewmodel {
 
 /// Input mode for number keys on the game board
@@ -66,7 +70,10 @@ enum class GameCommand : std::uint8_t {
     ResetGame,
     ShowStatistics,
     ToggleInputMode,
-    ClearNotes
+    ClearNotes,
+    GetCoachingHint,
+    CheckCoachingAnswer,
+    ApplyCoachingStep
 };
 
 /// UI state information
@@ -99,6 +106,26 @@ struct StatsDisplay {
     bool operator==(const StatsDisplay& other) const = default;
 };
 
+/// Phase of the coaching hint workflow
+enum class CoachingPhase : uint8_t {
+    Hinting,  ///< Levels 1-3: progressive hints
+    TryIt     ///< Post-L3: user attempts the step, board edits allowed
+};
+
+/// Progressive coaching hint state (3 levels of help + TryIt phase)
+struct CoachingState {
+    bool active{false};
+    CoachingPhase phase{CoachingPhase::Hinting};  ///< Current coaching phase
+    int level{0};                                 ///< 0=inactive, 1-3
+    int max_level{0};                             ///< Highest level reached (for navigation)
+    std::string message;                          ///< Coaching text to display
+    std::vector<core::CellHighlight> highlights;  ///< Cells to highlight on board with roles
+    core::SolvingTechnique technique{};           ///< Current technique being coached
+    bool check_submitted{false};                  ///< True after Check pressed (for feedback display)
+
+    bool operator==(const CoachingState& other) const = default;
+};
+
 /// Main ViewModel for the Sudoku game following MVVM pattern
 class GameViewModel {
 public:
@@ -123,7 +150,8 @@ public:
     core::Observable<StatsDisplay> statistics;
     core::Observable<std::vector<std::string>> recentSaves;
     core::Observable<std::string> errorMessage;
-    core::Observable<std::string> hintMessage;  // Educational hint explanation
+    core::Observable<std::string> hintMessage;      // Educational hint explanation
+    core::Observable<CoachingState> coachingState;  // Progressive coaching hint state
 
     // Technique formatting (public for testability)
     [[nodiscard]] std::vector<std::string> formatTechniques(const std::set<core::SolvingTechnique>& techniques,
@@ -172,6 +200,14 @@ public:
     // Hint system
     void getHint(std::optional<core::Position> pos);
     [[nodiscard]] int getHintCount() const;
+
+    // Coaching hint system (progressive 3-level help + TryIt phase)
+    void requestCoachingHint();
+    void navigateCoachingLevel(int direction);
+    void dismissCoaching();
+    [[nodiscard]] bool isCoachingActive() const;
+    void checkCoachingAnswer();
+    void applyCoachingStep();
 
     // Game state queries
     [[nodiscard]] bool isGameActive() const;
@@ -269,6 +305,16 @@ private:
     // Hint system helpers
     [[nodiscard]] std::string formatHintExplanation(const core::SolveStep& step) const;
     [[nodiscard]] std::string_view statisticsErrorToString(core::StatisticsError error) const;
+
+    // Coaching hint state — step and snapshot are always set/cleared together
+    struct CoachingContext {
+        core::SolveStep step;
+        model::GameState snapshot;  ///< Board state when TryIt phase started
+    };
+    std::optional<CoachingContext> coaching_context_;
+    void resetCoachingState();
+    void resetCoachingIfNotTryIt();
+    [[nodiscard]] std::string buildLevel1Message(const core::TrainingHint& hint, const core::SolveStep& step) const;
 
     // Statistics helpers
     [[nodiscard]] StatsDisplay createStatsDisplay(const core::AggregateStats& stats) const;

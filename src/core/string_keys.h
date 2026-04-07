@@ -43,6 +43,7 @@ inline constexpr std::string_view MenuRedo = "menu.redo";
 inline constexpr std::string_view MenuClearCell = "menu.clear_cell";
 inline constexpr std::string_view MenuHelp = "menu.help";
 inline constexpr std::string_view MenuGetHint = "menu.get_hint";
+inline constexpr std::string_view MenuGetCoachingHint = "menu.get_coaching_hint";
 inline constexpr std::string_view MenuAbout = "menu.about";
 inline constexpr std::string_view MenuTrainingMode = "menu.training_mode";
 inline constexpr std::string_view MenuAnalyzePosition = "menu.analyze_position";
@@ -254,6 +255,7 @@ inline constexpr std::string_view DialogAbout = "dialog.about";
 inline constexpr std::string_view AboutSudokuGame = "about.sudoku_game";
 inline constexpr std::string_view AboutBuiltWith = "about.built_with";
 inline constexpr std::string_view AboutDescription = "about.description";
+inline constexpr std::string_view RatingFormat = "rating.format";
 
 // =========================================================================
 // Dialogs — Settings
@@ -346,6 +348,194 @@ inline constexpr std::string_view HintCannotRevealGiven = "hint.cannot_reveal_gi
 inline constexpr std::string_view HintCellHasValue = "hint.cell_has_value";
 inline constexpr std::string_view HintNoTechnique = "hint.no_technique";
 inline constexpr std::string_view HintSuggestionPlace = "hint.suggestion_place";
+
+// =========================================================================
+// ViewModel — Coaching hint messages
+// =========================================================================
+inline constexpr std::string_view CoachingNoRemaining = "coaching.no_remaining";
+inline constexpr std::string_view CoachingNoTechnique = "coaching.no_technique";
+inline constexpr std::string_view CoachingMaxLevel = "coaching.max_level";
+inline constexpr std::string_view CoachingLevelHeader = "coaching.level_header";
+inline constexpr std::string_view CoachingTryIt = "coaching.try_it";
+inline constexpr std::string_view CoachingCheckCorrect = "coaching.check_correct";
+inline constexpr std::string_view CoachingCheckPartial = "coaching.check_partial";
+inline constexpr std::string_view CoachingCheckWrong = "coaching.check_wrong";
+inline constexpr std::string_view CoachingApplied = "coaching.applied";
+inline constexpr std::string_view CoachingButtonCheck = "coaching.button_check";
+inline constexpr std::string_view CoachingButtonApply = "coaching.button_apply";
+inline constexpr std::string_view CoachingTryItLabel = "coaching.try_it_label";
+inline constexpr std::string_view CoachingWhatToLookFor = "coaching.what_to_look_for";
+inline constexpr std::string_view CoachingCheckZero = "coaching.check_zero";
+
+// =========================================================================
+// Training hints — progressive hint text per category/level
+// =========================================================================
+inline constexpr std::string_view HintSinglesL1 = "hint.singles.l1";
+inline constexpr std::string_view HintSinglesL2Region = "hint.singles.l2_region";
+inline constexpr std::string_view HintSinglesL2NoRegion = "hint.singles.l2_no_region";
+inline constexpr std::string_view HintSinglesL3 = "hint.singles.l3";
+inline constexpr std::string_view HintSubsetsL1Region = "hint.subsets.l1_region";
+inline constexpr std::string_view HintSubsetsL1NoRegion = "hint.subsets.l1_no_region";
+inline constexpr std::string_view HintSubsetsL2Values = "hint.subsets.l2_values";
+inline constexpr std::string_view HintSubsetsL2NoValues = "hint.subsets.l2_no_values";
+inline constexpr std::string_view HintSubsetsL3 = "hint.subsets.l3";
+inline constexpr std::string_view HintIntersectionsL1Value = "hint.intersections.l1_value";
+inline constexpr std::string_view HintIntersectionsL1NoValue = "hint.intersections.l1_no_value";
+inline constexpr std::string_view HintIntersectionsL2 = "hint.intersections.l2";
+inline constexpr std::string_view HintIntersectionsL3 = "hint.intersections.l3";
+inline constexpr std::string_view HintFishL1Value = "hint.fish.l1_value";
+inline constexpr std::string_view HintFishL1NoValue = "hint.fish.l1_no_value";
+inline constexpr std::string_view HintFishL2 = "hint.fish.l2";
+inline constexpr std::string_view HintFishL3 = "hint.fish.l3";
+inline constexpr std::string_view HintWingsL1 = "hint.wings.l1";
+inline constexpr std::string_view HintWingsL2 = "hint.wings.l2";
+inline constexpr std::string_view HintWingsL3 = "hint.wings.l3";
+inline constexpr std::string_view HintSingleDigitL1Value = "hint.single_digit.l1_value";
+inline constexpr std::string_view HintSingleDigitL1NoValue = "hint.single_digit.l1_no_value";
+inline constexpr std::string_view HintSingleDigitL2 = "hint.single_digit.l2";
+inline constexpr std::string_view HintSingleDigitL3 = "hint.single_digit.l3";
+inline constexpr std::string_view HintColoringL1Value = "hint.coloring.l1_value";
+inline constexpr std::string_view HintColoringL1NoValue = "hint.coloring.l1_no_value";
+inline constexpr std::string_view HintColoringL2 = "hint.coloring.l2";
+inline constexpr std::string_view HintColoringL3 = "hint.coloring.l3";
+inline constexpr std::string_view HintUniqueRectL1 = "hint.unique_rect.l1";
+inline constexpr std::string_view HintUniqueRectL2 = "hint.unique_rect.l2";
+inline constexpr std::string_view HintUniqueRectL3 = "hint.unique_rect.l3";
+inline constexpr std::string_view HintChainsL1Pos = "hint.chains.l1_pos";
+inline constexpr std::string_view HintChainsL1NoPos = "hint.chains.l1_no_pos";
+inline constexpr std::string_view HintChainsL2 = "hint.chains.l2";
+inline constexpr std::string_view HintChainsL3Placement = "hint.chains.l3_placement";
+inline constexpr std::string_view HintChainsL3Elimination = "hint.chains.l3_elimination";
+inline constexpr std::string_view HintSetLogicL1 = "hint.set_logic.l1";
+inline constexpr std::string_view HintSetLogicL2 = "hint.set_logic.l2";
+inline constexpr std::string_view HintSetLogicL3 = "hint.set_logic.l3";
+inline constexpr std::string_view HintSpecialL1 = "hint.special.l1";
+inline constexpr std::string_view HintSpecialL2 = "hint.special.l2";
+
+// =========================================================================
+// Technique descriptions — what_it_is and what_to_look_for per technique
+// =========================================================================
+inline constexpr std::string_view TechDescNakedSingleWhatItIs = "tech.desc.naked_single.what_it_is";
+inline constexpr std::string_view TechDescNakedSingleWhatToLookFor = "tech.desc.naked_single.what_to_look_for";
+inline constexpr std::string_view TechDescHiddenSingleWhatItIs = "tech.desc.hidden_single.what_it_is";
+inline constexpr std::string_view TechDescHiddenSingleWhatToLookFor = "tech.desc.hidden_single.what_to_look_for";
+inline constexpr std::string_view TechDescNakedPairWhatItIs = "tech.desc.naked_pair.what_it_is";
+inline constexpr std::string_view TechDescNakedPairWhatToLookFor = "tech.desc.naked_pair.what_to_look_for";
+inline constexpr std::string_view TechDescNakedTripleWhatItIs = "tech.desc.naked_triple.what_it_is";
+inline constexpr std::string_view TechDescNakedTripleWhatToLookFor = "tech.desc.naked_triple.what_to_look_for";
+inline constexpr std::string_view TechDescHiddenPairWhatItIs = "tech.desc.hidden_pair.what_it_is";
+inline constexpr std::string_view TechDescHiddenPairWhatToLookFor = "tech.desc.hidden_pair.what_to_look_for";
+inline constexpr std::string_view TechDescHiddenTripleWhatItIs = "tech.desc.hidden_triple.what_it_is";
+inline constexpr std::string_view TechDescHiddenTripleWhatToLookFor = "tech.desc.hidden_triple.what_to_look_for";
+inline constexpr std::string_view TechDescPointingPairWhatItIs = "tech.desc.pointing_pair.what_it_is";
+inline constexpr std::string_view TechDescPointingPairWhatToLookFor = "tech.desc.pointing_pair.what_to_look_for";
+inline constexpr std::string_view TechDescBoxLineReductionWhatItIs = "tech.desc.box_line_reduction.what_it_is";
+inline constexpr std::string_view TechDescBoxLineReductionWhatToLookFor =
+    "tech.desc.box_line_reduction.what_to_look_for";
+inline constexpr std::string_view TechDescNakedQuadWhatItIs = "tech.desc.naked_quad.what_it_is";
+inline constexpr std::string_view TechDescNakedQuadWhatToLookFor = "tech.desc.naked_quad.what_to_look_for";
+inline constexpr std::string_view TechDescHiddenQuadWhatItIs = "tech.desc.hidden_quad.what_it_is";
+inline constexpr std::string_view TechDescHiddenQuadWhatToLookFor = "tech.desc.hidden_quad.what_to_look_for";
+inline constexpr std::string_view TechDescXWingWhatItIs = "tech.desc.x_wing.what_it_is";
+inline constexpr std::string_view TechDescXWingWhatToLookFor = "tech.desc.x_wing.what_to_look_for";
+inline constexpr std::string_view TechDescXYWingWhatItIs = "tech.desc.xy_wing.what_it_is";
+inline constexpr std::string_view TechDescXYWingWhatToLookFor = "tech.desc.xy_wing.what_to_look_for";
+inline constexpr std::string_view TechDescSwordfishWhatItIs = "tech.desc.swordfish.what_it_is";
+inline constexpr std::string_view TechDescSwordfishWhatToLookFor = "tech.desc.swordfish.what_to_look_for";
+inline constexpr std::string_view TechDescSkyscraperWhatItIs = "tech.desc.skyscraper.what_it_is";
+inline constexpr std::string_view TechDescSkyscraperWhatToLookFor = "tech.desc.skyscraper.what_to_look_for";
+inline constexpr std::string_view TechDescTwoStringKiteWhatItIs = "tech.desc.two_string_kite.what_it_is";
+inline constexpr std::string_view TechDescTwoStringKiteWhatToLookFor = "tech.desc.two_string_kite.what_to_look_for";
+inline constexpr std::string_view TechDescXYZWingWhatItIs = "tech.desc.xyz_wing.what_it_is";
+inline constexpr std::string_view TechDescXYZWingWhatToLookFor = "tech.desc.xyz_wing.what_to_look_for";
+inline constexpr std::string_view TechDescUniqueRectangleWhatItIs = "tech.desc.unique_rectangle.what_it_is";
+inline constexpr std::string_view TechDescUniqueRectangleWhatToLookFor = "tech.desc.unique_rectangle.what_to_look_for";
+inline constexpr std::string_view TechDescWWingWhatItIs = "tech.desc.w_wing.what_it_is";
+inline constexpr std::string_view TechDescWWingWhatToLookFor = "tech.desc.w_wing.what_to_look_for";
+inline constexpr std::string_view TechDescSimpleColoringWhatItIs = "tech.desc.simple_coloring.what_it_is";
+inline constexpr std::string_view TechDescSimpleColoringWhatToLookFor = "tech.desc.simple_coloring.what_to_look_for";
+inline constexpr std::string_view TechDescFinnedXWingWhatItIs = "tech.desc.finned_x_wing.what_it_is";
+inline constexpr std::string_view TechDescFinnedXWingWhatToLookFor = "tech.desc.finned_x_wing.what_to_look_for";
+inline constexpr std::string_view TechDescRemotePairsWhatItIs = "tech.desc.remote_pairs.what_it_is";
+inline constexpr std::string_view TechDescRemotePairsWhatToLookFor = "tech.desc.remote_pairs.what_to_look_for";
+inline constexpr std::string_view TechDescBUGWhatItIs = "tech.desc.bug.what_it_is";
+inline constexpr std::string_view TechDescBUGWhatToLookFor = "tech.desc.bug.what_to_look_for";
+inline constexpr std::string_view TechDescJellyfishWhatItIs = "tech.desc.jellyfish.what_it_is";
+inline constexpr std::string_view TechDescJellyfishWhatToLookFor = "tech.desc.jellyfish.what_to_look_for";
+inline constexpr std::string_view TechDescFinnedSwordfishWhatItIs = "tech.desc.finned_swordfish.what_it_is";
+inline constexpr std::string_view TechDescFinnedSwordfishWhatToLookFor = "tech.desc.finned_swordfish.what_to_look_for";
+inline constexpr std::string_view TechDescEmptyRectangleWhatItIs = "tech.desc.empty_rectangle.what_it_is";
+inline constexpr std::string_view TechDescEmptyRectangleWhatToLookFor = "tech.desc.empty_rectangle.what_to_look_for";
+inline constexpr std::string_view TechDescWXYZWingWhatItIs = "tech.desc.wxyz_wing.what_it_is";
+inline constexpr std::string_view TechDescWXYZWingWhatToLookFor = "tech.desc.wxyz_wing.what_to_look_for";
+inline constexpr std::string_view TechDescFinnedJellyfishWhatItIs = "tech.desc.finned_jellyfish.what_it_is";
+inline constexpr std::string_view TechDescFinnedJellyfishWhatToLookFor = "tech.desc.finned_jellyfish.what_to_look_for";
+inline constexpr std::string_view TechDescXYChainWhatItIs = "tech.desc.xy_chain.what_it_is";
+inline constexpr std::string_view TechDescXYChainWhatToLookFor = "tech.desc.xy_chain.what_to_look_for";
+inline constexpr std::string_view TechDescMultiColoringWhatItIs = "tech.desc.multi_coloring.what_it_is";
+inline constexpr std::string_view TechDescMultiColoringWhatToLookFor = "tech.desc.multi_coloring.what_to_look_for";
+inline constexpr std::string_view TechDescALSxZWhatItIs = "tech.desc.als_xz.what_it_is";
+inline constexpr std::string_view TechDescALSxZWhatToLookFor = "tech.desc.als_xz.what_to_look_for";
+inline constexpr std::string_view TechDescSueDeCoqWhatItIs = "tech.desc.sue_de_coq.what_it_is";
+inline constexpr std::string_view TechDescSueDeCoqWhatToLookFor = "tech.desc.sue_de_coq.what_to_look_for";
+inline constexpr std::string_view TechDescForcingChainWhatItIs = "tech.desc.forcing_chain.what_it_is";
+inline constexpr std::string_view TechDescForcingChainWhatToLookFor = "tech.desc.forcing_chain.what_to_look_for";
+inline constexpr std::string_view TechDescNiceLoopWhatItIs = "tech.desc.nice_loop.what_it_is";
+inline constexpr std::string_view TechDescNiceLoopWhatToLookFor = "tech.desc.nice_loop.what_to_look_for";
+inline constexpr std::string_view TechDescXCyclesWhatItIs = "tech.desc.x_cycles.what_it_is";
+inline constexpr std::string_view TechDescXCyclesWhatToLookFor = "tech.desc.x_cycles.what_to_look_for";
+inline constexpr std::string_view TechDescThreeDMedusaWhatItIs = "tech.desc.three_d_medusa.what_it_is";
+inline constexpr std::string_view TechDescThreeDMedusaWhatToLookFor = "tech.desc.three_d_medusa.what_to_look_for";
+inline constexpr std::string_view TechDescHiddenUniqueRectangleWhatItIs =
+    "tech.desc.hidden_unique_rectangle.what_it_is";
+inline constexpr std::string_view TechDescHiddenUniqueRectangleWhatToLookFor =
+    "tech.desc.hidden_unique_rectangle.what_to_look_for";
+inline constexpr std::string_view TechDescAvoidableRectangleWhatItIs = "tech.desc.avoidable_rectangle.what_it_is";
+inline constexpr std::string_view TechDescAvoidableRectangleWhatToLookFor =
+    "tech.desc.avoidable_rectangle.what_to_look_for";
+inline constexpr std::string_view TechDescALSXYWingWhatItIs = "tech.desc.als_xy_wing.what_it_is";
+inline constexpr std::string_view TechDescALSXYWingWhatToLookFor = "tech.desc.als_xy_wing.what_to_look_for";
+inline constexpr std::string_view TechDescDeathBlossomWhatItIs = "tech.desc.death_blossom.what_it_is";
+inline constexpr std::string_view TechDescDeathBlossomWhatToLookFor = "tech.desc.death_blossom.what_to_look_for";
+inline constexpr std::string_view TechDescVWXYZWingWhatItIs = "tech.desc.vwxyz_wing.what_it_is";
+inline constexpr std::string_view TechDescVWXYZWingWhatToLookFor = "tech.desc.vwxyz_wing.what_to_look_for";
+inline constexpr std::string_view TechDescFrankenFishWhatItIs = "tech.desc.franken_fish.what_it_is";
+inline constexpr std::string_view TechDescFrankenFishWhatToLookFor = "tech.desc.franken_fish.what_to_look_for";
+inline constexpr std::string_view TechDescGroupedXCyclesWhatItIs = "tech.desc.grouped_x_cycles.what_it_is";
+inline constexpr std::string_view TechDescGroupedXCyclesWhatToLookFor = "tech.desc.grouped_x_cycles.what_to_look_for";
+inline constexpr std::string_view TechDescSashimiXWingWhatItIs = "tech.desc.sashimi_x_wing.what_it_is";
+inline constexpr std::string_view TechDescSashimiXWingWhatToLookFor = "tech.desc.sashimi_x_wing.what_to_look_for";
+inline constexpr std::string_view TechDescSashimiSwordfishWhatItIs = "tech.desc.sashimi_swordfish.what_it_is";
+inline constexpr std::string_view TechDescSashimiSwordfishWhatToLookFor =
+    "tech.desc.sashimi_swordfish.what_to_look_for";
+inline constexpr std::string_view TechDescSashimiJellyfishWhatItIs = "tech.desc.sashimi_jellyfish.what_it_is";
+inline constexpr std::string_view TechDescSashimiJellyfishWhatToLookFor =
+    "tech.desc.sashimi_jellyfish.what_to_look_for";
+inline constexpr std::string_view TechDescUnitForcingChainWhatItIs = "tech.desc.unit_forcing_chain.what_it_is";
+inline constexpr std::string_view TechDescUnitForcingChainWhatToLookFor =
+    "tech.desc.unit_forcing_chain.what_to_look_for";
+inline constexpr std::string_view TechDescRegionForcingChainWhatItIs = "tech.desc.region_forcing_chain.what_it_is";
+inline constexpr std::string_view TechDescRegionForcingChainWhatToLookFor =
+    "tech.desc.region_forcing_chain.what_to_look_for";
+inline constexpr std::string_view TechDescMutantFishWhatItIs = "tech.desc.mutant_fish.what_it_is";
+inline constexpr std::string_view TechDescMutantFishWhatToLookFor = "tech.desc.mutant_fish.what_to_look_for";
+inline constexpr std::string_view TechDescKrakenFishWhatItIs = "tech.desc.kraken_fish.what_it_is";
+inline constexpr std::string_view TechDescKrakenFishWhatToLookFor = "tech.desc.kraken_fish.what_to_look_for";
+inline constexpr std::string_view TechDescALSChainWhatItIs = "tech.desc.als_chain.what_it_is";
+inline constexpr std::string_view TechDescALSChainWhatToLookFor = "tech.desc.als_chain.what_to_look_for";
+inline constexpr std::string_view TechDescUniqueLoopWhatItIs = "tech.desc.unique_loop.what_it_is";
+inline constexpr std::string_view TechDescUniqueLoopWhatToLookFor = "tech.desc.unique_loop.what_to_look_for";
+inline constexpr std::string_view TechDescJuniorExocetWhatItIs = "tech.desc.junior_exocet.what_it_is";
+inline constexpr std::string_view TechDescJuniorExocetWhatToLookFor = "tech.desc.junior_exocet.what_to_look_for";
+inline constexpr std::string_view TechDescContinuousNiceLoopWhatItIs = "tech.desc.continuous_nice_loop.what_it_is";
+inline constexpr std::string_view TechDescContinuousNiceLoopWhatToLookFor =
+    "tech.desc.continuous_nice_loop.what_to_look_for";
+inline constexpr std::string_view TechDescGroupedNiceLoopWhatItIs = "tech.desc.grouped_nice_loop.what_it_is";
+inline constexpr std::string_view TechDescGroupedNiceLoopWhatToLookFor = "tech.desc.grouped_nice_loop.what_to_look_for";
+inline constexpr std::string_view TechDescBacktrackingWhatItIs = "tech.desc.backtracking.what_it_is";
+inline constexpr std::string_view TechDescBacktrackingWhatToLookFor = "tech.desc.backtracking.what_to_look_for";
+inline constexpr std::string_view TechDescUnknownWhatItIs = "tech.desc.unknown.what_it_is";
+inline constexpr std::string_view TechDescUnknownWhatToLookFor = "tech.desc.unknown.what_to_look_for";
 
 // =========================================================================
 // ViewModel — Technique formatting

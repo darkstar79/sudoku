@@ -185,7 +185,7 @@ void TrainingViewModel::requestHint() {
     const auto& expected = exercise.expected_step;
 
     int new_level = state.current_hint_level + 1;
-    auto hint = getTrainingHint(exercise.technique, new_level, expected);
+    auto hint = getTrainingHint(*loc_manager_, exercise.technique, new_level, expected);
 
     trainingState.update([new_level, &hint](TrainingUIState& s) {
         s.current_hint_level = new_level;
@@ -394,13 +394,13 @@ void TrainingViewModel::revealSolution() {
     }
 
     const auto& exercise = exercises_[idx];
-    auto hint = getTrainingHint(exercise.technique, 3, exercise.expected_step);
+    auto hint = getTrainingHint(*loc_manager_, exercise.technique, 3, exercise.expected_step);
 
     feedbackBoard.update([&hint](TrainingBoard& board) { applyHintHighlights(board, hint); });
 }
 
 TechniqueDescription TrainingViewModel::currentDescription() const {
-    return getTechniqueDescription(trainingState.get().current_technique);
+    return getTechniqueDescription(*loc_manager_, trainingState.get().current_technique);
 }
 
 // --- Private helpers ---
@@ -810,11 +810,9 @@ TrainingViewModel::extractPlayerEliminations(const TrainingBoard& player_board, 
 }
 
 void TrainingViewModel::applyHintHighlights(TrainingBoard& board, const TrainingHint& hint) {
-    for (size_t i = 0; i < hint.highlight_cells.size(); ++i) {
-        const auto& pos = hint.highlight_cells[i];
+    for (const auto& [pos, role] : hint.highlights) {
         if (pos.row < 9 && pos.col < 9) {
-            board[pos.row][pos.col].highlight_role =
-                (i < hint.highlight_roles.size()) ? hint.highlight_roles[i] : CellRole::Pattern;
+            board[pos.row][pos.col].highlight_role = role;
             board[pos.row][pos.col].player_selected = true;
         }
     }

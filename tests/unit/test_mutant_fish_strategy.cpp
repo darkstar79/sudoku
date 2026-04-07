@@ -28,6 +28,22 @@ namespace {
     return BoardData{};
 }
 
+/// Eliminate all candidates except `digit` from all empty cells.
+/// Reduces combinatorial explosion in MutantFish search from 9 digits to 1.
+void keepOnlyDigit(CandidateGrid& state, const BoardData& board, int digit) {
+    for (size_t r = 0; r < 9; ++r) {
+        for (size_t c = 0; c < 9; ++c) {
+            if (board[r][c] == 0) {
+                for (int d = 1; d <= 9; ++d) {
+                    if (d != digit) {
+                        state.eliminateCandidate(r, c, d);
+                    }
+                }
+            }
+        }
+    }
+}
+
 }  // namespace
 
 TEST_CASE("MutantFishStrategy - Metadata", "[mutant_fish]") {
@@ -55,8 +71,8 @@ TEST_CASE("MutantFishStrategy - Implements ISolvingStrategy interface", "[mutant
     REQUIRE(iface.getName() == "Mutant Fish");
     REQUIRE(iface.getDifficultyRating() == 5.4);
 
-    // Empty board should not crash
-    auto board = createEmptyBoard();
+    // Solved board: no candidates → findStep returns quickly with nullopt
+    BoardData board = sudoku::testing::kSolvedBoard;
     CandidateGrid state(board);
     [[maybe_unused]] auto result = iface.findStep(board, state);
 }
@@ -66,6 +82,7 @@ TEST_CASE("MutantFishStrategy - No pattern on pure standard fish", "[mutant_fish
     // because Mutant Fish requires BOTH base and cover to have >= 2 unit types
     auto board = createEmptyBoard();
     CandidateGrid state(board);
+    keepOnlyDigit(state, board, 7);  // only search digit 7
 
     // Set up a standard X-Wing on digit 7: rows 0,3, cols 0,3
     for (size_t r = 0; r < 9; ++r) {
@@ -86,6 +103,7 @@ TEST_CASE("MutantFishStrategy - No pattern on Franken Fish (single mixed side)",
     // Mutant Fish requires BOTH sides to mix types, so this should NOT be found
     auto board = createEmptyBoard();
     CandidateGrid state(board);
+    keepOnlyDigit(state, board, 5);  // only search digit 5
 
     // Base: Row 0 and Box 6 (rows 6-8, cols 0-2), digit 5
     // Cover: Col 0 and Col 3 (pure cols)
@@ -222,6 +240,7 @@ TEST_CASE("MutantFishStrategy - Explanation contains technique name", "[mutant_f
 
     auto board2 = createEmptyBoard();
     CandidateGrid state2(board2);
+    keepOnlyDigit(state2, board2, 3);  // only search digit 3
 
     // Eliminate 3 from all cells EXCEPT:
     // Base: (0,0), (0,1), (6,0), (7,0)

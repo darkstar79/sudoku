@@ -66,6 +66,8 @@ graph.json
 .vscode/
 .idea/
 .claude
+_bmad/
+_bmad-output/
 docs/internal
 *.swp
 *.swo

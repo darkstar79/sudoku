@@ -39,6 +39,8 @@ void GameViewModel::undo() {
         return;
     }
 
+    resetCoachingIfNotTryIt();
+
     // Skip over hint moves - they can't be undone
     while (move_history_index_ >= 0) {
         const auto& move = move_history_[move_history_index_];
@@ -66,6 +68,8 @@ void GameViewModel::redo() {
     if (!canRedo()) {
         return;
     }
+
+    resetCoachingIfNotTryIt();
 
     move_history_index_++;
     const auto& move = move_history_[move_history_index_];

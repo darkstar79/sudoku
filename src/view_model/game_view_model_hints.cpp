@@ -17,6 +17,8 @@
 #include "../core/localized_explanations.h"
 #include "../core/solving_technique.h"
 #include "../core/string_keys.h"
+#include "../core/technique_descriptions.h"
+#include "../core/training_hints.h"
 #include "core/i_game_validator.h"
 #include "core/i_statistics_manager.h"
 #include "core/i_sudoku_solver.h"
@@ -25,10 +27,12 @@
 #include "game_view_model.h"
 #include "model/game_state.h"
 
+#include <cassert>
 #include <chrono>
 #include <expected>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -39,13 +43,97 @@
 
 namespace sudoku::viewmodel {
 
+inline constexpr int kDefaultMaxHints = 10;
+
+namespace {
+
+struct CoachingCheckResult {
+    std::vector<core::CellHighlight> feedback;
+    int correct = 0;
+    int missed = 0;
+    int wrong = 0;
+};
+
+CoachingCheckResult evaluatePlacementCheck(const core::SolveStep& step, const model::GameState& snapshot,
+                                           const model::GameState& current_state) {
+    // Solver invariant: never suggests a placement on a given cell.
+    assert(!snapshot.isGiven(step.position));
+    CoachingCheckResult result;
+    const int current_val = current_state.getValue(step.position);
+    if (current_val == step.value) {
+        result.feedback.push_back({.position = step.position, .role = core::CellRole::CorrectAnswer});
+        result.correct = 1;
+    } else if (current_val != 0 && current_val != snapshot.getValue(step.position)) {
+        result.feedback.push_back({.position = step.position, .role = core::CellRole::WrongAnswer});
+        result.wrong = 1;
+    } else {
+        result.feedback.push_back({.position = step.position, .role = core::CellRole::MissedAnswer});
+        result.missed = 1;
+    }
+    return result;
+}
+
+CoachingCheckResult evaluateEliminationCheck(const core::SolveStep& step, const model::GameState& snapshot,
+                                             const model::GameState& current_state) {
+    CoachingCheckResult result;
+
+    // Track which expected eliminations the user correctly made
+    for (const auto& elim : step.eliminations) {
+        const bool snapshot_had = snapshot.getNotes(elim.position).contains(elim.value);
+        const bool current_has = current_state.getNotes(elim.position).contains(elim.value);
+        if (snapshot_had && !current_has) {
+            result.feedback.push_back({.position = elim.position, .role = core::CellRole::CorrectAnswer});
+            result.correct++;
+        } else if (snapshot_had && current_has) {
+            result.feedback.push_back({.position = elim.position, .role = core::CellRole::MissedAnswer});
+            result.missed++;
+        }
+    }
+
+    // Encode expected eliminations for fast lookup: row * kRowStride + col * kColStride + val
+    constexpr int kColStride = 9;
+    constexpr int kRowStride = 81;
+    auto encode = [](const core::Position& p, int v) {
+        return static_cast<int>((p.row * kRowStride) + (p.col * kColStride)) + v;
+    };
+    std::set<int> expected_elims;
+    for (const auto& elim : step.eliminations) {
+        expected_elims.insert(encode(elim.position, elim.value));
+    }
+
+    // Detect over-eliminations: user removed candidates not in expected set
+    for (size_t row = 0; row < 9; ++row) {
+        for (size_t col = 0; col < 9; ++col) {
+            const core::Position pos{.row = row, .col = col};
+            const auto& snap_notes = snapshot.getNotes(pos);
+            const auto& curr_notes = current_state.getNotes(pos);
+            if (snap_notes == curr_notes) {
+                continue;  // Cell unchanged — no over-eliminations possible here
+            }
+            for (int val = 1; val <= 9; ++val) {
+                if (snap_notes.contains(val) && !curr_notes.contains(val) &&
+                    !expected_elims.contains(encode(pos, val))) {
+                    result.feedback.push_back({.position = pos, .role = core::CellRole::WrongAnswer});
+                    result.wrong++;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+}  // namespace
+
 void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
-    if (!isGameActive() || getHintCount() <= 0) {
-        if (getHintCount() <= 0) {
+    const int hints_remaining = getHintCount();
+    if (!isGameActive() || hints_remaining <= 0) {
+        if (hints_remaining <= 0) {
             errorMessage.set(std::string(loc(core::StringKeys::HintNoRemaining)));
         }
         return;
     }
+
+    resetCoachingState();
 
     // VALIDATE FIRST - Don't consume hint if validation fails
     const auto& state = gameState.get();
@@ -143,8 +231,243 @@ int GameViewModel::getHintCount() const {
         return 0;
     }
 
-    int max_hints = settings_manager_ ? settings_manager_->getSettings().max_hints : 10;
+    int max_hints = settings_manager_ ? settings_manager_->getSettings().max_hints : kDefaultMaxHints;
     return max_hints - stats_result->hints_used;
+}
+
+void GameViewModel::requestCoachingHint() {
+    const int hints_remaining = getHintCount();
+    if (!isGameActive() || hints_remaining <= 0) {
+        if (hints_remaining <= 0) {
+            errorMessage.set(std::string(loc(core::StringKeys::CoachingNoRemaining)));
+        }
+        return;
+    }
+
+    const auto& current_coaching = coachingState.get();
+
+    // Already at max level — no-op
+    if (current_coaching.active && current_coaching.level >= 3) {
+        return;
+    }
+
+    // If not coaching yet, find and cache the next step
+    if (!coaching_context_.has_value()) {
+        const auto& state = gameState.get();
+        auto board = state.extractNumbers();
+        auto original_puzzle = state.extractGivenNumbers();
+
+        auto step_result = solver_->findNextStep(board, original_puzzle);
+        if (!step_result.has_value()) {
+            errorMessage.set(std::string(loc(core::StringKeys::CoachingNoTechnique)));
+            return;
+        }
+        coaching_context_ = CoachingContext{.step = step_result.value(), .snapshot = state};
+    }
+
+    // Consume one hint credit only on initial coaching request (not on level escalation)
+    if (!current_coaching.active) {
+        auto record_result = stats_manager_->recordHint(current_game_session_);
+        if (!record_result.has_value()) {
+            spdlog::warn("Failed to record coaching hint: {}", statisticsErrorToString(record_result.error()));
+        }
+    }
+
+    int new_level = current_coaching.active ? current_coaching.level + 1 : 1;
+    const auto& step = coaching_context_->step;
+
+    // Get progressive hint from training infrastructure
+    auto hint = core::getTrainingHint(*loc_manager_, step.technique, new_level, step);
+
+    // For level 1, prepend technique description with what_to_look_for
+    if (new_level == 1) {
+        hint.text = buildLevel1Message(hint, step);
+    }
+
+    CoachingState new_state;
+    new_state.active = true;
+    new_state.level = new_level;
+    new_state.max_level = new_level;
+    new_state.message = std::move(hint.text);
+    new_state.highlights = std::move(hint.highlights);
+    new_state.technique = step.technique;
+
+    // Level 3 enters TryIt phase — user can attempt the step
+    if (new_level == 3) {
+        new_state.phase = CoachingPhase::TryIt;
+        new_state.message += "\n\n";
+        new_state.message += std::string(loc(core::StringKeys::CoachingTryIt));
+        coaching_context_->snapshot = gameState.get();
+    }
+
+    coachingState.set(std::move(new_state));
+
+    spdlog::info("Coaching hint level {}: {} (SE {:.1f})", new_level, core::getTechniqueName(step.technique),
+                 step.rating);
+}
+
+void GameViewModel::navigateCoachingLevel(int direction) {
+    const auto& current = coachingState.get();
+    if (!current.active) {
+        return;
+    }
+
+    int target_level = current.level + direction;
+    if (target_level < 1 || target_level > current.max_level) {
+        return;  // Clamp — already at boundary
+    }
+
+    if (!coaching_context_.has_value()) {
+        return;
+    }
+    const auto& step = coaching_context_->step;
+    auto hint = core::getTrainingHint(*loc_manager_, step.technique, target_level, step);
+
+    // For level 1, prepend technique description with what_to_look_for
+    if (target_level == 1) {
+        hint.text = buildLevel1Message(hint, step);
+    }
+
+    CoachingState new_state;
+    new_state.active = true;
+    new_state.level = target_level;
+    new_state.max_level = current.max_level;
+    new_state.message = std::move(hint.text);
+    new_state.highlights = std::move(hint.highlights);
+    new_state.technique = step.technique;
+
+    coachingState.set(std::move(new_state));
+}
+
+void GameViewModel::dismissCoaching() {
+    resetCoachingState();
+}
+
+bool GameViewModel::isCoachingActive() const {
+    return coachingState.get().active;
+}
+
+void GameViewModel::checkCoachingAnswer() {
+    const auto& current = coachingState.get();
+    if (!current.active || current.phase != CoachingPhase::TryIt) {
+        return;
+    }
+    if (!coaching_context_.has_value()) {
+        return;
+    }
+
+    const auto& step = coaching_context_->step;
+    const auto& snapshot = coaching_context_->snapshot;
+    const auto& current_state = gameState.get();
+
+    auto result = (step.type == core::SolveStepType::Placement)
+                      ? evaluatePlacementCheck(step, snapshot, current_state)
+                      : evaluateEliminationCheck(step, snapshot, current_state);
+
+    const int total = result.correct + result.missed;
+    std::string message;
+    if (result.wrong > 0) {
+        message = locFormat(core::StringKeys::CoachingCheckWrong, result.correct, total, result.wrong);
+    } else if (result.missed == 0 && result.correct > 0) {
+        message = locFormat(core::StringKeys::CoachingCheckCorrect, result.correct, total);
+    } else if (result.correct > 0) {
+        message = locFormat(core::StringKeys::CoachingCheckPartial, result.correct, total, result.missed);
+    } else {
+        message = locFormat(core::StringKeys::CoachingCheckZero, total);
+    }
+
+    CoachingState new_state;
+    new_state.active = true;
+    new_state.phase = CoachingPhase::TryIt;
+    new_state.level = current.level;
+    new_state.max_level = current.max_level;
+    new_state.message = std::move(message);
+    new_state.highlights = std::move(result.feedback);
+    new_state.technique = current.technique;
+    new_state.check_submitted = true;
+
+    coachingState.set(std::move(new_state));
+
+    spdlog::info("Coaching check: {}/{} correct, {} missed, {} wrong", result.correct, total, result.missed,
+                 result.wrong);
+}
+
+void GameViewModel::applyCoachingStep() {
+    const auto& current = coachingState.get();
+    if (!current.active || current.phase != CoachingPhase::TryIt) {
+        return;
+    }
+    if (!coaching_context_.has_value()) {
+        return;
+    }
+
+    const auto& step = coaching_context_->step;
+    const auto& current_state = gameState.get();
+
+    if (step.type == core::SolveStepType::Placement) {
+        // Apply placement if cell doesn't already have the correct value
+        if (current_state.getValue(step.position) != step.value) {
+            core::Move move;
+            move.position = step.position;
+            move.value = step.value;
+            move.move_type = core::MoveType::PlaceNumber;
+            move.timestamp = std::chrono::steady_clock::now();
+            move.previous_value = current_state.getValue(step.position);
+            move.previous_hint_revealed = current_state.isCellHintRevealed(step.position);
+            move.previous_notes = current_state.getNotes(step.position);
+
+            applyMove(move);
+            recordMove(move, false);
+        }
+    } else {
+        // Apply eliminations — remove pencil marks that still exist
+        for (const auto& elim : step.eliminations) {
+            if (current_state.getNotes(elim.position).contains(elim.value)) {
+                core::Move move;
+                move.position = elim.position;
+                move.value = elim.value;
+                move.move_type = core::MoveType::RemoveNote;
+                move.is_note = true;
+                move.timestamp = std::chrono::steady_clock::now();
+                move.previous_value = current_state.getValue(elim.position);
+                move.previous_notes = current_state.getNotes(elim.position);
+
+                applyMove(move);
+                recordMove(move, false);
+            }
+        }
+    }
+
+    resetCoachingState();
+    updateConflictHighlighting();
+    updateUIState();
+
+    spdlog::info("Coaching step applied: {}", core::getTechniqueName(step.technique));
+}
+
+void GameViewModel::resetCoachingState() {
+    coaching_context_.reset();
+    coachingState.set(CoachingState{});
+}
+
+void GameViewModel::resetCoachingIfNotTryIt() {
+    if (coachingState.get().phase != CoachingPhase::TryIt) {
+        resetCoachingState();
+    }
+}
+
+std::string GameViewModel::buildLevel1Message(const core::TrainingHint& hint, const core::SolveStep& step) const {
+    auto desc = core::getTechniqueDescription(*loc_manager_, step.technique);
+    std::string message;
+    message += std::string(core::getLocalizedTechniqueName(*loc_manager_, step.technique));
+    message += "\n\n";
+    message += std::string(desc.what_it_is);
+    message += "\n\n";
+    message += std::string(loc(core::StringKeys::CoachingWhatToLookFor));
+    message += std::string(desc.what_to_look_for);
+    message += "\n\n";
+    message += hint.text;
+    return message;
 }
 
 }  // namespace sudoku::viewmodel

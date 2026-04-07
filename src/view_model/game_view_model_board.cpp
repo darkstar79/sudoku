@@ -42,6 +42,8 @@ void GameViewModel::enterNumber(const core::Position& pos, int number) {
         return;
     }
 
+    resetCoachingIfNotTryIt();
+
     const auto& current_state = gameState.get();
 
     // Don't allow editing given numbers
@@ -97,6 +99,8 @@ void GameViewModel::enterNote(const core::Position& pos, int number) {
         return;
     }
 
+    resetCoachingIfNotTryIt();
+
     const auto& current_state = gameState.get();
 
     // Don't allow notes on given numbers or filled cells
@@ -132,6 +136,8 @@ void GameViewModel::clearCell(const core::Position& pos) {
     if (!isGameActive()) {
         return;
     }
+
+    resetCoachingIfNotTryIt();
 
     const auto& current_state = gameState.get();
 

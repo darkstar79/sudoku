@@ -53,6 +53,15 @@ void GameViewModel::executeCommand(GameCommand command) {
         case GameCommand::GetHint:
             getHint(std::nullopt);
             break;
+        case GameCommand::GetCoachingHint:
+            requestCoachingHint();
+            break;
+        case GameCommand::CheckCoachingAnswer:
+            checkCoachingAnswer();
+            break;
+        case GameCommand::ApplyCoachingStep:
+            applyCoachingStep();
+            break;
         case GameCommand::ResetGame:
             resetGame();
             break;
@@ -75,7 +84,11 @@ bool GameViewModel::canExecuteCommand(GameCommand command) const {
         case GameCommand::Redo:
             return canRedo();
         case GameCommand::GetHint:
+        case GameCommand::GetCoachingHint:
             return isGameActive() && getHintCount() > 0;
+        case GameCommand::CheckCoachingAnswer:
+        case GameCommand::ApplyCoachingStep:
+            return coachingState.get().phase == CoachingPhase::TryIt;
         case GameCommand::ResetGame:
             return isGameActive();
         default:

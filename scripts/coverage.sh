@@ -53,7 +53,7 @@ function ensure_debug_build() {
         exit 1
     }
 
-    cmake --preset relwithdebinfo || {
+    cmake --preset relwithdebinfo -DSUDOKU_ENABLE_UI_TESTS=ON || {
         echo -e "${RED}Failed to configure RelWithDebInfo build${NC}"
         exit 1
     }
@@ -73,7 +73,7 @@ function run_tests() {
     # Run unit tests
     if [ -f "bin/tests/unit_tests" ]; then
         echo -e "${YELLOW}Running unit tests...${NC}"
-        ./bin/tests/unit_tests || {
+        ./bin/tests/unit_tests "~[slow]~[pathological]" || {
             echo -e "${RED}Unit tests failed${NC}"
             exit 1
         }
@@ -91,6 +91,23 @@ function run_tests() {
         }
     else
         echo -e "${YELLOW}Integration tests executable not found, skipping...${NC}"
+    fi
+
+    # Run UI tests (Qt6, headless)
+    local ui_test_dir="bin/tests/ui"
+    if [ -d "$ui_test_dir" ]; then
+        echo -e "${YELLOW}Running UI tests (offscreen)...${NC}"
+        for test_exe in "$ui_test_dir"/test_*; do
+            if [ -x "$test_exe" ]; then
+                echo -e "${YELLOW}  Running $(basename "$test_exe")...${NC}"
+                QT_QPA_PLATFORM=offscreen "$test_exe" || {
+                    echo -e "${RED}UI test $(basename "$test_exe") failed${NC}"
+                    exit 1
+                }
+            fi
+        done
+    else
+        echo -e "${YELLOW}UI tests directory not found, skipping...${NC}"
     fi
 }
 

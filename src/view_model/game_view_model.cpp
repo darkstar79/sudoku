@@ -46,8 +46,8 @@ GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
                              std::shared_ptr<core::ISettingsManager> settings_manager)
     : gameState(model::GameState{}), uiState(UIState{}), statistics(StatsDisplay{}),
       recentSaves(std::vector<std::string>{}), errorMessage(std::string{}), hintMessage(std::string{}),
-      validator_(std::move(validator)), generator_(std::move(generator)), solver_(std::move(solver)),
-      stats_manager_(std::move(stats_manager)), save_manager_(std::move(save_manager)),
+      coachingState(viewmodel::CoachingState{}), validator_(std::move(validator)), generator_(std::move(generator)),
+      solver_(std::move(solver)), stats_manager_(std::move(stats_manager)), save_manager_(std::move(save_manager)),
       loc_manager_(std::move(loc_manager)), settings_manager_(std::move(settings_manager)) {
     // Apply initial settings if available
     if (settings_manager_) {
@@ -97,6 +97,8 @@ std::string_view GameViewModel::statisticsErrorToString(core::StatisticsError er
 
 void GameViewModel::startNewGame(core::Difficulty difficulty) {
     spdlog::info("Starting new game with difficulty: {}", static_cast<int>(difficulty));
+
+    resetCoachingState();
 
     // Configure puzzle generation settings
     core::GenerationSettings settings;
@@ -176,9 +178,10 @@ void GameViewModel::resetGame() {
     // Start fresh statistics session (same puzzle rating)
     startGameSession();
 
-    // Clear messages
+    // Clear messages and coaching state
     hintMessage.set("");
     errorMessage.set("");
+    resetCoachingState();
 
     updateUIState();
     spdlog::info("Game reset successfully");
@@ -186,6 +189,8 @@ void GameViewModel::resetGame() {
 
 void GameViewModel::loadGame(const std::string& save_id) {
     spdlog::info("Loading game: {}", save_id);
+
+    resetCoachingState();
 
     auto load_result = save_manager_->loadGame(save_id);
     if (!load_result) {
