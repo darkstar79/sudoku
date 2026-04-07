@@ -296,10 +296,16 @@ TEST_CASE("SaveManager encryption error handling", "[save_manager][encryption]")
         std::fstream file(file_path, std::ios::in | std::ios::out | std::ios::binary);
         REQUIRE(file.is_open());
 
-        // Seek to middle and corrupt data
+        // Seek to middle and corrupt data. Read the original byte first and
+        // write its bitwise complement so the modification is guaranteed —
+        // a fixed value would coincidentally match the original ~1/256 of
+        // the time, leaving the file unchanged and the test flaky.
+        file.seekg(100);
+        char original_byte = 0;
+        file.read(&original_byte, 1);
         file.seekp(100);
-        unsigned char corrupt_byte = 0xFF;
-        file.write(reinterpret_cast<char*>(&corrupt_byte), 1);
+        char corrupt_byte = static_cast<char>(~original_byte);
+        file.write(&corrupt_byte, 1);
         file.close();
 
         // Attempt to load
