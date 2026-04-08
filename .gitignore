@@ -66,6 +66,7 @@ graph.json
 .vscode/
 .idea/
 .claude
+CLAUDE.md
 _bmad/
 _bmad-output/
 docs/internal
