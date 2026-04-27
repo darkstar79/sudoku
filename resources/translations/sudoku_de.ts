@@ -134,16 +134,6 @@
         <translation>Hinweise:</translation>
     </message>
     <message>
-        <source>Rating:</source>
-        <extracomment>Key: toolbar.rating</extracomment>
-        <translation>Bewertung:</translation>
-    </message>
-    <message>
-        <source>[?]</source>
-        <extracomment>Key: toolbar.help_icon</extracomment>
-        <translation>[?]</translation>
-    </message>
-    <message>
         <source>Easy</source>
         <extracomment>Key: difficulty.easy</extracomment>
         <translation>Leicht</translation>
@@ -172,26 +162,6 @@
         <source>Unknown</source>
         <extracomment>Key: difficulty.unknown</extracomment>
         <translation>Unbekannt</translation>
-    </message>
-    <message>
-        <source>Check Solution</source>
-        <extracomment>Key: button.check_solution</extracomment>
-        <translation>Lösung prüfen</translation>
-    </message>
-    <message>
-        <source>Undo to Valid</source>
-        <extracomment>Key: button.undo_to_valid</extracomment>
-        <translation>Bis gültig rückgängig</translation>
-    </message>
-    <message>
-        <source>Auto Notes: ON</source>
-        <extracomment>Key: button.auto_notes_on</extracomment>
-        <translation>Auto-Notizen: EIN</translation>
-    </message>
-    <message>
-        <source>Auto Notes: OFF</source>
-        <extracomment>Key: button.auto_notes_off</extracomment>
-        <translation>Auto-Notizen: AUS</translation>
     </message>
     <message>
         <source>Fill Notes</source>
@@ -514,34 +484,9 @@
         <translation>Bereit</translation>
     </message>
     <message>
-        <source>Press F1 to show menu</source>
-        <extracomment>Key: status.press_f1</extracomment>
-        <translation>F1 drücken für Menü</translation>
-    </message>
-    <message>
-        <source>In Progress</source>
-        <extracomment>Key: status.in_progress</extracomment>
-        <translation>In Bearbeitung</translation>
-    </message>
-    <message>
         <source>No game loaded. Start a new game!</source>
         <extracomment>Key: board.no_game_loaded</extracomment>
         <translation>Kein Spiel geladen. Starte ein neues Spiel!</translation>
-    </message>
-    <message>
-        <source>Select difficulty:</source>
-        <extracomment>Key: dialog.select_difficulty</extracomment>
-        <translation>Schwierigkeit auswählen:</translation>
-    </message>
-    <message>
-        <source>Start Game</source>
-        <extracomment>Key: dialog.start_game</extracomment>
-        <translation>Spiel starten</translation>
-    </message>
-    <message>
-        <source>Cancel</source>
-        <extracomment>Key: dialog.cancel</extracomment>
-        <translation>Abbrechen</translation>
     </message>
     <message>
         <source>Start a new {0} game?
@@ -554,11 +499,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <source>All progress on this puzzle will be lost, including placed numbers, notes, and hints. The timer will restart.</source>
         <extracomment>Key: dialog.reset_warning</extracomment>
         <translation>Aller Fortschritt bei diesem Rätsel geht verloren, einschließlich eingetragener Zahlen, Notizen und Hinweise. Der Timer wird neu gestartet.</translation>
-    </message>
-    <message>
-        <source>Reset</source>
-        <extracomment>Key: dialog.reset</extracomment>
-        <translation>Zurücksetzen</translation>
     </message>
     <message>
         <source>Save Game</source>
@@ -616,11 +556,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Spiel laden</translation>
     </message>
     <message>
-        <source>Recent saves:</source>
-        <extracomment>Key: dialog.recent_saves</extracomment>
-        <translation>Letzte Speicherstände:</translation>
-    </message>
-    <message>
         <source>Name</source>
         <extracomment>Key: load.col_name</extracomment>
         <translation>Name</translation>
@@ -639,11 +574,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <source>Rating</source>
         <extracomment>Key: load.col_rating</extracomment>
         <translation>Bewertung</translation>
-    </message>
-    <message>
-        <source>Close</source>
-        <extracomment>Key: dialog.close</extracomment>
-        <translation>Schließen</translation>
     </message>
     <message>
         <source>Games Played: {0}</source>
@@ -836,21 +766,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Das Deaktivieren beendet die Aufzeichnung von Einzelspielstatistiken. Möchten Sie den vorhandenen Sitzungsverlauf löschen?</translation>
     </message>
     <message>
-        <source>Session history deleted.</source>
-        <extracomment>Key: stats.sessions_deleted</extracomment>
-        <translation>Sitzungsverlauf gelöscht.</translation>
-    </message>
-    <message>
-        <source>Sudoku Explainer Rating Scale:</source>
-        <extracomment>Key: tooltip.rating_scale</extracomment>
-        <translation>Sudoku-Explainer-Bewertungsskala:</translation>
-    </message>
-    <message>
-        <source>Techniques Required:</source>
-        <extracomment>Key: tooltip.techniques_required</extracomment>
-        <translation>Benötigte Techniken:</translation>
-    </message>
-    <message>
         <source>Input mode (Space to cycle, N for Notes)</source>
         <extracomment>Key: tooltip.input_mode</extracomment>
         <translation>Eingabemodus (Leertaste zum Wechseln, N für Notizen)</translation>
@@ -916,16 +831,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Keine logischen Strategien an dieser Position gefunden.</translation>
     </message>
     <message>
-        <source>Difficulty: {0}</source>
-        <extracomment>Key: sidebar.difficulty</extracomment>
-        <translation>Schwierigkeit: {0}</translation>
-    </message>
-    <message>
-        <source>Rating: {0}</source>
-        <extracomment>Key: sidebar.rating</extracomment>
-        <translation>Bewertung: {0}</translation>
-    </message>
-    <message>
         <source>Language</source>
         <extracomment>Key: sidebar.language</extracomment>
         <translation>Sprache</translation>
@@ -974,11 +879,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <source>Serialization error</source>
         <extracomment>Key: error.serialization</extracomment>
         <translation>Serialisierungsfehler</translation>
-    </message>
-    <message>
-        <source>Unknown error</source>
-        <extracomment>Key: error.unknown</extracomment>
-        <translation>Unbekannter Fehler</translation>
     </message>
     <message>
         <source>No valid state in history</source>
@@ -1046,11 +946,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Keine logische Technik gefunden</translation>
     </message>
     <message>
-        <source>Maximum coaching level reached</source>
-        <extracomment>Key: coaching.max_level</extracomment>
-        <translation>Maximale Coaching-Stufe erreicht</translation>
-    </message>
-    <message>
         <source>Level {0}/3</source>
         <extracomment>Key: coaching.level_header</extracomment>
         <translation>Stufe {0}/3</translation>
@@ -1074,11 +969,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <source>Some actions were incorrect. {0}/{1} correct, {2} wrong.</source>
         <extracomment>Key: coaching.check_wrong</extracomment>
         <translation>Einige Aktionen waren falsch. {0}/{1} richtig, {2} falsch.</translation>
-    </message>
-    <message>
-        <source>Step applied.</source>
-        <extracomment>Key: coaching.applied</extracomment>
-        <translation>Schritt angewendet.</translation>
     </message>
     <message>
         <source>Check</source>

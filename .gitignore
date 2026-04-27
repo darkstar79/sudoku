@@ -136,3 +136,6 @@ Sudoku-*-win64.exe
 .appimage-tools/
 AppDir/
 Sudoku-*.AppImage
+# Python bytecode caches
+__pycache__/
+*.pyc

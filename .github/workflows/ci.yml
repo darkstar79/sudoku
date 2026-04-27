@@ -34,6 +34,21 @@ jobs:
           fi
           echo "✅ Code formatting check passed"
 
+  i18n-check:
+    name: Translation Completeness
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Verify translations are in sync with source
+        run: |
+          echo "Scanning source for core::loc / core::locFormat calls and"
+          echo "comparing against resources/translations/sudoku_*.ts ..."
+          python3 scripts/check_translations.py
+          echo "✅ Translation check passed"
+
   test-and-coverage:
     name: Test & Coverage
     runs-on: ubuntu-24.04

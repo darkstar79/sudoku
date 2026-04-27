@@ -704,7 +704,7 @@ void MainWindow::updateButtonPanel() {
     // Update fill notes toggle state
     const auto& ui = view_model_->uiState.get();
     auto_notes_btn_->setChecked(ui.notes_filled);
-    auto_notes_btn_->setText(qstr(core::loc(ui.notes_filled ? "Clear Notes" : "Fill Notes")));
+    auto_notes_btn_->setText(ui.notes_filled ? qstr(core::loc("Clear Notes")) : qstr(core::loc("Fill Notes")));
 }
 
 // Dialog methods
@@ -883,16 +883,16 @@ void MainWindow::showStatisticsDialog() {
     // === Overview tab ===
     auto* overview_page = new QWidget();
     auto* overview_layout = new QFormLayout(overview_page);
-    auto addStatRow = [&](const char* fmt_str, const auto& value) {
-        overview_layout->addRow(new QLabel(QString::fromStdString(core::locFormat(fmt_str, value))));
+    auto addStatRow = [&](const std::string& text) {
+        overview_layout->addRow(new QLabel(QString::fromStdString(text)));
     };
-    addStatRow("Games Played: {0}", display.games_played);
-    addStatRow("Games Completed: {0}", display.games_completed);
-    addStatRow("Completion Rate: {0:.1f}%", display.completion_rate);
-    addStatRow("Best Time: {0}", display.best_time);
-    addStatRow("Average Time: {0}", display.average_time);
-    addStatRow("Current Streak: {0}", display.current_streak);
-    addStatRow("Best Streak: {0}", display.best_streak);
+    addStatRow(core::locFormat("Games Played: {0}", display.games_played));
+    addStatRow(core::locFormat("Games Completed: {0}", display.games_completed));
+    addStatRow(core::locFormat("Completion Rate: {0:.1f}%", display.completion_rate));
+    addStatRow(core::locFormat("Best Time: {0}", display.best_time));
+    addStatRow(core::locFormat("Average Time: {0}", display.average_time));
+    addStatRow(core::locFormat("Current Streak: {0}", display.current_streak));
+    addStatRow(core::locFormat("Best Streak: {0}", display.best_streak));
 
     if (maybe_stats) {
         const auto& agg = *maybe_stats;
@@ -1167,7 +1167,8 @@ void MainWindow::retranslateUi() {
     undo_btn_->setText(qstr(core::loc("Undo")));
     redo_btn_->setText(qstr(core::loc("Redo")));
     undo_valid_btn_->setText(qstr(core::loc("Undo Until Valid")));
-    auto_notes_btn_->setText(qstr(core::loc(auto_notes_btn_->isChecked() ? "Clear Notes" : "Fill Notes")));
+    auto_notes_btn_->setText(auto_notes_btn_->isChecked() ? qstr(core::loc("Clear Notes"))
+                                                          : qstr(core::loc("Fill Notes")));
     mode_btn_->setToolTip(qstr(core::loc("Input mode (Space to cycle, N for Notes)")));
 
     // Status bar and mode button

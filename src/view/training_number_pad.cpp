@@ -53,10 +53,10 @@ TrainingNumberPad::TrainingNumberPad(QWidget* parent) : QWidget(parent) {
 void TrainingNumberPad::setInteractionMode(core::TrainingInteractionMode mode) {
     mode_ = mode;
 
-    const char* fmt_str = mode == core::TrainingInteractionMode::Placement ? "Place {0} in selected cell"
-                                                                           : "Eliminate {0} from selected cell";
     for (int i = 0; i < static_cast<int>(core::MAX_VALUE); ++i) {
-        auto tooltip = core::locFormat(fmt_str, i + 1);
+        auto tooltip = mode == core::TrainingInteractionMode::Placement
+                           ? core::locFormat("Place {0} in selected cell", i + 1)
+                           : core::locFormat("Eliminate {0} from selected cell", i + 1);
         buttons_[static_cast<size_t>(i)]->setToolTip(QString::fromStdString(tooltip));
     }
 }
