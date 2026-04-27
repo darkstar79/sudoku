@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "../core/i_localization_manager.h"
 #include "../core/i_settings_manager.h"
 #include "../core/observable.h"
 #include "../view_model/game_view_model.h"
@@ -70,7 +69,6 @@ public:
 
     void setViewModel(std::shared_ptr<viewmodel::GameViewModel> view_model);
     void setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm);
-    void setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager);
     void setSettingsManager(std::shared_ptr<core::ISettingsManager> settings_manager);
 
 protected:
@@ -84,22 +82,12 @@ private:
     std::shared_ptr<viewmodel::TrainingViewModel> training_vm_;
     core::CompositeObserver observer_;
 
-    // Localization
-    std::shared_ptr<core::ILocalizationManager> loc_manager_;
+    // Settings
     std::shared_ptr<core::ISettingsManager> settings_manager_;
     int selected_language_{0};
 
-    [[nodiscard]] std::string_view loc(std::string_view key) const {
-        return loc_manager_ ? loc_manager_->getString(key) : key;
-    }
-
     [[nodiscard]] static QString qstr(std::string_view sv) {
         return QString::fromUtf8(sv.data(), static_cast<qsizetype>(sv.size()));
-    }
-
-    template <typename... Args>
-    [[nodiscard]] std::string locFormat(std::string_view key, Args&&... args) const {
-        return fmt::format(fmt::runtime(loc(key)), std::forward<Args>(args)...);
     }
 
     [[nodiscard]] std::string difficultyString(core::Difficulty difficulty) const;

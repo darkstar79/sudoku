@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../core/solving_technique.h"
-#include "../core/string_keys.h"
 #include "core/constants.h"
 #include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
@@ -222,8 +221,7 @@ std::vector<std::string> GameViewModel::formatTechniques(const std::set<core::So
     std::vector<std::string> result;
     result.reserve(sorted.size() + (requires_backtracking ? 1 : 0));
     for (const auto& tech : sorted) {
-        result.push_back(core::locFormat("{0} (SE {1})",
-                                         std::string(core::getLocalizedTechniqueName(*loc_manager_, tech)),
+        result.push_back(core::locFormat("{0} (SE {1})", std::string(core::getLocalizedTechniqueName(tech)),
                                          fmt::format("{:.1f}", core::getTechniqueRating(tech))));
     }
 

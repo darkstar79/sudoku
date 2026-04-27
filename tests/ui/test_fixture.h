@@ -15,7 +15,6 @@
 #include "core/statistics_manager.h"
 #include "core/sudoku_solver.h"
 #include "core/training_exercise_generator.h"
-#include "helpers/mock_localization_manager.h"
 #include "view/main_window.h"
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
@@ -33,7 +32,6 @@ struct UITestContext {
     std::shared_ptr<core::ISudokuSolver> solver;
     std::shared_ptr<core::ISaveManager> save_manager;
     std::shared_ptr<core::IStatisticsManager> stats_manager;
-    std::shared_ptr<core::ILocalizationManager> loc_manager;
     std::shared_ptr<viewmodel::GameViewModel> game_vm;
     std::shared_ptr<viewmodel::TrainingViewModel> training_vm;
     std::filesystem::path test_dir;
@@ -49,13 +47,11 @@ struct UITestContext {
         generator = std::make_shared<core::PuzzleGenerator>(rater);
         save_manager = std::make_shared<core::SaveManager>(test_dir.string());
         stats_manager = std::make_shared<core::StatisticsManager>(test_dir.string());
-        loc_manager = std::make_shared<core::MockLocalizationManager>();
 
-        game_vm = std::make_shared<viewmodel::GameViewModel>(validator, generator, solver, stats_manager, save_manager,
-                                                             loc_manager);
+        game_vm = std::make_shared<viewmodel::GameViewModel>(validator, generator, solver, stats_manager, save_manager);
 
         auto exercise_gen = std::make_shared<core::TrainingExerciseGenerator>(generator, solver);
-        training_vm = std::make_shared<viewmodel::TrainingViewModel>(exercise_gen, loc_manager);
+        training_vm = std::make_shared<viewmodel::TrainingViewModel>(exercise_gen);
     }
 
     ~UITestContext() {
@@ -68,7 +64,6 @@ struct UITestContext {
     void setupMainWindow(view::MainWindow& window) {
         window.setViewModel(game_vm);
         window.setTrainingViewModel(training_vm);
-        window.setLocalizationManager(loc_manager);  // also propagates to training widget
     }
 };
 

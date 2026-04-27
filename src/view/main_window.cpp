@@ -16,11 +16,9 @@
 
 #include "main_window.h"
 
-#include "../core/string_keys.h"
 #include "core/constants.h"
 #include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
-#include "core/i_localization_manager.h"
 #include "core/observable.h"
 #include "infrastructure/app_directory_manager.h"
 #include "model/game_state.h"
@@ -31,6 +29,7 @@
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
 
+#include <array>
 #include <compare>
 #include <expected>
 #include <filesystem>
@@ -539,22 +538,6 @@ void MainWindow::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewMod
     }
 }
 
-void MainWindow::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
-    loc_manager_ = std::move(loc_manager);
-    spdlog::debug("LocalizationManager bound to MainWindow (locale: {})", loc_manager_->getCurrentLocale());
-    if (board_widget_) {
-        board_widget_->setLocalizationManager(loc_manager_);
-    }
-    if (training_widget_) {
-        training_widget_->setLocalizationManager(loc_manager_);
-        // Re-bind training VM since rebuildPages() destroyed the old page widgets
-        if (training_vm_) {
-            training_widget_->setTrainingViewModel(training_vm_);
-        }
-    }
-    retranslateUi();
-}
-
 void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> settings_manager) {
     settings_manager_ = std::move(settings_manager);
 
@@ -564,15 +547,11 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
             auto_save_timer_->setInterval(settings_manager_->getSettings().auto_save_interval_ms);
         }
 
-        // Subscribe to settings changes
+        // Subscribe to settings changes (auto-save interval; runtime language switching
+        // requires QTranslator swap and is not currently wired)
         settings_manager_->settingsObservable().subscribe([this](const core::Settings& s) {
             if (auto_save_timer_) {
                 auto_save_timer_->setInterval(s.auto_save_interval_ms);
-            }
-            // Retranslate UI if language changed
-            if (loc_manager_ && s.language != std::string(loc_manager_->getCurrentLocale())) {
-                [[maybe_unused]] auto result = loc_manager_->setLocale(s.language);
-                retranslateUi();
             }
         });
     }
@@ -1191,14 +1170,6 @@ void MainWindow::retranslateUi() {
     auto_notes_btn_->setText(qstr(core::loc(auto_notes_btn_->isChecked() ? "Clear Notes" : "Fill Notes")));
     mode_btn_->setToolTip(qstr(core::loc("Input mode (Space to cycle, N for Notes)")));
 
-    // Training widget: rebuild pages with new locale, then re-bind VM
-    if (training_widget_ && loc_manager_) {
-        training_widget_->setLocalizationManager(loc_manager_);
-        if (training_vm_) {
-            training_widget_->setTrainingViewModel(training_vm_);
-        }
-    }
-
     // Status bar and mode button
     updateStatusBar();
     updateButtonPanel();
@@ -1252,17 +1223,19 @@ void MainWindow::showSettingsDialog() {
     show_hints_cb->setChecked(settings_manager_->getSettings().show_hints);
     display_layout->addWidget(show_hints_cb);
 
-    // Language selection
-    if (loc_manager_) {
+    // Language selection. Setting persists across restart but does not retranslate
+    // the running UI (Qt Linguist runtime swap not yet wired).
+    {
         display_layout->addSpacing(10);
         auto* lang_layout = new QHBoxLayout();
         lang_layout->addWidget(new QLabel(qstr(core::loc("Language"))));
         auto* lang_combo = new QComboBox();
-        auto locales = loc_manager_->getAvailableLocales();
+        static const std::array<std::pair<const char*, const char*>, 2> kLocales = {
+            {{"en", "English"}, {"de", "Deutsch"}}};
         int current_idx = 0;
-        for (size_t i = 0; i < locales.size(); ++i) {
-            lang_combo->addItem(QString::fromStdString(locales[i].second), QString::fromStdString(locales[i].first));
-            if (locales[i].first == settings_manager_->getSettings().language) {
+        for (size_t i = 0; i < kLocales.size(); ++i) {
+            lang_combo->addItem(QString::fromUtf8(kLocales[i].second), QString::fromUtf8(kLocales[i].first));
+            if (kLocales[i].first == settings_manager_->getSettings().language) {
                 current_idx = static_cast<int>(i);
             }
         }

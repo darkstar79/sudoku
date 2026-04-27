@@ -21,13 +21,11 @@
 #include "core/constants.h"
 #include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
-#include "core/i_localization_manager.h"
 #include "core/i_puzzle_generator.h"
 #include "core/i_save_manager.h"
 #include "core/i_statistics_manager.h"
 #include "core/i_sudoku_solver.h"
 #include "core/observable.h"
-#include "core/string_keys.h"
 #include "model/game_state.h"
 
 #include <algorithm>
@@ -43,13 +41,12 @@ GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
                              std::shared_ptr<core::ISudokuSolver> solver,
                              std::shared_ptr<core::IStatisticsManager> stats_manager,
                              std::shared_ptr<core::ISaveManager> save_manager,
-                             std::shared_ptr<core::ILocalizationManager> loc_manager,
                              std::shared_ptr<core::ISettingsManager> settings_manager)
     : gameState(model::GameState{}), uiState(UIState{}), statistics(StatsDisplay{}),
       recentSaves(std::vector<std::string>{}), errorMessage(std::string{}), hintMessage(std::string{}),
       coachingState(viewmodel::CoachingState{}), validator_(std::move(validator)), generator_(std::move(generator)),
       solver_(std::move(solver)), stats_manager_(std::move(stats_manager)), save_manager_(std::move(save_manager)),
-      loc_manager_(std::move(loc_manager)), settings_manager_(std::move(settings_manager)) {
+      settings_manager_(std::move(settings_manager)) {
     // Apply initial settings if available
     if (settings_manager_) {
         const auto& settings = settings_manager_->getSettings();

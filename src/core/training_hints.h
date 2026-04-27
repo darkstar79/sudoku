@@ -17,7 +17,6 @@
 #pragma once
 
 #include "i_game_validator.h"
-#include "i_localization_manager.h"
 #include "solve_step.h"
 #include "solving_technique.h"
 
@@ -128,12 +127,10 @@ void appendDataHighlights(TrainingHint& hint, const ExplanationData& data, CellR
 void appendEliminationHighlights(TrainingHint& hint, const SolveStep& expected);
 
 /// Get a per-technique progressive hint for training exercises.
-/// @param loc Localization manager for translating hint text
 /// @param technique The technique being practiced
 /// @param level Hint level (1-3)
 /// @param expected The expected solving step (contains positions, values, explanation data)
 /// @return TrainingHint with text and cells to highlight
-[[nodiscard]] TrainingHint getTrainingHint(const ILocalizationManager& loc, SolvingTechnique technique, int level,
-                                           const SolveStep& expected);
+[[nodiscard]] TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveStep& expected);
 
 }  // namespace sudoku::core

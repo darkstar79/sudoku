@@ -49,7 +49,6 @@ void TestMainWindowConstruction::constructsWithViewModel() {
 
     QVERIFY(window.view_model_ != nullptr);
     QVERIFY(window.training_vm_ != nullptr);
-    QVERIFY(window.loc_manager_ != nullptr);
 }
 
 void TestMainWindowConstruction::centralStackDefaultsToGameBoard() {
@@ -60,13 +59,13 @@ void TestMainWindowConstruction::centralStackDefaultsToGameBoard() {
 void TestMainWindowConstruction::difficultyComboHasFiveEntries() {
     view::MainWindow window;
     QCOMPARE(window.difficulty_combo_->count(), 5);
-    QCOMPARE(window.difficulty_combo_->itemText(0), QString("difficulty.easy"));
-    QCOMPARE(window.difficulty_combo_->itemText(4), QString("difficulty.master"));
+    QCOMPARE(window.difficulty_combo_->itemText(0), QString("Easy"));
+    QCOMPARE(window.difficulty_combo_->itemText(4), QString("Master"));
 }
 
 void TestMainWindowConstruction::statusBarShowsReady() {
     view::MainWindow window;
-    QCOMPARE(window.status_label_->text(), QString("status.ready"));
+    QCOMPARE(window.status_label_->text(), QString("Ready"));
 }
 
 void TestMainWindowConstruction::boardWidgetExists() {
@@ -90,10 +89,10 @@ void TestMainWindowConstruction::buttonPanelExists() {
 
 void TestMainWindowConstruction::buttonPanelInitialState() {
     view::MainWindow window;
-    QCOMPARE(window.undo_btn_->text(), QString("button.undo"));
-    QCOMPARE(window.redo_btn_->text(), QString("button.redo"));
-    QCOMPARE(window.undo_valid_btn_->text(), QString("button.undo_until_valid"));
-    QCOMPARE(window.auto_notes_btn_->text(), QString("button.fill_notes"));
+    QCOMPARE(window.undo_btn_->text(), QString("Undo"));
+    QCOMPARE(window.redo_btn_->text(), QString("Redo"));
+    QCOMPARE(window.undo_valid_btn_->text(), QString("Undo Until Valid"));
+    QCOMPARE(window.auto_notes_btn_->text(), QString("Fill Notes"));
     QVERIFY(window.auto_notes_btn_->isCheckable());
 }
 

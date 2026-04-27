@@ -17,7 +17,6 @@
 #pragma once
 
 #include "../core/i_game_validator.h"
-#include "../core/i_localization_manager.h"
 #include "../core/i_puzzle_generator.h"
 #include "../core/i_save_manager.h"
 #include "../core/i_settings_manager.h"
@@ -133,7 +132,6 @@ public:
     GameViewModel(std::shared_ptr<core::IGameValidator> validator, std::shared_ptr<core::IPuzzleGenerator> generator,
                   std::shared_ptr<core::ISudokuSolver> solver, std::shared_ptr<core::IStatisticsManager> stats_manager,
                   std::shared_ptr<core::ISaveManager> save_manager,
-                  std::shared_ptr<core::ILocalizationManager> loc_manager,
                   std::shared_ptr<core::ISettingsManager> settings_manager = nullptr);
 
     ~GameViewModel() = default;
@@ -259,18 +257,7 @@ private:
     std::shared_ptr<core::ISudokuSolver> solver_;
     std::shared_ptr<core::IStatisticsManager> stats_manager_;
     std::shared_ptr<core::ISaveManager> save_manager_;
-    std::shared_ptr<core::ILocalizationManager> loc_manager_;
     std::shared_ptr<core::ISettingsManager> settings_manager_;
-
-    // Localization helpers
-    [[nodiscard]] std::string_view loc(std::string_view key) const {
-        return loc_manager_->getString(key);
-    }
-
-    template <typename... Args>
-    [[nodiscard]] std::string locFormat(std::string_view key, Args&&... args) const {
-        return fmt::format(fmt::runtime(loc_manager_->getString(key)), std::forward<Args>(args)...);
-    }
 
     // Internal state
     uint64_t current_game_session_{0};

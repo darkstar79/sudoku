@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/candidate_grid.h"
-#include "../../src/core/i_localization_manager.h"
 #include "../../src/core/i_training_exercise_generator.h"
 #include "../../src/core/i_training_statistics_manager.h"
 #include "../../src/view_model/training_view_model.h"
@@ -95,39 +94,9 @@ public:
     }
 };
 
-/// Minimal localization manager for tests — returns key as-is, except for
-/// keys that are used as fmt::format templates (contain {0} in the real locale).
-/// Those need a valid placeholder so locFormat() doesn't crash.
-class MockLocManager : public ILocalizationManager {
-public:
-    [[nodiscard]] std::string_view getString(std::string_view key) const override {
-        // Keys used with locFormat() need a valid {0} placeholder.
-        // Detect by suffix pattern rather than hardcoding specific keys.
-        if (key.find("feedback_") != std::string_view::npos || key.find("correct_continue") != std::string_view::npos) {
-            return format_placeholder_;
-        }
-        return key;
-    }
-
-    [[nodiscard]] std::expected<void, std::string> setLocale(std::string_view /*locale_code*/) override {
-        return {};
-    }
-    [[nodiscard]] std::string_view getCurrentLocale() const override {
-        return "en";
-    }
-    [[nodiscard]] std::vector<std::pair<std::string, std::string>> getAvailableLocales() const override {
-        return {{"en", "English"}};
-    }
-
-private:
-    // Generic format template for any key that locFormat() will expand
-    std::string format_placeholder_ = "{0}";
-};
-
 struct VMFixture {
     std::shared_ptr<MockExerciseGenerator> mock_gen = std::make_shared<MockExerciseGenerator>();
-    std::shared_ptr<MockLocManager> mock_loc = std::make_shared<MockLocManager>();
-    TrainingViewModel vm{mock_gen, mock_loc};
+    TrainingViewModel vm{mock_gen};
 };
 
 /// Mock stats manager for verifying recordLesson calls
@@ -731,9 +700,8 @@ TEST_CASE("TrainingViewModel - skipExercise to LessonComplete", "[training_view_
 
 TEST_CASE("TrainingViewModel - records stats on lesson complete", "[training_view_model]") {
     auto mock_gen = std::make_shared<MockExerciseGenerator>();
-    auto mock_loc = std::make_shared<MockLocManager>();
     auto mock_stats = std::make_shared<MockStatsManager>();
-    TrainingViewModel vm{mock_gen, mock_loc, mock_stats};
+    TrainingViewModel vm{mock_gen, mock_stats};
 
     vm.selectTechnique(SolvingTechnique::NakedSingle);
     vm.startExercises();
@@ -761,9 +729,8 @@ TEST_CASE("TrainingViewModel - records stats on lesson complete", "[training_vie
 
 TEST_CASE("TrainingViewModel - records stats on skip to complete", "[training_view_model]") {
     auto mock_gen = std::make_shared<MockExerciseGenerator>();
-    auto mock_loc = std::make_shared<MockLocManager>();
     auto mock_stats = std::make_shared<MockStatsManager>();
-    TrainingViewModel vm{mock_gen, mock_loc, mock_stats};
+    TrainingViewModel vm{mock_gen, mock_stats};
 
     vm.selectTechnique(SolvingTechnique::NakedSingle);
     vm.startExercises();
@@ -778,10 +745,9 @@ TEST_CASE("TrainingViewModel - records stats on skip to complete", "[training_vi
 
 TEST_CASE("TrainingViewModel - stats recording failure does not crash", "[training_view_model]") {
     auto mock_gen = std::make_shared<MockExerciseGenerator>();
-    auto mock_loc = std::make_shared<MockLocManager>();
     auto mock_stats = std::make_shared<MockStatsManager>();
     mock_stats->should_fail = true;
-    TrainingViewModel vm{mock_gen, mock_loc, mock_stats};
+    TrainingViewModel vm{mock_gen, mock_stats};
 
     vm.selectTechnique(SolvingTechnique::NakedSingle);
     vm.startExercises();
@@ -1001,8 +967,7 @@ public:
 
 TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[training_view_model]") {
     auto mock_gen = std::make_shared<MultiStepMockGenerator>();
-    auto mock_loc = std::make_shared<MockLocManager>();
-    TrainingViewModel vm{mock_gen, mock_loc};
+    TrainingViewModel vm{mock_gen};
 
     vm.selectTechnique(SolvingTechnique::NakedSingle);
     vm.startExercises();

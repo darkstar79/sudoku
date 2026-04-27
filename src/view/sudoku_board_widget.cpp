@@ -18,7 +18,6 @@
 
 #include "core/constants.h"
 #include "core/i18n_helpers.h"
-#include "core/string_keys.h"
 
 #include <array>
 #include <optional>
@@ -54,10 +53,6 @@ void SudokuBoardWidget::clearBoard() {
     board_ = {};
     has_board_ = false;
     update();
-}
-
-void SudokuBoardWidget::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
-    loc_manager_ = std::move(loc_manager);
 }
 
 void SudokuBoardWidget::setReadOnly(bool read_only) {

@@ -18,7 +18,6 @@
 
 #include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
-#include "core/i_localization_manager.h"
 #include "core/i_training_exercise_generator.h"
 #include "core/observable.h"
 #include "core/technique_descriptions.h"
@@ -45,10 +44,8 @@ namespace sudoku::viewmodel {
 using namespace core;
 
 TrainingViewModel::TrainingViewModel(std::shared_ptr<ITrainingExerciseGenerator> exercise_generator,
-                                     std::shared_ptr<ILocalizationManager> loc_manager,
                                      std::shared_ptr<ITrainingStatisticsManager> stats_manager)
-    : exercise_generator_(std::move(exercise_generator)), loc_manager_(std::move(loc_manager)),
-      stats_manager_(std::move(stats_manager)) {
+    : exercise_generator_(std::move(exercise_generator)), stats_manager_(std::move(stats_manager)) {
 }
 
 void TrainingViewModel::selectTechnique(SolvingTechnique technique) {
@@ -186,7 +183,7 @@ void TrainingViewModel::requestHint() {
     const auto& expected = exercise.expected_step;
 
     int new_level = state.current_hint_level + 1;
-    auto hint = getTrainingHint(*loc_manager_, exercise.technique, new_level, expected);
+    auto hint = getTrainingHint(exercise.technique, new_level, expected);
 
     trainingState.update([new_level, &hint](TrainingUIState& s) {
         s.current_hint_level = new_level;
@@ -395,13 +392,13 @@ void TrainingViewModel::revealSolution() {
     }
 
     const auto& exercise = exercises_[idx];
-    auto hint = getTrainingHint(*loc_manager_, exercise.technique, 3, exercise.expected_step);
+    auto hint = getTrainingHint(exercise.technique, 3, exercise.expected_step);
 
     feedbackBoard.update([&hint](TrainingBoard& board) { applyHintHighlights(board, hint); });
 }
 
 TechniqueDescription TrainingViewModel::currentDescription() const {
-    return getTechniqueDescription(*loc_manager_, trainingState.get().current_technique);
+    return getTechniqueDescription(trainingState.get().current_technique);
 }
 
 // --- Private helpers ---

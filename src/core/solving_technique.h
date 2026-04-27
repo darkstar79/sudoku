@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include "i_localization_manager.h"
-#include "string_keys.h"
+#include "core/i18n_helpers.h"
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 namespace sudoku::core {
@@ -310,123 +310,121 @@ enum class SolvingTechnique : uint8_t {
 /// @param technique The solving technique
 /// @return Localized technique name as string_view (e.g., "Naked Single" in English)
 // NOLINTNEXTLINE(readability-function-size) — exhaustive switch over 54 SolvingTechnique enum values; inherently large
-[[nodiscard]] inline std::string_view getLocalizedTechniqueName(const ILocalizationManager& loc,
-                                                                SolvingTechnique technique) {
+[[nodiscard]] inline std::string getLocalizedTechniqueName(SolvingTechnique technique) {
     using enum SolvingTechnique;
-    using namespace StringKeys;
     switch (technique) {
         case NakedSingle:
-            return loc.getString(TechNakedSingle);
+            return core::loc("Naked Single");
         case HiddenSingle:
-            return loc.getString(TechHiddenSingle);
+            return core::loc("Hidden Single");
         case NakedPair:
-            return loc.getString(TechNakedPair);
+            return core::loc("Naked Pair");
         case NakedTriple:
-            return loc.getString(TechNakedTriple);
+            return core::loc("Naked Triple");
         case HiddenPair:
-            return loc.getString(TechHiddenPair);
+            return core::loc("Hidden Pair");
         case HiddenTriple:
-            return loc.getString(TechHiddenTriple);
+            return core::loc("Hidden Triple");
         case PointingPair:
-            return loc.getString(TechPointingPair);
+            return core::loc("Pointing Pair");
         case BoxLineReduction:
-            return loc.getString(TechBoxLineReduction);
+            return core::loc("Box/Line Reduction");
         case NakedQuad:
-            return loc.getString(TechNakedQuad);
+            return core::loc("Naked Quad");
         case HiddenQuad:
-            return loc.getString(TechHiddenQuad);
+            return core::loc("Hidden Quad");
         case XWing:
-            return loc.getString(TechXWing);
+            return core::loc("X-Wing");
         case XYWing:
-            return loc.getString(TechXYWing);
+            return core::loc("XY-Wing");
         case Swordfish:
-            return loc.getString(TechSwordfish);
+            return core::loc("Swordfish");
         case Skyscraper:
-            return loc.getString(TechSkyscraper);
+            return core::loc("Skyscraper");
         case TwoStringKite:
-            return loc.getString(TechTwoStringKite);
+            return core::loc("2-String Kite");
         case XYZWing:
-            return loc.getString(TechXYZWing);
+            return core::loc("XYZ-Wing");
         case UniqueRectangle:
-            return loc.getString(TechUniqueRectangle);
+            return core::loc("Unique Rectangle");
         case WWing:
-            return loc.getString(TechWWing);
+            return core::loc("W-Wing");
         case SimpleColoring:
-            return loc.getString(TechSimpleColoring);
+            return core::loc("Simple Coloring");
         case FinnedXWing:
-            return loc.getString(TechFinnedXWing);
+            return core::loc("Finned X-Wing");
         case RemotePairs:
-            return loc.getString(TechRemotePairs);
+            return core::loc("Remote Pairs");
         case BUG:
-            return loc.getString(TechBUG);
+            return core::loc("BUG");
         case Jellyfish:
-            return loc.getString(TechJellyfish);
+            return core::loc("Jellyfish");
         case FinnedSwordfish:
-            return loc.getString(TechFinnedSwordfish);
+            return core::loc("Finned Swordfish");
         case EmptyRectangle:
-            return loc.getString(TechEmptyRectangle);
+            return core::loc("Empty Rectangle");
         case WXYZWing:
-            return loc.getString(TechWXYZWing);
+            return core::loc("WXYZ-Wing");
         case FinnedJellyfish:
-            return loc.getString(TechFinnedJellyfish);
+            return core::loc("Finned Jellyfish");
         case XYChain:
-            return loc.getString(TechXYChain);
+            return core::loc("XY-Chain");
         case MultiColoring:
-            return loc.getString(TechMultiColoring);
+            return core::loc("Multi-Coloring");
         case ALSxZ:
-            return loc.getString(TechALSxZ);
+            return core::loc("ALS-XZ");
         case SueDeCoq:
-            return loc.getString(TechSueDeCoq);
+            return core::loc("Sue de Coq");
         case ForcingChain:
-            return loc.getString(TechForcingChain);
+            return core::loc("Forcing Chain");
         case NiceLoop:
-            return loc.getString(TechNiceLoop);
+            return core::loc("Nice Loop");
         case XCycles:
-            return loc.getString(TechXCycles);
+            return core::loc("X-Cycles");
         case ThreeDMedusa:
-            return loc.getString(TechThreeDMedusa);
+            return core::loc("3D Medusa");
         case HiddenUniqueRectangle:
-            return loc.getString(TechHiddenUniqueRectangle);
+            return core::loc("Hidden Unique Rectangle");
         case AvoidableRectangle:
-            return loc.getString(TechAvoidableRectangle);
+            return core::loc("Avoidable Rectangle");
         case ALSXYWing:
-            return loc.getString(TechALSXYWing);
+            return core::loc("ALS-XY-Wing");
         case DeathBlossom:
-            return loc.getString(TechDeathBlossom);
+            return core::loc("Death Blossom");
         case VWXYZWing:
-            return loc.getString(TechVWXYZWing);
+            return core::loc("VWXYZ-Wing");
         case FrankenFish:
-            return loc.getString(TechFrankenFish);
+            return core::loc("Franken Fish");
         case GroupedXCycles:
-            return loc.getString(TechGroupedXCycles);
+            return core::loc("Grouped X-Cycles");
         case SashimiXWing:
-            return loc.getString(TechSashimiXWing);
+            return core::loc("Sashimi X-Wing");
         case SashimiSwordfish:
-            return loc.getString(TechSashimiSwordfish);
+            return core::loc("Sashimi Swordfish");
         case SashimiJellyfish:
-            return loc.getString(TechSashimiJellyfish);
+            return core::loc("Sashimi Jellyfish");
         case UnitForcingChain:
-            return loc.getString(TechUnitForcingChain);
+            return core::loc("Unit Forcing Chain");
         case RegionForcingChain:
-            return loc.getString(TechRegionForcingChain);
+            return core::loc("Region Forcing Chain");
         case MutantFish:
-            return loc.getString(TechMutantFish);
+            return core::loc("Mutant Fish");
         case KrakenFish:
-            return loc.getString(TechKrakenFish);
+            return core::loc("Kraken Fish");
         case ALSChain:
-            return loc.getString(TechALSChain);
+            return core::loc("ALS Chain");
         case JuniorExocet:
-            return loc.getString(TechJuniorExocet);
+            return core::loc("Junior Exocet");
         case UniqueLoop:
-            return loc.getString(TechUniqueLoop);
+            return core::loc("Unique Loop");
         case ContinuousNiceLoop:
-            return loc.getString(TechContinuousNiceLoop);
+            return core::loc("Continuous Nice Loop");
         case GroupedNiceLoop:
-            return loc.getString(TechGroupedNiceLoop);
+            return core::loc("Grouped Nice Loop");
         case Backtracking:
-            return loc.getString(TechBacktrackingName);
+            return core::loc("Backtracking");
     }
-    return loc.getString(TechUnknown);
+    return core::loc("Unknown Technique");
 }
 
 }  // namespace sudoku::core

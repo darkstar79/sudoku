@@ -462,7 +462,7 @@ TEST_CASE("GameViewModel - Coaching Hints", "[game_view_model][coaching]") {
 
         const auto& state = fixture.view_model->coachingState.get();
         // The technique description's what_to_look_for should appear in level 1
-        auto desc = core::getTechniqueDescription(*fixture.loc_manager, state.technique);
+        auto desc = core::getTechniqueDescription(state.technique);
         REQUIRE(state.message.find(desc.what_to_look_for) != std::string::npos);
     }
 
@@ -471,7 +471,7 @@ TEST_CASE("GameViewModel - Coaching Hints", "[game_view_model][coaching]") {
         fixture.view_model->requestCoachingHint();
 
         const auto& state = fixture.view_model->coachingState.get();
-        auto desc = core::getTechniqueDescription(*fixture.loc_manager, state.technique);
+        auto desc = core::getTechniqueDescription(state.technique);
         REQUIRE(state.message.find(desc.what_it_is) != std::string::npos);
     }
 
@@ -485,7 +485,7 @@ TEST_CASE("GameViewModel - Coaching Hints", "[game_view_model][coaching]") {
 
         const auto& state = fixture.view_model->coachingState.get();
         REQUIRE(state.level == 1);
-        auto desc = core::getTechniqueDescription(*fixture.loc_manager, state.technique);
+        auto desc = core::getTechniqueDescription(state.technique);
         REQUIRE(state.message.find(desc.what_to_look_for) != std::string::npos);
     }
 

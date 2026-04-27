@@ -17,7 +17,6 @@
 #include "training_widget.h"
 
 #include "../core/solving_technique.h"
-#include "../core/string_keys.h"
 #include "core/i18n_helpers.h"
 #include "core/i_training_statistics_manager.h"
 #include "core/technique_descriptions.h"
@@ -90,11 +89,6 @@ TrainingWidget::TrainingWidget(QWidget* parent) : QWidget(parent), pages_(new QS
 
 TrainingWidget::~TrainingWidget() {
     observer_.unsubscribeAll();
-}
-
-void TrainingWidget::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
-    loc_manager_ = std::move(loc_manager);
-    rebuildPages();
 }
 
 void TrainingWidget::rebuildPages() {
@@ -416,9 +410,6 @@ void TrainingWidget::buildExercisePage() {
 
     // Number pad
     number_pad_ = new TrainingNumberPad;
-    if (loc_manager_) {
-        number_pad_->setLocalizationManager(loc_manager_);
-    }
     layout->addWidget(number_pad_);
 
     // Color palette (hidden by default, shown only for Coloring exercises)

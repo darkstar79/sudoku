@@ -18,7 +18,6 @@
 
 #include "core/constants.h"
 #include "core/i18n_helpers.h"
-#include "core/string_keys.h"
 #include "core/training_types.h"
 
 #include <algorithm>
@@ -49,12 +48,6 @@ TrainingNumberPad::TrainingNumberPad(QWidget* parent) : QWidget(parent) {
     }
 
     layout->addStretch();
-}
-
-void TrainingNumberPad::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
-    loc_manager_ = std::move(loc_manager);
-    // Re-apply tooltips with new locale
-    setInteractionMode(mode_);
 }
 
 void TrainingNumberPad::setInteractionMode(core::TrainingInteractionMode mode) {

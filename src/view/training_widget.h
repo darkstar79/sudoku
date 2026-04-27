@@ -17,7 +17,6 @@
 #pragma once
 
 #include "../view_model/training_view_model.h"
-#include "core/i_localization_manager.h"
 #include "core/observable.h"
 
 #include <memory>
@@ -54,30 +53,16 @@ public:
     TrainingWidget& operator=(TrainingWidget&&) = delete;
 
     void setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm);
-    void setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager);
-
 signals:
     void backToGame();
 
 private:
     std::shared_ptr<viewmodel::TrainingViewModel> training_vm_;
-    std::shared_ptr<core::ILocalizationManager> loc_manager_;
     core::CompositeObserver observer_;
     QStackedWidget* pages_{nullptr};
-
-    [[nodiscard]] std::string_view loc(std::string_view key) const {
-        return loc_manager_ ? loc_manager_->getString(key) : key;
-    }
-
     [[nodiscard]] static QString qstr(std::string_view sv) {
         return QString::fromUtf8(sv.data(), static_cast<qsizetype>(sv.size()));
     }
-
-    template <typename... Args>
-    [[nodiscard]] std::string locFormat(std::string_view key, Args&&... args) const {
-        return fmt::format(fmt::runtime(loc(key)), std::forward<Args>(args)...);
-    }
-
     // Exercise page widgets (owned by Qt parent)
     SudokuBoardWidget* training_board_{nullptr};
     SudokuBoardWidget* feedback_board_{nullptr};

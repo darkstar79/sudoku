@@ -22,7 +22,6 @@
 #include "../../src/core/statistics_manager.h"
 #include "../../src/core/sudoku_solver.h"
 #include "../../src/view_model/game_view_model.h"
-#include "mock_localization_manager.h"
 #include "test_utils.h"
 
 #include <memory>
@@ -38,7 +37,6 @@ struct GameViewModelFixture {
     std::shared_ptr<core::ISudokuSolver> solver;
     std::shared_ptr<core::IStatisticsManager> stats_manager;
     std::shared_ptr<core::ISaveManager> save_manager;
-    std::shared_ptr<core::ILocalizationManager> loc_manager;
     std::unique_ptr<viewmodel::GameViewModel> view_model;
 
     GameViewModelFixture() {
@@ -47,9 +45,8 @@ struct GameViewModelFixture {
         solver = std::make_shared<core::SudokuSolver>(validator);
         stats_manager = std::make_shared<core::StatisticsManager>(temp_dir.path());
         save_manager = std::make_shared<core::SaveManager>(temp_dir.path());
-        loc_manager = std::make_shared<core::MockLocalizationManager>();
-        view_model = std::make_unique<viewmodel::GameViewModel>(validator, generator, solver, stats_manager,
-                                                                save_manager, loc_manager);
+        view_model =
+            std::make_unique<viewmodel::GameViewModel>(validator, generator, solver, stats_manager, save_manager);
     }
 };
 

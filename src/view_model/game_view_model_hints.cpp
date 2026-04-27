@@ -16,7 +16,6 @@
 
 #include "../core/localized_explanations.h"
 #include "../core/solving_technique.h"
-#include "../core/string_keys.h"
 #include "../core/technique_descriptions.h"
 #include "../core/training_hints.h"
 #include "core/i18n_helpers.h"
@@ -205,11 +204,11 @@ std::string GameViewModel::formatHintExplanation(const core::SolveStep& step) co
     std::string message;
 
     // Technique name header
-    message += std::string(core::getLocalizedTechniqueName(*loc_manager_, step.technique));
+    message += std::string(core::getLocalizedTechniqueName(step.technique));
     message += ":\n\n";
 
     // Explanation from strategy (localized)
-    message += core::getLocalizedExplanation(*loc_manager_, step);
+    message += core::getLocalizedExplanation(step);
 
     // Add placement suggestion if applicable
     if (step.type == core::SolveStepType::Placement) {
@@ -278,7 +277,7 @@ void GameViewModel::requestCoachingHint() {
     const auto& step = coaching_context_->step;
 
     // Get progressive hint from training infrastructure
-    auto hint = core::getTrainingHint(*loc_manager_, step.technique, new_level, step);
+    auto hint = core::getTrainingHint(step.technique, new_level, step);
 
     // For level 1, prepend technique description with what_to_look_for
     if (new_level == 1) {
@@ -322,7 +321,7 @@ void GameViewModel::navigateCoachingLevel(int direction) {
         return;
     }
     const auto& step = coaching_context_->step;
-    auto hint = core::getTrainingHint(*loc_manager_, step.technique, target_level, step);
+    auto hint = core::getTrainingHint(step.technique, target_level, step);
 
     // For level 1, prepend technique description with what_to_look_for
     if (target_level == 1) {
@@ -459,9 +458,9 @@ void GameViewModel::resetCoachingIfNotTryIt() {
 }
 
 std::string GameViewModel::buildLevel1Message(const core::TrainingHint& hint, const core::SolveStep& step) const {
-    auto desc = core::getTechniqueDescription(*loc_manager_, step.technique);
+    auto desc = core::getTechniqueDescription(step.technique);
     std::string message;
-    message += std::string(core::getLocalizedTechniqueName(*loc_manager_, step.technique));
+    message += std::string(core::getLocalizedTechniqueName(step.technique));
     message += "\n\n";
     message += std::string(desc.what_it_is);
     message += "\n\n";

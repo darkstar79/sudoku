@@ -431,8 +431,7 @@ TEST_CASE("GameViewModel - Hint-Revealed State Persists After Save/Load", "[game
     auto solver = std::make_shared<SudokuSolver>(validator);
     auto stats_manager = std::make_shared<StatisticsManager>();
 
-    GameViewModel view_model(validator, generator, solver, stats_manager, save_manager,
-                             std::make_shared<MockLocalizationManager>());
+    GameViewModel view_model(validator, generator, solver, stats_manager, save_manager);
 
     // Use a fixed seed known to generate a solvable puzzle with techniques the solver supports
     // NOTE: Random seed (0) can generate puzzles that require techniques beyond the solver's
@@ -497,8 +496,7 @@ TEST_CASE("GameViewModel - Hint-Revealed State Persists After Save/Load", "[game
         REQUIRE(!saves_result->empty());
         std::string save_id = saves_result->front().save_id;
 
-        GameViewModel view_model2(validator, generator, solver, stats_manager, save_manager,
-                                  std::make_shared<MockLocalizationManager>());
+        GameViewModel view_model2(validator, generator, solver, stats_manager, save_manager);
         view_model2.loadGame(save_id);
 
         const auto& loaded = view_model2.gameState.get();

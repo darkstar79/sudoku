@@ -178,14 +178,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
 
-# Copy locale files to build output directory (next to executable)
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/locales"
-    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/locales"
-    COMMENT "Copying locale files to build directory"
-)
-
 # Qt Linguist translations: compile .ts -> .qm and copy alongside the executable.
 # Refresh .ts files from source after editing tr() call sites:
 #   cmake --build build/Debug --target sudoku_lupdate
@@ -221,7 +213,6 @@ endif()
 if(WIN32)
     # Windows: flat layout for NSIS installer
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ".")
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/locales" DESTINATION ".")
     install(FILES ${SUDOKU_QM_FILES} DESTINATION "translations")
 
     # Qt runtime via windeployqt
@@ -246,8 +237,6 @@ else()
     # Linux: FHS-compliant layout
     include(GNUInstallDirs)
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/locales"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/sudoku")
     install(FILES ${SUDOKU_QM_FILES}
         DESTINATION "${CMAKE_INSTALL_DATADIR}/sudoku/translations")
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/linux/org.sudoku_cpp.Sudoku.desktop"
