@@ -155,7 +155,7 @@ TEST_CASE("Hint Revelation - Error Handling", "[hint][error]") {
         fixture.view_model->getHint(std::nullopt);
 
         const auto& error = fixture.view_model->errorMessage.get();
-        REQUIRE(error == "hint.select_cell");
+        REQUIRE(error == "Please select a cell first");
     }
 
     SECTION("Error when trying to hint a given cell") {
@@ -171,7 +171,7 @@ TEST_CASE("Hint Revelation - Error Handling", "[hint][error]") {
         fixture.view_model->getHint(given_pos);
 
         const auto& error = fixture.view_model->errorMessage.get();
-        REQUIRE(error == "hint.cannot_reveal_given");
+        REQUIRE(error == "Cannot reveal hint for given cells");
     }
 
     SECTION("Error when trying to hint an already filled cell") {
@@ -188,7 +188,7 @@ TEST_CASE("Hint Revelation - Error Handling", "[hint][error]") {
         fixture.view_model->getHint(pos);
 
         const auto& error = fixture.view_model->errorMessage.get();
-        REQUIRE(error == "hint.cell_has_value");
+        REQUIRE(error == "Cell already has a value");
     }
 
     SECTION("Hint respects maximum limit of 10") {
@@ -394,7 +394,7 @@ TEST_CASE("Hint Revelation - Undo Behavior", "[hint][undo]") {
         REQUIRE(fixture.view_model->getHintCount() == hints_initial);
 
         const auto& error = fixture.view_model->errorMessage.get();
-        REQUIRE(error == "hint.select_cell");
+        REQUIRE(error == "Please select a cell first");
     }
 
     SECTION("Hints not consumed on validation errors - given cell") {
@@ -413,7 +413,7 @@ TEST_CASE("Hint Revelation - Undo Behavior", "[hint][undo]") {
         REQUIRE(fixture.view_model->getHintCount() == hints_initial);
 
         const auto& error = fixture.view_model->errorMessage.get();
-        REQUIRE(error == "hint.cannot_reveal_given");
+        REQUIRE(error == "Cannot reveal hint for given cells");
     }
 
     SECTION("Hints not consumed on validation errors - filled cell") {
@@ -436,7 +436,7 @@ TEST_CASE("Hint Revelation - Undo Behavior", "[hint][undo]") {
         REQUIRE(fixture.view_model->getHintCount() == hints_initial);
 
         const auto& error = fixture.view_model->errorMessage.get();
-        REQUIRE(error == "hint.cell_has_value");
+        REQUIRE(error == "Cell already has a value");
     }
 
     SECTION("Multiple undo skips all hints") {

@@ -304,7 +304,7 @@ private:
 
     // Hint system helpers
     [[nodiscard]] std::string formatHintExplanation(const core::SolveStep& step) const;
-    [[nodiscard]] std::string_view statisticsErrorToString(core::StatisticsError error) const;
+    [[nodiscard]] std::string statisticsErrorToString(core::StatisticsError error) const;
 
     // Coaching hint state — step and snapshot are always set/cleared together
     struct CoachingContext {

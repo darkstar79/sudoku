@@ -102,7 +102,7 @@ private:
         return fmt::format(fmt::runtime(loc(key)), std::forward<Args>(args)...);
     }
 
-    [[nodiscard]] std::string_view difficultyString(core::Difficulty difficulty) const;
+    [[nodiscard]] std::string difficultyString(core::Difficulty difficulty) const;
 
     // UI components
     SudokuBoardWidget* board_widget_{nullptr};

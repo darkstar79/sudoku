@@ -17,6 +17,7 @@
 #include "training_number_pad.h"
 
 #include "core/constants.h"
+#include "core/i18n_helpers.h"
 #include "core/string_keys.h"
 #include "core/training_types.h"
 
@@ -59,10 +60,10 @@ void TrainingNumberPad::setLocalizationManager(std::shared_ptr<core::ILocalizati
 void TrainingNumberPad::setInteractionMode(core::TrainingInteractionMode mode) {
     mode_ = mode;
 
-    using namespace core::StringKeys;
+    const char* fmt_str = mode == core::TrainingInteractionMode::Placement ? "Place {0} in selected cell"
+                                                                           : "Eliminate {0} from selected cell";
     for (int i = 0; i < static_cast<int>(core::MAX_VALUE); ++i) {
-        auto key = mode == core::TrainingInteractionMode::Placement ? TooltipPlaceDigit : TooltipEliminateDigit;
-        auto tooltip = fmt::format(fmt::runtime(loc(key)), i + 1);
+        auto tooltip = core::locFormat(fmt_str, i + 1);
         buttons_[static_cast<size_t>(i)]->setToolTip(QString::fromStdString(tooltip));
     }
 }

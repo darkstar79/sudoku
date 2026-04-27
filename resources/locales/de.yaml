@@ -21,6 +21,7 @@ strings:
   menu.clear_cell: "Zelle leeren"
   menu.help: "Hilfe"
   menu.get_hint: "Hinweis anzeigen"
+  menu.get_coaching_hint: "Coaching-Tipp"
   menu.about: "Über"
   menu.training_mode: "Trainingsmodus"
   menu.analyze_position: "Position analysieren"

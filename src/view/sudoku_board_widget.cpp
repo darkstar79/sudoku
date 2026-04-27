@@ -17,6 +17,7 @@
 #include "sudoku_board_widget.h"
 
 #include "core/constants.h"
+#include "core/i18n_helpers.h"
 #include "core/string_keys.h"
 
 #include <array>
@@ -88,9 +89,8 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     if (!has_board_) {
-        painter.drawText(rect(), Qt::AlignCenter,
-                         QString::fromUtf8(loc(core::StringKeys::BoardNoGameLoaded).data(),
-                                           static_cast<qsizetype>(loc(core::StringKeys::BoardNoGameLoaded).size())));
+        auto msg = core::loc("No game loaded. Start a new game!");
+        painter.drawText(rect(), Qt::AlignCenter, QString::fromUtf8(msg.data(), static_cast<qsizetype>(msg.size())));
         return;
     }
 

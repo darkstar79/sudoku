@@ -84,6 +84,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Get Coaching Hint</source>
+        <extracomment>Key: menu.get_coaching_hint</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>About</source>
         <extracomment>Key: menu.about</extracomment>
         <translation type="unfinished"></translation>

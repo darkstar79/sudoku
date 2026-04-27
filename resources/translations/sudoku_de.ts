@@ -84,6 +84,11 @@
         <translation>Hinweis anzeigen</translation>
     </message>
     <message>
+        <source>Get Coaching Hint</source>
+        <extracomment>Key: menu.get_coaching_hint</extracomment>
+        <translation>Coaching-Tipp</translation>
+    </message>
+    <message>
         <source>About</source>
         <extracomment>Key: menu.about</extracomment>
         <translation>Über</translation>
