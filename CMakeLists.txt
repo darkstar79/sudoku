@@ -87,8 +87,8 @@ find_package(ZLIB REQUIRED)
 find_package(libsodium REQUIRED)
 
 # Qt6 integration (system-installed)
-find_package(Qt6 REQUIRED COMPONENTS Widgets Test)
-qt_standard_project_setup()
+find_package(Qt6 REQUIRED COMPONENTS Widgets Test LinguistTools)
+qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES en de)
 
 # Testing framework (optional)
 find_package(Catch2 QUIET)
@@ -186,6 +186,30 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying locale files to build directory"
 )
 
+# Qt Linguist translations: compile .ts -> .qm and copy alongside the executable.
+# Refresh .ts files from source after editing tr() call sites:
+#   cmake --build build/Debug --target sudoku_lupdate
+set(SUDOKU_TS_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/translations/sudoku_en.ts"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/translations/sudoku_de.ts"
+)
+qt_add_lupdate(${PROJECT_NAME}
+    TS_FILES ${SUDOKU_TS_FILES}
+    SOURCES ${PROJECT_SOURCES}
+)
+qt_add_lrelease(${PROJECT_NAME}
+    TS_FILES ${SUDOKU_TS_FILES}
+    QM_FILES_OUTPUT_VARIABLE SUDOKU_QM_FILES
+)
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/translations"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${SUDOKU_QM_FILES}
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/translations/"
+    COMMENT "Copying Qt translation .qm files to build directory"
+)
+
 # Testing
 enable_testing()
 if(Catch2_FOUND)
@@ -198,6 +222,7 @@ if(WIN32)
     # Windows: flat layout for NSIS installer
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ".")
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/locales" DESTINATION ".")
+    install(FILES ${SUDOKU_QM_FILES} DESTINATION "translations")
 
     # Qt runtime via windeployqt
     # QT6_DIR is set as an environment variable by the build scripts; read it with $ENV{}
@@ -223,6 +248,8 @@ else()
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/resources/locales"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/sudoku")
+    install(FILES ${SUDOKU_QM_FILES}
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/sudoku/translations")
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/linux/org.sudoku_cpp.Sudoku.desktop"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/linux/org.sudoku_cpp.Sudoku.metainfo.xml"

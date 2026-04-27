@@ -45,8 +45,10 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <QApplication>
+#include <QTranslator>
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <qcoreapplication.h>
@@ -126,6 +128,39 @@ void setupDependencies() {
     spdlog::info("Dependency injection container configured with {} registrations", container.getRegistrationCount());
 }
 
+// Locate sudoku_<locale>.qm next to the executable (dev/Windows layout) or under
+// ../share/sudoku/translations (FHS install). Returns an empty path if not found.
+[[nodiscard]] std::filesystem::path findTranslationsDir() {
+    auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
+    auto candidate = exe_dir / "translations";
+    if (std::filesystem::exists(candidate)) {
+        return candidate;
+    }
+    candidate = exe_dir / ".." / "share" / "sudoku" / "translations";
+    if (std::filesystem::exists(candidate)) {
+        return candidate;
+    }
+    return {};
+}
+
+void installQtTranslator(QTranslator& translator, std::string_view locale) {
+    auto translations_dir = findTranslationsDir();
+    if (translations_dir.empty()) {
+        spdlog::warn("Qt translations directory not found; UI will use source-language strings");
+        return;
+    }
+    auto qm_name = fmt::format("sudoku_{}", locale);
+    if (!translator.load(QString::fromStdString(qm_name), QString::fromStdString(translations_dir.string()))) {
+        spdlog::warn("Failed to load Qt translation '{}.qm' from {}", qm_name, translations_dir.string());
+        return;
+    }
+    if (!QCoreApplication::installTranslator(&translator)) {
+        spdlog::warn("QCoreApplication::installTranslator returned false for locale '{}'", locale);
+        return;
+    }
+    spdlog::info("Qt translator installed: {} from {}", qm_name, translations_dir.string());
+}
+
 std::shared_ptr<sudoku::viewmodel::GameViewModel> createViewModel() {
     auto& container = sudoku::core::getContainer();
 
@@ -170,8 +205,17 @@ int main(int argc, char* argv[]) {
 
     setupDependencies();
 
-    auto view_model = createViewModel();
+    // Install Qt translator for the configured locale. Coexists with the YAML-based
+    // LocalizationManager during the migration; harmless if no .qm files are bundled.
     auto& container = sudoku::core::getContainer();
+    QTranslator qt_translator;
+    {
+        auto settings = container.resolve<sudoku::core::ISettingsManager>();
+        auto locale = settings ? settings->getSettings().language : std::string{"en"};
+        installQtTranslator(qt_translator, locale);
+    }
+
+    auto view_model = createViewModel();
     auto loc_manager = container.resolve<sudoku::core::ILocalizationManager>();
     auto exercise_gen = container.resolve<sudoku::core::ITrainingExerciseGenerator>();
     auto training_stats = container.resolve<sudoku::core::ITrainingStatisticsManager>();
