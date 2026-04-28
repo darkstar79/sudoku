@@ -53,6 +53,10 @@ public:
     TrainingWidget& operator=(TrainingWidget&&) = delete;
 
     void setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm);
+
+protected:
+    void changeEvent(QEvent* event) override;
+
 signals:
     void backToGame();
 

@@ -28,6 +28,7 @@
 #include <utility>
 
 #include <QMainWindow>
+#include <QTranslator>
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <qaction.h>
@@ -74,6 +75,7 @@ public:
 protected:
     void closeEvent(QCloseEvent* event) override;
     bool event(QEvent* event) override;
+    void changeEvent(QEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
@@ -84,7 +86,12 @@ private:
 
     // Settings
     std::shared_ptr<core::ISettingsManager> settings_manager_;
-    int selected_language_{0};
+
+    // Owns the active QTranslator so language can be swapped at runtime.
+    // Initially empty — installed on the first setSettingsManager() call,
+    // reloaded via applyLocale() when the user changes the language setting.
+    QTranslator translator_;
+    std::string current_locale_;
 
     [[nodiscard]] static QString qstr(std::string_view sv) {
         return QString::fromUtf8(sv.data(), static_cast<qsizetype>(sv.size()));
@@ -151,6 +158,7 @@ private:
     void showTechniquesDialog();
     void showSettingsDialog();
     void retranslateUi();
+    void applyLocale(const std::string& locale_code);
 
     // CSV export
     void exportAggregateStatsCsv();

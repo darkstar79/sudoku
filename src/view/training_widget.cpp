@@ -33,6 +33,7 @@
 #include <utility>
 #include <vector>
 
+#include <QEvent>
 #include <QGraphicsOpacityEffect>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -89,6 +90,16 @@ TrainingWidget::TrainingWidget(QWidget* parent) : QWidget(parent), pages_(new QS
 
 TrainingWidget::~TrainingWidget() {
     observer_.unsubscribeAll();
+}
+
+void TrainingWidget::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        // The widget tree is built from translated literals in rebuildPages();
+        // re-running it picks up the new locale. Cheaper than threading a
+        // dedicated retranslate path through every page builder.
+        rebuildPages();
+    }
+    QWidget::changeEvent(event);
 }
 
 void TrainingWidget::rebuildPages() {

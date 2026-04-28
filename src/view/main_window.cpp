@@ -35,15 +35,18 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QEvent>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -557,16 +560,60 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
             auto_save_timer_->setInterval(settings_manager_->getSettings().auto_save_interval_ms);
         }
 
-        // Subscribe to settings changes (auto-save interval; runtime language switching
-        // requires QTranslator swap and is not currently wired)
+        // Load the configured locale; Qt posts QEvent::LanguageChange to all
+        // top-level widgets, which retranslates the UI via changeEvent.
+        applyLocale(settings_manager_->getSettings().language);
+
+        // React to language changes from the Settings dialog. Compare against
+        // the previous locale so we only reload the translator when it
+        // actually changes (other settings — auto-save interval, hint
+        // visibility, etc. — also fire this observer).
         settings_manager_->settingsObservable().subscribe([this](const core::Settings& s) {
             if (auto_save_timer_) {
                 auto_save_timer_->setInterval(s.auto_save_interval_ms);
+            }
+            if (s.language != current_locale_) {
+                applyLocale(s.language);
             }
         });
     }
 
     spdlog::debug("SettingsManager bound to MainWindow");
+}
+
+void MainWindow::applyLocale(const std::string& locale_code) {
+    // Locate sudoku_<locale>.qm next to the executable (dev/Windows layout)
+    // or under ../share/sudoku/translations (FHS install).
+    auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
+    std::filesystem::path translations_dir;
+    for (const auto& candidate : {exe_dir / "translations", exe_dir / ".." / "share" / "sudoku" / "translations"}) {
+        if (std::filesystem::exists(candidate)) {
+            translations_dir = candidate;
+            break;
+        }
+    }
+
+    QCoreApplication::removeTranslator(&translator_);
+
+    if (translations_dir.empty()) {
+        spdlog::warn("Qt translations directory not found; UI will use source-language strings");
+        current_locale_ = locale_code;
+        return;
+    }
+
+    auto qm_name = QString::fromStdString(fmt::format("sudoku_{}", locale_code));
+    if (!translator_.load(qm_name, QString::fromStdString(translations_dir.string()))) {
+        spdlog::warn("Failed to load Qt translation '{}.qm' from {}", qm_name.toStdString(), translations_dir.string());
+        current_locale_ = locale_code;
+        return;
+    }
+    if (!QCoreApplication::installTranslator(&translator_)) {
+        spdlog::warn("QCoreApplication::installTranslator returned false for locale '{}'", locale_code);
+        current_locale_ = locale_code;
+        return;
+    }
+    current_locale_ = locale_code;
+    spdlog::info("Qt translator installed: {} from {}", qm_name.toStdString(), translations_dir.string());
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
@@ -580,6 +627,13 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 
 bool MainWindow::event(QEvent* event) {
     return QMainWindow::event(event);
+}
+
+void MainWindow::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QMainWindow::changeEvent(event);
 }
 
 void MainWindow::keyPressEvent(QKeyEvent* event) {

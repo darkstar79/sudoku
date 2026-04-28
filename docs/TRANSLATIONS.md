@@ -79,27 +79,12 @@ no drift between source and `.ts`).
 5. Add the language code to the `kLocales` map in
    [src/view/main_window.cpp](../src/view/main_window.cpp) (Settings → Language dropdown).
 
-If you have an existing translation in YAML format (e.g. an older
-`sudoku_<lang>.yaml` maintained downstream), convert it with the helper
-script:
-
-```sh
-python3 scripts/yaml_to_ts.py \
-  --input sudoku_ru.yaml \
-  --language ru \
-  --output resources/translations/sudoku_ru.ts
-```
-
 ## Packager workflow
 
 Distribution packagers building from a release tarball don't need any Qt
 translation tooling beyond what's already pulled in by `find_package(Qt6 ... LinguistTools)`
 — `cmake --build` runs `lrelease` automatically and produces the `.qm`
 files in the build directory.
-
-If a packager wants to ship an additional locale not in the upstream
-release, `scripts/yaml_to_ts.py` (kept in-tree for that purpose) converts
-a YAML translation file to a `.ts` file ready for Qt Linguist.
 
 ## Contributor workflow
 

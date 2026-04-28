@@ -81,6 +81,14 @@ jobs:
           [ "$fail" -eq 1 ] && exit 1
           echo "✅ Translations are in sync and complete"
 
+      - name: Validate fmt-style placeholders in translations
+        run: |
+          # Catch translator-introduced placeholder mismatches (e.g. dropping
+          # {0} from a "Score: {0}" source) that lupdate does not validate.
+          # See scripts/check_translation_placeholders.py for the rules.
+          python3 scripts/check_translation_placeholders.py
+          python3 scripts/tests/test_check_translation_placeholders.py
+
   test-and-coverage:
     name: Test & Coverage
     runs-on: ubuntu-24.04

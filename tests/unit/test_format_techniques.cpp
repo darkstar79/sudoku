@@ -35,8 +35,9 @@ using namespace sudoku::viewmodel;
 namespace {
 
 /// Helper to create a minimal GameViewModel for formatTechniques testing.
-/// Tests run without QTranslator installed, so QCoreApplication::translate returns
-/// the source-language English strings — exactly what the test expects.
+/// The test runner (tests/helpers/qt_test_main.cpp) instantiates a
+/// QCoreApplication with no QTranslator installed, so
+/// QCoreApplication::translate returns the source-language English strings.
 [[nodiscard]] GameViewModel createTestViewModel() {
     auto validator = std::make_shared<GameValidator>();
     return GameViewModel(validator, std::make_shared<PuzzleGenerator>(), std::make_shared<SudokuSolver>(validator),
