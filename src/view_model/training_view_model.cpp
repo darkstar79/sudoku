@@ -16,8 +16,8 @@
 
 #include "training_view_model.h"
 
+#include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
-#include "core/i_localization_manager.h"
 #include "core/i_training_exercise_generator.h"
 #include "core/observable.h"
 #include "core/technique_descriptions.h"
@@ -44,15 +44,14 @@ namespace sudoku::viewmodel {
 using namespace core;
 
 TrainingViewModel::TrainingViewModel(std::shared_ptr<ITrainingExerciseGenerator> exercise_generator,
-                                     std::shared_ptr<ILocalizationManager> loc_manager,
                                      std::shared_ptr<ITrainingStatisticsManager> stats_manager)
-    : exercise_generator_(std::move(exercise_generator)), loc_manager_(std::move(loc_manager)),
-      stats_manager_(std::move(stats_manager)) {
+    : exercise_generator_(std::move(exercise_generator)), stats_manager_(std::move(stats_manager)) {
 }
 
 void TrainingViewModel::selectTechnique(SolvingTechnique technique) {
     if (technique == SolvingTechnique::Backtracking) {
-        errorMessage.set(std::string(loc(core::StringKeys::TrainingErrorBacktracking)));
+        errorMessage.set(
+            std::string(core::loc("Sudoku", "Cannot practice Backtracking — it is not a logical technique.")));
         return;
     }
 
@@ -90,7 +89,7 @@ void TrainingViewModel::startExercises() {
             }
         }
         if (exercises_.empty()) {
-            errorMessage.set(std::string(loc(core::StringKeys::TrainingErrorNoStep)));
+            errorMessage.set(std::string(core::loc("Sudoku", "No applicable step found for this technique.")));
             return;
         }
     } else {
@@ -144,7 +143,8 @@ void TrainingViewModel::submitAnswer() {
             // More steps remain — apply and continue
             applyContinue(feedback_step);
             found_step_count_++;
-            auto msg = locFormat(core::StringKeys::TrainingCorrectContinue, feedback_step.explanation);
+            auto msg =
+                core::locFormat(core::loc("Sudoku", "Correct! {0} Find the next one."), feedback_step.explanation);
             trainingState.update([&msg](TrainingUIState& s) {
                 s.correct_count++;
                 s.found_step_message = msg;
@@ -185,7 +185,7 @@ void TrainingViewModel::requestHint() {
     const auto& expected = exercise.expected_step;
 
     int new_level = state.current_hint_level + 1;
-    auto hint = getTrainingHint(*loc_manager_, exercise.technique, new_level, expected);
+    auto hint = getTrainingHint(exercise.technique, new_level, expected);
 
     trainingState.update([new_level, &hint](TrainingUIState& s) {
         s.current_hint_level = new_level;
@@ -394,13 +394,13 @@ void TrainingViewModel::revealSolution() {
     }
 
     const auto& exercise = exercises_[idx];
-    auto hint = getTrainingHint(*loc_manager_, exercise.technique, 3, exercise.expected_step);
+    auto hint = getTrainingHint(exercise.technique, 3, exercise.expected_step);
 
     feedbackBoard.update([&hint](TrainingBoard& board) { applyHintHighlights(board, hint); });
 }
 
 TechniqueDescription TrainingViewModel::currentDescription() const {
-    return getTechniqueDescription(*loc_manager_, trainingState.get().current_technique);
+    return getTechniqueDescription(trainingState.get().current_technique);
 }
 
 // --- Private helpers ---
@@ -674,16 +674,15 @@ TrainingViewModel::EvalResult TrainingViewModel::evaluateElimination(const Train
 }
 
 std::string TrainingViewModel::buildFeedback(AnswerResult result, const SolveStep& step) const {
-    using namespace core::StringKeys;
     switch (result) {
         case AnswerResult::Correct:
-            return locFormat(TrainingFeedbackCorrect, step.explanation);
+            return core::locFormat(core::loc("Sudoku", "Correct! {0}"), step.explanation);
         case AnswerResult::PartiallyCorrect:
-            return locFormat(TrainingFeedbackPartial, step.explanation);
+            return core::locFormat(core::loc("Sudoku", "Partially correct. {0}"), step.explanation);
         case AnswerResult::Incorrect:
-            return locFormat(TrainingFeedbackIncorrect, step.explanation);
+            return core::locFormat(core::loc("Sudoku", "Not quite. {0}"), step.explanation);
     }
-    return std::string(loc(TrainingFeedbackUnknown));
+    return std::string(core::loc("Sudoku", "Unknown result."));
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — builds diff board with placement/elimination logic; nesting is inherent

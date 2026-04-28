@@ -19,14 +19,13 @@
 #include "../core/solving_technique.h"
 #include "core/board_utils.h"
 #include "core/constants.h"
+#include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
-#include "core/i_localization_manager.h"
 #include "core/i_puzzle_generator.h"
 #include "core/i_save_manager.h"
 #include "core/i_statistics_manager.h"
 #include "core/i_sudoku_solver.h"
 #include "core/observable.h"
-#include "core/string_keys.h"
 #include "model/game_state.h"
 
 #include <algorithm>
@@ -42,13 +41,12 @@ GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
                              std::shared_ptr<core::ISudokuSolver> solver,
                              std::shared_ptr<core::IStatisticsManager> stats_manager,
                              std::shared_ptr<core::ISaveManager> save_manager,
-                             std::shared_ptr<core::ILocalizationManager> loc_manager,
                              std::shared_ptr<core::ISettingsManager> settings_manager)
     : gameState(model::GameState{}), uiState(UIState{}), statistics(StatsDisplay{}),
       recentSaves(std::vector<std::string>{}), errorMessage(std::string{}), hintMessage(std::string{}),
       coachingState(viewmodel::CoachingState{}), validator_(std::move(validator)), generator_(std::move(generator)),
       solver_(std::move(solver)), stats_manager_(std::move(stats_manager)), save_manager_(std::move(save_manager)),
-      loc_manager_(std::move(loc_manager)), settings_manager_(std::move(settings_manager)) {
+      settings_manager_(std::move(settings_manager)) {
     // Apply initial settings if available
     if (settings_manager_) {
         const auto& settings = settings_manager_->getSettings();
@@ -68,30 +66,22 @@ GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
     refreshRecentSaves();
 }
 
-std::string_view GameViewModel::statisticsErrorToString(core::StatisticsError error) const {
-    using core::StringKeys::StatsErrFileAccess;
-    using core::StringKeys::StatsErrGameAlreadyEnded;
-    using core::StringKeys::StatsErrGameNotStarted;
-    using core::StringKeys::StatsErrInvalidData;
-    using core::StringKeys::StatsErrInvalidDifficulty;
-    using core::StringKeys::StatsErrSerialization;
-    using core::StringKeys::StatsErrUnknown;
-
+std::string GameViewModel::statisticsErrorToString(core::StatisticsError error) const {
     switch (error) {
         case core::StatisticsError::InvalidGameData:
-            return loc(StatsErrInvalidData);
+            return core::loc("Sudoku", "Invalid game data");
         case core::StatisticsError::FileAccessError:
-            return loc(StatsErrFileAccess);
+            return core::loc("Sudoku", "File access error");
         case core::StatisticsError::SerializationError:
-            return loc(StatsErrSerialization);
+            return core::loc("Sudoku", "Serialization error");
         case core::StatisticsError::InvalidDifficulty:
-            return loc(StatsErrInvalidDifficulty);
+            return core::loc("Sudoku", "Invalid difficulty");
         case core::StatisticsError::GameNotStarted:
-            return loc(StatsErrGameNotStarted);
+            return core::loc("Sudoku", "Game not started");
         case core::StatisticsError::GameAlreadyEnded:
-            return loc(StatsErrGameAlreadyEnded);
+            return core::loc("Sudoku", "Game already ended");
         default:
-            return loc(StatsErrUnknown);
+            return core::loc("Sudoku", "Unknown statistics error");
     }
 }
 
@@ -111,7 +101,7 @@ void GameViewModel::startNewGame(core::Difficulty difficulty) {
 
     auto puzzle_result = generator_->generatePuzzle(settings);
     if (!puzzle_result) {
-        handleError(loc(core::StringKeys::ErrorGeneratePuzzle));
+        handleError(core::loc("Sudoku", "Failed to generate puzzle"));
         return;
     }
 
@@ -194,7 +184,7 @@ void GameViewModel::loadGame(const std::string& save_id) {
 
     auto load_result = save_manager_->loadGame(save_id);
     if (!load_result) {
-        handleError(loc(core::StringKeys::ErrorLoadGame));
+        handleError(core::loc("Sudoku", "Failed to load game"));
         return;
     }
 
@@ -291,7 +281,7 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
     spdlog::info("Saving current game: {}", name.empty() ? "auto-save" : name);
 
     if (!isGameActive()) {
-        handleError(loc(core::StringKeys::ErrorNoActiveGame));
+        handleError(core::loc("Sudoku", "No active game to save"));
         return false;
     }
 
@@ -328,7 +318,7 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
 
     auto save_result = save_manager_->saveGame(saved_game, settings);
     if (!save_result) {
-        handleError(loc(core::StringKeys::ErrorSaveGame));
+        handleError(core::loc("Sudoku", "Failed to save game"));
         return false;
     }
 

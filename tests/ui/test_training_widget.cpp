@@ -103,10 +103,10 @@ void TestTrainingWidget::testFeedbackButtonsExist() {
         button_texts << btn->text();
     }
 
-    QVERIFY(button_texts.contains("training.next_exercise"));
-    QVERIFY(button_texts.contains("training.retry"));
-    QVERIFY(button_texts.contains("training.show_solution"));
-    QVERIFY(button_texts.contains("training.quit_lesson"));
+    QVERIFY(button_texts.contains("Next Exercise"));
+    QVERIFY(button_texts.contains("Retry"));
+    QVERIFY(button_texts.contains("Show Solution"));
+    QVERIFY(button_texts.contains("Quit Lesson"));
 }
 
 void TestTrainingWidget::testReturnToSelection() {
@@ -125,7 +125,7 @@ void TestTrainingWidget::testBackToGameSignal() {
 
     QPushButton* back_btn = nullptr;
     for (auto* btn : buttons) {
-        if (btn->text() == "training.back_to_game") {
+        if (btn->text() == "Back to Game") {
             back_btn = btn;
             break;
         }

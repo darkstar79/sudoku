@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "../core/i_localization_manager.h"
 #include "../core/training_types.h"
 
 #include <array>
@@ -41,8 +40,6 @@ public:
     explicit TrainingNumberPad(QWidget* parent = nullptr);
 
     /// Inject localization manager for tooltip translations
-    void setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager);
-
     /// Set the interaction mode (changes button labels/behavior)
     void setInteractionMode(core::TrainingInteractionMode mode);
 
@@ -54,13 +51,8 @@ signals:
     void numberPressed(int value);
 
 private:
-    std::shared_ptr<core::ILocalizationManager> loc_manager_;
     std::array<QPushButton*, 9> buttons_{};
     core::TrainingInteractionMode mode_{core::TrainingInteractionMode::Placement};
-
-    [[nodiscard]] std::string_view loc(std::string_view key) const {
-        return loc_manager_ ? loc_manager_->getString(key) : key;
-    }
 };
 
 }  // namespace sudoku::view

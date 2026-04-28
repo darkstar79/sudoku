@@ -20,7 +20,6 @@
 #include "../../src/core/statistics_manager.h"
 #include "../../src/core/sudoku_solver.h"
 #include "../../src/view_model/game_view_model.h"
-#include "../helpers/mock_localization_manager.h"
 #include "../helpers/test_utils.h"
 
 #include <memory>
@@ -39,8 +38,7 @@ TEST_CASE("Undo restores pencil marks after placing number", "[undo][pencil_mark
     auto stats_mgr = std::make_shared<StatisticsManager>("./test_stats_undo_pencil");
     auto save_mgr = std::make_shared<SaveManager>("./test_saves_undo_pencil");
 
-    GameViewModel view_model(validator, generator, solver, stats_mgr, save_mgr,
-                             std::make_shared<MockLocalizationManager>());
+    GameViewModel view_model(validator, generator, solver, stats_mgr, save_mgr);
     view_model.startNewGame(Difficulty::Easy);
 
     SECTION("Placing number clears pencil marks, undo restores them") {

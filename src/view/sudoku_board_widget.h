@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "../core/i_localization_manager.h"
 #include "board_painter.h"
 #include "board_render_data.h"
 
@@ -65,9 +64,6 @@ public:
 
     /// Clear the board (shows "no game loaded" state)
     void clearBoard();
-
-    void setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager);
-
     /// Set read-only mode (disables all interaction)
     void setReadOnly(bool read_only);
 
@@ -95,15 +91,10 @@ protected:
     void leaveEvent(QEvent* event) override;
 
 private:
-    std::shared_ptr<core::ILocalizationManager> loc_manager_;
     BoardPainter painter_;
     BoardRenderData board_{};
     bool has_board_{false};
     bool read_only_{false};
-
-    [[nodiscard]] std::string_view loc(std::string_view key) const {
-        return loc_manager_ ? loc_manager_->getString(key) : key;
-    }
     int hovered_candidate_{0};                     ///< Currently hovered candidate value (0 = none)
     std::optional<core::Position> hovered_cell_;   ///< Currently hovered cell (nullopt = mouse outside board)
     std::optional<core::Position> selected_cell_;  ///< Currently selected cell for editing

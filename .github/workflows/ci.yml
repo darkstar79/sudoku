@@ -34,6 +34,61 @@ jobs:
           fi
           echo "✅ Code formatting check passed"
 
+  i18n-check:
+    name: Translation Completeness
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install system dependencies
+        uses: ./.github/actions/install-qt-deps
+
+      - name: Install Conan
+        run: |
+          pip3 install conan
+          conan profile detect --force
+
+      - name: Install dependencies
+        run: conan install . --build=missing -s build_type=Release
+
+      - name: Configure CMake
+        run: cmake --preset release
+
+      - name: Run lupdate and check for drift
+        run: |
+          cmake --build --preset release --target sudoku_lupdate
+          if ! git diff --exit-code resources/translations/; then
+            echo "❌ Translation drift detected."
+            echo "Run 'cmake --build build/Release --target sudoku_lupdate' locally,"
+            echo "translate any new <translation type=\"unfinished\"> entries"
+            echo "using Qt Linguist, and commit."
+            exit 1
+          fi
+          # Check every non-English locale for unfinished entries.
+          # English is the source language — its entries are always 'unfinished'
+          # and Qt's QTranslator falls back to the <source> text.
+          fail=0
+          for ts in resources/translations/sudoku_*.ts; do
+            [ "$ts" = "resources/translations/sudoku_en.ts" ] && continue
+            if grep -q 'type="unfinished"' "$ts"; then
+              echo "❌ $ts has unfinished translations:"
+              grep 'type="unfinished"' "$ts" | head
+              fail=1
+            fi
+          done
+          [ "$fail" -eq 1 ] && exit 1
+          echo "✅ Translations are in sync and complete"
+
+      - name: Validate fmt-style placeholders in translations
+        run: |
+          # Catch translator-introduced placeholder mismatches (e.g. dropping
+          # {0} from a "Score: {0}" source) that lupdate does not validate.
+          # See scripts/check_translation_placeholders.py for the rules.
+          python3 scripts/check_translation_placeholders.py
+          python3 scripts/tests/test_check_translation_placeholders.py
+
   test-and-coverage:
     name: Test & Coverage
     runs-on: ubuntu-24.04

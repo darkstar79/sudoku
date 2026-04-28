@@ -16,10 +16,9 @@
 
 #include "main_window.h"
 
-#include "../core/string_keys.h"
 #include "core/constants.h"
+#include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
-#include "core/i_localization_manager.h"
 #include "core/observable.h"
 #include "infrastructure/app_directory_manager.h"
 #include "model/game_state.h"
@@ -30,20 +29,24 @@
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
 
+#include <array>
 #include <compare>
 #include <expected>
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QEvent>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
@@ -74,10 +77,8 @@
 
 namespace sudoku::view {
 
-using namespace core::StringKeys;
-
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
-    setWindowTitle(qstr(loc(AppTitle)));
+    setWindowTitle(qstr(core::loc("Sudoku", "Sudoku")));
     resize(800, 900);
 
     // Newspaper-like background
@@ -104,8 +105,8 @@ void MainWindow::setupCoachingPanel() {
 
     coaching_prev_btn_ = new QPushButton(QStringLiteral("\u25C0"));  // ◀
     coaching_next_btn_ = new QPushButton(QStringLiteral("\u25B6"));  // ▶
-    coaching_check_btn_ = new QPushButton(qstr(loc(CoachingButtonCheck)));
-    coaching_apply_btn_ = new QPushButton(qstr(loc(CoachingButtonApply)));
+    coaching_check_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Check")));
+    coaching_apply_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Apply")));
     coaching_dismiss_btn_ = new QPushButton(QStringLiteral("\u2715"));  // ✕
 
     static const auto COACHING_BTN_STYLE =
@@ -182,13 +183,13 @@ void MainWindow::setupButtonPanel(QVBoxLayout* game_layout) {
             .arg(StyleColors::BTN_BG, StyleColors::BTN_TEXT, StyleColors::BTN_BORDER, StyleColors::BTN_DISABLED_TEXT,
                  StyleColors::BTN_DISABLED_BG, StyleColors::PRIMARY, StyleColors::PRIMARY_DARK);
 
-    undo_btn_ = new QPushButton(qstr(loc(ButtonUndo)));
-    redo_btn_ = new QPushButton(qstr(loc(ButtonRedo)));
-    undo_valid_btn_ = new QPushButton(qstr(loc(ButtonUndoUntilValid)));
-    auto_notes_btn_ = new QPushButton(qstr(loc(ButtonFillNotes)));
+    undo_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Undo")));
+    redo_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Redo")));
+    undo_valid_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Undo Until Valid")));
+    auto_notes_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Fill Notes")));
     auto_notes_btn_->setCheckable(true);
-    mode_btn_ = new QPushButton(qstr(loc(ModeNormal)));
-    mode_btn_->setToolTip(qstr(loc(TooltipInputMode)));
+    mode_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Normal")));
+    mode_btn_->setToolTip(qstr(core::loc("Sudoku", "Input mode (Space to cycle, N for Notes)")));
 
     undo_btn_->setStyleSheet(BTN_STYLE);
     redo_btn_->setStyleSheet(BTN_STYLE);
@@ -268,94 +269,101 @@ void MainWindow::setupCentralWidget() {
 }
 
 void MainWindow::setupMenuBar() {
-    auto* game_menu = menuBar()->addMenu(QString("&%1").arg(qstr(loc(MenuGame))));
+    auto* game_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Game"))));
 
-    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuNewGame))), QKeySequence("Ctrl+N"), this,
+    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "New Game"))), QKeySequence("Ctrl+N"), this,
                          &MainWindow::showNewGameDialog);
 
-    auto* reset_action = game_menu->addAction(QString("&%1").arg(qstr(loc(MenuResetPuzzle))), QKeySequence("Ctrl+R"),
-                                              this, &MainWindow::showResetDialog);
+    auto* reset_action = game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Reset Puzzle"))),
+                                              QKeySequence("Ctrl+R"), this, &MainWindow::showResetDialog);
     reset_action->setEnabled(false);
 
     game_menu->addSeparator();
 
-    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuSave))), QKeySequence("Ctrl+S"), this,
+    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Save"))), QKeySequence("Ctrl+S"), this,
                          &MainWindow::showSaveDialog);
-    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuLoad))), QKeySequence("Ctrl+O"), this,
+    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Load"))), QKeySequence("Ctrl+O"), this,
                          &MainWindow::showLoadDialog);
 
     game_menu->addSeparator();
 
-    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuTrainingMode))), this,
+    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Training Mode"))), this,
                          [this]() { central_stack_->setCurrentIndex(1); });
 
-    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuAnalyzePosition))), QKeySequence("F2"), this, [this]() {
-        if (!view_model_ || !training_vm_) {
-            return;
-        }
-        auto result = view_model_->analyzePosition();
-        if (!result.has_value()) {
-            if (toast_widget_) {
-                toast_widget_->show(qstr(loc(ToastNoStrategies)));
+    game_menu->addAction(
+        QString("&%1").arg(qstr(core::loc("Sudoku", "Analyze Position"))), QKeySequence("F2"), this, [this]() {
+            if (!view_model_ || !training_vm_) {
+                return;
             }
-            return;
-        }
-        training_vm_->analyzePosition(result->board, result->given_board, result->candidate_masks,
-                                      result->applicable_steps);
-        central_stack_->setCurrentIndex(1);
-    });
+            auto result = view_model_->analyzePosition();
+            if (!result.has_value()) {
+                if (toast_widget_) {
+                    toast_widget_->show(qstr(core::loc("Sudoku", "No logical strategies found at this position.")));
+                }
+                return;
+            }
+            training_vm_->analyzePosition(result->board, result->given_board, result->candidate_masks,
+                                          result->applicable_steps);
+            central_stack_->setCurrentIndex(1);
+        });
 
-    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuResumeGame))), this,
+    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Resume Game"))), this,
                          [this]() { central_stack_->setCurrentIndex(0); });
 
     game_menu->addSeparator();
 
-    game_menu->addAction(qstr(loc(MenuStatistics)), this, &MainWindow::showStatisticsDialog);
-    game_menu->addAction(qstr(loc(MenuExportAggregate)), this, &MainWindow::exportAggregateStatsCsv);
-    game_menu->addAction(qstr(loc(MenuExportSessions)), this, &MainWindow::exportGameSessionsCsv);
+    game_menu->addAction(qstr(core::loc("Sudoku", "Statistics")), this, &MainWindow::showStatisticsDialog);
+    game_menu->addAction(qstr(core::loc("Sudoku", "Export Aggregate Stats to CSV")), this,
+                         &MainWindow::exportAggregateStatsCsv);
+    game_menu->addAction(qstr(core::loc("Sudoku", "Export Game Sessions to CSV")), this,
+                         &MainWindow::exportGameSessionsCsv);
 
     game_menu->addSeparator();
-    game_menu->addAction(qstr(loc(MenuSettings)), QKeySequence("Ctrl+,"), this, &MainWindow::showSettingsDialog);
+    game_menu->addAction(qstr(core::loc("Sudoku", "Settings...")), QKeySequence("Ctrl+,"), this,
+                         &MainWindow::showSettingsDialog);
     game_menu->addSeparator();
-    game_menu->addAction(QString("&%1").arg(qstr(loc(MenuExit))), QKeySequence("Alt+F4"), this, &QWidget::close);
+    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Exit"))), QKeySequence("Alt+F4"), this,
+                         &QWidget::close);
 
-    auto* edit_menu = menuBar()->addMenu(QString("&%1").arg(qstr(loc(MenuEdit))));
-    edit_menu->addAction(QString("&%1").arg(qstr(loc(MenuUndo))), QKeySequence("Ctrl+Z"), this, [this]() {
+    auto* edit_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Edit"))));
+    edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Undo"))), QKeySequence("Ctrl+Z"), this, [this]() {
         if (view_model_) {
             view_model_->undo();
         }
     });
 
-    edit_menu->addAction(QString("&%1").arg(qstr(loc(MenuRedo))), QKeySequence("Ctrl+Y"), this, [this]() {
+    edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Redo"))), QKeySequence("Ctrl+Y"), this, [this]() {
         if (view_model_) {
             view_model_->redo();
         }
     });
 
     edit_menu->addSeparator();
-    edit_menu->addAction(QString("&%1").arg(qstr(loc(MenuClearCell))), QKeySequence("Delete"), this, [this]() {
-        if (view_model_) {
-            auto pos = board_widget_->selectedCell();
-            if (pos.has_value()) {
-                view_model_->clearCell(pos.value());
-            }
-        }
-    });
+    edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Clear Cell"))), QKeySequence("Delete"), this,
+                         [this]() {
+                             if (view_model_) {
+                                 auto pos = board_widget_->selectedCell();
+                                 if (pos.has_value()) {
+                                     view_model_->clearCell(pos.value());
+                                 }
+                             }
+                         });
 
-    auto* help_menu = menuBar()->addMenu(QString("&%1").arg(qstr(loc(MenuHelp))));
-    help_menu->addAction(qstr(loc(MenuGetHint)), QKeySequence("H"), this, [this]() {
+    auto* help_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Help"))));
+    help_menu->addAction(qstr(core::loc("Sudoku", "Get Hint")), QKeySequence("H"), this, [this]() {
         if (view_model_ && view_model_->getHintCount() > 0) {
             view_model_->getHint(board_widget_->selectedCell());
         }
     });
-    help_menu->addAction(qstr(loc(MenuGetCoachingHint)), QKeySequence("Shift+H"), this, [this]() {
+    help_menu->addAction(qstr(core::loc("Sudoku", "Get Coaching Hint")), QKeySequence("Shift+H"), this, [this]() {
         if (view_model_) {
             view_model_->requestCoachingHint();
         }
     });
     help_menu->addSeparator();
-    help_menu->addAction(QString("&%1").arg(qstr(loc(MenuAbout))), this, &MainWindow::showAboutDialog);
-    help_menu->addAction(qstr(loc(MenuThirdPartyLicenses)), this, &MainWindow::showThirdPartyLicensesDialog);
+    help_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "About"))), this, &MainWindow::showAboutDialog);
+    help_menu->addAction(qstr(core::loc("Sudoku", "Third-Party Licenses")), this,
+                         &MainWindow::showThirdPartyLicensesDialog);
 }
 
 void MainWindow::setupToolBar() {
@@ -365,7 +373,7 @@ void MainWindow::setupToolBar() {
                                    "padding: 4px; spacing: 8px; }")
                                .arg(StyleColors::SURFACE, StyleColors::DIVIDER));
 
-    new_game_btn_ = new QPushButton(qstr(loc(ToolbarNewGame)));
+    new_game_btn_ = new QPushButton(qstr(core::loc("Sudoku", "▶ New Game")));
     new_game_btn_->setStyleSheet(
         QString("QPushButton { background-color: %1; color: white; padding: 6px 16px; border-radius: 4px; }"
                 "QPushButton:hover { background-color: %2; }")
@@ -375,11 +383,12 @@ void MainWindow::setupToolBar() {
 
     toolbar->addSeparator();
 
-    difficulty_label_ = new QLabel(QString(" %1 ").arg(qstr(loc(ToolbarDifficulty))));
+    difficulty_label_ = new QLabel(QString(" %1 ").arg(qstr(core::loc("Sudoku", "Difficulty:"))));
     toolbar->addWidget(difficulty_label_);
     difficulty_combo_ = new QComboBox;
-    difficulty_combo_->addItems({qstr(loc(DifficultyEasy)), qstr(loc(DifficultyMedium)), qstr(loc(DifficultyHard)),
-                                 qstr(loc(DifficultyExpert)), qstr(loc(DifficultyMaster))});
+    difficulty_combo_->addItems({qstr(core::loc("Sudoku", "Easy")), qstr(core::loc("Sudoku", "Medium")),
+                                 qstr(core::loc("Sudoku", "Hard")), qstr(core::loc("Sudoku", "Expert")),
+                                 qstr(core::loc("Sudoku", "Master"))});
     difficulty_combo_->setCurrentIndex(1);  // Medium
     toolbar->addWidget(difficulty_combo_);
 
@@ -387,9 +396,11 @@ void MainWindow::setupToolBar() {
         if (!view_model_) {
             return;
         }
-        auto result = QMessageBox::question(
-            this, qstr(loc(DialogNewGame)),
-            QString::fromStdString(locFormat(DialogNewGameConfirm, difficulty_combo_->currentText().toStdString())));
+        auto result =
+            QMessageBox::question(this, qstr(core::loc("Sudoku", "New Game")),
+                                  QString::fromStdString(core::locFormat(
+                                      core::loc("Sudoku", "Start a new {0} game?\nCurrent progress will be lost."),
+                                      difficulty_combo_->currentText().toStdString())));
         if (result == QMessageBox::Yes) {
             view_model_->startNewGame(static_cast<core::Difficulty>(index));
             board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
@@ -404,7 +415,7 @@ void MainWindow::setupToolBar() {
 
     toolbar->addSeparator();
 
-    hints_text_label_ = new QLabel(QString(" %1 ").arg(qstr(loc(ToolbarHints))));
+    hints_text_label_ = new QLabel(QString(" %1 ").arg(qstr(core::loc("Sudoku", "Hints:"))));
     toolbar->addWidget(hints_text_label_);
     hints_label_ = new QLabel("10");
     hints_label_->setStyleSheet(QString("background-color: %1; color: white; padding: 2px 12px; border-radius: 12px;")
@@ -427,7 +438,7 @@ void MainWindow::setupToolBar() {
 void MainWindow::setupStatusBar() {
     timer_label_ = new QLabel();
     statusBar()->addWidget(timer_label_);
-    status_label_ = new QLabel(qstr(loc(StatusReady)));
+    status_label_ = new QLabel(qstr(core::loc("Sudoku", "Ready")));
     statusBar()->addWidget(status_label_, 1);
     statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; border-top: 1px solid %2; color: %3; }")
                                    .arg(StyleColors::SURFACE_STATUS, StyleColors::DIVIDER, StyleColors::TEXT_MUTED));
@@ -499,9 +510,10 @@ void MainWindow::onCoachingStateChanged(const viewmodel::CoachingState& coaching
         const bool is_tryit = (coaching.phase == viewmodel::CoachingPhase::TryIt);
 
         if (is_tryit) {
-            coaching_level_label_->setText(qstr(loc(CoachingTryItLabel)));
+            coaching_level_label_->setText(qstr(core::loc("Sudoku", "Try it!")));
         } else {
-            coaching_level_label_->setText(QString::fromStdString(locFormat(CoachingLevelHeader, coaching.level)));
+            coaching_level_label_->setText(
+                QString::fromStdString(core::locFormat(core::loc("Sudoku", "Level {0}/3"), coaching.level)));
         }
         coaching_level_label_->setVisible(true);
 
@@ -539,22 +551,6 @@ void MainWindow::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewMod
     }
 }
 
-void MainWindow::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
-    loc_manager_ = std::move(loc_manager);
-    spdlog::debug("LocalizationManager bound to MainWindow (locale: {})", loc_manager_->getCurrentLocale());
-    if (board_widget_) {
-        board_widget_->setLocalizationManager(loc_manager_);
-    }
-    if (training_widget_) {
-        training_widget_->setLocalizationManager(loc_manager_);
-        // Re-bind training VM since rebuildPages() destroyed the old page widgets
-        if (training_vm_) {
-            training_widget_->setTrainingViewModel(training_vm_);
-        }
-    }
-    retranslateUi();
-}
-
 void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> settings_manager) {
     settings_manager_ = std::move(settings_manager);
 
@@ -564,20 +560,60 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
             auto_save_timer_->setInterval(settings_manager_->getSettings().auto_save_interval_ms);
         }
 
-        // Subscribe to settings changes
+        // Load the configured locale; Qt posts QEvent::LanguageChange to all
+        // top-level widgets, which retranslates the UI via changeEvent.
+        applyLocale(settings_manager_->getSettings().language);
+
+        // React to language changes from the Settings dialog. Compare against
+        // the previous locale so we only reload the translator when it
+        // actually changes (other settings — auto-save interval, hint
+        // visibility, etc. — also fire this observer).
         settings_manager_->settingsObservable().subscribe([this](const core::Settings& s) {
             if (auto_save_timer_) {
                 auto_save_timer_->setInterval(s.auto_save_interval_ms);
             }
-            // Retranslate UI if language changed
-            if (loc_manager_ && s.language != std::string(loc_manager_->getCurrentLocale())) {
-                [[maybe_unused]] auto result = loc_manager_->setLocale(s.language);
-                retranslateUi();
+            if (s.language != current_locale_) {
+                applyLocale(s.language);
             }
         });
     }
 
     spdlog::debug("SettingsManager bound to MainWindow");
+}
+
+void MainWindow::applyLocale(const std::string& locale_code) {
+    // Locate sudoku_<locale>.qm next to the executable (dev/Windows layout)
+    // or under ../share/sudoku/translations (FHS install).
+    auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
+    std::filesystem::path translations_dir;
+    for (const auto& candidate : {exe_dir / "translations", exe_dir / ".." / "share" / "sudoku" / "translations"}) {
+        if (std::filesystem::exists(candidate)) {
+            translations_dir = candidate;
+            break;
+        }
+    }
+
+    QCoreApplication::removeTranslator(&translator_);
+
+    if (translations_dir.empty()) {
+        spdlog::warn("Qt translations directory not found; UI will use source-language strings");
+        current_locale_ = locale_code;
+        return;
+    }
+
+    auto qm_name = QString::fromStdString(fmt::format("sudoku_{}", locale_code));
+    if (!translator_.load(qm_name, QString::fromStdString(translations_dir.string()))) {
+        spdlog::warn("Failed to load Qt translation '{}.qm' from {}", qm_name.toStdString(), translations_dir.string());
+        current_locale_ = locale_code;
+        return;
+    }
+    if (!QCoreApplication::installTranslator(&translator_)) {
+        spdlog::warn("QCoreApplication::installTranslator returned false for locale '{}'", locale_code);
+        current_locale_ = locale_code;
+        return;
+    }
+    current_locale_ = locale_code;
+    spdlog::info("Qt translator installed: {} from {}", qm_name.toStdString(), translations_dir.string());
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
@@ -591,6 +627,13 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 
 bool MainWindow::event(QEvent* event) {
     return QMainWindow::event(event);
+}
+
+void MainWindow::changeEvent(QEvent* event) {
+    if (event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QMainWindow::changeEvent(event);
 }
 
 void MainWindow::keyPressEvent(QKeyEvent* event) {
@@ -660,20 +703,21 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 void MainWindow::updateStatusBar() {
     if (!view_model_) {
         timer_label_->clear();
-        status_label_->setText(qstr(loc(StatusReady)));
+        status_label_->setText(qstr(core::loc("Sudoku", "Ready")));
         return;
     }
 
     const auto& game_state = view_model_->gameState.get();
     if (game_state.isComplete()) {
         timer_label_->setText(QString::fromStdString(view_model_->getFormattedTime()));
-        status_label_->setText(QString("<span style='color: green;'>%1</span>").arg(qstr(loc(StatusCompleted))));
+        status_label_->setText(
+            QString("<span style='color: green;'>%1</span>").arg(qstr(core::loc("Sudoku", "Completed!"))));
     } else if (game_state.isTimerRunning()) {
         timer_label_->setText(QString::fromStdString(view_model_->getFormattedTime()));
-        status_label_->setText(qstr(loc(StatusPlaying)));
+        status_label_->setText(qstr(core::loc("Sudoku", "Playing")));
     } else {
         timer_label_->clear();
-        status_label_->setText(qstr(loc(StatusReady)));
+        status_label_->setText(qstr(core::loc("Sudoku", "Ready")));
     }
 }
 
@@ -690,10 +734,10 @@ void MainWindow::updateToolBar() {
         const auto& techniques = ui_state.puzzle_techniques;
         auto rating_str = QString::number(ui_state.puzzle_rating, 'f', 1).toStdString();
         if (!techniques.empty()) {
-            rating_btn_->setText(
-                QString::fromStdString(locFormat(ToolbarRatingWithTechniques, rating_str, techniques.size())));
+            rating_btn_->setText(QString::fromStdString(
+                core::locFormat(core::loc("Sudoku", "SE {0} ({1} techniques)"), rating_str, techniques.size())));
         } else {
-            rating_btn_->setText(QString::fromStdString(locFormat(ToolbarRatingSimple, rating_str)));
+            rating_btn_->setText(QString::fromStdString(core::locFormat(core::loc("Sudoku", "SE {0}"), rating_str)));
         }
         rating_action_->setVisible(true);
     } else {
@@ -712,20 +756,21 @@ void MainWindow::updateButtonPanel() {
     // Update input mode indicator
     switch (view_model_->getInputMode()) {
         case viewmodel::InputMode::Normal:
-            mode_btn_->setText(qstr(loc(ModeNormal)));
+            mode_btn_->setText(qstr(core::loc("Sudoku", "Normal")));
             break;
         case viewmodel::InputMode::Notes:
-            mode_btn_->setText(qstr(loc(ModeNotes)));
+            mode_btn_->setText(qstr(core::loc("Sudoku", "Notes")));
             break;
         case viewmodel::InputMode::Color:
-            mode_btn_->setText(qstr(loc(ModeColor)));
+            mode_btn_->setText(qstr(core::loc("Sudoku", "Color")));
             break;
     }
 
     // Update fill notes toggle state
     const auto& ui = view_model_->uiState.get();
     auto_notes_btn_->setChecked(ui.notes_filled);
-    auto_notes_btn_->setText(qstr(loc(ui.notes_filled ? ButtonClearNotes : ButtonFillNotes)));
+    auto_notes_btn_->setText(ui.notes_filled ? qstr(core::loc("Sudoku", "Clear Notes"))
+                                             : qstr(core::loc("Sudoku", "Fill Notes")));
 }
 
 // Dialog methods
@@ -736,11 +781,12 @@ void MainWindow::showNewGameDialog() {
     }
 
     int selected = difficulty_combo_ ? difficulty_combo_->currentIndex() : 1;
-    QString diff_name = difficulty_combo_ ? difficulty_combo_->currentText() : qstr(loc(DifficultyMedium));
+    QString diff_name = difficulty_combo_ ? difficulty_combo_->currentText() : qstr(core::loc("Sudoku", "Medium"));
 
-    auto result =
-        QMessageBox::question(this, qstr(loc(DialogNewGame)),
-                              QString::fromStdString(locFormat(DialogNewGameConfirm, diff_name.toStdString())));
+    auto result = QMessageBox::question(
+        this, qstr(core::loc("Sudoku", "New Game")),
+        QString::fromStdString(core::locFormat(
+            core::loc("Sudoku", "Start a new {0} game?\nCurrent progress will be lost."), diff_name.toStdString())));
 
     if (result == QMessageBox::Yes) {
         view_model_->startNewGame(static_cast<core::Difficulty>(selected));
@@ -749,8 +795,11 @@ void MainWindow::showNewGameDialog() {
 }
 
 void MainWindow::showResetDialog() {
-    auto result = QMessageBox::warning(this, qstr(loc(DialogResetPuzzle)), qstr(loc(DialogResetWarning)),
-                                       QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+    auto result =
+        QMessageBox::warning(this, qstr(core::loc("Sudoku", "Reset Puzzle")),
+                             qstr(core::loc("Sudoku", "All progress on this puzzle will be lost, including placed "
+                                                      "numbers, notes, and hints. The timer will restart.")),
+                             QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
     if (result == QMessageBox::Yes && view_model_) {
         view_model_->executeCommand(viewmodel::GameCommand::ResetGame);
     }
@@ -762,26 +811,27 @@ void MainWindow::showSaveDialog() {
     }
 
     QDialog dialog(this);
-    dialog.setWindowTitle(qstr(loc(DialogSaveGame)));
+    dialog.setWindowTitle(qstr(core::loc("Sudoku", "Save Game")));
     dialog.setMinimumWidth(380);
 
     auto* layout = new QVBoxLayout(&dialog);
 
     // Current game info preview
-    auto* info_group = new QGroupBox(qstr(loc(SavePreviewTitle)), &dialog);
+    auto* info_group = new QGroupBox(qstr(core::loc("Sudoku", "Current Game")), &dialog);
     auto* info_layout = new QFormLayout(info_group);
-    info_layout->addRow(qstr(loc(SavePreviewDifficulty)),
+    info_layout->addRow(qstr(core::loc("Sudoku", "Difficulty")),
                         new QLabel(qstr(difficultyString(view_model_->gameState.get().getDifficulty()))));
-    info_layout->addRow(qstr(loc(SavePreviewTime)),
+    info_layout->addRow(qstr(core::loc("Sudoku", "Time")),
                         new QLabel(QString::fromStdString(view_model_->getFormattedTime())));
-    info_layout->addRow(qstr(loc(SavePreviewMoves)), new QLabel(QString::number(view_model_->getMoveCount())));
-    info_layout->addRow(qstr(loc(SavePreviewMistakes)), new QLabel(QString::number(view_model_->getMistakeCount())));
+    info_layout->addRow(qstr(core::loc("Sudoku", "Moves")), new QLabel(QString::number(view_model_->getMoveCount())));
+    info_layout->addRow(qstr(core::loc("Sudoku", "Mistakes")),
+                        new QLabel(QString::number(view_model_->getMistakeCount())));
     layout->addWidget(info_group);
 
     // Name input
-    layout->addWidget(new QLabel(qstr(loc(DialogEnterSaveName))));
+    layout->addWidget(new QLabel(qstr(core::loc("Sudoku", "Enter save name:"))));
     auto* name_edit = new QLineEdit(&dialog);
-    name_edit->setPlaceholderText(qstr(loc(SaveNamePlaceholder)));
+    name_edit->setPlaceholderText(qstr(core::loc("Sudoku", "Enter save name...")));
     layout->addWidget(name_edit);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
@@ -790,7 +840,8 @@ void MainWindow::showSaveDialog() {
     connect(buttons, &QDialogButtonBox::accepted, &dialog, [&]() {
         QString name = name_edit->text().trimmed();
         if (name.isEmpty()) {
-            QMessageBox::warning(&dialog, qstr(loc(DialogSaveGame)), qstr(loc(SaveNameEmpty)));
+            QMessageBox::warning(&dialog, qstr(core::loc("Sudoku", "Save Game")),
+                                 qstr(core::loc("Sudoku", "Please enter a save name.")));
             return;
         }
 
@@ -799,9 +850,10 @@ void MainWindow::showSaveDialog() {
         bool name_exists =
             std::ranges::any_of(existing, [&](const auto& s) { return s.display_name == name.toStdString(); });
         if (name_exists) {
-            auto confirm =
-                QMessageBox::question(&dialog, qstr(loc(DialogSaveGame)),
-                                      QString::fromStdString(locFormat(SaveOverwriteConfirm, name.toStdString())));
+            auto confirm = QMessageBox::question(
+                &dialog, qstr(core::loc("Sudoku", "Save Game")),
+                QString::fromStdString(core::locFormat(
+                    core::loc("Sudoku", "A save named \"{0}\" already exists. Overwrite it?"), name.toStdString())));
             if (confirm != QMessageBox::Yes) {
                 return;
             }
@@ -815,7 +867,7 @@ void MainWindow::showSaveDialog() {
         QString name = name_edit->text().trimmed();
         bool success = view_model_->saveCurrentGame(name.toStdString());
         if (success && toast_widget_) {
-            toast_widget_->show(qstr(loc(ToastGameSaved)));
+            toast_widget_->show(qstr(core::loc("Sudoku", "Game saved successfully")));
         }
     }
 }
@@ -828,15 +880,16 @@ void MainWindow::showLoadDialog() {
     auto saves = view_model_->getSaveList();
 
     QDialog dialog(this);
-    dialog.setWindowTitle(qstr(loc(DialogLoadGame)));
+    dialog.setWindowTitle(qstr(core::loc("Sudoku", "Load Game")));
     dialog.setMinimumSize(600, 350);
 
     auto* layout = new QVBoxLayout(&dialog);
 
     static constexpr int LOAD_COLS = 5;
     auto* table = new QTableWidget(static_cast<int>(saves.size()), LOAD_COLS, &dialog);
-    table->setHorizontalHeaderLabels({qstr(loc(LoadColName)), qstr(loc(LoadColDifficulty)), qstr(loc(LoadColDate)),
-                                      qstr(loc(LoadColTime)), qstr(loc(LoadColRating))});
+    table->setHorizontalHeaderLabels({qstr(core::loc("Sudoku", "Name")), qstr(core::loc("Sudoku", "Difficulty")),
+                                      qstr(core::loc("Sudoku", "Last Modified")), qstr(core::loc("Sudoku", "Elapsed")),
+                                      qstr(core::loc("Sudoku", "Rating"))});
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
     table->setSelectionMode(QAbstractItemView::SingleSelection);
     table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -857,10 +910,10 @@ void MainWindow::showLoadDialog() {
             row, 3,
             new QTableWidgetItem(QString::fromStdString(viewmodel::GameViewModel::formatDuration(s.elapsed_time))));
         table->setItem(row, 4,
-                       new QTableWidgetItem(
-                           s.puzzle_rating > 0.0
-                               ? QString::fromStdString(locFormat(RatingFormat, fmt::format("{:.1f}", s.puzzle_rating)))
-                               : qstr(loc(StatsTimeNa))));
+                       new QTableWidgetItem(s.puzzle_rating > 0.0 ? QString::fromStdString(core::locFormat(
+                                                                        core::loc("Sudoku", "SE {0}"),
+                                                                        fmt::format("{:.1f}", s.puzzle_rating)))
+                                                                  : qstr(core::loc("Sudoku", "N/A"))));
     }
     table->resizeColumnsToContents();
     layout->addWidget(table);
@@ -891,7 +944,7 @@ void MainWindow::showStatisticsDialog() {
     const auto& display = view_model_->statistics.get();
 
     auto* dialog = new QDialog(this);
-    dialog->setWindowTitle(qstr(loc(DialogStatistics)));
+    dialog->setWindowTitle(qstr(core::loc("Sudoku", "Statistics")));
     dialog->setMinimumSize(520, 400);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
 
@@ -900,28 +953,30 @@ void MainWindow::showStatisticsDialog() {
     // === Overview tab ===
     auto* overview_page = new QWidget();
     auto* overview_layout = new QFormLayout(overview_page);
-    auto addStatRow = [&](std::string_view key, const auto& value) {
-        overview_layout->addRow(new QLabel(QString::fromStdString(locFormat(key, value))));
+    auto addStatRow = [&](const std::string& text) {
+        overview_layout->addRow(new QLabel(QString::fromStdString(text)));
     };
-    addStatRow(StatsGamesPlayed, display.games_played);
-    addStatRow(StatsGamesCompleted, display.games_completed);
-    addStatRow(StatsCompletionRate, display.completion_rate);
-    addStatRow(StatsBestTime, display.best_time);
-    addStatRow(StatsAverageTime, display.average_time);
-    addStatRow(StatsCurrentStreak, display.current_streak);
-    addStatRow(StatsBestStreak, display.best_streak);
+    addStatRow(core::locFormat(core::loc("Sudoku", "Games Played: {0}"), display.games_played));
+    addStatRow(core::locFormat(core::loc("Sudoku", "Games Completed: {0}"), display.games_completed));
+    addStatRow(core::locFormat(core::loc("Sudoku", "Completion Rate: {0:.1f}%"), display.completion_rate));
+    addStatRow(core::locFormat(core::loc("Sudoku", "Best Time: {0}"), display.best_time));
+    addStatRow(core::locFormat(core::loc("Sudoku", "Average Time: {0}"), display.average_time));
+    addStatRow(core::locFormat(core::loc("Sudoku", "Current Streak: {0}"), display.current_streak));
+    addStatRow(core::locFormat(core::loc("Sudoku", "Best Streak: {0}"), display.best_streak));
 
     if (maybe_stats) {
         const auto& agg = *maybe_stats;
         overview_layout->addRow(new QLabel(""));  // spacer
-        overview_layout->addRow(qstr(loc(StatsTotalMoves)), new QLabel(QString::number(agg.total_moves)));
-        overview_layout->addRow(qstr(loc(StatsTotalHints)), new QLabel(QString::number(agg.total_hints)));
-        overview_layout->addRow(qstr(loc(StatsTotalMistakes)), new QLabel(QString::number(agg.total_mistakes)));
+        overview_layout->addRow(qstr(core::loc("Sudoku", "Total Moves")), new QLabel(QString::number(agg.total_moves)));
+        overview_layout->addRow(qstr(core::loc("Sudoku", "Total Hints Used")),
+                                new QLabel(QString::number(agg.total_hints)));
+        overview_layout->addRow(qstr(core::loc("Sudoku", "Total Mistakes")),
+                                new QLabel(QString::number(agg.total_mistakes)));
         overview_layout->addRow(
-            qstr(loc(StatsTotalTime)),
+            qstr(core::loc("Sudoku", "Total Time Played")),
             new QLabel(QString::fromStdString(viewmodel::GameViewModel::formatDuration(agg.total_time_played))));
     }
-    tabs->addTab(overview_page, qstr(loc(StatsTabOverview)));
+    tabs->addTab(overview_page, qstr(core::loc("Sudoku", "Overview")));
 
     // === Per-difficulty tab ===
     if (maybe_stats) {
@@ -941,9 +996,9 @@ void MainWindow::showStatisticsDialog() {
         table->setHorizontalHeaderLabels(col_headers);
 
         // Row headers: metric names
-        table->setVerticalHeaderLabels({qstr(loc(StatsRowPlayed)), qstr(loc(StatsRowCompleted)),
-                                        qstr(loc(StatsRowBestTime)), qstr(loc(StatsRowAvgTime)),
-                                        qstr(loc(StatsRowAvgRating))});
+        table->setVerticalHeaderLabels({qstr(core::loc("Sudoku", "Played")), qstr(core::loc("Sudoku", "Completed")),
+                                        qstr(core::loc("Sudoku", "Best Time")), qstr(core::loc("Sudoku", "Avg Time")),
+                                        qstr(core::loc("Sudoku", "Avg SE Rating"))});
 
         for (int d = 0; d < NUM_DIFFICULTIES; ++d) {
             table->setItem(0, d, new QTableWidgetItem(QString::number(agg.games_played[d])));
@@ -954,26 +1009,27 @@ void MainWindow::showStatisticsDialog() {
                 2, d,
                 new QTableWidgetItem((bt != std::chrono::milliseconds::max() && agg.games_completed[d] > 0)
                                          ? QString::fromStdString(viewmodel::GameViewModel::formatDuration(bt))
-                                         : qstr(loc(StatsTimeNa))));
+                                         : qstr(core::loc("Sudoku", "N/A"))));
 
             auto at = agg.average_times[d];
             table->setItem(3, d,
                            new QTableWidgetItem(
                                at.count() > 0 ? QString::fromStdString(viewmodel::GameViewModel::formatDuration(at))
-                                              : qstr(loc(StatsTimeNa))));
+                                              : qstr(core::loc("Sudoku", "N/A"))));
 
             table->setItem(4, d,
-                           new QTableWidgetItem(agg.average_ratings[d] > 0.0
-                                                    ? QString::fromStdString(locFormat(
-                                                          RatingFormat, fmt::format("{:.1f}", agg.average_ratings[d])))
-                                                    : qstr(loc(StatsTimeNa))));
+                           new QTableWidgetItem(
+                               agg.average_ratings[d] > 0.0
+                                   ? QString::fromStdString(core::locFormat(
+                                         core::loc("Sudoku", "SE {0}"), fmt::format("{:.1f}", agg.average_ratings[d])))
+                                   : qstr(core::loc("Sudoku", "N/A"))));
         }
 
         table->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table->horizontalHeader()->setStretchLastSection(true);
         table->resizeColumnsToContents();
         diff_layout->addWidget(table);
-        tabs->addTab(diff_page, qstr(loc(StatsTabPerDifficulty)));
+        tabs->addTab(diff_page, qstr(core::loc("Sudoku", "Per Difficulty")));
     }
 
     // === Recent Games tab (conditional on collect_detailed_stats) ===
@@ -986,9 +1042,10 @@ void MainWindow::showStatisticsDialog() {
             auto* recent_layout = new QVBoxLayout(recent_page);
             auto* recent_table = new QTableWidget(static_cast<int>(recent.size()), NUM_COLS, recent_page);
 
-            recent_table->setHorizontalHeaderLabels({qstr(loc(StatsColDate)), qstr(loc(StatsColDifficulty)),
-                                                     qstr(loc(StatsColTime)), qstr(loc(StatsColRating)),
-                                                     qstr(loc(StatsColMoves)), qstr(loc(StatsColMistakes))});
+            recent_table->setHorizontalHeaderLabels(
+                {qstr(core::loc("Sudoku", "Date")), qstr(core::loc("Sudoku", "Difficulty")),
+                 qstr(core::loc("Sudoku", "Time")), qstr(core::loc("Sudoku", "Rating")),
+                 qstr(core::loc("Sudoku", "Moves")), qstr(core::loc("Sudoku", "Mistakes"))});
 
             for (int row = 0; std::cmp_less(row, recent.size()); ++row) {
                 const auto& g = recent[row];
@@ -1001,12 +1058,12 @@ void MainWindow::showStatisticsDialog() {
                 recent_table->setItem(row, 2,
                                       new QTableWidgetItem(QString::fromStdString(
                                           viewmodel::GameViewModel::formatDuration(g.time_played))));
-                recent_table->setItem(
-                    row, 3,
-                    new QTableWidgetItem(
-                        g.puzzle_rating > 0.0
-                            ? QString::fromStdString(locFormat(RatingFormat, fmt::format("{:.1f}", g.puzzle_rating)))
-                            : qstr(loc(StatsTimeNa))));
+                recent_table->setItem(row, 3,
+                                      new QTableWidgetItem(g.puzzle_rating > 0.0
+                                                               ? QString::fromStdString(core::locFormat(
+                                                                     core::loc("Sudoku", "SE {0}"),
+                                                                     fmt::format("{:.1f}", g.puzzle_rating)))
+                                                               : qstr(core::loc("Sudoku", "N/A"))));
                 recent_table->setItem(row, 4, new QTableWidgetItem(QString::number(g.moves_made)));
                 recent_table->setItem(row, 5, new QTableWidgetItem(QString::number(g.mistakes)));
             }
@@ -1016,7 +1073,7 @@ void MainWindow::showStatisticsDialog() {
             recent_table->horizontalHeader()->setStretchLastSection(true);
             recent_table->resizeColumnsToContents();
             recent_layout->addWidget(recent_table);
-            tabs->addTab(recent_page, qstr(loc(StatsTabRecentGames)));
+            tabs->addTab(recent_page, qstr(core::loc("Sudoku", "Recent Games")));
         }
     }
 
@@ -1030,16 +1087,18 @@ void MainWindow::showStatisticsDialog() {
 }
 
 void MainWindow::showAboutDialog() {
-    QMessageBox::about(this, qstr(loc(DialogAbout)),
+    QMessageBox::about(this, qstr(core::loc("Sudoku", "About")),
                        QString("%1\n\n%2\n\n"
                                "%3\n- Qt6\n- C++23\n\n"
                                "Copyright (C) 2025-2026 Alexander Bendlin")
-                           .arg(qstr(loc(AboutSudokuGame)), qstr(loc(AboutDescription)), qstr(loc(AboutBuiltWith))));
+                           .arg(qstr(core::loc("Sudoku", "Sudoku Game")),
+                                qstr(core::loc("Sudoku", "A feature-rich offline Sudoku application.")),
+                                qstr(core::loc("Sudoku", "Built with:"))));
 }
 
 void MainWindow::showThirdPartyLicensesDialog() {
     auto* dialog = new QDialog(this);
-    dialog->setWindowTitle(qstr(loc(DialogThirdPartyLicenses)));
+    dialog->setWindowTitle(qstr(core::loc("Sudoku", "Third-Party Licenses")));
     dialog->resize(600, 480);
 
     auto* text = new QTextEdit(dialog);
@@ -1099,21 +1158,22 @@ void MainWindow::showTechniquesDialog() {
         return;
     }
 
-    QString text = QString::fromStdString(
-                       locFormat(DialogPuzzleRating, QString::number(ui_state.puzzle_rating, 'f', 1).toStdString())) +
-                   "\n\n";
+    QString text =
+        QString::fromStdString(core::locFormat(core::loc("Sudoku", "Puzzle Rating: SE {0}"),
+                                               QString::number(ui_state.puzzle_rating, 'f', 1).toStdString())) +
+        "\n\n";
 
     const auto& techniques = ui_state.puzzle_techniques;
     if (!techniques.empty()) {
-        text += QString("%1\n\n").arg(qstr(loc(DialogTechniquesRequired)));
+        text += QString("%1\n\n").arg(qstr(core::loc("Sudoku", "Techniques required to solve:")));
         for (const auto& tech : techniques) {
             text += QString("  %1\n").arg(QString::fromStdString(tech));
         }
     } else {
-        text += qstr(loc(DialogNoTechniqueDetails));
+        text += qstr(core::loc("Sudoku", "No technique details available."));
     }
 
-    QMessageBox::information(this, qstr(loc(DialogPuzzleDifficulty)), text);
+    QMessageBox::information(this, qstr(core::loc("Sudoku", "Puzzle Difficulty")), text);
 }
 
 void MainWindow::exportAggregateStatsCsv() {
@@ -1123,9 +1183,10 @@ void MainWindow::exportAggregateStatsCsv() {
 
     auto result = view_model_->exportAggregateStatsCsv();
     if (result) {
-        toast_widget_->show(qstr(loc(ToastAggregateExported)));
+        toast_widget_->show(qstr(core::loc("Sudoku", "Aggregate stats exported to CSV")));
     } else {
-        toast_widget_->show(QString::fromStdString(locFormat(ToastExportFailed, result.error())));
+        toast_widget_->show(
+            QString::fromStdString(core::locFormat(core::loc("Sudoku", "Export failed: {0}"), result.error())));
     }
 }
 
@@ -1136,41 +1197,42 @@ void MainWindow::exportGameSessionsCsv() {
 
     auto result = view_model_->exportGameSessionsCsv();
     if (result) {
-        toast_widget_->show(qstr(loc(ToastSessionsExported)));
+        toast_widget_->show(qstr(core::loc("Sudoku", "Game sessions exported to CSV")));
     } else {
-        toast_widget_->show(QString::fromStdString(locFormat(ToastExportFailed, result.error())));
+        toast_widget_->show(
+            QString::fromStdString(core::locFormat(core::loc("Sudoku", "Export failed: {0}"), result.error())));
     }
 }
 
-std::string_view MainWindow::difficultyString(core::Difficulty difficulty) const {
+std::string MainWindow::difficultyString(core::Difficulty difficulty) const {
     switch (difficulty) {
         case core::Difficulty::Easy:
-            return loc(DifficultyEasy);
+            return core::loc("Sudoku", "Easy");
         case core::Difficulty::Medium:
-            return loc(DifficultyMedium);
+            return core::loc("Sudoku", "Medium");
         case core::Difficulty::Hard:
-            return loc(DifficultyHard);
+            return core::loc("Sudoku", "Hard");
         case core::Difficulty::Expert:
-            return loc(DifficultyExpert);
+            return core::loc("Sudoku", "Expert");
         case core::Difficulty::Master:
-            return loc(DifficultyMaster);
+            return core::loc("Sudoku", "Master");
         default:
-            return loc(DifficultyUnknown);
+            return core::loc("Sudoku", "Unknown");
     }
 }
 
 void MainWindow::retranslateUi() {
     // Window title
-    setWindowTitle(qstr(loc(AppTitle)));
+    setWindowTitle(qstr(core::loc("Sudoku", "Sudoku")));
 
     // Menu bar: rebuild entirely (avoids storing ~15 action pointers)
     menuBar()->clear();
     setupMenuBar();
 
     // Toolbar labels
-    new_game_btn_->setText(qstr(loc(ToolbarNewGame)));
-    difficulty_label_->setText(QString(" %1 ").arg(qstr(loc(ToolbarDifficulty))));
-    hints_text_label_->setText(QString(" %1 ").arg(qstr(loc(ToolbarHints))));
+    new_game_btn_->setText(qstr(core::loc("Sudoku", "▶ New Game")));
+    difficulty_label_->setText(QString(" %1 ").arg(qstr(core::loc("Sudoku", "Difficulty:"))));
+    hints_text_label_->setText(QString(" %1 ").arg(qstr(core::loc("Sudoku", "Hints:"))));
 
     // Difficulty combo items
     difficulty_combo_->blockSignals(true);
@@ -1180,19 +1242,12 @@ void MainWindow::retranslateUi() {
     difficulty_combo_->blockSignals(false);
 
     // Button panel
-    undo_btn_->setText(qstr(loc(ButtonUndo)));
-    redo_btn_->setText(qstr(loc(ButtonRedo)));
-    undo_valid_btn_->setText(qstr(loc(ButtonUndoUntilValid)));
-    auto_notes_btn_->setText(qstr(loc(auto_notes_btn_->isChecked() ? ButtonClearNotes : ButtonFillNotes)));
-    mode_btn_->setToolTip(qstr(loc(TooltipInputMode)));
-
-    // Training widget: rebuild pages with new locale, then re-bind VM
-    if (training_widget_ && loc_manager_) {
-        training_widget_->setLocalizationManager(loc_manager_);
-        if (training_vm_) {
-            training_widget_->setTrainingViewModel(training_vm_);
-        }
-    }
+    undo_btn_->setText(qstr(core::loc("Sudoku", "Undo")));
+    redo_btn_->setText(qstr(core::loc("Sudoku", "Redo")));
+    undo_valid_btn_->setText(qstr(core::loc("Sudoku", "Undo Until Valid")));
+    auto_notes_btn_->setText(auto_notes_btn_->isChecked() ? qstr(core::loc("Sudoku", "Clear Notes"))
+                                                          : qstr(core::loc("Sudoku", "Fill Notes")));
+    mode_btn_->setToolTip(qstr(core::loc("Sudoku", "Input mode (Space to cycle, N for Notes)")));
 
     // Status bar and mode button
     updateStatusBar();
@@ -1206,7 +1261,7 @@ void MainWindow::showSettingsDialog() {
     }
 
     auto* dialog = new QDialog(this);
-    dialog->setWindowTitle(qstr(loc(DialogSettings)));
+    dialog->setWindowTitle(qstr(core::loc("Sudoku", "Settings")));
     dialog->setMinimumWidth(400);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
 
@@ -1219,45 +1274,48 @@ void MainWindow::showSettingsDialog() {
     auto* max_hints_spin = new QSpinBox();
     max_hints_spin->setRange(1, 50);
     max_hints_spin->setValue(settings_manager_->getSettings().max_hints);
-    gameplay_layout->addRow(qstr(loc(SettingsMaxHints)), max_hints_spin);
+    gameplay_layout->addRow(qstr(core::loc("Sudoku", "Maximum Hints:")), max_hints_spin);
 
     auto* auto_save_spin = new QSpinBox();
     auto_save_spin->setRange(10, 300);
-    auto_save_spin->setSuffix(qstr(loc(SettingsSecondsSuffix)));
+    auto_save_spin->setSuffix(qstr(core::loc("Sudoku", " seconds")));
     auto_save_spin->setValue(settings_manager_->getSettings().auto_save_interval_ms / 1000);
-    gameplay_layout->addRow(qstr(loc(SettingsAutoSaveInterval)), auto_save_spin);
+    gameplay_layout->addRow(qstr(core::loc("Sudoku", "Auto-save Interval:")), auto_save_spin);
 
     auto* difficulty_combo = new QComboBox();
-    difficulty_combo->addItems({qstr(loc(DifficultyEasy)), qstr(loc(DifficultyMedium)), qstr(loc(DifficultyHard)),
-                                qstr(loc(DifficultyExpert)), qstr(loc(DifficultyMaster))});
+    difficulty_combo->addItems({qstr(core::loc("Sudoku", "Easy")), qstr(core::loc("Sudoku", "Medium")),
+                                qstr(core::loc("Sudoku", "Hard")), qstr(core::loc("Sudoku", "Expert")),
+                                qstr(core::loc("Sudoku", "Master"))});
     difficulty_combo->setCurrentIndex(static_cast<int>(settings_manager_->getSettings().default_difficulty));
-    gameplay_layout->addRow(qstr(loc(SettingsDefaultDifficulty)), difficulty_combo);
+    gameplay_layout->addRow(qstr(core::loc("Sudoku", "Default Difficulty:")), difficulty_combo);
 
-    tabs->addTab(gameplay_page, qstr(loc(SettingsTabGameplay)));
+    tabs->addTab(gameplay_page, qstr(core::loc("Sudoku", "Gameplay")));
 
     // === Display Tab ===
     auto* display_page = new QWidget();
     auto* display_layout = new QVBoxLayout(display_page);
 
-    auto* show_conflicts_cb = new QCheckBox(qstr(loc(SettingsHighlightConflicts)));
+    auto* show_conflicts_cb = new QCheckBox(qstr(core::loc("Sudoku", "Highlight Conflicts")));
     show_conflicts_cb->setChecked(settings_manager_->getSettings().show_conflicts);
     display_layout->addWidget(show_conflicts_cb);
 
-    auto* show_hints_cb = new QCheckBox(qstr(loc(SettingsShowHints)));
+    auto* show_hints_cb = new QCheckBox(qstr(core::loc("Sudoku", "Show Hints")));
     show_hints_cb->setChecked(settings_manager_->getSettings().show_hints);
     display_layout->addWidget(show_hints_cb);
 
-    // Language selection
-    if (loc_manager_) {
+    // Language selection. Setting persists across restart but does not retranslate
+    // the running UI (Qt Linguist runtime swap not yet wired).
+    {
         display_layout->addSpacing(10);
         auto* lang_layout = new QHBoxLayout();
-        lang_layout->addWidget(new QLabel(qstr(loc(SidebarLanguage))));
+        lang_layout->addWidget(new QLabel(qstr(core::loc("Sudoku", "Language"))));
         auto* lang_combo = new QComboBox();
-        auto locales = loc_manager_->getAvailableLocales();
+        static const std::array<std::pair<const char*, const char*>, 2> kLocales = {
+            {{"en", "English"}, {"de", "Deutsch"}}};
         int current_idx = 0;
-        for (size_t i = 0; i < locales.size(); ++i) {
-            lang_combo->addItem(QString::fromStdString(locales[i].second), QString::fromStdString(locales[i].first));
-            if (locales[i].first == settings_manager_->getSettings().language) {
+        for (size_t i = 0; i < kLocales.size(); ++i) {
+            lang_combo->addItem(QString::fromUtf8(kLocales[i].second), QString::fromUtf8(kLocales[i].first));
+            if (kLocales[i].first == settings_manager_->getSettings().language) {
                 current_idx = static_cast<int>(i);
             }
         }
@@ -1272,24 +1330,25 @@ void MainWindow::showSettingsDialog() {
     }
 
     display_layout->addStretch();
-    tabs->addTab(display_page, qstr(loc(SettingsTabDisplay)));
+    tabs->addTab(display_page, qstr(core::loc("Sudoku", "Display")));
 
     // === Statistics Tab ===
     auto* stats_page = new QWidget();
     auto* stats_layout = new QVBoxLayout(stats_page);
 
-    auto* collect_stats_cb = new QCheckBox(qstr(loc(SettingsCollectDetailedStats)));
+    auto* collect_stats_cb = new QCheckBox(qstr(core::loc("Sudoku", "Collect detailed match statistics")));
     collect_stats_cb->setChecked(settings_manager_->getSettings().collect_detailed_stats);
     stats_layout->addWidget(collect_stats_cb);
 
-    auto* encrypt_stats_cb = new QCheckBox(qstr(loc(SettingsEncryptDetailedStats)));
+    auto* encrypt_stats_cb = new QCheckBox(qstr(core::loc("Sudoku", "Encrypt session data")));
     encrypt_stats_cb->setChecked(settings_manager_->getSettings().encrypt_detailed_stats);
-    encrypt_stats_cb->setToolTip(qstr(loc(SettingsEncryptDetailedStatsTooltip)));
+    encrypt_stats_cb->setToolTip(qstr(core::loc(
+        "Sudoku", "Session data is encrypted by default for privacy. Disable to inspect the raw data file yourself.")));
     encrypt_stats_cb->setEnabled(settings_manager_->getSettings().collect_detailed_stats);
     stats_layout->addWidget(encrypt_stats_cb);
 
     stats_layout->addStretch();
-    tabs->addTab(stats_page, qstr(loc(SettingsTabStatistics)));
+    tabs->addTab(stats_page, qstr(core::loc("Sudoku", "Statistics")));
 
     // === Dialog layout ===
     auto* main_layout = new QVBoxLayout(dialog);
@@ -1332,7 +1391,11 @@ void MainWindow::showSettingsDialog() {
     connectCheckBox(collect_stats_cb, [this, encrypt_stats_cb](bool checked) {
         encrypt_stats_cb->setEnabled(checked);
         if (!checked) {
-            auto answer = QMessageBox::question(this, qstr(loc(DialogSettings)), qstr(loc(StatsDeletePrompt)));
+            auto answer = QMessageBox::question(
+                this, qstr(core::loc("Sudoku", "Settings")),
+                qstr(core::loc("Sudoku",
+                               "Disabling session tracking will stop recording per-game statistics. Would you like to "
+                               "delete existing session history?")));
             if (answer == QMessageBox::Yes && view_model_) {
                 view_model_->deleteSessionHistory();
             }

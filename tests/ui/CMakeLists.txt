@@ -7,6 +7,7 @@ set(UI_TEST_SOURCES
     test_menu_toolbar_actions.cpp
     test_view_model_binding.cpp
     test_training_widget.cpp
+    test_language_change.cpp
 )
 
 foreach(TEST_SOURCE ${UI_TEST_SOURCES})
@@ -22,6 +23,13 @@ foreach(TEST_SOURCE ${UI_TEST_SOURCES})
     target_include_directories(${TEST_NAME} PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/tests
+    )
+    # SUDOKU_QM_DIR points at the directory where qt_add_lrelease emits
+    # sudoku_<locale>.qm files. Used by test_language_change to load the
+    # bundled German translator. Built by the main 'sudoku' target's
+    # lrelease step.
+    target_compile_definitions(${TEST_NAME} PRIVATE
+        SUDOKU_QM_DIR="${CMAKE_BINARY_DIR}"
     )
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
     set_target_properties(${TEST_NAME} PROPERTIES

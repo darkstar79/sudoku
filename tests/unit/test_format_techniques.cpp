@@ -15,7 +15,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/game_validator.h"
-#include "../../src/core/localization_manager.h"
 #include "../../src/core/puzzle_generator.h"
 #include "../../src/core/save_manager.h"
 #include "../../src/core/solving_technique.h"
@@ -35,19 +34,14 @@ using namespace sudoku::viewmodel;
 
 namespace {
 
-/// Compute project root from __FILE__ (tests/unit/test_format_techniques.cpp → project root)
-[[nodiscard]] std::filesystem::path projectRoot() {
-    return std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();
-}
-
 /// Helper to create a minimal GameViewModel for formatTechniques testing.
-/// Uses real LocalizationManager with English locale so formatted output matches expected strings.
+/// The test runner (tests/helpers/qt_test_main.cpp) instantiates a
+/// QCoreApplication with no QTranslator installed, so
+/// QCoreApplication::translate returns the source-language English strings.
 [[nodiscard]] GameViewModel createTestViewModel() {
     auto validator = std::make_shared<GameValidator>();
-    auto loc_manager = std::make_shared<LocalizationManager>(projectRoot() / "resources" / "locales");
-    [[maybe_unused]] auto result = loc_manager->setLocale("en");
     return GameViewModel(validator, std::make_shared<PuzzleGenerator>(), std::make_shared<SudokuSolver>(validator),
-                         std::make_shared<StatisticsManager>(), std::make_shared<SaveManager>(), loc_manager);
+                         std::make_shared<StatisticsManager>(), std::make_shared<SaveManager>());
 }
 
 }  // namespace

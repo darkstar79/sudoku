@@ -17,7 +17,7 @@
 #include "sudoku_board_widget.h"
 
 #include "core/constants.h"
-#include "core/string_keys.h"
+#include "core/i18n_helpers.h"
 
 #include <array>
 #include <optional>
@@ -55,10 +55,6 @@ void SudokuBoardWidget::clearBoard() {
     update();
 }
 
-void SudokuBoardWidget::setLocalizationManager(std::shared_ptr<core::ILocalizationManager> loc_manager) {
-    loc_manager_ = std::move(loc_manager);
-}
-
 void SudokuBoardWidget::setReadOnly(bool read_only) {
     read_only_ = read_only;
     if (read_only) {
@@ -88,9 +84,8 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     if (!has_board_) {
-        painter.drawText(rect(), Qt::AlignCenter,
-                         QString::fromUtf8(loc(core::StringKeys::BoardNoGameLoaded).data(),
-                                           static_cast<qsizetype>(loc(core::StringKeys::BoardNoGameLoaded).size())));
+        auto msg = core::loc("Sudoku", "No game loaded. Start a new game!");
+        painter.drawText(rect(), Qt::AlignCenter, QString::fromUtf8(msg.data(), static_cast<qsizetype>(msg.size())));
         return;
     }
 

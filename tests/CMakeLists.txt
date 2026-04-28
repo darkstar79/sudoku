@@ -27,7 +27,7 @@ list(FILTER LIB_SOURCES EXCLUDE REGEX ".*simd_avx512_ops\\.cpp$")
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*/view/.*\\.(cpp|h)$")
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*log_manager\\.cpp$")
 
-# Create a library from source files for testing (no Qt6 dependency)
+# Create a library from source files for testing (links Qt6::Core for translations)
 add_library(sudoku_lib STATIC ${LIB_SOURCES})
 set_target_properties(sudoku_lib PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
@@ -45,6 +45,7 @@ target_link_libraries(sudoku_lib PUBLIC
     yaml-cpp::yaml-cpp
     ZLIB::ZLIB
     libsodium::libsodium
+    Qt6::Core
 )
 
 # Platform-specific library settings

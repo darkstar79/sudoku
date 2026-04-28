@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "../core/string_keys.h"
+#include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
 #include "core/i_statistics_manager.h"
 #include "core/observable.h"
@@ -84,13 +84,14 @@ void GameViewModel::undoToLastValid() {
     // Check if we have a recorded valid state
     if (last_valid_state_index_ < 0) {
         uiState.update(
-            [this](auto& ui) { ui.status_message = std::string(loc(core::StringKeys::StatusNoValidState)); });
+            [this](auto& ui) { ui.status_message = std::string(core::loc("Sudoku", "No valid state in history")); });
         return;
     }
 
     // Check if current state has errors (conflicts OR wrong values vs solution)
     if (!hasBoardErrors()) {
-        uiState.update([this](auto& ui) { ui.status_message = std::string(loc(core::StringKeys::StatusBoardValid)); });
+        uiState.update(
+            [this](auto& ui) { ui.status_message = std::string(core::loc("Sudoku", "Board is already valid")); });
         return;
     }
 
@@ -99,7 +100,8 @@ void GameViewModel::undoToLastValid() {
         undo();
     }
 
-    uiState.update([this](auto& ui) { ui.status_message = std::string(loc(core::StringKeys::StatusUndoneToValid)); });
+    uiState.update(
+        [this](auto& ui) { ui.status_message = std::string(core::loc("Sudoku", "Undone to last valid state")); });
 }
 
 bool GameViewModel::canUndo() const {
@@ -138,8 +140,8 @@ void GameViewModel::checkSolution() {
             auto minutes = std::chrono::duration_cast<std::chrono::minutes>(completion_time);
             auto seconds = std::chrono::duration_cast<std::chrono::seconds>(completion_time - minutes);
             ui.status_message =
-                locFormat(core::StringKeys::StatusPuzzleCompleted, fmt::format("{:02d}", minutes.count()),
-                          fmt::format("{:02d}", seconds.count()));
+                core::locFormat(core::loc("Sudoku", "Puzzle completed in {0}:{1}! New game started."),
+                                fmt::format("{:02d}", minutes.count()), fmt::format("{:02d}", seconds.count()));
         });
 
         spdlog::info("New game started automatically at same difficulty");
@@ -159,8 +161,9 @@ void GameViewModel::checkSolution() {
             }
         });
 
-        uiState.update(
-            [this](auto& ui) { ui.status_message = std::string(loc(core::StringKeys::StatusSolutionErrors)); });
+        uiState.update([this](auto& ui) {
+            ui.status_message = std::string(core::loc("Sudoku", "Solution has errors. Keep trying!"));
+        });
     }
 }
 

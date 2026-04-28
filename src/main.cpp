@@ -17,7 +17,6 @@
 #include "core/di_container.h"
 #include "core/game_validator.h"
 #include "core/i_game_validator.h"
-#include "core/i_localization_manager.h"
 #include "core/i_puzzle_generator.h"
 #include "core/i_puzzle_rater.h"
 #include "core/i_save_manager.h"
@@ -27,7 +26,6 @@
 #include "core/i_time_provider.h"
 #include "core/i_training_exercise_generator.h"
 #include "core/i_training_statistics_manager.h"
-#include "core/localization_manager.h"
 #include "core/puzzle_generator.h"
 #include "core/puzzle_rater.h"
 #include "core/save_manager.h"
@@ -44,7 +42,6 @@
 #include <expected>
 #include <filesystem>
 #include <memory>
-#include <string>
 
 #include <QApplication>
 #include <fmt/base.h>
@@ -93,27 +90,6 @@ void setupDependencies() {
     container.registerSingleton<sudoku::core::ISettingsManager>(
         []() { return std::make_unique<sudoku::core::SettingsManager>(); });
 
-    container.registerSingleton<sudoku::core::ILocalizationManager>([&container]() {
-        auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
-        // Try dev/Windows layout first (locales next to executable), then FHS layout
-        auto locales_dir = exe_dir / "locales";
-        if (!std::filesystem::exists(locales_dir)) {
-            locales_dir = exe_dir / ".." / "share" / "sudoku" / "locales";
-        }
-        auto manager = std::make_unique<sudoku::core::LocalizationManager>(locales_dir);
-        // Use language from settings if available
-        auto settings = container.resolve<sudoku::core::ISettingsManager>();
-        auto locale = settings ? settings->getSettings().language : "en";
-        auto result = manager->setLocale(locale);
-        if (!result) {
-            spdlog::warn("Failed to load locale '{}': {}", locale, result.error());
-            if (locale != "en") {
-                [[maybe_unused]] auto fallback = manager->setLocale("en");
-            }
-        }
-        return manager;
-    });
-
     container.registerSingleton<sudoku::core::ITrainingStatisticsManager>(
         []() { return std::make_unique<sudoku::core::TrainingStatisticsManager>(); });
 
@@ -134,11 +110,10 @@ std::shared_ptr<sudoku::viewmodel::GameViewModel> createViewModel() {
     auto solver = container.resolve<sudoku::core::ISudokuSolver>();
     auto stats_manager = container.resolve<sudoku::core::IStatisticsManager>();
     auto save_manager = container.resolve<sudoku::core::ISaveManager>();
-    auto loc_manager = container.resolve<sudoku::core::ILocalizationManager>();
     auto settings_manager = container.resolve<sudoku::core::ISettingsManager>();
 
     return std::make_shared<sudoku::viewmodel::GameViewModel>(validator, generator, solver, stats_manager, save_manager,
-                                                              loc_manager, settings_manager);
+                                                              settings_manager);
 }
 
 }  // namespace
@@ -152,8 +127,9 @@ int main(int argc, char* argv[]) {
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
     auto log_path = exe_dir / "sudoku_debug.log";
-    // In sandboxed environments (Flatpak), exe_dir is read-only; use data directory instead
-    if (!std::filesystem::exists(exe_dir / "locales")) {
+    // In sandboxed environments (Flatpak), exe_dir is read-only; use data directory instead.
+    // We detect by absence of writable bundled translations next to the executable.
+    if (!std::filesystem::exists(exe_dir / "translations")) {
         auto log_dir = sudoku::infrastructure::AppDirectoryManager::getDefaultDirectory(
             sudoku::infrastructure::DirectoryType::Logs);
         std::filesystem::create_directories(log_dir);
@@ -170,19 +146,19 @@ int main(int argc, char* argv[]) {
 
     setupDependencies();
 
-    auto view_model = createViewModel();
+    // The Qt translator is owned by MainWindow and installed when
+    // setSettingsManager() is called below. This lets the user switch
+    // language at runtime via the Settings dialog.
     auto& container = sudoku::core::getContainer();
-    auto loc_manager = container.resolve<sudoku::core::ILocalizationManager>();
+    auto view_model = createViewModel();
     auto exercise_gen = container.resolve<sudoku::core::ITrainingExerciseGenerator>();
     auto training_stats = container.resolve<sudoku::core::ITrainingStatisticsManager>();
-    auto training_vm =
-        std::make_shared<sudoku::viewmodel::TrainingViewModel>(exercise_gen, loc_manager, training_stats);
+    auto training_vm = std::make_shared<sudoku::viewmodel::TrainingViewModel>(exercise_gen, training_stats);
 
     auto settings_manager = container.resolve<sudoku::core::ISettingsManager>();
 
     sudoku::view::MainWindow main_window;
     main_window.setViewModel(view_model);
-    main_window.setLocalizationManager(loc_manager);
     main_window.setSettingsManager(settings_manager);
     main_window.setTrainingViewModel(training_vm);
 

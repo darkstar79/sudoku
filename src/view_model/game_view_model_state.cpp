@@ -15,8 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../core/solving_technique.h"
-#include "../core/string_keys.h"
 #include "core/constants.h"
+#include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
 #include "core/i_save_manager.h"
 #include "core/i_statistics_manager.h"
@@ -221,13 +221,13 @@ std::vector<std::string> GameViewModel::formatTechniques(const std::set<core::So
     std::vector<std::string> result;
     result.reserve(sorted.size() + (requires_backtracking ? 1 : 0));
     for (const auto& tech : sorted) {
-        result.push_back(locFormat(core::StringKeys::TechniquePointsFmt,
-                                   std::string(core::getLocalizedTechniqueName(*loc_manager_, tech)),
-                                   fmt::format("{:.1f}", core::getTechniqueRating(tech))));
+        result.push_back(core::locFormat(core::loc("Sudoku", "{0} (SE {1})"),
+                                         std::string(core::getLocalizedTechniqueName(tech)),
+                                         fmt::format("{:.1f}", core::getTechniqueRating(tech))));
     }
 
     if (requires_backtracking) {
-        result.emplace_back(loc(core::StringKeys::TechniqueBacktracking));
+        result.emplace_back(core::loc("Sudoku", "Backtracking (trial & error)"));
     }
 
     return result;
@@ -326,7 +326,7 @@ StatsDisplay GameViewModel::createStatsDisplay(const core::AggregateStats& stats
         std::chrono::milliseconds weighted_average = total_average_time / total_completed_games;
         display.average_time = formatTime(weighted_average);
     } else {
-        display.average_time = std::string(loc(core::StringKeys::StatsTimeNa));
+        display.average_time = std::string(core::loc("Sudoku", "N/A"));
     }
 
     // Find overall best time across all difficulties
@@ -338,7 +338,7 @@ StatsDisplay GameViewModel::createStatsDisplay(const core::AggregateStats& stats
         }
     }
     display.best_time =
-        (best != std::chrono::milliseconds::max()) ? formatTime(best) : std::string(loc(core::StringKeys::StatsTimeNa));
+        (best != std::chrono::milliseconds::max()) ? formatTime(best) : std::string(core::loc("Sudoku", "N/A"));
 
     return display;
 }
@@ -366,7 +366,7 @@ void GameViewModel::setShowHints(bool show) {
 void GameViewModel::exportStatistics(const std::string& file_path) {
     auto export_result = stats_manager_->exportStats(file_path);
     if (!export_result) {
-        handleError(std::string(loc(core::StringKeys::ErrorExportStats)));
+        handleError(std::string(core::loc("Sudoku", "Failed to export statistics")));
     }
 }
 
@@ -379,7 +379,7 @@ std::expected<void, std::string> GameViewModel::exportAggregateStatsCsv() const 
     // Export aggregate statistics
     auto result = stats_manager_->exportAggregateStatsCsv(file_path.string());
     if (!result) {
-        std::string error_msg(loc(core::StringKeys::ErrorExportAggregate));
+        std::string error_msg(core::loc("Sudoku", "Failed to export aggregate stats"));
         error_msg += ": ";
         error_msg += statisticsErrorToString(result.error());
         return std::unexpected(error_msg);
@@ -398,7 +398,7 @@ std::expected<void, std::string> GameViewModel::exportGameSessionsCsv() const {
     // Export game sessions
     auto result = stats_manager_->exportGameSessionsCsv(file_path.string());
     if (!result) {
-        std::string error_msg(loc(core::StringKeys::ErrorExportSessions));
+        std::string error_msg(core::loc("Sudoku", "Failed to export game sessions"));
         error_msg += ": ";
         error_msg += statisticsErrorToString(result.error());
         return std::unexpected(error_msg);

@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "../core/i_localization_manager.h"
 #include "../core/i_training_exercise_generator.h"
 #include "../core/i_training_statistics_manager.h"
 #include "../core/observable.h"
@@ -43,9 +42,8 @@ class TrainingViewModel {
 public:
     /// Constructor
     /// @param exercise_generator Exercise generation engine
-    /// @param loc_manager Localization manager for UI strings
+    /// @param stats_manager Optional statistics manager
     TrainingViewModel(std::shared_ptr<core::ITrainingExerciseGenerator> exercise_generator,
-                      std::shared_ptr<core::ILocalizationManager> loc_manager,
                       std::shared_ptr<core::ITrainingStatisticsManager> stats_manager = nullptr);
 
     // --- Observable properties ---
@@ -142,17 +140,7 @@ public:
 
 private:
     std::shared_ptr<core::ITrainingExerciseGenerator> exercise_generator_;
-    std::shared_ptr<core::ILocalizationManager> loc_manager_;
     std::shared_ptr<core::ITrainingStatisticsManager> stats_manager_;
-
-    [[nodiscard]] std::string_view loc(std::string_view key) const {
-        return loc_manager_ ? loc_manager_->getString(key) : key;
-    }
-
-    template <typename... Args>
-    [[nodiscard]] std::string locFormat(std::string_view key, Args&&... args) const {
-        return fmt::format(fmt::runtime(loc(key)), std::forward<Args>(args)...);
-    }
 
     // Exercise state
     std::vector<core::TrainingExercise> exercises_;

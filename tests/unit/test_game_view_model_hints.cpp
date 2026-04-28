@@ -57,9 +57,9 @@ TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]")
         const auto& hint = fixture.view_model->hintMessage.get();
         REQUIRE_FALSE(hint.empty());
 
-        // Should contain technique name key (MockLocalizationManager returns keys as-is)
+        // Should contain technique English name (no QTranslator installed -> source returned)
         bool has_technique_name =
-            hint.find("tech.naked_single") != std::string::npos || hint.find("tech.hidden_single") != std::string::npos;
+            hint.find("Naked Single") != std::string::npos || hint.find("Hidden Single") != std::string::npos;
         REQUIRE(has_technique_name);
     }
 

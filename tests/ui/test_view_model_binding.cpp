@@ -41,7 +41,7 @@ void TestViewModelBinding::statusLabelUpdatesOnNewGame() {
     QApplication::processEvents();
 
     // After starting a game, status should show playing text
-    QCOMPARE(window.status_label_->text(), QString("status.playing"));
+    QCOMPARE(window.status_label_->text(), QString("Playing"));
 }
 
 void TestViewModelBinding::statusLabelShowsReadyBeforeGame() {
@@ -50,7 +50,7 @@ void TestViewModelBinding::statusLabelShowsReadyBeforeGame() {
     ctx.setupMainWindow(window);
 
     // Before starting any game, should show ready text
-    QCOMPARE(window.status_label_->text(), QString("status.ready"));
+    QCOMPARE(window.status_label_->text(), QString("Ready"));
 }
 
 void TestViewModelBinding::hintsLabelUpdatesOnNewGame() {

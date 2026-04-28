@@ -16,9 +16,9 @@
 
 #include "../core/localized_explanations.h"
 #include "../core/solving_technique.h"
-#include "../core/string_keys.h"
 #include "../core/technique_descriptions.h"
 #include "../core/training_hints.h"
+#include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
 #include "core/i_statistics_manager.h"
 #include "core/i_sudoku_solver.h"
@@ -128,7 +128,7 @@ void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
     const int hints_remaining = getHintCount();
     if (!isGameActive() || hints_remaining <= 0) {
         if (hints_remaining <= 0) {
-            errorMessage.set(std::string(loc(core::StringKeys::HintNoRemaining)));
+            errorMessage.set(std::string(core::loc("Sudoku", "No hints remaining (0/10 used)")));
         }
         return;
     }
@@ -139,19 +139,19 @@ void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
     const auto& state = gameState.get();
 
     if (!pos_opt.has_value()) {
-        errorMessage.set(std::string(loc(core::StringKeys::HintSelectCell)));
+        errorMessage.set(std::string(core::loc("Sudoku", "Please select a cell first")));
         return;  // Don't consume hint
     }
 
     const auto& pos = *pos_opt;
 
     if (state.isGiven(pos)) {
-        errorMessage.set(std::string(loc(core::StringKeys::HintCannotRevealGiven)));
+        errorMessage.set(std::string(core::loc("Sudoku", "Cannot reveal hint for given cells")));
         return;  // Don't consume hint
     }
 
     if (state.getValue(pos) != 0) {
-        errorMessage.set(std::string(loc(core::StringKeys::HintCellHasValue)));
+        errorMessage.set(std::string(core::loc("Sudoku", "Cell already has a value")));
         return;  // Don't consume hint
     }
 
@@ -163,7 +163,7 @@ void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
     auto step_result = solver_->findNextStep(board, original_puzzle);
 
     if (!step_result.has_value()) {
-        errorMessage.set(std::string(loc(core::StringKeys::HintNoTechnique)));
+        errorMessage.set(std::string(core::loc("Sudoku", "No logical technique found for this puzzle")));
         return;  // Don't consume hint
     }
 
@@ -204,17 +204,17 @@ std::string GameViewModel::formatHintExplanation(const core::SolveStep& step) co
     std::string message;
 
     // Technique name header
-    message += std::string(core::getLocalizedTechniqueName(*loc_manager_, step.technique));
+    message += std::string(core::getLocalizedTechniqueName(step.technique));
     message += ":\n\n";
 
     // Explanation from strategy (localized)
-    message += core::getLocalizedExplanation(*loc_manager_, step);
+    message += core::getLocalizedExplanation(step);
 
     // Add placement suggestion if applicable
     if (step.type == core::SolveStepType::Placement) {
         message += "\n\n";
-        message +=
-            locFormat(core::StringKeys::HintSuggestionPlace, step.value, step.position.row + 1, step.position.col + 1);
+        message += core::locFormat(core::loc("Sudoku", "Suggestion: Place {0} at R{1}C{2}"), step.value,
+                                   step.position.row + 1, step.position.col + 1);
     }
 
     return message;
@@ -239,7 +239,7 @@ void GameViewModel::requestCoachingHint() {
     const int hints_remaining = getHintCount();
     if (!isGameActive() || hints_remaining <= 0) {
         if (hints_remaining <= 0) {
-            errorMessage.set(std::string(loc(core::StringKeys::CoachingNoRemaining)));
+            errorMessage.set(std::string(core::loc("Sudoku", "No coaching hints remaining")));
         }
         return;
     }
@@ -259,7 +259,7 @@ void GameViewModel::requestCoachingHint() {
 
         auto step_result = solver_->findNextStep(board, original_puzzle);
         if (!step_result.has_value()) {
-            errorMessage.set(std::string(loc(core::StringKeys::CoachingNoTechnique)));
+            errorMessage.set(std::string(core::loc("Sudoku", "No logical technique found")));
             return;
         }
         coaching_context_ = CoachingContext{.step = step_result.value(), .snapshot = state};
@@ -277,7 +277,7 @@ void GameViewModel::requestCoachingHint() {
     const auto& step = coaching_context_->step;
 
     // Get progressive hint from training infrastructure
-    auto hint = core::getTrainingHint(*loc_manager_, step.technique, new_level, step);
+    auto hint = core::getTrainingHint(step.technique, new_level, step);
 
     // For level 1, prepend technique description with what_to_look_for
     if (new_level == 1) {
@@ -296,7 +296,8 @@ void GameViewModel::requestCoachingHint() {
     if (new_level == 3) {
         new_state.phase = CoachingPhase::TryIt;
         new_state.message += "\n\n";
-        new_state.message += std::string(loc(core::StringKeys::CoachingTryIt));
+        new_state.message +=
+            std::string(core::loc("Sudoku", "Try applying this step yourself, then press Check to verify."));
         coaching_context_->snapshot = gameState.get();
     }
 
@@ -321,7 +322,7 @@ void GameViewModel::navigateCoachingLevel(int direction) {
         return;
     }
     const auto& step = coaching_context_->step;
-    auto hint = core::getTrainingHint(*loc_manager_, step.technique, target_level, step);
+    auto hint = core::getTrainingHint(step.technique, target_level, step);
 
     // For level 1, prepend technique description with what_to_look_for
     if (target_level == 1) {
@@ -367,13 +368,15 @@ void GameViewModel::checkCoachingAnswer() {
     const int total = result.correct + result.missed;
     std::string message;
     if (result.wrong > 0) {
-        message = locFormat(core::StringKeys::CoachingCheckWrong, result.correct, total, result.wrong);
+        message = core::locFormat(core::loc("Sudoku", "Some actions were incorrect. {0}/{1} correct, {2} wrong."),
+                                  result.correct, total, result.wrong);
     } else if (result.missed == 0 && result.correct > 0) {
-        message = locFormat(core::StringKeys::CoachingCheckCorrect, result.correct, total);
+        message = core::locFormat(core::loc("Sudoku", "Correct! You found all {0}/{1}."), result.correct, total);
     } else if (result.correct > 0) {
-        message = locFormat(core::StringKeys::CoachingCheckPartial, result.correct, total, result.missed);
+        message =
+            core::locFormat(core::loc("Sudoku", "{0}/{1} correct, {2} missed."), result.correct, total, result.missed);
     } else {
-        message = locFormat(core::StringKeys::CoachingCheckZero, total);
+        message = core::locFormat(core::loc("Sudoku", "0/{0} correct — try making some changes first."), total);
     }
 
     CoachingState new_state;
@@ -457,13 +460,13 @@ void GameViewModel::resetCoachingIfNotTryIt() {
 }
 
 std::string GameViewModel::buildLevel1Message(const core::TrainingHint& hint, const core::SolveStep& step) const {
-    auto desc = core::getTechniqueDescription(*loc_manager_, step.technique);
+    auto desc = core::getTechniqueDescription(step.technique);
     std::string message;
-    message += std::string(core::getLocalizedTechniqueName(*loc_manager_, step.technique));
+    message += std::string(core::getLocalizedTechniqueName(step.technique));
     message += "\n\n";
     message += std::string(desc.what_it_is);
     message += "\n\n";
-    message += std::string(loc(core::StringKeys::CoachingWhatToLookFor));
+    message += std::string(core::loc("Sudoku", "What to look for: "));
     message += std::string(desc.what_to_look_for);
     message += "\n\n";
     message += hint.text;

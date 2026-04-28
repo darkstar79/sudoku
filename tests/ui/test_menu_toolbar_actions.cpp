@@ -68,7 +68,7 @@ void TestMenuToolbarActions::redoMenuActionExists() {
 void TestMenuToolbarActions::trainingModeMenuSwitchesStack() {
     QCOMPARE(window_->central_stack_->currentIndex(), 0);
 
-    auto* action = findMenuAction("training_mode");
+    auto* action = findMenuAction("Training Mode");
     QVERIFY(action != nullptr);
     action->trigger();
     QApplication::processEvents();
@@ -82,7 +82,7 @@ void TestMenuToolbarActions::resumeGameMenuSwitchesBack() {
     QApplication::processEvents();
     QCOMPARE(window_->central_stack_->currentIndex(), 1);
 
-    auto* action = findMenuAction("resume");
+    auto* action = findMenuAction("Resume Game");
     QVERIFY(action != nullptr);
     action->trigger();
     QApplication::processEvents();
@@ -92,7 +92,7 @@ void TestMenuToolbarActions::resumeGameMenuSwitchesBack() {
 
 void TestMenuToolbarActions::difficultyComboDefaultIsMedium() {
     QCOMPARE(window_->difficulty_combo_->currentIndex(), 1);
-    QCOMPARE(window_->difficulty_combo_->currentText(), QString("difficulty.medium"));
+    QCOMPARE(window_->difficulty_combo_->currentText(), QString("Medium"));
 }
 
 QTEST_MAIN(TestMenuToolbarActions)
