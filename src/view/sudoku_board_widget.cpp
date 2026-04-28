@@ -84,7 +84,7 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     if (!has_board_) {
-        auto msg = core::loc("No game loaded. Start a new game!");
+        auto msg = core::loc("Sudoku", "No game loaded. Start a new game!");
         painter.drawText(rect(), Qt::AlignCenter, QString::fromUtf8(msg.data(), static_cast<qsizetype>(msg.size())));
         return;
     }

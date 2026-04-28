@@ -55,8 +55,8 @@ void TrainingNumberPad::setInteractionMode(core::TrainingInteractionMode mode) {
 
     for (int i = 0; i < static_cast<int>(core::MAX_VALUE); ++i) {
         auto tooltip = mode == core::TrainingInteractionMode::Placement
-                           ? core::locFormat("Place {0} in selected cell", i + 1)
-                           : core::locFormat("Eliminate {0} from selected cell", i + 1);
+                           ? core::locFormat(core::loc("Sudoku", "Place {0} in selected cell"), i + 1)
+                           : core::locFormat(core::loc("Sudoku", "Eliminate {0} from selected cell"), i + 1);
         buttons_[static_cast<size_t>(i)]->setToolTip(QString::fromStdString(tooltip));
     }
 }

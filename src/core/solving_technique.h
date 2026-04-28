@@ -314,117 +314,117 @@ enum class SolvingTechnique : uint8_t {
     using enum SolvingTechnique;
     switch (technique) {
         case NakedSingle:
-            return core::loc("Naked Single");
+            return core::loc("Sudoku", "Naked Single");
         case HiddenSingle:
-            return core::loc("Hidden Single");
+            return core::loc("Sudoku", "Hidden Single");
         case NakedPair:
-            return core::loc("Naked Pair");
+            return core::loc("Sudoku", "Naked Pair");
         case NakedTriple:
-            return core::loc("Naked Triple");
+            return core::loc("Sudoku", "Naked Triple");
         case HiddenPair:
-            return core::loc("Hidden Pair");
+            return core::loc("Sudoku", "Hidden Pair");
         case HiddenTriple:
-            return core::loc("Hidden Triple");
+            return core::loc("Sudoku", "Hidden Triple");
         case PointingPair:
-            return core::loc("Pointing Pair");
+            return core::loc("Sudoku", "Pointing Pair");
         case BoxLineReduction:
-            return core::loc("Box/Line Reduction");
+            return core::loc("Sudoku", "Box/Line Reduction");
         case NakedQuad:
-            return core::loc("Naked Quad");
+            return core::loc("Sudoku", "Naked Quad");
         case HiddenQuad:
-            return core::loc("Hidden Quad");
+            return core::loc("Sudoku", "Hidden Quad");
         case XWing:
-            return core::loc("X-Wing");
+            return core::loc("Sudoku", "X-Wing");
         case XYWing:
-            return core::loc("XY-Wing");
+            return core::loc("Sudoku", "XY-Wing");
         case Swordfish:
-            return core::loc("Swordfish");
+            return core::loc("Sudoku", "Swordfish");
         case Skyscraper:
-            return core::loc("Skyscraper");
+            return core::loc("Sudoku", "Skyscraper");
         case TwoStringKite:
-            return core::loc("2-String Kite");
+            return core::loc("Sudoku", "2-String Kite");
         case XYZWing:
-            return core::loc("XYZ-Wing");
+            return core::loc("Sudoku", "XYZ-Wing");
         case UniqueRectangle:
-            return core::loc("Unique Rectangle");
+            return core::loc("Sudoku", "Unique Rectangle");
         case WWing:
-            return core::loc("W-Wing");
+            return core::loc("Sudoku", "W-Wing");
         case SimpleColoring:
-            return core::loc("Simple Coloring");
+            return core::loc("Sudoku", "Simple Coloring");
         case FinnedXWing:
-            return core::loc("Finned X-Wing");
+            return core::loc("Sudoku", "Finned X-Wing");
         case RemotePairs:
-            return core::loc("Remote Pairs");
+            return core::loc("Sudoku", "Remote Pairs");
         case BUG:
-            return core::loc("BUG");
+            return core::loc("Sudoku", "BUG");
         case Jellyfish:
-            return core::loc("Jellyfish");
+            return core::loc("Sudoku", "Jellyfish");
         case FinnedSwordfish:
-            return core::loc("Finned Swordfish");
+            return core::loc("Sudoku", "Finned Swordfish");
         case EmptyRectangle:
-            return core::loc("Empty Rectangle");
+            return core::loc("Sudoku", "Empty Rectangle");
         case WXYZWing:
-            return core::loc("WXYZ-Wing");
+            return core::loc("Sudoku", "WXYZ-Wing");
         case FinnedJellyfish:
-            return core::loc("Finned Jellyfish");
+            return core::loc("Sudoku", "Finned Jellyfish");
         case XYChain:
-            return core::loc("XY-Chain");
+            return core::loc("Sudoku", "XY-Chain");
         case MultiColoring:
-            return core::loc("Multi-Coloring");
+            return core::loc("Sudoku", "Multi-Coloring");
         case ALSxZ:
-            return core::loc("ALS-XZ");
+            return core::loc("Sudoku", "ALS-XZ");
         case SueDeCoq:
-            return core::loc("Sue de Coq");
+            return core::loc("Sudoku", "Sue de Coq");
         case ForcingChain:
-            return core::loc("Forcing Chain");
+            return core::loc("Sudoku", "Forcing Chain");
         case NiceLoop:
-            return core::loc("Nice Loop");
+            return core::loc("Sudoku", "Nice Loop");
         case XCycles:
-            return core::loc("X-Cycles");
+            return core::loc("Sudoku", "X-Cycles");
         case ThreeDMedusa:
-            return core::loc("3D Medusa");
+            return core::loc("Sudoku", "3D Medusa");
         case HiddenUniqueRectangle:
-            return core::loc("Hidden Unique Rectangle");
+            return core::loc("Sudoku", "Hidden Unique Rectangle");
         case AvoidableRectangle:
-            return core::loc("Avoidable Rectangle");
+            return core::loc("Sudoku", "Avoidable Rectangle");
         case ALSXYWing:
-            return core::loc("ALS-XY-Wing");
+            return core::loc("Sudoku", "ALS-XY-Wing");
         case DeathBlossom:
-            return core::loc("Death Blossom");
+            return core::loc("Sudoku", "Death Blossom");
         case VWXYZWing:
-            return core::loc("VWXYZ-Wing");
+            return core::loc("Sudoku", "VWXYZ-Wing");
         case FrankenFish:
-            return core::loc("Franken Fish");
+            return core::loc("Sudoku", "Franken Fish");
         case GroupedXCycles:
-            return core::loc("Grouped X-Cycles");
+            return core::loc("Sudoku", "Grouped X-Cycles");
         case SashimiXWing:
-            return core::loc("Sashimi X-Wing");
+            return core::loc("Sudoku", "Sashimi X-Wing");
         case SashimiSwordfish:
-            return core::loc("Sashimi Swordfish");
+            return core::loc("Sudoku", "Sashimi Swordfish");
         case SashimiJellyfish:
-            return core::loc("Sashimi Jellyfish");
+            return core::loc("Sudoku", "Sashimi Jellyfish");
         case UnitForcingChain:
-            return core::loc("Unit Forcing Chain");
+            return core::loc("Sudoku", "Unit Forcing Chain");
         case RegionForcingChain:
-            return core::loc("Region Forcing Chain");
+            return core::loc("Sudoku", "Region Forcing Chain");
         case MutantFish:
-            return core::loc("Mutant Fish");
+            return core::loc("Sudoku", "Mutant Fish");
         case KrakenFish:
-            return core::loc("Kraken Fish");
+            return core::loc("Sudoku", "Kraken Fish");
         case ALSChain:
-            return core::loc("ALS Chain");
+            return core::loc("Sudoku", "ALS Chain");
         case JuniorExocet:
-            return core::loc("Junior Exocet");
+            return core::loc("Sudoku", "Junior Exocet");
         case UniqueLoop:
-            return core::loc("Unique Loop");
+            return core::loc("Sudoku", "Unique Loop");
         case ContinuousNiceLoop:
-            return core::loc("Continuous Nice Loop");
+            return core::loc("Sudoku", "Continuous Nice Loop");
         case GroupedNiceLoop:
-            return core::loc("Grouped Nice Loop");
+            return core::loc("Sudoku", "Grouped Nice Loop");
         case Backtracking:
-            return core::loc("Backtracking");
+            return core::loc("Sudoku", "Backtracking");
     }
-    return core::loc("Unknown Technique");
+    return core::loc("Sudoku", "Unknown Technique");
 }
 
 }  // namespace sudoku::core

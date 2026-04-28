@@ -188,6 +188,10 @@ set(SUDOKU_TS_FILES
 qt_add_lupdate(${PROJECT_NAME}
     TS_FILES ${SUDOKU_TS_FILES}
     SOURCES ${PROJECT_SOURCES}
+    OPTIONS
+        -tr-function-alias translate+=loc
+        -no-obsolete
+        -locations none
 )
 qt_add_lrelease(${PROJECT_NAME}
     TS_FILES ${SUDOKU_TS_FILES}

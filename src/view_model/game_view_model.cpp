@@ -69,19 +69,19 @@ GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
 std::string GameViewModel::statisticsErrorToString(core::StatisticsError error) const {
     switch (error) {
         case core::StatisticsError::InvalidGameData:
-            return core::loc("Invalid game data");
+            return core::loc("Sudoku", "Invalid game data");
         case core::StatisticsError::FileAccessError:
-            return core::loc("File access error");
+            return core::loc("Sudoku", "File access error");
         case core::StatisticsError::SerializationError:
-            return core::loc("Serialization error");
+            return core::loc("Sudoku", "Serialization error");
         case core::StatisticsError::InvalidDifficulty:
-            return core::loc("Invalid difficulty");
+            return core::loc("Sudoku", "Invalid difficulty");
         case core::StatisticsError::GameNotStarted:
-            return core::loc("Game not started");
+            return core::loc("Sudoku", "Game not started");
         case core::StatisticsError::GameAlreadyEnded:
-            return core::loc("Game already ended");
+            return core::loc("Sudoku", "Game already ended");
         default:
-            return core::loc("Unknown statistics error");
+            return core::loc("Sudoku", "Unknown statistics error");
     }
 }
 
@@ -101,7 +101,7 @@ void GameViewModel::startNewGame(core::Difficulty difficulty) {
 
     auto puzzle_result = generator_->generatePuzzle(settings);
     if (!puzzle_result) {
-        handleError(core::loc("Failed to generate puzzle"));
+        handleError(core::loc("Sudoku", "Failed to generate puzzle"));
         return;
     }
 
@@ -184,7 +184,7 @@ void GameViewModel::loadGame(const std::string& save_id) {
 
     auto load_result = save_manager_->loadGame(save_id);
     if (!load_result) {
-        handleError(core::loc("Failed to load game"));
+        handleError(core::loc("Sudoku", "Failed to load game"));
         return;
     }
 
@@ -281,7 +281,7 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
     spdlog::info("Saving current game: {}", name.empty() ? "auto-save" : name);
 
     if (!isGameActive()) {
-        handleError(core::loc("No active game to save"));
+        handleError(core::loc("Sudoku", "No active game to save"));
         return false;
     }
 
@@ -318,7 +318,7 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
 
     auto save_result = save_manager_->saveGame(saved_game, settings);
     if (!save_result) {
-        handleError(core::loc("Failed to save game"));
+        handleError(core::loc("Sudoku", "Failed to save game"));
         return false;
     }
 

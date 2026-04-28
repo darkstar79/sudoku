@@ -62,17 +62,17 @@ std::string formatTechniqueLabel(sudoku::core::SolvingTechnique technique, sudok
         case sudoku::core::MasteryLevel::Beginner:
             break;
         case sudoku::core::MasteryLevel::Intermediate:
-            badge = fmt::format(" [{}]", sudoku::core::loc("Intermediate"));
+            badge = fmt::format(" [{}]", sudoku::core::loc("Sudoku", "Intermediate"));
             break;
         case sudoku::core::MasteryLevel::Proficient:
-            badge = fmt::format(" [{}]", sudoku::core::loc("Proficient"));
+            badge = fmt::format(" [{}]", sudoku::core::loc("Sudoku", "Proficient"));
             break;
         case sudoku::core::MasteryLevel::Mastered:
-            badge = fmt::format(" [{}]", sudoku::core::loc("Mastered"));
+            badge = fmt::format(" [{}]", sudoku::core::loc("Sudoku", "Mastered"));
             break;
     }
 
-    auto points_str = sudoku::core::locFormat("{0} ({1} pts)", name, points);
+    auto points_str = sudoku::core::locFormat(sudoku::core::loc("Sudoku", "{0} ({1} pts)"), name, points);
     return fmt::format("{}{}{}", is_recommended ? ">> " : "", points_str, badge);
 }
 
@@ -177,9 +177,9 @@ void TrainingWidget::buildTechniqueSelectionPage() {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);
 
-    auto* title = new QLabel(QString("<h1>%1</h1>").arg(qstr(core::loc("Training Mode"))));
+    auto* title = new QLabel(QString("<h1>%1</h1>").arg(qstr(core::loc("Sudoku", "Training Mode"))));
     layout->addWidget(title);
-    layout->addWidget(new QLabel(qstr(core::loc("Select a technique to practice:"))));
+    layout->addWidget(new QLabel(qstr(core::loc("Sudoku", "Select a technique to practice:"))));
 
     // clang-format off
     struct TechniqueGroup {
@@ -188,24 +188,24 @@ void TrainingWidget::buildTechniqueSelectionPage() {
     };
 
     std::array<TechniqueGroup, 9> groups = {{
-        {.name = qstr(core::loc("Foundations")), .techniques = {core::SolvingTechnique::NakedSingle, core::SolvingTechnique::HiddenSingle}},
-        {.name = qstr(core::loc("Subset Basics")), .techniques = {core::SolvingTechnique::NakedPair, core::SolvingTechnique::NakedTriple,
+        {.name = qstr(core::loc("Sudoku", "Foundations")), .techniques = {core::SolvingTechnique::NakedSingle, core::SolvingTechnique::HiddenSingle}},
+        {.name = qstr(core::loc("Sudoku", "Subset Basics")), .techniques = {core::SolvingTechnique::NakedPair, core::SolvingTechnique::NakedTriple,
                            core::SolvingTechnique::HiddenPair, core::SolvingTechnique::HiddenTriple}},
-        {.name = qstr(core::loc("Intersections & Quads")), .techniques = {core::SolvingTechnique::PointingPair, core::SolvingTechnique::BoxLineReduction,
+        {.name = qstr(core::loc("Sudoku", "Intersections & Quads")), .techniques = {core::SolvingTechnique::PointingPair, core::SolvingTechnique::BoxLineReduction,
                                     core::SolvingTechnique::NakedQuad, core::SolvingTechnique::HiddenQuad}},
-        {.name = qstr(core::loc("Basic Fish & Wings")), .techniques = {core::SolvingTechnique::XWing, core::SolvingTechnique::XYWing,
+        {.name = qstr(core::loc("Sudoku", "Basic Fish & Wings")), .techniques = {core::SolvingTechnique::XWing, core::SolvingTechnique::XYWing,
                                  core::SolvingTechnique::Swordfish, core::SolvingTechnique::Skyscraper,
                                  core::SolvingTechnique::TwoStringKite, core::SolvingTechnique::XYZWing}},
-        {.name = qstr(core::loc("Links & Rectangles")), .techniques = {core::SolvingTechnique::UniqueRectangle, core::SolvingTechnique::WWing,
+        {.name = qstr(core::loc("Sudoku", "Links & Rectangles")), .techniques = {core::SolvingTechnique::UniqueRectangle, core::SolvingTechnique::WWing,
                                  core::SolvingTechnique::SimpleColoring, core::SolvingTechnique::FinnedXWing,
                                  core::SolvingTechnique::RemotePairs, core::SolvingTechnique::BUG}},
-        {.name = qstr(core::loc("Advanced Fish & Wings")), .techniques = {core::SolvingTechnique::Jellyfish, core::SolvingTechnique::FinnedSwordfish,
+        {.name = qstr(core::loc("Sudoku", "Advanced Fish & Wings")), .techniques = {core::SolvingTechnique::Jellyfish, core::SolvingTechnique::FinnedSwordfish,
                                     core::SolvingTechnique::EmptyRectangle, core::SolvingTechnique::WXYZWing,
                                     core::SolvingTechnique::MultiColoring}},
-        {.name = qstr(core::loc("Advanced Fish (Finned)")), .techniques = {core::SolvingTechnique::FinnedJellyfish}},
-        {.name = qstr(core::loc("Chains & Set Logic")), .techniques = {core::SolvingTechnique::XYChain, core::SolvingTechnique::ALSxZ,
+        {.name = qstr(core::loc("Sudoku", "Advanced Fish (Finned)")), .techniques = {core::SolvingTechnique::FinnedJellyfish}},
+        {.name = qstr(core::loc("Sudoku", "Chains & Set Logic")), .techniques = {core::SolvingTechnique::XYChain, core::SolvingTechnique::ALSxZ,
                                  core::SolvingTechnique::SueDeCoq}},
-        {.name = qstr(core::loc("Inference Engines")), .techniques = {core::SolvingTechnique::ForcingChain, core::SolvingTechnique::NiceLoop}},
+        {.name = qstr(core::loc("Sudoku", "Inference Engines")), .techniques = {core::SolvingTechnique::ForcingChain, core::SolvingTechnique::NiceLoop}},
     }};
     // clang-format on
 
@@ -217,7 +217,7 @@ void TrainingWidget::buildTechniqueSelectionPage() {
         for (auto technique : group.techniques) {
             auto name = core::getTechniqueName(technique);
             auto points = core::getTechniqueRating(technique);
-            auto label = core::locFormat("{0} ({1} pts)", name, points);
+            auto label = core::locFormat(core::loc("Sudoku", "{0} ({1} pts)"), name, points);
 
             auto* btn = new QPushButton(QString::fromStdString(label));
             btn->setFlat(true);
@@ -235,7 +235,7 @@ void TrainingWidget::buildTechniqueSelectionPage() {
         layout->addWidget(group_box);
     }
 
-    auto* back_btn = new QPushButton(qstr(core::loc("Back to Game")));
+    auto* back_btn = new QPushButton(qstr(core::loc("Sudoku", "Back to Game")));
     connect(back_btn, &QPushButton::clicked, this, &TrainingWidget::backToGame);
     layout->addWidget(back_btn);
 
@@ -251,12 +251,12 @@ void TrainingWidget::buildTechniqueSelectionPage() {
         // Build set of applicable techniques in analysis mode
         std::set<core::SolvingTechnique> applicable_techniques;
         if (training_vm_->isAnalysisMode()) {
-            title->setText(QString("<h1>%1</h1>").arg(qstr(core::loc("Analyze Position"))));
+            title->setText(QString("<h1>%1</h1>").arg(qstr(core::loc("Sudoku", "Analyze Position"))));
             for (const auto& step : training_vm_->analysisSteps()) {
                 applicable_techniques.insert(step.technique);
             }
         } else {
-            title->setText(QString("<h1>%1</h1>").arg(qstr(core::loc("Training Mode"))));
+            title->setText(QString("<h1>%1</h1>").arg(qstr(core::loc("Sudoku", "Training Mode"))));
         }
 
         auto stats_mgr = training_vm_->statsManager();
@@ -278,7 +278,7 @@ void TrainingWidget::buildTechniqueSelectionPage() {
                 bool applicable = applicable_techniques.contains(technique);
                 btn->setEnabled(applicable);
                 btn->setVisible(applicable);
-                btn->setToolTip(applicable ? qstr(core::loc("Applicable at current position")) : "");
+                btn->setToolTip(applicable ? qstr(core::loc("Sudoku", "Applicable at current position")) : "");
             } else {
                 btn->setVisible(true);
                 auto mastery = stats_mgr ? stats_mgr->getMastery(technique) : core::MasteryLevel::Beginner;
@@ -289,9 +289,9 @@ void TrainingWidget::buildTechniqueSelectionPage() {
                 bool prereqs_met = !stats_mgr || core::arePrerequisitesMet(technique, *stats_mgr);
                 btn->setEnabled(prereqs_met);
                 if (!prereqs_met) {
-                    btn->setToolTip(qstr(core::loc("Prerequisites not met")));
+                    btn->setToolTip(qstr(core::loc("Sudoku", "Prerequisites not met")));
                 } else if (is_recommended) {
-                    btn->setToolTip(qstr(core::loc("Recommended next technique")));
+                    btn->setToolTip(qstr(core::loc("Sudoku", "Recommended next technique")));
                 } else {
                     btn->setToolTip("");
                 }
@@ -326,21 +326,21 @@ void TrainingWidget::buildTheoryPage() {
     prereqs_label->setStyleSheet(QString("color: %1; font-style: italic;").arg(StyleColors::TEXT_SUBTLE));
     layout->addWidget(prereqs_label);
 
-    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(qstr(core::loc("What It Is:")))));
+    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(qstr(core::loc("Sudoku", "What It Is:")))));
     auto* what_label = new QLabel;
     what_label->setObjectName("theoryWhat");
     what_label->setWordWrap(true);
     layout->addWidget(what_label);
 
-    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(qstr(core::loc("What to Look For:")))));
+    layout->addWidget(new QLabel(QString("<b>%1</b>").arg(qstr(core::loc("Sudoku", "What to Look For:")))));
     auto* look_label = new QLabel;
     look_label->setObjectName("theoryLook");
     look_label->setWordWrap(true);
     layout->addWidget(look_label);
 
     auto* btn_layout = new QHBoxLayout;
-    auto* start_btn = new QPushButton(qstr(core::loc("Start Exercises")));
-    auto* back_btn = new QPushButton(qstr(core::loc("Back")));
+    auto* start_btn = new QPushButton(qstr(core::loc("Sudoku", "Start Exercises")));
+    auto* back_btn = new QPushButton(qstr(core::loc("Sudoku", "Back")));
     btn_layout->addWidget(start_btn);
     btn_layout->addWidget(back_btn);
     btn_layout->addStretch();
@@ -369,13 +369,14 @@ void TrainingWidget::buildTheoryPage() {
                 auto points = core::getTechniqueRating(state.current_technique);
 
                 title_label->setText(QString::fromUtf8(desc.title.data(), static_cast<int>(desc.title.size())));
-                points_label->setText(QString::fromStdString(core::locFormat("{0} difficulty points", points)));
+                points_label->setText(
+                    QString::fromStdString(core::locFormat(core::loc("Sudoku", "{0} difficulty points"), points)));
 
                 auto prereqs = core::getPrerequisites(state.current_technique);
                 if (prereqs.empty()) {
                     prereqs_label->hide();
                 } else {
-                    std::string prereq_text(core::loc("Prerequisites: "));
+                    std::string prereq_text(core::loc("Sudoku", "Prerequisites: "));
                     for (size_t i = 0; i < prereqs.size(); ++i) {
                         if (i > 0) {
                             prereq_text += ", ";
@@ -416,7 +417,7 @@ void TrainingWidget::buildExercisePage() {
     color_palette_ = new QWidget;
     auto* color_layout = new QHBoxLayout(color_palette_);
     color_layout->setContentsMargins(0, 0, 0, 0);
-    auto* color_label = new QLabel(qstr(core::loc("Color:")));
+    auto* color_label = new QLabel(qstr(core::loc("Sudoku", "Color:")));
     color_a_btn_ = new QPushButton("A");
     color_a_btn_->setFixedSize(44, 44);
     color_a_btn_->setStyleSheet(
@@ -445,14 +446,14 @@ void TrainingWidget::buildExercisePage() {
 
     // Action buttons
     auto* btn_layout = new QHBoxLayout;
-    undo_btn_ = new QPushButton(qstr(core::loc("Undo")));
-    redo_btn_ = new QPushButton(qstr(core::loc("Redo")));
+    undo_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Undo")));
+    redo_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Redo")));
     undo_btn_->setEnabled(false);
     redo_btn_->setEnabled(false);
-    auto* submit_btn = new QPushButton(qstr(core::loc("Submit")));
-    auto* hint_btn = new QPushButton(qstr(core::loc("Hint")));
-    auto* skip_btn = new QPushButton(qstr(core::loc("Skip")));
-    auto* quit_btn = new QPushButton(qstr(core::loc("Quit Lesson")));
+    auto* submit_btn = new QPushButton(qstr(core::loc("Sudoku", "Submit")));
+    auto* hint_btn = new QPushButton(qstr(core::loc("Sudoku", "Hint")));
+    auto* skip_btn = new QPushButton(qstr(core::loc("Sudoku", "Skip")));
+    auto* quit_btn = new QPushButton(qstr(core::loc("Sudoku", "Quit Lesson")));
     btn_layout->addWidget(undo_btn_);
     btn_layout->addWidget(redo_btn_);
     btn_layout->addWidget(submit_btn);
@@ -599,8 +600,8 @@ void TrainingWidget::buildExercisePage() {
         }
         const auto& state = training_vm_->trainingState.get();
         auto name = core::getTechniqueName(state.current_technique);
-        header->setText(QString::fromStdString(
-            core::locFormat("Exercise {0} / {1}  -  {2}", state.exercise_index + 1, state.total_exercises, name)));
+        header->setText(QString::fromStdString(core::locFormat(core::loc("Sudoku", "Exercise {0} / {1}  -  {2}"),
+                                                               state.exercise_index + 1, state.total_exercises, name)));
 
         // Show/hide color palette based on interaction mode
         const auto& exercises = training_vm_->exercises();
@@ -660,10 +661,10 @@ void TrainingWidget::buildFeedbackPage() {
     layout->addWidget(feedback_board_, 1);
 
     auto* btn_layout = new QHBoxLayout;
-    auto* next_btn = new QPushButton(qstr(core::loc("Next Exercise")));
-    auto* retry_btn = new QPushButton(qstr(core::loc("Retry")));
-    auto* solution_btn = new QPushButton(qstr(core::loc("Show Solution")));
-    auto* quit_btn = new QPushButton(qstr(core::loc("Quit Lesson")));
+    auto* next_btn = new QPushButton(qstr(core::loc("Sudoku", "Next Exercise")));
+    auto* retry_btn = new QPushButton(qstr(core::loc("Sudoku", "Retry")));
+    auto* solution_btn = new QPushButton(qstr(core::loc("Sudoku", "Show Solution")));
+    auto* quit_btn = new QPushButton(qstr(core::loc("Sudoku", "Quit Lesson")));
     btn_layout->addWidget(next_btn);
     btn_layout->addWidget(retry_btn);
     btn_layout->addWidget(solution_btn);
@@ -702,15 +703,15 @@ void TrainingWidget::buildFeedbackPage() {
         QString color;
         switch (state.last_result) {
             case core::AnswerResult::Correct:
-                result_text = qstr(core::loc("Correct!"));
+                result_text = qstr(core::loc("Sudoku", "Correct!"));
                 color = QString("color: %1;").arg(StyleColors::SUCCESS);
                 break;
             case core::AnswerResult::PartiallyCorrect:
-                result_text = qstr(core::loc("Partially Correct"));
+                result_text = qstr(core::loc("Sudoku", "Partially Correct"));
                 color = QString("color: %1;").arg(StyleColors::WARNING);
                 break;
             case core::AnswerResult::Incorrect:
-                result_text = qstr(core::loc("Incorrect"));
+                result_text = qstr(core::loc("Sudoku", "Incorrect"));
                 color = QString("color: %1;").arg(StyleColors::ERROR_COLOR);
                 break;
         }
@@ -718,8 +719,8 @@ void TrainingWidget::buildFeedbackPage() {
         result_label->setText(result_text);
         result_label->setStyleSheet(QString("font-size: 24px; font-weight: bold; %1").arg(color));
         msg_label->setText(QString::fromStdString(state.feedback_message));
-        score_label->setText(
-            QString::fromStdString(core::locFormat("Score: {0} / {1}", state.correct_count, state.exercise_index + 1)));
+        score_label->setText(QString::fromStdString(
+            core::locFormat(core::loc("Sudoku", "Score: {0} / {1}"), state.correct_count, state.exercise_index + 1)));
 
         // Update feedback board with diff highlights
         if (feedback_board_) {
@@ -735,7 +736,7 @@ void TrainingWidget::buildLessonCompletePage() {
     auto* page = new QWidget;
     auto* layout = new QVBoxLayout(page);
 
-    auto* title = new QLabel(QString("<h1>%1</h1>").arg(qstr(core::loc("Lesson Complete!"))));
+    auto* title = new QLabel(QString("<h1>%1</h1>").arg(qstr(core::loc("Sudoku", "Lesson Complete!"))));
     layout->addWidget(title);
 
     auto* info_label = new QLabel;
@@ -747,9 +748,9 @@ void TrainingWidget::buildLessonCompletePage() {
     layout->addWidget(verdict_label);
 
     auto* btn_layout = new QHBoxLayout;
-    auto* again_btn = new QPushButton(qstr(core::loc("Try Again")));
-    auto* pick_btn = new QPushButton(qstr(core::loc("Pick Technique")));
-    auto* game_btn = new QPushButton(qstr(core::loc("Return to Game")));
+    auto* again_btn = new QPushButton(qstr(core::loc("Sudoku", "Try Again")));
+    auto* pick_btn = new QPushButton(qstr(core::loc("Sudoku", "Pick Technique")));
+    auto* game_btn = new QPushButton(qstr(core::loc("Sudoku", "Return to Game")));
     btn_layout->addWidget(again_btn);
     btn_layout->addWidget(pick_btn);
     btn_layout->addWidget(game_btn);
@@ -781,31 +782,33 @@ void TrainingWidget::buildLessonCompletePage() {
         const auto& state = training_vm_->trainingState.get();
         auto name = core::getTechniqueName(state.current_technique);
 
-        auto technique_str = core::locFormat("Technique: {0}", name);
-        auto score_str = core::locFormat("Score: {0} / {1}", state.correct_count, state.total_exercises);
-        auto hints_str = core::locFormat("Hints used: {0}", state.hints_used);
+        auto technique_str = core::locFormat(core::loc("Sudoku", "Technique: {0}"), name);
+        auto score_str =
+            core::locFormat(core::loc("Sudoku", "Score: {0} / {1}"), state.correct_count, state.total_exercises);
+        auto hints_str = core::locFormat(core::loc("Sudoku", "Hints used: {0}"), state.hints_used);
         info_label->setText(QString::fromStdString(fmt::format("{}\n{}\n{}", technique_str, score_str, hints_str)));
 
         // Show mastery level if stats manager is available
         auto stats_mgr = training_vm_->statsManager();
         if (stats_mgr) {
             auto mastery = stats_mgr->getMastery(state.current_technique);
-            std::string mastery_text = core::loc("Beginner");
+            std::string mastery_text = core::loc("Sudoku", "Beginner");
             switch (mastery) {
                 case core::MasteryLevel::Beginner:
-                    mastery_text = core::loc("Beginner");
+                    mastery_text = core::loc("Sudoku", "Beginner");
                     break;
                 case core::MasteryLevel::Intermediate:
-                    mastery_text = core::loc("Intermediate");
+                    mastery_text = core::loc("Sudoku", "Intermediate");
                     break;
                 case core::MasteryLevel::Proficient:
-                    mastery_text = core::loc("Proficient");
+                    mastery_text = core::loc("Sudoku", "Proficient");
                     break;
                 case core::MasteryLevel::Mastered:
-                    mastery_text = core::loc("Mastered");
+                    mastery_text = core::loc("Sudoku", "Mastered");
                     break;
             }
-            verdict_label->setText(QString::fromStdString(core::locFormat("Mastery: {0}", mastery_text)));
+            verdict_label->setText(
+                QString::fromStdString(core::locFormat(core::loc("Sudoku", "Mastery: {0}"), mastery_text)));
             verdict_label->setStyleSheet(
                 mastery == core::MasteryLevel::Mastered
                     ? QString("color: %1; font-weight: bold;").arg(StyleColors::SUCCESS)
@@ -815,13 +818,13 @@ void TrainingWidget::buildLessonCompletePage() {
                               ? static_cast<float>(state.correct_count) / static_cast<float>(state.total_exercises)
                               : 0.0f;
             if (ratio >= 0.8f) {
-                verdict_label->setText(qstr(core::loc("Excellent! You've mastered this technique.")));
+                verdict_label->setText(qstr(core::loc("Sudoku", "Excellent! You've mastered this technique.")));
                 verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(StyleColors::SUCCESS));
             } else if (ratio >= 0.5f) {
-                verdict_label->setText(qstr(core::loc("Good progress. Try again for a higher score.")));
+                verdict_label->setText(qstr(core::loc("Sudoku", "Good progress. Try again for a higher score.")));
                 verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(StyleColors::WARNING));
             } else {
-                verdict_label->setText(qstr(core::loc("Keep practicing! Review the theory and try again.")));
+                verdict_label->setText(qstr(core::loc("Sudoku", "Keep practicing! Review the theory and try again.")));
                 verdict_label->setStyleSheet(QString("color: %1; font-weight: bold;").arg(StyleColors::ERROR_COLOR));
             }
         }

@@ -50,7 +50,8 @@ TrainingViewModel::TrainingViewModel(std::shared_ptr<ITrainingExerciseGenerator>
 
 void TrainingViewModel::selectTechnique(SolvingTechnique technique) {
     if (technique == SolvingTechnique::Backtracking) {
-        errorMessage.set(std::string(core::loc("Cannot practice Backtracking — it is not a logical technique.")));
+        errorMessage.set(
+            std::string(core::loc("Sudoku", "Cannot practice Backtracking — it is not a logical technique.")));
         return;
     }
 
@@ -88,7 +89,7 @@ void TrainingViewModel::startExercises() {
             }
         }
         if (exercises_.empty()) {
-            errorMessage.set(std::string(core::loc("No applicable step found for this technique.")));
+            errorMessage.set(std::string(core::loc("Sudoku", "No applicable step found for this technique.")));
             return;
         }
     } else {
@@ -142,7 +143,8 @@ void TrainingViewModel::submitAnswer() {
             // More steps remain — apply and continue
             applyContinue(feedback_step);
             found_step_count_++;
-            auto msg = core::locFormat("Correct! {0} Find the next one.", feedback_step.explanation);
+            auto msg =
+                core::locFormat(core::loc("Sudoku", "Correct! {0} Find the next one."), feedback_step.explanation);
             trainingState.update([&msg](TrainingUIState& s) {
                 s.correct_count++;
                 s.found_step_message = msg;
@@ -674,13 +676,13 @@ TrainingViewModel::EvalResult TrainingViewModel::evaluateElimination(const Train
 std::string TrainingViewModel::buildFeedback(AnswerResult result, const SolveStep& step) const {
     switch (result) {
         case AnswerResult::Correct:
-            return core::locFormat("Correct! {0}", step.explanation);
+            return core::locFormat(core::loc("Sudoku", "Correct! {0}"), step.explanation);
         case AnswerResult::PartiallyCorrect:
-            return core::locFormat("Partially correct. {0}", step.explanation);
+            return core::locFormat(core::loc("Sudoku", "Partially correct. {0}"), step.explanation);
         case AnswerResult::Incorrect:
-            return core::locFormat("Not quite. {0}", step.explanation);
+            return core::locFormat(core::loc("Sudoku", "Not quite. {0}"), step.explanation);
     }
-    return std::string(core::loc("Unknown result."));
+    return std::string(core::loc("Sudoku", "Unknown result."));
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — builds diff board with placement/elimination logic; nesting is inherent

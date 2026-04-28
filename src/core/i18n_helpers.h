@@ -24,13 +24,20 @@
 
 namespace sudoku::core {
 
-[[nodiscard]] inline std::string loc(const char* source) {
-    return QCoreApplication::translate("Sudoku", source).toStdString();
+[[nodiscard]] inline std::string loc(const char* context, const char* source) {
+    return QCoreApplication::translate(context, source).toStdString();
 }
 
+// locFormat takes an already-translated string (typically from core::loc) and
+// runs it through fmt::format. The split exists so lupdate sees translatable
+// literals through the 2-arg `core::loc(...)` calls — which match its
+// `translate(ctx, src)` alias — rather than buried inside a variadic template
+// it can't reliably destructure.
+//
+//   core::locFormat(core::loc("Sudoku", "Score: {0}"), score)
 template <typename... Args>
-[[nodiscard]] std::string locFormat(const char* source, Args&&... args) {
-    return fmt::format(fmt::runtime(loc(source)), std::forward<Args>(args)...);
+[[nodiscard]] std::string locFormat(const std::string& translated, Args&&... args) {
+    return fmt::format(fmt::runtime(translated), std::forward<Args>(args)...);
 }
 
 }  // namespace sudoku::core

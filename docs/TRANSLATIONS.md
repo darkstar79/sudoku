@@ -1,26 +1,45 @@
 # Translations
 
 This project uses Qt's `.ts` translation files at runtime (loaded via
-`QTranslator`) but uses two free helper functions instead of Qt's class-bound
-`tr()`/`translate()` for the call sites in C++ code:
+`QTranslator`) and Qt's standard `lupdate` tool to extract translatable
+strings from C++ source.
+
+## Source-code conventions
+
+Two free helper functions in `src/core/i18n_helpers.h` wrap Qt's translation
+API so non-`QObject` code (Model, ViewModel, free functions) can stay
+non-`QObject`:
 
 ```cpp
 #include "core/i18n_helpers.h"
 
-std::string s    = sudoku::core::loc("Open");                       // simple lookup
-std::string fmt  = sudoku::core::locFormat("Score: {0}", score);    // fmt-style format
+// Simple lookup — use anywhere:
+std::string s = sudoku::core::loc("Sudoku", "Open");
+
+// Format with positional args (fmt-style {0}, {1}):
+std::string fmt = sudoku::core::locFormat(
+    sudoku::core::loc("Sudoku", "Score: {0}"),
+    score
+);
 ```
 
-The helpers internally call `QCoreApplication::translate("Sudoku", source)`,
-so the runtime side is fully Qt-native. The reason for the wrappers is that
-most of our translatable strings live in non-`QObject` code (free functions,
-plain structs, view-model helpers) where `tr()` would not compile.
+`core::loc(context, source)` has the same signature as
+`QCoreApplication::translate(context, source)` — Qt's `lupdate` is told
+about this equivalence via `-tr-function-alias translate+=loc` in
+[CMakeLists.txt](../CMakeLists.txt), so it extracts every `core::loc("Sudoku", "...")`
+call site as a translatable string with context `Sudoku`.
+
+`core::locFormat` takes an already-translated string (typically the result
+of `core::loc(...)`) plus format arguments. The split exists so the
+literal source goes through `core::loc` where `lupdate` can see it. **The
+first argument to `core::loc` must be the literal `"Sudoku"`** — every
+call site uses the same context.
 
 ## Files
 
 - **Source-of-truth `.ts` files**: `resources/translations/sudoku_<locale>.ts`
   - One `<context>Sudoku</context>` for the whole app.
-  - English text is the message ID (we don't use synthetic keys).
+  - English text is the message ID (no synthetic-key indirection).
   - Currently shipping: `en`, `de`.
 - **Compiled `.qm` files**: produced at build time by `qt_add_lrelease`.
   - Linux install path: `${CMAKE_INSTALL_DATADIR}/sudoku/translations/`.
@@ -29,11 +48,10 @@ plain structs, view-model helpers) where `tr()` would not compile.
 
 ## Translator workflow
 
-Open the `.ts` file directly in **Qt Linguist** (the GUI editor that ships
-with Qt 6), translate any entry that is empty or marked `unfinished`, and
-save. No `lupdate` invocation is needed for translation work — you only
-need it when the source code adds new strings (see "Contributor workflow"
-below).
+Open the `.ts` file in **Qt Linguist** (the GUI editor that ships with
+Qt 6), translate any entry with empty `<translation>` or
+`type="unfinished"`, save. No `lupdate` needed for translation work —
+that runs on the developer side when source code adds new strings.
 
 ```sh
 # Linux: install Qt Linguist (GUI editor)
@@ -44,13 +62,12 @@ sudo apt install linguist-qt6     # Debian/Ubuntu
 linguist-qt6 resources/translations/sudoku_de.ts
 ```
 
-After saving, rebuild the project — `qt_add_lrelease` compiles your `.ts`
-edits into `.qm` files automatically and the next launch picks up the new
-translations.
+After saving, rebuild — `qt_add_lrelease` compiles `.ts` → `.qm`
+automatically and the next launch picks up the new translations.
 
-To submit a translation: open a PR with the `.ts` diff. CI's
-`i18n-check` job will verify completeness (no `unfinished` entries, no
-orphan strings).
+To submit a translation: open a PR with the `.ts` diff. The CI
+`i18n-check` job verifies completeness (no `type="unfinished"` entries,
+no drift between source and `.ts`).
 
 ## Adding a new locale
 
@@ -58,12 +75,13 @@ orphan strings).
 2. Update the `<TS language="...">` attribute to the new language code.
 3. Translate every `<translation>` element.
 4. Add the language to `qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES ...)`
-   in `CMakeLists.txt`.
+   in [CMakeLists.txt](../CMakeLists.txt).
 5. Add the language code to the `kLocales` map in
-   `src/view/main_window.cpp` (Settings → Language dropdown).
+   [src/view/main_window.cpp](../src/view/main_window.cpp) (Settings → Language dropdown).
 
-If you have an external translation in YAML format (e.g. an older
-`sudoku_<lang>.yaml`), convert it with the helper script:
+If you have an existing translation in YAML format (e.g. an older
+`sudoku_<lang>.yaml` maintained downstream), convert it with the helper
+script:
 
 ```sh
 python3 scripts/yaml_to_ts.py \
@@ -75,77 +93,54 @@ python3 scripts/yaml_to_ts.py \
 ## Packager workflow
 
 Distribution packagers building from a release tarball don't need any Qt
-translation tooling — `cmake --build` runs `lrelease` automatically and
-produces the `.qm` files in the build directory. Just install them as
-normal.
+translation tooling beyond what's already pulled in by `find_package(Qt6 ... LinguistTools)`
+— `cmake --build` runs `lrelease` automatically and produces the `.qm`
+files in the build directory.
 
-If a packager wants to ship an additional locale not in the release
-(e.g. a downstream `sudoku_<lang>.yaml` they maintain), they can use
-`scripts/yaml_to_ts.py` (kept in-tree for that purpose) to convert it.
+If a packager wants to ship an additional locale not in the upstream
+release, `scripts/yaml_to_ts.py` (kept in-tree for that purpose) converts
+a YAML translation file to a `.ts` file ready for Qt Linguist.
 
 ## Contributor workflow
 
-When you add a new user-visible string to the source code via
-`core::loc("...")` or `core::locFormat("...", ...)`, you must also add
-the corresponding entry to **both** `.ts` files. The CI `i18n-check`
-job will fail your PR otherwise.
+When you add a new user-visible string in C++ source via
+`core::loc("Sudoku", "...")` or
+`core::locFormat(core::loc("Sudoku", "..."), args...)`:
 
-```xml
-<message>
-    <source>Your new string here</source>
-    <translation>Ihre neue Zeichenfolge hier</translation>
-</message>
-```
+1. Run `cmake --build build/Release --target sudoku_lupdate`.
+   This invokes `lupdate` and updates `sudoku_en.ts` / `sudoku_de.ts`
+   with the new entry, marked `type="unfinished"`.
+2. Open `sudoku_de.ts` in Qt Linguist and translate the new entry (or
+   coordinate with a translator).
+3. Commit both the source change and the `.ts` files in the same PR.
 
-The first argument to `core::loc`/`core::locFormat` **must be a string
-literal** — not a variable, not a `const char*` parameter, not an
-expression. The CI scanner walks the source tree and extracts the literal
-arguments to verify the `.ts` files cover them; non-literal arguments are
-flagged as warnings.
+CI fails if:
 
-If you must select between strings at runtime, ternary the *call*, not
-the literal:
+- Running `lupdate` would change the `.ts` files (drift between source and
+  translations), **or**
+- `sudoku_de.ts` contains any `<translation type="unfinished">` entries.
 
-```cpp
-// Bad — scanner can't see the strings
-const char* s = condition ? "Open" : "Close";
-core::loc(s);
+The `i18n-check` GitHub Actions job at
+[.github/workflows/ci.yml](../.github/workflows/ci.yml) enforces both.
 
-// Good — both literals visible at the call site
-core::loc(condition ? "Open" : "Close");
+### A note on the source language
 
-// Also good
-condition ? core::loc("Open") : core::loc("Close");
-```
+`sudoku_en.ts` intentionally has every entry as
+`<translation type="unfinished"></translation>` — English is the source
+language and Qt's `QTranslator` falls back to the `<source>` text when
+the matching translation is empty. The CI's `unfinished` check runs only
+against `sudoku_de.ts` and any future non-English locales.
 
 ## Local verification
 
 ```sh
-python3 scripts/check_translations.py
+# Rebuild + run lupdate + diff
+cmake --build build/Release --target sudoku_lupdate
+git diff resources/translations/
+
+# Check for unfinished German translations
+grep 'type="unfinished"' resources/translations/sudoku_de.ts
 ```
 
-This runs the same check the CI job runs. It reports:
-
-- **MISSING** — string used in code but absent from a `.ts` file.
-- **ORPHAN** — entry in a `.ts` file with no matching call site.
-- **UNFINISHED** — `<translation type="unfinished">` in `sudoku_de.ts`.
-
-The `unfinished` check intentionally runs only against the non-English locales:
-in `sudoku_en.ts` every entry is `<translation type="unfinished"></translation>`
-because English is the source language and Qt's `QTranslator` falls back to the
-`<source>` text when the matching translation is empty. Translators only need
-to fill in the non-English files.
-
-## Why a custom check instead of `lupdate`?
-
-Qt's standard `lupdate` extractor only recognizes built-in patterns
-(`tr(...)`, `QObject::tr(...)`, `translate(ctx, src)`,
-`QT_TRANSLATE_NOOP(ctx, src)`, ...). Our `core::loc(source)` helper takes
-just the source string — the `"Sudoku"` context is supplied inside the
-helper body, where `lupdate` does not look. Teaching `lupdate` to recognize
-our helpers is non-trivial in Qt 6, so `scripts/check_translations.py`
-implements an extractor that knows about exactly our two helpers.
-
-Future work (low priority): switch the helpers to a macro that expands
-to `QT_TRANSLATE_NOOP("Sudoku", source)` so `lupdate` can see the strings,
-then drop the custom script. Not blocking for shipping.
+Empty diff and zero unfinished entries means the source and translations
+are in sync.

@@ -47,17 +47,18 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
     switch (category) {
         case TechniqueCategory::Singles: {
             if (level == 1) {
-                hint.text = core::locFormat("Look at cell {0}.", localizedPosition(expected.position));
+                hint.text =
+                    core::locFormat(core::loc("Sudoku", "Look at cell {0}."), localizedPosition(expected.position));
             } else if (level == 2) {
                 if (data.region_type != RegionType::None) {
-                    hint.text = core::locFormat("Focus on {0} — count the candidates.",
+                    hint.text = core::locFormat(core::loc("Sudoku", "Focus on {0} — count the candidates."),
                                                 localizedRegion(data.region_type, data.region_index));
                 } else {
-                    hint.text =
-                        core::locFormat("Count the candidates in cell {0}.", localizedPosition(expected.position));
+                    hint.text = core::locFormat(core::loc("Sudoku", "Count the candidates in cell {0}."),
+                                                localizedPosition(expected.position));
                 }
             } else {
-                hint.text = core::locFormat("The value is {0}.", expected.value);
+                hint.text = core::locFormat(core::loc("Sudoku", "The value is {0}."), expected.value);
             }
             hint.highlights = {{.position = expected.position, .role = CellRole::Pattern}};
             break;
@@ -66,23 +67,27 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
         case TechniqueCategory::Subsets: {
             if (level == 1) {
                 if (data.region_type != RegionType::None) {
-                    hint.text = core::locFormat("Focus on {0}.", localizedRegion(data.region_type, data.region_index));
+                    hint.text = core::locFormat(core::loc("Sudoku", "Focus on {0}."),
+                                                localizedRegion(data.region_type, data.region_index));
                 } else {
-                    hint.text = std::string(core::loc("Look for cells that share the same candidates in a unit."));
+                    hint.text =
+                        std::string(core::loc("Sudoku", "Look for cells that share the same candidates in a unit."));
                 }
             } else if (level == 2) {
                 if (!data.values.empty()) {
-                    hint.text = core::locFormat("These cells form a [{0}] subset. Values in the subset can only go in "
-                                                "these cells — eliminate them from other cells in the region.",
-                                                formatValueList(data.values));
+                    hint.text = core::locFormat(
+                        core::loc("Sudoku", "These cells form a [{0}] subset. Values in the subset can only go in "
+                                            "these cells — eliminate them from other cells in the region."),
+                        formatValueList(data.values));
                 } else {
-                    hint.text =
-                        std::string(core::loc("These cells form the subset. Values in the subset can only go in these "
-                                              "cells — eliminate them from other cells in the region."));
+                    hint.text = std::string(
+                        core::loc("Sudoku", "These cells form the subset. Values in the subset can only go in these "
+                                            "cells — eliminate them from other cells in the region."));
                 }
                 appendDataHighlights(hint, data, CellRole::Pattern);
             } else {
-                hint.text = std::string(core::loc("Eliminate candidates from cells that see all subset cells."));
+                hint.text =
+                    std::string(core::loc("Sudoku", "Eliminate candidates from cells that see all subset cells."));
                 appendEliminationHighlights(hint, expected);
             }
             break;
@@ -91,18 +96,20 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
         case TechniqueCategory::Intersections: {
             if (level == 1) {
                 if (!data.values.empty()) {
-                    hint.text = core::locFormat("Look for value {0} confined to an intersection.", data.values[0]);
+                    hint.text = core::locFormat(core::loc("Sudoku", "Look for value {0} confined to an intersection."),
+                                                data.values[0]);
                 } else {
                     hint.text = std::string(
-                        core::loc("Look for a candidate confined to the intersection of a box and a line."));
+                        core::loc("Sudoku", "Look for a candidate confined to the intersection of a box and a line."));
                 }
             } else if (level == 2) {
-                hint.text = std::string(
-                    core::loc("The intersection cells. The candidate is confined to these cells — eliminate it from "
+                hint.text = std::string(core::loc(
+                    "Sudoku", "The intersection cells. The candidate is confined to these cells — eliminate it from "
                               "other cells in the line or box outside this intersection."));
                 appendDataHighlights(hint, data, CellRole::Pattern);
             } else {
-                hint.text = std::string(core::loc("Eliminate the candidate from cells outside the intersection."));
+                hint.text =
+                    std::string(core::loc("Sudoku", "Eliminate the candidate from cells outside the intersection."));
                 appendEliminationHighlights(hint, expected);
             }
             break;
@@ -111,20 +118,21 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
         case TechniqueCategory::Fish: {
             if (level == 1) {
                 if (!data.values.empty()) {
-                    hint.text = core::locFormat("Look for a fish pattern on value {0}.", data.values[0]);
+                    hint.text =
+                        core::locFormat(core::loc("Sudoku", "Look for a fish pattern on value {0}."), data.values[0]);
                 } else {
-                    hint.text = std::string(
-                        core::loc("Look for a fish pattern (rows/columns with restricted candidate positions)."));
+                    hint.text = std::string(core::loc(
+                        "Sudoku", "Look for a fish pattern (rows/columns with restricted candidate positions)."));
                 }
             } else if (level == 2) {
-                hint.text =
-                    std::string(core::loc("Base and cover sets. Blue cells are the base set (rows/columns where the "
-                                          "candidate is restricted). Green cells are the cover set. Eliminate the "
-                                          "candidate from cover set cells that aren't in the base set."));
+                hint.text = std::string(
+                    core::loc("Sudoku", "Base and cover sets. Blue cells are the base set (rows/columns where the "
+                                        "candidate is restricted). Green cells are the cover set. Eliminate the "
+                                        "candidate from cover set cells that aren't in the base set."));
                 appendDataHighlights(hint, data, CellRole::Pattern);
             } else {
-                hint.text =
-                    std::string(core::loc("Eliminate the candidate from cover set cells outside the base set."));
+                hint.text = std::string(
+                    core::loc("Sudoku", "Eliminate the candidate from cover set cells outside the base set."));
                 appendEliminationHighlights(hint, expected);
             }
             break;
@@ -140,16 +148,17 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
                         break;
                     }
                 }
-                hint.text = core::locFormat("Find the pivot cell at {0}.", localizedPosition(pivot));
+                hint.text =
+                    core::locFormat(core::loc("Sudoku", "Find the pivot cell at {0}."), localizedPosition(pivot));
                 hint.highlights = {{.position = pivot, .role = CellRole::Pivot}};
             } else if (level == 2) {
-                hint.text = std::string(
-                    core::loc("Pivot and wing cells. The orange pivot connects to the green wings. Candidates shared "
+                hint.text = std::string(core::loc(
+                    "Sudoku", "Pivot and wing cells. The orange pivot connects to the green wings. Candidates shared "
                               "by both wings can be eliminated from cells that see all wing endpoints."));
                 appendDataHighlights(hint, data, CellRole::Wing);
             } else {
-                hint.text =
-                    std::string(core::loc("Eliminate the shared candidate from cells that see all wing endpoints."));
+                hint.text = std::string(
+                    core::loc("Sudoku", "Eliminate the shared candidate from cells that see all wing endpoints."));
                 appendEliminationHighlights(hint, expected);
             }
             break;
@@ -158,18 +167,20 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
         case TechniqueCategory::SingleDigit: {
             if (level == 1) {
                 if (!data.values.empty()) {
-                    hint.text = core::locFormat("Look for conjugate pairs on value {0}.", data.values[0]);
+                    hint.text =
+                        core::locFormat(core::loc("Sudoku", "Look for conjugate pairs on value {0}."), data.values[0]);
                 } else {
-                    hint.text = std::string(
-                        core::loc("Look for conjugate pairs (cells where a digit appears exactly twice in a unit)."));
+                    hint.text = std::string(core::loc(
+                        "Sudoku", "Look for conjugate pairs (cells where a digit appears exactly twice in a unit)."));
                 }
             } else if (level == 2) {
-                hint.text =
-                    std::string(core::loc("The chain cells. These cells form conjugate pairs (a digit appears exactly "
-                                          "twice in a unit). Follow the alternating pattern to find eliminations."));
+                hint.text = std::string(
+                    core::loc("Sudoku", "The chain cells. These cells form conjugate pairs (a digit appears exactly "
+                                        "twice in a unit). Follow the alternating pattern to find eliminations."));
                 appendDataHighlights(hint, data, CellRole::ChainA);
             } else {
-                hint.text = std::string(core::loc("Cells that see both endpoints of the pattern can be eliminated."));
+                hint.text =
+                    std::string(core::loc("Sudoku", "Cells that see both endpoints of the pattern can be eliminated."));
                 appendEliminationHighlights(hint, expected);
             }
             break;
@@ -178,18 +189,20 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
         case TechniqueCategory::Coloring: {
             if (level == 1) {
                 if (!data.values.empty()) {
-                    hint.text = core::locFormat("Build a coloring chain on value {0}.", data.values[0]);
+                    hint.text =
+                        core::locFormat(core::loc("Sudoku", "Build a coloring chain on value {0}."), data.values[0]);
                 } else {
-                    hint.text = std::string(core::loc("Start coloring conjugate pairs with two alternating colors."));
+                    hint.text =
+                        std::string(core::loc("Sudoku", "Start coloring conjugate pairs with two alternating colors."));
                 }
             } else if (level == 2) {
-                hint.text = std::string(
-                    core::loc("The coloring chain. Blue and green are two alternating colors — one must be true, one "
+                hint.text = std::string(core::loc(
+                    "Sudoku", "The coloring chain. Blue and green are two alternating colors — one must be true, one "
                               "false. Cells that see both colors can have the candidate eliminated."));
                 appendDataHighlights(hint, data, CellRole::ChainA);
             } else {
-                hint.text =
-                    std::string(core::loc("One color must be false — eliminate from cells that see both colors."));
+                hint.text = std::string(
+                    core::loc("Sudoku", "One color must be false — eliminate from cells that see both colors."));
                 appendEliminationHighlights(hint, expected);
             }
             break;
@@ -197,16 +210,17 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
 
         case TechniqueCategory::UniqueRect: {
             if (level == 1) {
-                hint.text = std::string(
-                    core::loc("Look for a deadly pattern — four cells forming a rectangle across two boxes."));
+                hint.text = std::string(core::loc(
+                    "Sudoku", "Look for a deadly pattern — four cells forming a rectangle across two boxes."));
             } else if (level == 2) {
                 hint.text = std::string(core::loc(
+                    "Sudoku",
                     "The rectangle corners. These four cells across two boxes form a potential deadly pattern. To keep "
                     "the puzzle unique, eliminate the candidate that would complete the rectangle."));
                 appendDataHighlights(hint, data, CellRole::Roof);
             } else {
-                hint.text = std::string(
-                    core::loc("To avoid the deadly pattern, eliminate the candidate that would complete it."));
+                hint.text = std::string(core::loc(
+                    "Sudoku", "To avoid the deadly pattern, eliminate the candidate that would complete it."));
                 appendEliminationHighlights(hint, expected);
             }
             break;
@@ -215,24 +229,26 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
         case TechniqueCategory::Chains: {
             if (level == 1) {
                 if (!data.positions.empty()) {
-                    hint.text = core::locFormat("Start the chain from cell {0}.", localizedPosition(data.positions[0]));
+                    hint.text = core::locFormat(core::loc("Sudoku", "Start the chain from cell {0}."),
+                                                localizedPosition(data.positions[0]));
                     hint.highlights = {{.position = data.positions[0], .role = CellRole::ChainA}};
                 } else {
-                    hint.text =
-                        std::string(core::loc("Look for a chain of linked cells with alternating strong/weak links."));
+                    hint.text = std::string(
+                        core::loc("Sudoku", "Look for a chain of linked cells with alternating strong/weak links."));
                 }
             } else if (level == 2) {
-                hint.text =
-                    std::string(core::loc("The chain path. Follow the alternating strong (blue) and weak (green) "
-                                          "links. The chain's logic forces a conclusion at the endpoints."));
+                hint.text = std::string(
+                    core::loc("Sudoku", "The chain path. Follow the alternating strong (blue) and weak (green) "
+                                        "links. The chain's logic forces a conclusion at the endpoints."));
                 appendDataHighlights(hint, data, CellRole::ChainA);
             } else {
                 if (expected.type == SolveStepType::Placement) {
-                    hint.text = core::locFormat("All chains lead to value {0} at {1}.", expected.value,
-                                                localizedPosition(expected.position));
+                    hint.text = core::locFormat(core::loc("Sudoku", "All chains lead to value {0} at {1}."),
+                                                expected.value, localizedPosition(expected.position));
                     hint.highlights = {{.position = expected.position, .role = CellRole::Pattern}};
                 } else {
-                    hint.text = std::string(core::loc("Eliminate candidates that contradict the chain logic."));
+                    hint.text =
+                        std::string(core::loc("Sudoku", "Eliminate candidates that contradict the chain logic."));
                     appendEliminationHighlights(hint, expected);
                 }
             }
@@ -241,16 +257,17 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
 
         case TechniqueCategory::SetLogic: {
             if (level == 1) {
-                hint.text =
-                    std::string(core::loc("Look for an Almost Locked Set (a group of N cells with N+1 candidates)."));
+                hint.text = std::string(
+                    core::loc("Sudoku", "Look for an Almost Locked Set (a group of N cells with N+1 candidates)."));
             } else if (level == 2) {
                 hint.text = std::string(core::loc(
+                    "Sudoku",
                     "The ALS cells and restricted common. An ALS is N cells with N+1 candidates. The restricted common "
                     "candidate links the sets — eliminations apply to cells that see all relevant ALS members."));
                 appendDataHighlights(hint, data, CellRole::SetA);
             } else {
-                hint.text =
-                    std::string(core::loc("Eliminate candidates from cells that see all relevant ALS members."));
+                hint.text = std::string(
+                    core::loc("Sudoku", "Eliminate candidates from cells that see all relevant ALS members."));
                 appendEliminationHighlights(hint, expected);
             }
             break;
@@ -258,11 +275,12 @@ TrainingHint getTrainingHint(SolvingTechnique technique, int level, const SolveS
 
         case TechniqueCategory::Special: {
             if (level == 1) {
-                hint.text =
-                    std::string(core::loc("Look for the cell with three candidates (the only non-bivalue cell)."));
+                hint.text = std::string(
+                    core::loc("Sudoku", "Look for the cell with three candidates (the only non-bivalue cell)."));
             } else if (level == 2) {
                 if (!data.positions.empty()) {
-                    hint.text = core::locFormat("The key cell is {0}.", localizedPosition(data.positions[0]));
+                    hint.text = core::locFormat(core::loc("Sudoku", "The key cell is {0}."),
+                                                localizedPosition(data.positions[0]));
                     hint.highlights = {{.position = data.positions[0], .role = CellRole::Pattern}};
                 } else {
                     hint.text = expected.explanation;

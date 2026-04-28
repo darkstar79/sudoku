@@ -42,12 +42,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Verify translations are in sync with source
+      - name: Install system dependencies
+        uses: ./.github/actions/install-qt-deps
+
+      - name: Install Conan
         run: |
-          echo "Scanning source for core::loc / core::locFormat calls and"
-          echo "comparing against resources/translations/sudoku_*.ts ..."
-          python3 scripts/check_translations.py
-          echo "✅ Translation check passed"
+          pip3 install conan
+          conan profile detect --force
+
+      - name: Install dependencies
+        run: conan install . --build=missing -s build_type=Release
+
+      - name: Configure CMake
+        run: cmake --preset release
+
+      - name: Run lupdate and check for drift
+        run: |
+          cmake --build --preset release --target sudoku_lupdate
+          if ! git diff --exit-code resources/translations/; then
+            echo "❌ Translation drift detected."
+            echo "Run 'cmake --build build/Release --target sudoku_lupdate' locally,"
+            echo "translate any new <translation type=\"unfinished\"> entries in"
+            echo "resources/translations/sudoku_de.ts using Qt Linguist, and commit."
+            exit 1
+          fi
+          if grep -q 'type="unfinished"' resources/translations/sudoku_de.ts; then
+            echo "❌ sudoku_de.ts has unfinished translations."
+            grep 'type="unfinished"' resources/translations/sudoku_de.ts | head
+            exit 1
+          fi
+          echo "✅ Translations are in sync and complete"
 
   test-and-coverage:
     name: Test & Coverage
