@@ -129,7 +129,30 @@ The `i18n-check` GitHub Actions job at
 `<translation type="unfinished"></translation>` — English is the source
 language and Qt's `QTranslator` falls back to the `<source>` text when
 the matching translation is empty. The CI's `unfinished` check runs only
-against `sudoku_de.ts` and any future non-English locales.
+against non-English locales (`sudoku_de.ts` and any future
+`sudoku_<lang>.ts` files).
+
+### A note on removed call sites (`-no-obsolete`)
+
+`qt_add_lupdate` is configured with `-no-obsolete` in
+[CMakeLists.txt](../CMakeLists.txt). When a `core::loc(...)` call site is
+deleted from the source, the matching `<message>` block is **stripped
+from every `.ts` file** the next time `lupdate` runs — including
+translations a contributor has invested time in. The CI drift check
+catches the removal (the `.ts` diff fails `git diff --exit-code`), so
+the removal lands deliberately rather than silently, but the
+translation text is gone from the working tree once the change is
+committed. If you decide later that the string should come back, recover
+the translation via `git log -p resources/translations/sudoku_<lang>.ts`
+and paste it manually — there is no `<translation type="obsolete">`
+fallback the way default `lupdate` provides.
+
+The trade-off is intentional: keeping obsolete markers around indefinitely
+clutters the file as the codebase evolves, and Qt Linguist surfaces them
+under a separate "Obsolete" section that translators tend to ignore. If
+you find yourself recovering translations from git history regularly,
+consider dropping `-no-obsolete` from the `qt_add_lupdate` `OPTIONS`
+block.
 
 ## Local verification
 

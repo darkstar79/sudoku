@@ -40,4 +40,12 @@ template <typename... Args>
     return fmt::format(fmt::runtime(translated), std::forward<Args>(args)...);
 }
 
+// Block the legacy 3-arg form `locFormat("Sudoku", "fmt {0}", v)`. Without this
+// deleted overload, `const char* "Sudoku"` would implicitly convert to the
+// std::string parameter above, fmt::format would run on "Sudoku" (zero format
+// specifiers), and the rest of the args would be silently discarded — a hidden
+// runtime regression with no compile-time warning.
+template <typename... Args>
+std::string locFormat(const char*, Args&&...) = delete;
+
 }  // namespace sudoku::core

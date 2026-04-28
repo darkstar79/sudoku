@@ -62,15 +62,23 @@ jobs:
           if ! git diff --exit-code resources/translations/; then
             echo "❌ Translation drift detected."
             echo "Run 'cmake --build build/Release --target sudoku_lupdate' locally,"
-            echo "translate any new <translation type=\"unfinished\"> entries in"
-            echo "resources/translations/sudoku_de.ts using Qt Linguist, and commit."
+            echo "translate any new <translation type=\"unfinished\"> entries"
+            echo "using Qt Linguist, and commit."
             exit 1
           fi
-          if grep -q 'type="unfinished"' resources/translations/sudoku_de.ts; then
-            echo "❌ sudoku_de.ts has unfinished translations."
-            grep 'type="unfinished"' resources/translations/sudoku_de.ts | head
-            exit 1
-          fi
+          # Check every non-English locale for unfinished entries.
+          # English is the source language — its entries are always 'unfinished'
+          # and Qt's QTranslator falls back to the <source> text.
+          fail=0
+          for ts in resources/translations/sudoku_*.ts; do
+            [ "$ts" = "resources/translations/sudoku_en.ts" ] && continue
+            if grep -q 'type="unfinished"' "$ts"; then
+              echo "❌ $ts has unfinished translations:"
+              grep 'type="unfinished"' "$ts" | head
+              fail=1
+            fi
+          done
+          [ "$fail" -eq 1 ] && exit 1
           echo "✅ Translations are in sync and complete"
 
   test-and-coverage:
