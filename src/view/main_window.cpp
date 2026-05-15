@@ -297,6 +297,16 @@ void MainWindow::setupMenuBar() {
 
     game_menu->addAction(qstr(core::loc("Sudoku", "Analyze Difficulty")), this, &MainWindow::analyzeDifficulty);
 
+    game_menu->addAction(qstr(core::loc("Sudoku", "Copy Puzzle as Text")), QKeySequence("Ctrl+Shift+C"), this,
+                         [this]() {
+                             if (view_model_) {
+                                 view_model_->exportPuzzleAsString();
+                                 if (toast_widget_) {
+                                     toast_widget_->show(qstr(core::loc("Sudoku", "Puzzle copied to clipboard")));
+                                 }
+                             }
+                         });
+
     game_menu->addSeparator();
 
     game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Training Mode"))), this,
