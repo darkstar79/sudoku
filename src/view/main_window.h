@@ -153,6 +153,7 @@ private:
     void showImportPuzzleDialog();
     void enterEditPuzzleMode();
     void commitEditedPuzzle();
+    void analyzeDifficulty();
     void showNewGameDialog();
     void showResetDialog();
     void showSaveDialog();

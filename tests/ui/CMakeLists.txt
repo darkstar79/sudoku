@@ -10,6 +10,7 @@ set(UI_TEST_SOURCES
     test_language_change.cpp
     test_import_dialog.cpp
     test_edit_mode.cpp
+    test_analyze_difficulty.cpp
 )
 
 foreach(TEST_SOURCE ${UI_TEST_SOURCES})
