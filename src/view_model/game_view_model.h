@@ -23,6 +23,7 @@
 #include "../core/i_statistics_manager.h"
 #include "../core/i_sudoku_solver.h"
 #include "../core/observable.h"
+#include "../core/puzzle_analyzer.h"
 #include "../model/game_state.h"
 #include "core/solve_step.h"
 #include "core/solving_technique.h"
@@ -132,7 +133,8 @@ public:
     GameViewModel(std::shared_ptr<core::IGameValidator> validator, std::shared_ptr<core::IPuzzleGenerator> generator,
                   std::shared_ptr<core::ISudokuSolver> solver, std::shared_ptr<core::IStatisticsManager> stats_manager,
                   std::shared_ptr<core::ISaveManager> save_manager,
-                  std::shared_ptr<core::ISettingsManager> settings_manager = nullptr);
+                  std::shared_ptr<core::ISettingsManager> settings_manager = nullptr,
+                  std::shared_ptr<core::IPuzzleAnalyzer> analyzer = nullptr);
 
     ~GameViewModel() = default;
     GameViewModel(const GameViewModel&) = delete;
@@ -199,6 +201,19 @@ public:
     void getHint(std::optional<core::Position> pos);
     [[nodiscard]] int getHintCount() const;
 
+    /// Learning-mode lookup (L-D): finds the next step that uses a specific technique and
+    /// publishes its explanation via hintMessage. Sets errorMessage instead if the technique
+    /// does not apply or is the Backtracking sentinel. Does NOT consume a hint credit — this
+    /// is an exploratory action, not the standard hint flow.
+    void findStepByTechnique(core::SolvingTechnique technique);
+
+    /// Imported-puzzle scoring (Option β): synchronously runs the analyzer's scoreDifficulty
+    /// against the current board within a 1-second budget. On success, publishes the rating
+    /// and technique set via UIState. On Timeout / NoSolution / InvalidInput, publishes a
+    /// descriptive errorMessage and leaves the rating fields at their existing values.
+    /// No-op if no analyzer was wired at construction.
+    void analyzeDifficulty();
+
     // Coaching hint system (progressive 3-level help + TryIt phase)
     void requestCoachingHint();
     void navigateCoachingLevel(int direction);
@@ -258,6 +273,7 @@ private:
     std::shared_ptr<core::IStatisticsManager> stats_manager_;
     std::shared_ptr<core::ISaveManager> save_manager_;
     std::shared_ptr<core::ISettingsManager> settings_manager_;
+    std::shared_ptr<core::IPuzzleAnalyzer> analyzer_;  // Optional — only the import/analyze flows need it.
 
     // Internal state
     uint64_t current_game_session_{0};

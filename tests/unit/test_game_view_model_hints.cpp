@@ -218,3 +218,51 @@ TEST_CASE("GameViewModel - Hint Message Format", "[game_view_model][hints]") {
         REQUIRE(hint.length() > 20);  // Reasonably detailed message
     }
 }
+
+TEST_CASE("GameViewModel - findStepByTechnique", "[game_view_model][hints][by_technique]") {
+    sudoku::test::GameViewModelFixture fixture;
+
+    SECTION("Returns hint for an applicable technique on an easy puzzle") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->hintMessage.set("");
+        fixture.view_model->errorMessage.set("");
+
+        fixture.view_model->findStepByTechnique(core::SolvingTechnique::NakedSingle);
+
+        REQUIRE_FALSE(fixture.view_model->hintMessage.get().empty());
+        REQUIRE(fixture.view_model->errorMessage.get().empty());
+    }
+
+    SECTION("Reports no-such-technique via errorMessage when the requested technique does not apply") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->hintMessage.set("");
+        fixture.view_model->errorMessage.set("");
+
+        // Easy puzzles do not surface Sue de Coq steps.
+        fixture.view_model->findStepByTechnique(core::SolvingTechnique::SueDeCoq);
+
+        REQUIRE(fixture.view_model->hintMessage.get().empty());
+        REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
+    }
+
+    SECTION("Reports error for Backtracking sentinel (no strategy registered)") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->hintMessage.set("");
+        fixture.view_model->errorMessage.set("");
+
+        fixture.view_model->findStepByTechnique(core::SolvingTechnique::Backtracking);
+
+        REQUIRE(fixture.view_model->hintMessage.get().empty());
+        REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
+    }
+
+    SECTION("Does not consume a hint credit") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        const int initial_hints = fixture.view_model->getHintCount();
+
+        fixture.view_model->findStepByTechnique(core::SolvingTechnique::NakedSingle);
+
+        // Learning-mode lookup is not the standard hint flow — credits stay untouched.
+        REQUIRE(fixture.view_model->getHintCount() == initial_hints);
+    }
+}

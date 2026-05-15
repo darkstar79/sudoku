@@ -41,12 +41,13 @@ GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
                              std::shared_ptr<core::ISudokuSolver> solver,
                              std::shared_ptr<core::IStatisticsManager> stats_manager,
                              std::shared_ptr<core::ISaveManager> save_manager,
-                             std::shared_ptr<core::ISettingsManager> settings_manager)
+                             std::shared_ptr<core::ISettingsManager> settings_manager,
+                             std::shared_ptr<core::IPuzzleAnalyzer> analyzer)
     : gameState(model::GameState{}), uiState(UIState{}), statistics(StatsDisplay{}),
       recentSaves(std::vector<std::string>{}), errorMessage(std::string{}), hintMessage(std::string{}),
       coachingState(viewmodel::CoachingState{}), validator_(std::move(validator)), generator_(std::move(generator)),
       solver_(std::move(solver)), stats_manager_(std::move(stats_manager)), save_manager_(std::move(save_manager)),
-      settings_manager_(std::move(settings_manager)) {
+      settings_manager_(std::move(settings_manager)), analyzer_(std::move(analyzer)) {
     // Apply initial settings if available
     if (settings_manager_) {
         const auto& settings = settings_manager_->getSettings();
