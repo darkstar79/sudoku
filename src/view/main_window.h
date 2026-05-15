@@ -154,6 +154,7 @@ private:
     void enterEditPuzzleMode();
     void commitEditedPuzzle();
     void analyzeDifficulty();
+    void showFindByTechniqueDialog();
     void showNewGameDialog();
     void showResetDialog();
     void showSaveDialog();

@@ -23,6 +23,7 @@
 #include "infrastructure/app_directory_manager.h"
 #include "model/game_state.h"
 #include "puzzle_import_dialog.h"
+#include "puzzle_technique_dialog.h"
 #include "style_colors.h"
 #include "sudoku_board_widget.h"
 #include "toast_widget.h"
@@ -390,6 +391,8 @@ void MainWindow::setupMenuBar() {
             view_model_->requestCoachingHint();
         }
     });
+    help_menu->addAction(qstr(core::loc("Sudoku", "Find Step by Technique…")), this,
+                         &MainWindow::showFindByTechniqueDialog);
     help_menu->addSeparator();
     help_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "About"))), this, &MainWindow::showAboutDialog);
     help_menu->addAction(qstr(core::loc("Sudoku", "Third-Party Licenses")), this,
@@ -897,6 +900,26 @@ void MainWindow::analyzeDifficulty() {
     if (!err.empty() && toast_widget_) {
         toast_widget_->show(qstr(err));
     }
+}
+
+void MainWindow::showFindByTechniqueDialog() {
+    if (!view_model_) {
+        return;
+    }
+
+    auto* dialog = new PuzzleTechniqueDialog(this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dialog, &PuzzleTechniqueDialog::findRequested, this, [this, dialog](int technique_id) {
+        view_model_->findStepByTechnique(static_cast<core::SolvingTechnique>(technique_id));
+        const auto& err = view_model_->errorMessage.get();
+        if (!err.empty()) {
+            if (toast_widget_) {
+                toast_widget_->show(qstr(err));
+            }
+        }
+        dialog->accept();
+    });
+    dialog->show();
 }
 
 void MainWindow::showNewGameDialog() {
