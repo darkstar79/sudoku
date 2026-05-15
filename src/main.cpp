@@ -123,9 +123,10 @@ std::shared_ptr<sudoku::viewmodel::GameViewModel> createViewModel() {
     auto stats_manager = container.resolve<sudoku::core::IStatisticsManager>();
     auto save_manager = container.resolve<sudoku::core::ISaveManager>();
     auto settings_manager = container.resolve<sudoku::core::ISettingsManager>();
+    auto analyzer = container.resolve<sudoku::core::IPuzzleAnalyzer>();
 
     return std::make_shared<sudoku::viewmodel::GameViewModel>(validator, generator, solver, stats_manager, save_manager,
-                                                              settings_manager);
+                                                              settings_manager, analyzer);
 }
 
 }  // namespace

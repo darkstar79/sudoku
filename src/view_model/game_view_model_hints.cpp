@@ -159,11 +159,17 @@ void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
     auto board = state.extractNumbers();
     auto original_puzzle = state.extractGivenNumbers();
 
-    // Find next solving technique using solver (with givens info)
-    auto step_result = solver_->findNextStep(board, original_puzzle);
+    // Find next solving technique using solver (with givens info). 250 ms budget keeps
+    // adversarial inputs (e.g. AI Escargot) from hanging the UI thread — see plan R8.
+    constexpr std::chrono::milliseconds kHintBudget{250};
+    auto step_result = solver_->findNextStep(board, original_puzzle, kHintBudget);
 
     if (!step_result.has_value()) {
-        errorMessage.set(std::string(core::loc("Sudoku", "No logical technique found for this puzzle")));
+        if (step_result.error() == core::SolverError::Timeout) {
+            errorMessage.set(std::string(core::loc("Sudoku", "No hint available within budget")));
+        } else {
+            errorMessage.set(std::string(core::loc("Sudoku", "No logical technique found for this puzzle")));
+        }
         return;  // Don't consume hint
     }
 
@@ -198,6 +204,76 @@ void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
     hintMessage.set(hint_text);
 
     spdlog::info("Hint provided: {} (SE {:.1f})", core::getTechniqueName(step.technique), step.rating);
+}
+
+void GameViewModel::analyzeDifficulty() {
+    if (!analyzer_) {
+        spdlog::warn("analyzeDifficulty called without an analyzer dependency wired");
+        return;
+    }
+    if (!isGameActive()) {
+        return;
+    }
+
+    const auto& state = gameState.get();
+    auto board = state.extractNumbers();
+
+    // 1 s budget per plan Step 4.4 — acceptable synchronous block for an explicit user action.
+    constexpr std::chrono::milliseconds kAnalyzeBudget{1000};
+    const auto t0 = std::chrono::steady_clock::now();
+    auto score = analyzer_->scoreDifficulty(board, kAnalyzeBudget);
+    const auto elapsed = std::chrono::steady_clock::now() - t0;
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+    spdlog::info("analyzeDifficulty completed in {} ms (has_value={})", elapsed_ms, score.has_value());
+
+    if (!score) {
+        switch (score.error()) {
+            case core::ScoringError::Timeout:
+                errorMessage.set(std::string(core::loc("Sudoku", "Could not analyze difficulty within budget")));
+                break;
+            case core::ScoringError::NoSolution:
+                errorMessage.set(std::string(core::loc("Sudoku", "Puzzle is unsolvable")));
+                break;
+            case core::ScoringError::InvalidInput:
+                errorMessage.set(std::string(core::loc("Sudoku", "Puzzle is invalid")));
+                break;
+        }
+        return;
+    }
+
+    current_puzzle_rating_ = score->max_rating;
+    current_puzzle_requires_backtracking_ = score->requires_backtracking;
+    current_puzzle_techniques_.clear();
+    for (int id : score->technique_ids) {
+        current_puzzle_techniques_.insert(static_cast<core::SolvingTechnique>(id));
+    }
+    updateUIState();
+}
+
+void GameViewModel::findStepByTechnique(core::SolvingTechnique technique) {
+    if (!isGameActive()) {
+        return;
+    }
+
+    resetCoachingState();
+
+    const auto& state = gameState.get();
+    auto board = state.extractNumbers();
+
+    auto step_result = solver_->findNextStepByTechnique(board, technique);
+
+    if (!step_result.has_value()) {
+        // Both Unsolvable and InvalidBoard collapse into "this technique isn't available here"
+        // for the user — the View doesn't distinguish "no such step" from "not a real strategy."
+        errorMessage.set(fmt::format(fmt::runtime(core::loc("Sudoku", "No {} available in this puzzle")),
+                                     core::getLocalizedTechniqueName(technique)));
+        return;
+    }
+
+    const auto& step = step_result.value();
+    hintMessage.set(formatHintExplanation(step));
+
+    spdlog::info("Technique lookup served: {} (SE {:.1f})", core::getTechniqueName(step.technique), step.rating);
 }
 
 std::string GameViewModel::formatHintExplanation(const core::SolveStep& step) const {
@@ -257,9 +333,15 @@ void GameViewModel::requestCoachingHint() {
         auto board = state.extractNumbers();
         auto original_puzzle = state.extractGivenNumbers();
 
-        auto step_result = solver_->findNextStep(board, original_puzzle);
+        // Same 250 ms budget as getHint — see R8.
+        constexpr std::chrono::milliseconds kCoachingBudget{250};
+        auto step_result = solver_->findNextStep(board, original_puzzle, kCoachingBudget);
         if (!step_result.has_value()) {
-            errorMessage.set(std::string(core::loc("Sudoku", "No logical technique found")));
+            if (step_result.error() == core::SolverError::Timeout) {
+                errorMessage.set(std::string(core::loc("Sudoku", "No hint available within budget")));
+            } else {
+                errorMessage.set(std::string(core::loc("Sudoku", "No logical technique found")));
+            }
             return;
         }
         coaching_context_ = CoachingContext{.step = step_result.value(), .snapshot = state};
