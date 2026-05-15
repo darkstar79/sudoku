@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "../core/i_clipboard_provider.h"
 #include "../core/i_game_validator.h"
 #include "../core/i_puzzle_generator.h"
 #include "../core/i_save_manager.h"
@@ -51,9 +52,10 @@ namespace sudoku::viewmodel {
 
 /// Input mode for number keys on the game board
 enum class InputMode : std::uint8_t {
-    Normal,  ///< Number keys place values
-    Notes,   ///< Number keys toggle pencil marks
-    Color    ///< Number keys apply analysis colors (1-6)
+    Normal,      ///< Number keys place values
+    Notes,       ///< Number keys toggle pencil marks
+    Color,       ///< Number keys apply analysis colors (1-6)
+    EditGivens,  ///< Number keys lay down "given" clue cells for an imported puzzle (I-2)
 };
 
 /// Commands that can be executed from the UI
@@ -134,7 +136,8 @@ public:
                   std::shared_ptr<core::ISudokuSolver> solver, std::shared_ptr<core::IStatisticsManager> stats_manager,
                   std::shared_ptr<core::ISaveManager> save_manager,
                   std::shared_ptr<core::ISettingsManager> settings_manager = nullptr,
-                  std::shared_ptr<core::IPuzzleAnalyzer> analyzer = nullptr);
+                  std::shared_ptr<core::IPuzzleAnalyzer> analyzer = nullptr,
+                  std::shared_ptr<core::IClipboardProvider> clipboard = nullptr);
 
     ~GameViewModel() = default;
     GameViewModel(const GameViewModel&) = delete;
@@ -214,6 +217,38 @@ public:
     /// No-op if no analyzer was wired at construction.
     void analyzeDifficulty();
 
+    /// Replaces the current game state with a puzzle parsed from `input`. Runs the analyzer
+    /// pipeline (parse → validate → uniqueness) and sets the new game's origin to
+    /// PuzzleOrigin::ImportedString. On any failure (parse / validation conflict / multiple
+    /// solutions / no analyzer wired), publishes errorMessage and leaves state untouched.
+    /// Scoring is NOT performed here — call analyzeDifficulty() afterward if desired.
+    void importPuzzleFromString(std::string_view input);
+
+    /// Where the current puzzle came from. Tracked at runtime so saveCurrentGame and autoSave
+    /// can persist it via SavedGame.origin (added in PR3).
+    [[nodiscard]] core::PuzzleOrigin getCurrentPuzzleOrigin() const;
+
+    /// Edit-mode entry point (I-2). Clears the board and switches InputMode to EditGivens.
+    /// The View should route digit input to setEditModeGiven while in this mode.
+    /// Per plan: no mid-edit validation (pre-mortem #5) — only at commit time.
+    void enterEditMode();
+
+    /// Place (or clear, with value == 0) a "given" cell while in EditGivens mode. No-op if
+    /// the current input mode is not EditGivens. Does not validate — invalid boards are
+    /// caught at commit time, allowing the user to fix conflicts before committing.
+    void setEditModeGiven(const core::Position& pos, int value);
+
+    /// Commits the edit-mode board as a new game. Runs validate + checkUniqueness via the
+    /// analyzer; on success, locks the givens in, switches InputMode to Normal, and sets
+    /// origin to ImportedEditMode. On failure, publishes errorMessage and stays in edit mode
+    /// so the user can fix the issue.
+    void commitEditedPuzzle();
+
+    /// Serializes the current puzzle's GIVENS-only state via IPuzzleAnalyzer::serializeToString
+    /// and writes the resulting 81-character string to the clipboard (pre-mortem #14 — the
+    /// export companion to import). No-op if no clipboard or analyzer is wired.
+    void exportPuzzleAsString();
+
     // Coaching hint system (progressive 3-level help + TryIt phase)
     void requestCoachingHint();
     void navigateCoachingLevel(int direction);
@@ -273,7 +308,11 @@ private:
     std::shared_ptr<core::IStatisticsManager> stats_manager_;
     std::shared_ptr<core::ISaveManager> save_manager_;
     std::shared_ptr<core::ISettingsManager> settings_manager_;
-    std::shared_ptr<core::IPuzzleAnalyzer> analyzer_;  // Optional — only the import/analyze flows need it.
+    std::shared_ptr<core::IPuzzleAnalyzer> analyzer_;      // Optional — only the import/analyze flows need it.
+    std::shared_ptr<core::IClipboardProvider> clipboard_;  // Optional — only export needs it.
+
+    /// Tracks where the current puzzle came from so save/auto-save persist origin via SavedGame.
+    core::PuzzleOrigin current_puzzle_origin_{core::PuzzleOrigin::Generated};
 
     // Internal state
     uint64_t current_game_session_{0};

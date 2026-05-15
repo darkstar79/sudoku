@@ -36,18 +36,16 @@
 
 namespace sudoku::viewmodel {
 
-GameViewModel::GameViewModel(std::shared_ptr<core::IGameValidator> validator,
-                             std::shared_ptr<core::IPuzzleGenerator> generator,
-                             std::shared_ptr<core::ISudokuSolver> solver,
-                             std::shared_ptr<core::IStatisticsManager> stats_manager,
-                             std::shared_ptr<core::ISaveManager> save_manager,
-                             std::shared_ptr<core::ISettingsManager> settings_manager,
-                             std::shared_ptr<core::IPuzzleAnalyzer> analyzer)
+GameViewModel::GameViewModel(
+    std::shared_ptr<core::IGameValidator> validator, std::shared_ptr<core::IPuzzleGenerator> generator,
+    std::shared_ptr<core::ISudokuSolver> solver, std::shared_ptr<core::IStatisticsManager> stats_manager,
+    std::shared_ptr<core::ISaveManager> save_manager, std::shared_ptr<core::ISettingsManager> settings_manager,
+    std::shared_ptr<core::IPuzzleAnalyzer> analyzer, std::shared_ptr<core::IClipboardProvider> clipboard)
     : gameState(model::GameState{}), uiState(UIState{}), statistics(StatsDisplay{}),
       recentSaves(std::vector<std::string>{}), errorMessage(std::string{}), hintMessage(std::string{}),
       coachingState(viewmodel::CoachingState{}), validator_(std::move(validator)), generator_(std::move(generator)),
       solver_(std::move(solver)), stats_manager_(std::move(stats_manager)), save_manager_(std::move(save_manager)),
-      settings_manager_(std::move(settings_manager)), analyzer_(std::move(analyzer)) {
+      settings_manager_(std::move(settings_manager)), analyzer_(std::move(analyzer)), clipboard_(std::move(clipboard)) {
     // Apply initial settings if available
     if (settings_manager_) {
         const auto& settings = settings_manager_->getSettings();
@@ -110,6 +108,7 @@ void GameViewModel::startNewGame(core::Difficulty difficulty) {
     current_puzzle_rating_ = puzzle_result->rating;
     current_puzzle_techniques_ = puzzle_result->required_techniques;
     current_puzzle_requires_backtracking_ = puzzle_result->requires_backtracking;
+    current_puzzle_origin_ = core::PuzzleOrigin::Generated;
 
     // Create new game state
     model::GameState new_state;
@@ -273,6 +272,7 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
     for (int id : saved_game.puzzle_technique_ids) {
         current_puzzle_techniques_.insert(static_cast<core::SolvingTechnique>(id));
     }
+    current_puzzle_origin_ = saved_game.origin;
 
     updateUIState();
     spdlog::debug("Game state restored: {} moves in history", move_history_.size());
@@ -309,6 +309,7 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
     for (const auto& tech : current_puzzle_techniques_) {
         saved_game.puzzle_technique_ids.push_back(static_cast<int>(tech));
     }
+    saved_game.origin = current_puzzle_origin_;
 
     saved_game.display_name = name;
 
@@ -342,6 +343,7 @@ void GameViewModel::autoSave() {
         for (const auto& tech : current_puzzle_techniques_) {
             auto_save_game.puzzle_technique_ids.push_back(static_cast<int>(tech));
         }
+        auto_save_game.origin = current_puzzle_origin_;
 
         // Extract notes
         core::forEachCell(

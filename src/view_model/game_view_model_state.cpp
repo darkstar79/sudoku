@@ -130,6 +130,12 @@ void GameViewModel::cycleInputMode() {
         case InputMode::Color:
             next = InputMode::Normal;
             break;
+        case InputMode::EditGivens:
+            // EditGivens is an explicit-entry mode (enterEditMode/commitEditedPuzzle).
+            // The cycle button shouldn't bring users here or out of here; map back to
+            // Normal defensively in case the View triggers it anyway.
+            next = InputMode::Normal;
+            break;
     }
     uiState.update([next](UIState& state) { state.input_mode = next; });
 }

@@ -222,8 +222,23 @@ TEST_CASE("GameViewModel - Hint Message Format", "[game_view_model][hints]") {
 TEST_CASE("GameViewModel - findStepByTechnique", "[game_view_model][hints][by_technique]") {
     sudoku::test::GameViewModelFixture fixture;
 
-    SECTION("Returns hint for an applicable technique on an easy puzzle") {
-        fixture.view_model->startNewGame(Difficulty::Easy);
+    // Deterministic near-complete board with exactly one naked single at R1C1.
+    // Avoids relying on random-seeded generation which can yield boards where SueDeCoq
+    // happens to fire — this fixture has no candidates for any advanced strategy.
+    auto loadNakedSingleBoard = [&]() {
+        SavedGame saved;
+        saved.original_puzzle = {{0, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+                                 {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+                                 {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        saved.current_state = saved.original_puzzle;
+        saved.difficulty = Difficulty::Easy;
+        // Empty move_history + no notes + original==current is the "fresh game" path in
+        // restoreGameState — the corruption heuristic only fires when those don't all hold.
+        fixture.view_model->restoreGameState(saved);
+    };
+
+    SECTION("Returns hint for an applicable technique on a deterministic board") {
+        loadNakedSingleBoard();
         fixture.view_model->hintMessage.set("");
         fixture.view_model->errorMessage.set("");
 
@@ -234,11 +249,12 @@ TEST_CASE("GameViewModel - findStepByTechnique", "[game_view_model][hints][by_te
     }
 
     SECTION("Reports no-such-technique via errorMessage when the requested technique does not apply") {
-        fixture.view_model->startNewGame(Difficulty::Easy);
+        loadNakedSingleBoard();
         fixture.view_model->hintMessage.set("");
         fixture.view_model->errorMessage.set("");
 
-        // Easy puzzles do not surface Sue de Coq steps.
+        // A near-complete board with one empty cell cannot surface SueDeCoq (needs ALSs
+        // across line+box intersections, which require many candidates).
         fixture.view_model->findStepByTechnique(core::SolvingTechnique::SueDeCoq);
 
         REQUIRE(fixture.view_model->hintMessage.get().empty());
@@ -246,7 +262,7 @@ TEST_CASE("GameViewModel - findStepByTechnique", "[game_view_model][hints][by_te
     }
 
     SECTION("Reports error for Backtracking sentinel (no strategy registered)") {
-        fixture.view_model->startNewGame(Difficulty::Easy);
+        loadNakedSingleBoard();
         fixture.view_model->hintMessage.set("");
         fixture.view_model->errorMessage.set("");
 
@@ -257,7 +273,7 @@ TEST_CASE("GameViewModel - findStepByTechnique", "[game_view_model][hints][by_te
     }
 
     SECTION("Does not consume a hint credit") {
-        fixture.view_model->startNewGame(Difficulty::Easy);
+        loadNakedSingleBoard();
         const int initial_hints = fixture.view_model->getHintCount();
 
         fixture.view_model->findStepByTechnique(core::SolvingTechnique::NakedSingle);

@@ -16,6 +16,7 @@
 
 #include "core/di_container.h"
 #include "core/game_validator.h"
+#include "core/i_clipboard_provider.h"
 #include "core/i_game_validator.h"
 #include "core/i_puzzle_generator.h"
 #include "core/i_puzzle_rater.h"
@@ -37,6 +38,7 @@
 #include "core/training_exercise_generator.h"
 #include "core/training_statistics_manager.h"
 #include "infrastructure/app_directory_manager.h"
+#include "infrastructure/qt_clipboard_provider.h"
 #include "view/main_window.h"
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
@@ -83,6 +85,9 @@ void setupDependencies() {
         return std::make_unique<sudoku::core::PuzzleAnalyzer>(validator, solver, counter);
     });
 
+    container.registerSingleton<sudoku::core::IClipboardProvider>(
+        []() { return std::make_unique<sudoku::infrastructure::QtClipboardProvider>(); });
+
     container.registerSingleton<sudoku::core::IPuzzleRater>([&container]() {
         auto solver = container.resolve<sudoku::core::ISudokuSolver>();
         return std::make_unique<sudoku::core::PuzzleRater>(solver);
@@ -124,9 +129,10 @@ std::shared_ptr<sudoku::viewmodel::GameViewModel> createViewModel() {
     auto save_manager = container.resolve<sudoku::core::ISaveManager>();
     auto settings_manager = container.resolve<sudoku::core::ISettingsManager>();
     auto analyzer = container.resolve<sudoku::core::IPuzzleAnalyzer>();
+    auto clipboard = container.resolve<sudoku::core::IClipboardProvider>();
 
     return std::make_shared<sudoku::viewmodel::GameViewModel>(validator, generator, solver, stats_manager, save_manager,
-                                                              settings_manager, analyzer);
+                                                              settings_manager, analyzer, clipboard);
 }
 
 }  // namespace

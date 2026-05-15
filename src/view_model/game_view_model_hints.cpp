@@ -206,6 +206,196 @@ void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
     spdlog::info("Hint provided: {} (SE {:.1f})", core::getTechniqueName(step.technique), step.rating);
 }
 
+core::PuzzleOrigin GameViewModel::getCurrentPuzzleOrigin() const {
+    return current_puzzle_origin_;
+}
+
+void GameViewModel::importPuzzleFromString(std::string_view input) {
+    if (!analyzer_) {
+        errorMessage.set(std::string(core::loc("Sudoku", "Import is not available (analyzer not wired)")));
+        spdlog::warn("importPuzzleFromString called without an analyzer dependency wired");
+        return;
+    }
+
+    spdlog::info("Import attempt: {} bytes", input.size());
+
+    // Parse.
+    auto parsed = analyzer_->parseString(input);
+    if (!parsed) {
+        switch (parsed.error().code) {
+            case core::ParseError::InputTooLarge:
+                errorMessage.set(std::string(core::loc("Sudoku", "Pasted text is too large")));
+                break;
+            case core::ParseError::Empty:
+                errorMessage.set(std::string(core::loc("Sudoku", "Pasted text contained no Sudoku cells")));
+                break;
+            case core::ParseError::WrongLength:
+                errorMessage.set(
+                    fmt::format(fmt::runtime(core::loc("Sudoku", "Pasted puzzle has {} cells, expected 81")),
+                                parsed.error().actual_length));
+                break;
+            case core::ParseError::InvalidCharacter:
+                errorMessage.set(fmt::format(fmt::runtime(core::loc("Sudoku", "Invalid character '{}' at position {}")),
+                                             parsed.error().bad_char, parsed.error().position));
+                break;
+        }
+        spdlog::warn("Import parse failed (code={})", static_cast<int>(parsed.error().code));
+        return;
+    }
+
+    // Validate.
+    auto validation = analyzer_->validate(*parsed);
+    if (!validation) {
+        errorMessage.set(std::string(core::loc("Sudoku", "Pasted puzzle violates Sudoku rules")));
+        spdlog::warn("Import validation failed ({} conflicting cells)", validation.error().conflicting_cells.size());
+        return;
+    }
+
+    // Uniqueness.
+    auto uniqueness = analyzer_->checkUniqueness(*parsed);
+    if (uniqueness != core::UniquenessResult::Unique) {
+        errorMessage.set(std::string(core::loc("Sudoku", "Pasted puzzle has multiple solutions")));
+        spdlog::warn("Import uniqueness check returned {}", static_cast<int>(uniqueness));
+        return;
+    }
+
+    // Build a fresh game state from the imported board.
+    model::GameState new_state;
+    new_state.loadPuzzle(*parsed);
+    // Imported puzzles have no a-priori difficulty; default Easy. analyzeDifficulty refines
+    // the rating later if requested.
+    new_state.setDifficulty(core::Difficulty::Easy);
+
+    gameState.set(new_state);
+    gameState.update([](model::GameState& state) { state.startTimer(); });
+
+    move_history_.clear();
+    move_history_index_ = -1;
+    last_valid_state_index_ = -1;
+
+    // Reset rating fields — import is unrated until analyzeDifficulty is called.
+    current_puzzle_rating_ = 0.0;
+    current_puzzle_techniques_.clear();
+    current_puzzle_requires_backtracking_ = false;
+    current_puzzle_origin_ = core::PuzzleOrigin::ImportedString;
+
+    // Start statistics session so the game is countable on completion.
+    startGameSession();
+
+    errorMessage.set("");
+    hintMessage.set("");
+    updateUIState();
+    spdlog::info("Imported puzzle accepted");
+}
+
+void GameViewModel::exportPuzzleAsString() {
+    if (!clipboard_ || !analyzer_) {
+        spdlog::warn("exportPuzzleAsString called without clipboard or analyzer wired");
+        return;
+    }
+    if (!isGameActive()) {
+        return;
+    }
+
+    // Export the original givens — that's the "puzzle" the user might want to paste
+    // elsewhere. The current_state (with user-entered values) isn't a puzzle anymore.
+    const auto givens = gameState.get().extractGivenNumbers();
+    const auto serialized = analyzer_->serializeToString(givens);
+    clipboard_->setText(serialized);
+    spdlog::info("Puzzle exported to clipboard ({} chars)", serialized.size());
+}
+
+void GameViewModel::enterEditMode() {
+    // Clear board to an all-empty state. No move history, no givens.
+    model::GameState empty_state;
+    empty_state.loadPuzzle(core::BoardData{});  // all zeros
+    empty_state.setDifficulty(core::Difficulty::Easy);
+
+    gameState.set(empty_state);
+    gameState.update([](model::GameState& state) { state.startTimer(); });
+
+    move_history_.clear();
+    move_history_index_ = -1;
+    last_valid_state_index_ = -1;
+
+    current_puzzle_rating_ = 0.0;
+    current_puzzle_techniques_.clear();
+    current_puzzle_requires_backtracking_ = false;
+    current_puzzle_origin_ = core::PuzzleOrigin::Generated;  // Final origin is set at commit time.
+
+    errorMessage.set("");
+    hintMessage.set("");
+
+    setInputMode(InputMode::EditGivens);
+    updateUIState();
+    spdlog::info("Entered EditGivens mode");
+}
+
+void GameViewModel::setEditModeGiven(const core::Position& pos, int value) {
+    if (getInputMode() != InputMode::EditGivens) {
+        return;
+    }
+    if (value < 0 || value > 9) {
+        return;
+    }
+
+    gameState.update([&pos, value](model::GameState& state) {
+        state.setValue(pos, value);
+        state.setGiven(pos, value != 0);  // Givens are exactly the filled cells in edit mode.
+    });
+}
+
+void GameViewModel::commitEditedPuzzle() {
+    if (getInputMode() != InputMode::EditGivens) {
+        return;
+    }
+    if (!analyzer_) {
+        errorMessage.set(std::string(core::loc("Sudoku", "Commit is not available (analyzer not wired)")));
+        return;
+    }
+
+    auto board = gameState.get().extractNumbers();
+
+    // Validate.
+    auto validation = analyzer_->validate(board);
+    if (!validation) {
+        errorMessage.set(std::string(core::loc("Sudoku", "Puzzle violates Sudoku rules")));
+        spdlog::warn("Edit-mode commit: validation failed ({} conflicting cells)",
+                     validation.error().conflicting_cells.size());
+        return;
+    }
+
+    // Uniqueness.
+    auto uniqueness = analyzer_->checkUniqueness(board);
+    if (uniqueness != core::UniquenessResult::Unique) {
+        errorMessage.set(std::string(core::loc("Sudoku", "Puzzle has multiple solutions")));
+        spdlog::warn("Edit-mode commit: uniqueness check returned {}", static_cast<int>(uniqueness));
+        return;
+    }
+
+    // Lock in the givens by reloading the board through loadPuzzle (sets the given flags).
+    model::GameState locked;
+    locked.loadPuzzle(board);
+    locked.setDifficulty(core::Difficulty::Easy);
+    gameState.set(locked);
+    gameState.update([](model::GameState& state) { state.startTimer(); });
+
+    move_history_.clear();
+    move_history_index_ = -1;
+    last_valid_state_index_ = -1;
+
+    current_puzzle_rating_ = 0.0;
+    current_puzzle_techniques_.clear();
+    current_puzzle_requires_backtracking_ = false;
+    current_puzzle_origin_ = core::PuzzleOrigin::ImportedEditMode;
+
+    startGameSession();
+    setInputMode(InputMode::Normal);
+    errorMessage.set("");
+    updateUIState();
+    spdlog::info("Edit-mode commit accepted");
+}
+
 void GameViewModel::analyzeDifficulty() {
     if (!analyzer_) {
         spdlog::warn("analyzeDifficulty called without an analyzer dependency wired");
