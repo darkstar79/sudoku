@@ -76,6 +76,7 @@
 #include "strategies/xy_wing_strategy.h"
 #include "strategies/xyz_wing_strategy.h"
 
+#include <chrono>
 #include <cstddef>
 #include <optional>
 #include <set>
@@ -85,7 +86,8 @@
 
 namespace sudoku::core {
 
-SudokuSolver::SudokuSolver(std::shared_ptr<IGameValidator> validator) : validator_(std::move(validator)) {
+SudokuSolver::SudokuSolver(std::shared_ptr<IGameValidator> validator, std::shared_ptr<ITimeProvider> time_provider)
+    : validator_(std::move(validator)), time_provider_(std::move(time_provider)) {
     initializeStrategies();
 }
 
@@ -228,6 +230,107 @@ std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardDa
     }
 
     return SolverResult{.solution = working_board, .solve_path = solve_path, .used_backtracking = used_backtracking};
+}
+
+std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardData& board,
+                                                                   std::chrono::milliseconds budget) const {
+    if (isComplete(board)) {
+        return SolverResult{.solution = board, .solve_path = {}, .used_backtracking = false};
+    }
+
+    const auto deadline = time_provider_->steadyNow() + budget;
+
+    auto working_board = board;
+    CandidateGrid candidates(working_board);
+    std::vector<SolveStep> solve_path;
+    bool used_backtracking = false;
+
+    constexpr int MAX_ITERATIONS = 200;
+    int iterations = 0;
+
+    while (!isComplete(working_board)) {
+        // Wall-clock check between strategy iterations (R2: granularity is fine — strategies run in sub-ms).
+        if (time_provider_->steadyNow() >= deadline) {
+            return std::unexpected(SolverError::Timeout);
+        }
+
+        if (++iterations > MAX_ITERATIONS) {
+            spdlog::warn("Solver hit iteration limit, using backtracking fallback");
+            if (!solveWithBacktracking(working_board)) {
+                return std::unexpected(SolverError::Unsolvable);
+            }
+            used_backtracking = true;
+            break;
+        }
+
+        auto step_result = findNextStep(working_board, candidates);
+
+        if (step_result.has_value()) {
+            auto& step = step_result.value();
+            bool applied = applyStep(working_board, candidates, step);
+            if (!applied) {
+                return std::unexpected(SolverError::Unsolvable);
+            }
+            solve_path.push_back(step);
+        } else {
+            if (!solveWithBacktracking(working_board)) {
+                return std::unexpected(SolverError::Unsolvable);
+            }
+            used_backtracking = true;
+            break;
+        }
+    }
+
+    return SolverResult{.solution = working_board, .solve_path = solve_path, .used_backtracking = used_backtracking};
+}
+
+std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const BoardData& board,
+                                                                 const BoardData& original_puzzle,
+                                                                 std::chrono::milliseconds budget) const {
+    if (isComplete(board)) {
+        return std::unexpected(SolverError::Unsolvable);
+    }
+
+    const auto deadline = time_provider_->steadyNow() + budget;
+
+    CandidateGrid candidates(board);
+    candidates.setGivensFromPuzzle(original_puzzle);
+
+    // Per-strategy wall-clock check. Each strategy is a black-box (R2 plan note), so we can
+    // only interrupt between calls — same granularity as the solvePuzzle loop.
+    for (const auto& strategy : strategies_) {
+        if (time_provider_->steadyNow() >= deadline) {
+            return std::unexpected(SolverError::Timeout);
+        }
+        auto step = strategy->findStep(board, candidates);
+        if (step.has_value()) {
+            return step.value();
+        }
+    }
+
+    return std::unexpected(SolverError::Unsolvable);
+}
+
+std::expected<SolveStep, SolverError> SudokuSolver::findNextStepByTechnique(const BoardData& board,
+                                                                            SolvingTechnique technique) const {
+    if (isComplete(board)) {
+        return std::unexpected(SolverError::Unsolvable);
+    }
+
+    CandidateGrid candidates(board);
+
+    for (const auto& strategy : strategies_) {
+        if (strategy->getTechnique() == technique) {
+            auto step = strategy->findStep(board, candidates);
+            if (step.has_value()) {
+                return step.value();
+            }
+            return std::unexpected(SolverError::Unsolvable);
+        }
+    }
+
+    // No strategy registered for this technique (e.g. SolvingTechnique::Backtracking sentinel).
+    return std::unexpected(SolverError::InvalidBoard);
 }
 
 bool SudokuSolver::applyStep(BoardData& board, const SolveStep& step) const {

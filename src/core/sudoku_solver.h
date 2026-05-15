@@ -21,7 +21,10 @@
 #include "i_game_validator.h"
 #include "i_solving_strategy.h"
 #include "i_sudoku_solver.h"
+#include "i_time_provider.h"
+#include "solving_technique.h"
 
+#include <chrono>
 #include <expected>
 #include <memory>
 #include <vector>
@@ -32,9 +35,12 @@ namespace sudoku::core {
 /// Chains strategies in difficulty order and falls back to backtracking if needed
 class SudokuSolver : public ISudokuSolver {
 public:
-    /// Constructor with dependency injection
-    /// @param validator Validator for checking board conflicts
-    explicit SudokuSolver(std::shared_ptr<IGameValidator> validator);
+    /// Constructor with dependency injection.
+    /// @param validator Validator for checking board conflicts.
+    /// @param time_provider Time source for budget-bearing overloads. Defaults to SystemTimeProvider
+    ///        so the no-budget call path stays drop-in compatible with existing callers.
+    explicit SudokuSolver(std::shared_ptr<IGameValidator> validator,
+                          std::shared_ptr<ITimeProvider> time_provider = std::make_shared<SystemTimeProvider>());
 
     [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const BoardData& board) const override;
 
@@ -45,7 +51,17 @@ public:
     [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const BoardData& board,
                                                                      const BoardData& original_puzzle) const override;
 
+    [[nodiscard]] std::expected<SolveStep, SolverError> findNextStep(const BoardData& board,
+                                                                     const BoardData& original_puzzle,
+                                                                     std::chrono::milliseconds budget) const override;
+
+    [[nodiscard]] std::expected<SolveStep, SolverError>
+    findNextStepByTechnique(const BoardData& board, SolvingTechnique technique) const override;
+
     [[nodiscard]] std::expected<SolverResult, SolverError> solvePuzzle(const BoardData& board) const override;
+
+    [[nodiscard]] std::expected<SolverResult, SolverError> solvePuzzle(const BoardData& board,
+                                                                       std::chrono::milliseconds budget) const override;
 
     [[nodiscard]] bool applyStep(BoardData& board, const SolveStep& step) const override;
 
@@ -53,6 +69,7 @@ public:
 
 private:
     std::shared_ptr<IGameValidator> validator_;
+    std::shared_ptr<ITimeProvider> time_provider_;
     std::vector<std::unique_ptr<ISolvingStrategy>> strategies_;
 
     /// Initializes strategy chain in difficulty order
