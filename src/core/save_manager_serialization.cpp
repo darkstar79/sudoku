@@ -42,7 +42,10 @@
 
 namespace {
 // Save file constants
-inline constexpr const char* SAVE_FILE_VERSION = "1.0";
+// Bumped 1.0 → 1.1 when PuzzleOrigin was added (PR3 of user-provided-puzzle feature).
+// Loaders still accept 1.0 saves; the missing `origin` key defaults to Generated for
+// backward compatibility (regression-tested in test_save_origin_integration.cpp).
+inline constexpr const char* SAVE_FILE_VERSION = "1.1";
 
 // Difficulty validation constants (min/max values for range checking)
 inline constexpr int MIN_DIFFICULTY = 0;  // Easy
@@ -80,6 +83,7 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
         YAML::Node puzzle_data;
         puzzle_data["difficulty"] = static_cast<int>(game.difficulty);
         puzzle_data["puzzle_seed"] = game.puzzle_seed;
+        puzzle_data["origin"] = static_cast<int>(game.origin);
 
         // Original puzzle
         puzzle_data["original_puzzle"] = BoardSerializer::serializeIntBoard(game.original_puzzle);
@@ -280,6 +284,23 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
         }
         if (puzzle_data["puzzle_seed"]) {
             game.puzzle_seed = puzzle_data["puzzle_seed"].as<uint32_t>();
+        }
+
+        // Origin (PR3): legacy saves omit this key — leave the SavedGame default (Generated).
+        // Unknown enum values fall back to Generated rather than failing the load.
+        if (puzzle_data["origin"]) {
+            const int origin_val = puzzle_data["origin"].as<int>();
+            switch (origin_val) {
+                case static_cast<int>(PuzzleOrigin::Generated):
+                case static_cast<int>(PuzzleOrigin::ImportedString):
+                case static_cast<int>(PuzzleOrigin::ImportedEditMode):
+                    game.origin = static_cast<PuzzleOrigin>(origin_val);
+                    break;
+                default:
+                    spdlog::warn("Unknown PuzzleOrigin value in save: {} — defaulting to Generated", origin_val);
+                    game.origin = PuzzleOrigin::Generated;
+                    break;
+            }
         }
 
         // Validate YAML board structure BEFORE deserialization
