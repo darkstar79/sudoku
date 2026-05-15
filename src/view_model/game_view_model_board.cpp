@@ -228,6 +228,17 @@ void GameViewModel::handleNumberInput(const core::Position& pos, int number) {
         return;
     }
     const auto& cell = state.getCell(pos);
+
+    // EditGivens is the one mode where "given" cells are still editable — the user is
+    // building the puzzle, not solving it. Handle it before the is_given guard.
+    if (getInputMode() == InputMode::EditGivens) {
+        // Tapping a digit on a cell already showing that digit clears it (toggle behaviour
+        // parallel to Normal mode's cell.value == number → clear).
+        const int new_value = (cell.value == number) ? 0 : number;
+        setEditModeGiven(pos, new_value);
+        return;
+    }
+
     if (cell.is_given) {
         return;
     }
@@ -249,6 +260,9 @@ void GameViewModel::handleNumberInput(const core::Position& pos, int number) {
             if (number <= 6) {
                 colorCell(pos, static_cast<uint8_t>(number));
             }
+            break;
+        case InputMode::EditGivens:
+            // Handled above.
             break;
     }
 }
