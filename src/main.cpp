@@ -26,10 +26,12 @@
 #include "core/i_time_provider.h"
 #include "core/i_training_exercise_generator.h"
 #include "core/i_training_statistics_manager.h"
+#include "core/puzzle_analyzer.h"
 #include "core/puzzle_generator.h"
 #include "core/puzzle_rater.h"
 #include "core/save_manager.h"
 #include "core/settings_manager.h"
+#include "core/solution_counter.h"
 #include "core/statistics_manager.h"
 #include "core/sudoku_solver.h"
 #include "core/training_exercise_generator.h"
@@ -69,6 +71,16 @@ void setupDependencies() {
     container.registerSingleton<sudoku::core::ISudokuSolver>([&container]() {
         auto validator = container.resolve<sudoku::core::IGameValidator>();
         return std::make_unique<sudoku::core::SudokuSolver>(validator);
+    });
+
+    container.registerSingleton<sudoku::core::SolutionCounter>(
+        []() { return std::make_unique<sudoku::core::SolutionCounter>(); });
+
+    container.registerSingleton<sudoku::core::IPuzzleAnalyzer>([&container]() {
+        auto validator = container.resolve<sudoku::core::IGameValidator>();
+        auto solver = container.resolve<sudoku::core::ISudokuSolver>();
+        auto counter = container.resolve<sudoku::core::SolutionCounter>();
+        return std::make_unique<sudoku::core::PuzzleAnalyzer>(validator, solver, counter);
     });
 
     container.registerSingleton<sudoku::core::IPuzzleRater>([&container]() {
