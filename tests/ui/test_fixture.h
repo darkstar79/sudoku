@@ -9,12 +9,15 @@
 #pragma once
 
 #include "core/game_validator.h"
+#include "core/puzzle_analyzer.h"
 #include "core/puzzle_generator.h"
 #include "core/puzzle_rater.h"
 #include "core/save_manager.h"
+#include "core/solution_counter.h"
 #include "core/statistics_manager.h"
 #include "core/sudoku_solver.h"
 #include "core/training_exercise_generator.h"
+#include "helpers/in_memory_clipboard_provider.h"
 #include "view/main_window.h"
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
@@ -32,6 +35,8 @@ struct UITestContext {
     std::shared_ptr<core::ISudokuSolver> solver;
     std::shared_ptr<core::ISaveManager> save_manager;
     std::shared_ptr<core::IStatisticsManager> stats_manager;
+    std::shared_ptr<core::IPuzzleAnalyzer> analyzer;
+    std::shared_ptr<InMemoryClipboardProvider> clipboard;
     std::shared_ptr<viewmodel::GameViewModel> game_vm;
     std::shared_ptr<viewmodel::TrainingViewModel> training_vm;
     std::filesystem::path test_dir;
@@ -47,8 +52,12 @@ struct UITestContext {
         generator = std::make_shared<core::PuzzleGenerator>(rater);
         save_manager = std::make_shared<core::SaveManager>(test_dir.string());
         stats_manager = std::make_shared<core::StatisticsManager>(test_dir.string());
+        auto counter = std::make_shared<core::SolutionCounter>();
+        analyzer = std::make_shared<core::PuzzleAnalyzer>(validator, solver, counter);
+        clipboard = std::make_shared<InMemoryClipboardProvider>();
 
-        game_vm = std::make_shared<viewmodel::GameViewModel>(validator, generator, solver, stats_manager, save_manager);
+        game_vm = std::make_shared<viewmodel::GameViewModel>(validator, generator, solver, stats_manager, save_manager,
+                                                             /*settings_manager=*/nullptr, analyzer, clipboard);
 
         auto exercise_gen = std::make_shared<core::TrainingExerciseGenerator>(generator, solver);
         training_vm = std::make_shared<viewmodel::TrainingViewModel>(exercise_gen);

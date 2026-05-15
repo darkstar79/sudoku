@@ -148,6 +148,7 @@ private:
     void setupAutoSaveTimer();
 
     // Dialog handlers
+    void showImportPuzzleDialog();
     void showNewGameDialog();
     void showResetDialog();
     void showSaveDialog();
