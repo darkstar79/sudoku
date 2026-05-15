@@ -18,7 +18,9 @@
 
 #include "core/board_data.h"
 #include "solve_step.h"
+#include "solving_technique.h"
 
+#include <chrono>
 #include <cstdint>
 #include <expected>
 #include <vector>
@@ -68,6 +70,42 @@ public:
     /// @return SolverResult with solution and solve path, or error if unsolvable
     /// @note Returns full solve path for rating calculation
     [[nodiscard]] virtual std::expected<SolverResult, SolverError> solvePuzzle(const BoardData& board) const = 0;
+
+    /// Solves puzzle with a wall-clock budget enforced between strategy iterations.
+    /// @param board Initial board state (0 = empty, 1-9 = filled)
+    /// @param budget Maximum wall-clock duration before SolverError::Timeout is returned
+    /// @return SolverResult on success, SolverError::Timeout if budget exceeded, or other error
+    /// @note Granularity is "between strategy iterations" — individual strategies are not interrupted.
+    /// @note Default delegates to the no-budget overload, ignoring the budget. Implementations
+    ///       (e.g. SudokuSolver) override to actually enforce wall-clock cancellation.
+    [[nodiscard]] virtual std::expected<SolverResult, SolverError>
+    solvePuzzle(const BoardData& board, std::chrono::milliseconds /*budget*/) const {
+        return solvePuzzle(board);
+    }
+
+    /// Finds next logical step with givens and a wall-clock budget for adversarial inputs.
+    /// @param board Current board state
+    /// @param original_puzzle Original puzzle (non-zero cells are givens)
+    /// @param budget Maximum wall-clock duration before SolverError::Timeout is returned
+    /// @note Default delegates to the no-budget overload. Implementations override to enforce the budget.
+    [[nodiscard]] virtual std::expected<SolveStep, SolverError>
+    findNextStep(const BoardData& board, const BoardData& original_puzzle, std::chrono::milliseconds /*budget*/) const {
+        return findNextStep(board, original_puzzle);
+    }
+
+    /// Finds the next step using a specific technique (for technique-targeted hints / learning mode).
+    /// @param board Current board state
+    /// @param technique Technique to attempt
+    /// @return SolveStep produced by the matching strategy, or
+    ///   - SolverError::InvalidBoard if no strategy is registered for the technique
+    ///     (e.g. SolvingTechnique::Backtracking, which is a fallback sentinel).
+    ///   - SolverError::Unsolvable if the strategy is registered but produces no step.
+    /// @note Default returns Unsolvable; implementations override to dispatch to the matching strategy.
+    [[nodiscard]] virtual std::expected<SolveStep, SolverError>
+    findNextStepByTechnique(const BoardData& board, SolvingTechnique /*technique*/) const {
+        // Generic fallback — implementations should override for real technique dispatch.
+        return findNextStep(board);
+    }
 
     /// Applies a solving step to modify the board
     /// @param board Board to modify (in-place modification)

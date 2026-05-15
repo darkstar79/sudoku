@@ -26,6 +26,10 @@ namespace sudoku::core {
 
 /// Sudoku solving techniques ordered by difficulty.
 /// Ratings based on the Sudoku Explainer (SE) scale by Nicolas Juillerat.
+///
+/// IMPORTANT: enum values are pinned for save-file stability. Do not reorder,
+/// re-number, or remove values — saved games persist these as integers and
+/// renumbering will silently corrupt loaded games.
 enum class SolvingTechnique : uint8_t {
     NakedSingle = 0,             ///< Only one candidate in cell (SE 2.3)
     HiddenSingle = 1,            ///< Value can only appear in one cell in region (SE 1.5)
