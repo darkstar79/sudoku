@@ -9,6 +9,7 @@ set(UI_TEST_SOURCES
     test_training_widget.cpp
     test_language_change.cpp
     test_import_dialog.cpp
+    test_edit_mode.cpp
 )
 
 foreach(TEST_SOURCE ${UI_TEST_SOURCES})

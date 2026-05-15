@@ -49,6 +49,7 @@ class TestKeyboardHandling;
 class TestMenuToolbarActions;
 class TestViewModelBinding;
 class TestTrainingWidget;
+class TestEditMode;
 #endif
 
 namespace sudoku::view {
@@ -130,6 +131,7 @@ private:
     QPushButton* undo_valid_btn_{nullptr};
     QPushButton* auto_notes_btn_{nullptr};
     QPushButton* mode_btn_{nullptr};
+    QAction* done_editing_action_{nullptr};
 
     // Timers
     QTimer* auto_save_timer_{nullptr};
@@ -149,6 +151,8 @@ private:
 
     // Dialog handlers
     void showImportPuzzleDialog();
+    void enterEditPuzzleMode();
+    void commitEditedPuzzle();
     void showNewGameDialog();
     void showResetDialog();
     void showSaveDialog();
@@ -180,6 +184,7 @@ private:
     friend class ::TestMenuToolbarActions;
     friend class ::TestViewModelBinding;
     friend class ::TestTrainingWidget;
+    friend class ::TestEditMode;
 #endif
 };
 
