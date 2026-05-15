@@ -28,6 +28,16 @@
 
 namespace sudoku::core {
 
+/// Where a puzzle came from. Persisted to the save format so completed games can be
+/// bucketed correctly in statistics (Generated puzzles vs. user-imported puzzles).
+///
+/// Values are pinned for save-file stability — do not renumber.
+enum class PuzzleOrigin : std::uint8_t {
+    Generated = 0,         ///< Created by PuzzleGenerator. Default for legacy / unmarked saves.
+    ImportedString = 1,    ///< Imported via paste-string dialog.
+    ImportedEditMode = 2,  ///< Imported via the board widget's Edit mode.
+};
+
 /// Represents a saved game state
 struct SavedGame {
     // Game identification
@@ -43,6 +53,10 @@ struct SavedGame {
     HintMaskData hint_revealed_cells;  // 9x9 grid of hint-revealed flags
     Difficulty difficulty{};
     uint32_t puzzle_seed{};
+
+    /// Where this puzzle came from — generator or user import. Default Generated so legacy
+    /// saves (and any code path that builds a SavedGame without setting this) stay correct.
+    PuzzleOrigin origin{PuzzleOrigin::Generated};
 
     // Game progress
     std::chrono::milliseconds elapsed_time{0};
