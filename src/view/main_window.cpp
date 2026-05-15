@@ -40,6 +40,7 @@
 #include <utility>
 #include <vector>
 
+#include <QApplication>
 #include <QCheckBox>
 #include <QCloseEvent>
 #include <QComboBox>
@@ -293,6 +294,8 @@ void MainWindow::setupMenuBar() {
 
     game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Edit Custom Puzzle"))), QKeySequence("Ctrl+E"),
                          this, &MainWindow::enterEditPuzzleMode);
+
+    game_menu->addAction(qstr(core::loc("Sudoku", "Analyze Difficulty")), this, &MainWindow::analyzeDifficulty);
 
     game_menu->addSeparator();
 
@@ -864,6 +867,22 @@ void MainWindow::commitEditedPuzzle() {
         return;
     }
     view_model_->commitEditedPuzzle();
+    const auto& err = view_model_->errorMessage.get();
+    if (!err.empty() && toast_widget_) {
+        toast_widget_->show(qstr(err));
+    }
+}
+
+void MainWindow::analyzeDifficulty() {
+    if (!view_model_) {
+        return;
+    }
+    if (!view_model_->isGameActive()) {
+        return;
+    }
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    view_model_->analyzeDifficulty();
+    QApplication::restoreOverrideCursor();
     const auto& err = view_model_->errorMessage.get();
     if (!err.empty() && toast_widget_) {
         toast_widget_->show(qstr(err));
