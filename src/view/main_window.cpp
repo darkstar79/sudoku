@@ -291,6 +291,9 @@ void MainWindow::setupMenuBar() {
     game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Import Custom Puzzle…"))), QKeySequence("Ctrl+I"),
                          this, &MainWindow::showImportPuzzleDialog);
 
+    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Edit Custom Puzzle"))), QKeySequence("Ctrl+E"),
+                         this, &MainWindow::enterEditPuzzleMode);
+
     game_menu->addSeparator();
 
     game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Training Mode"))), this,
@@ -347,11 +350,19 @@ void MainWindow::setupMenuBar() {
     edit_menu->addSeparator();
     edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Clear Cell"))), QKeySequence("Delete"), this,
                          [this]() {
-                             if (view_model_) {
-                                 auto pos = board_widget_->selectedCell();
-                                 if (pos.has_value()) {
-                                     view_model_->clearCell(pos.value());
-                                 }
+                             if (!view_model_) {
+                                 return;
+                             }
+                             auto pos = board_widget_->selectedCell();
+                             if (!pos.has_value()) {
+                                 return;
+                             }
+                             // clearCell is blocked on given cells; edit-mode givens
+                             // need their own clear path.
+                             if (view_model_->getInputMode() == viewmodel::InputMode::EditGivens) {
+                                 view_model_->setEditModeGiven(pos.value(), 0);
+                             } else {
+                                 view_model_->clearCell(pos.value());
                              }
                          });
 
@@ -439,6 +450,12 @@ void MainWindow::setupToolBar() {
     connect(rating_btn_, &QPushButton::clicked, this, &MainWindow::showTechniquesDialog);
     rating_action_ = toolbar->addWidget(rating_btn_);
     rating_action_->setVisible(false);
+
+    toolbar->addSeparator();
+
+    done_editing_action_ =
+        toolbar->addAction(qstr(core::loc("Sudoku", "Done Editing")), this, &MainWindow::commitEditedPuzzle);
+    done_editing_action_->setVisible(false);
 }
 
 void MainWindow::setupStatusBar() {
@@ -682,10 +699,19 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
     if (key == Qt::Key_Delete || key == Qt::Key_Backspace || key == Qt::Key_0) {
         auto edit_pos = board_widget_->selectedCell();
         if (edit_pos.has_value()) {
-            if (view_model_->getInputMode() == viewmodel::InputMode::Color) {
-                view_model_->colorCell(edit_pos.value(), 0);  // Clear color
-            } else {
-                view_model_->clearCell(edit_pos.value());
+            switch (view_model_->getInputMode()) {
+                case viewmodel::InputMode::Color:
+                    view_model_->colorCell(edit_pos.value(), 0);  // Clear color
+                    break;
+                case viewmodel::InputMode::EditGivens:
+                    // clearCell is blocked on given cells; edit-mode givens need
+                    // their own clear path.
+                    view_model_->setEditModeGiven(edit_pos.value(), 0);
+                    break;
+                case viewmodel::InputMode::Normal:
+                case viewmodel::InputMode::Notes:
+                    view_model_->clearCell(edit_pos.value());
+                    break;
             }
         }
         return;
@@ -749,6 +775,8 @@ void MainWindow::updateToolBar() {
     } else {
         rating_action_->setVisible(false);
     }
+
+    done_editing_action_->setVisible(ui_state.input_mode == viewmodel::InputMode::EditGivens);
 }
 
 void MainWindow::updateButtonPanel() {
@@ -811,6 +839,35 @@ void MainWindow::showImportPuzzleDialog() {
         }
     });
     dialog->show();
+}
+
+void MainWindow::enterEditPuzzleMode() {
+    if (!view_model_) {
+        return;
+    }
+
+    if (view_model_->isGameActive() && view_model_->isGameStateDirty()) {
+        auto answer =
+            QMessageBox::question(this, qstr(core::loc("Sudoku", "Edit Custom Puzzle")),
+                                  qstr(core::loc("Sudoku", "Editing replaces your current puzzle. Continue?")));
+        if (answer != QMessageBox::Yes) {
+            return;
+        }
+    }
+
+    view_model_->enterEditMode();
+    board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
+}
+
+void MainWindow::commitEditedPuzzle() {
+    if (!view_model_) {
+        return;
+    }
+    view_model_->commitEditedPuzzle();
+    const auto& err = view_model_->errorMessage.get();
+    if (!err.empty() && toast_widget_) {
+        toast_widget_->show(qstr(err));
+    }
 }
 
 void MainWindow::showNewGameDialog() {
