@@ -22,6 +22,7 @@
 #include "core/observable.h"
 #include "infrastructure/app_directory_manager.h"
 #include "model/game_state.h"
+#include "puzzle_import_dialog.h"
 #include "style_colors.h"
 #include "sudoku_board_widget.h"
 #include "toast_widget.h"
@@ -284,6 +285,11 @@ void MainWindow::setupMenuBar() {
                          &MainWindow::showSaveDialog);
     game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Load"))), QKeySequence("Ctrl+O"), this,
                          &MainWindow::showLoadDialog);
+
+    game_menu->addSeparator();
+
+    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Import Custom Puzzle…"))), QKeySequence("Ctrl+I"),
+                         this, &MainWindow::showImportPuzzleDialog);
 
     game_menu->addSeparator();
 
@@ -764,6 +770,9 @@ void MainWindow::updateButtonPanel() {
         case viewmodel::InputMode::Color:
             mode_btn_->setText(qstr(core::loc("Sudoku", "Color")));
             break;
+        case viewmodel::InputMode::EditGivens:
+            mode_btn_->setText(qstr(core::loc("Sudoku", "Edit")));
+            break;
     }
 
     // Update fill notes toggle state
@@ -774,6 +783,35 @@ void MainWindow::updateButtonPanel() {
 }
 
 // Dialog methods
+
+void MainWindow::showImportPuzzleDialog() {
+    if (!view_model_) {
+        return;
+    }
+
+    if (view_model_->isGameActive() && view_model_->isGameStateDirty()) {
+        auto answer =
+            QMessageBox::question(this, qstr(core::loc("Sudoku", "Import Custom Puzzle")),
+                                  qstr(core::loc("Sudoku", "Importing replaces your current puzzle. Continue?")));
+        if (answer != QMessageBox::Yes) {
+            return;
+        }
+    }
+
+    auto* dialog = new PuzzleImportDialog(this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dialog, &PuzzleImportDialog::importRequested, this, [this, dialog](const QString& text) {
+        view_model_->importPuzzleFromString(text.toStdString());
+        const auto& err = view_model_->errorMessage.get();
+        if (err.empty()) {
+            board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
+            dialog->accept();
+        } else {
+            dialog->setErrorMessage(qstr(err));
+        }
+    });
+    dialog->show();
+}
 
 void MainWindow::showNewGameDialog() {
     if (!view_model_) {
