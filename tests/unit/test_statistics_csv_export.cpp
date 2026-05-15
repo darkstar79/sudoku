@@ -81,19 +81,19 @@ public:
 
             // Record some moves
             for (int j = 0; j < 10 + i; ++j) {
-                stats_manager_.recordMove(session_id, j % 3 == 0);  // Every 3rd is mistake
+                (void)stats_manager_.recordMove(session_id, j % 3 == 0);  // Every 3rd is mistake
             }
 
             // Record hints
             for (int j = 0; j < i % 3; ++j) {
-                stats_manager_.recordHint(session_id);
+                (void)stats_manager_.recordHint(session_id);
             }
 
             // Advance time
             mock_time_->advanceSystemTime(milliseconds((i + 1) * 60000));  // i+1 minutes
 
             // End game (alternate completed/incomplete)
-            stats_manager_.endGame(session_id, i % 2 == 0);
+            (void)stats_manager_.endGame(session_id, i % 2 == 0);
         }
     }
 
@@ -245,10 +245,10 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV timestamp format
     REQUIRE(session_id_result.has_value());
 
     auto session_id = session_id_result.value();
-    stats_manager_.recordMove(session_id, false);
+    (void)stats_manager_.recordMove(session_id, false);
 
     mock_time_->advanceSystemTime(minutes(5));
-    stats_manager_.endGame(session_id, true);
+    (void)stats_manager_.endGame(session_id, true);
 
     // Export sessions
     auto export_path = test_dir_.path() / "sessions_timestamp.csv";
@@ -303,14 +303,14 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Aggregate CSV comple
     for (int i = 0; i < 3; ++i) {
         auto session_id = stats_manager_.startGame(Difficulty::Easy, 1000 + i);
         REQUIRE(session_id.has_value());
-        stats_manager_.endGame(session_id.value(), true);
+        (void)stats_manager_.endGame(session_id.value(), true);
     }
 
     // Medium: 4 played, 2 completed (50%)
     for (int i = 0; i < 4; ++i) {
         auto session_id = stats_manager_.startGame(Difficulty::Medium, 2000 + i);
         REQUIRE(session_id.has_value());
-        stats_manager_.endGame(session_id.value(), i < 2);
+        (void)stats_manager_.endGame(session_id.value(), i < 2);
     }
 
     // Export aggregate stats
@@ -353,7 +353,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Rating statistics ag
     for (int rating : easy_ratings) {
         auto session_id = stats_manager_.startGame(Difficulty::Easy, 1000, rating);
         REQUIRE(session_id.has_value());
-        stats_manager_.endGame(session_id.value(), true);
+        (void)stats_manager_.endGame(session_id.value(), true);
     }
 
     // Create Medium games with different ratings
@@ -361,7 +361,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Rating statistics ag
     for (int rating : medium_ratings) {
         auto session_id = stats_manager_.startGame(Difficulty::Medium, 2000, rating);
         REQUIRE(session_id.has_value());
-        stats_manager_.endGame(session_id.value(), true);
+        (void)stats_manager_.endGame(session_id.value(), true);
     }
 
     // Get aggregate stats
