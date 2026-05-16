@@ -5,6 +5,7 @@ on:
     branches: [ main, develop, 'feature/**', 'ci/**' ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -152,3 +153,67 @@ jobs:
             coverage.xml
             coverage_report.html
           retention-days: 30
+
+  build-windows:
+    name: Build & Test (Windows)
+    runs-on: windows-2025
+    needs: format-check
+    # Run only on pushes to main or on manual trigger — not on every
+    # feature-branch push. The project doesn't accept external PRs, so the
+    # cost of Windows runner minutes per feature push isn't worth it.
+    # Final platform gate before tag is the maintainer's Win11 smoke-test.
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: win64_msvc2022_64
+
+      - name: Set QT6_DIR
+        run: echo "QT6_DIR=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+        shell: bash
+
+      - name: Install Conan
+        run: |
+          pip install conan
+          conan profile detect --force
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-windows-release-${{ hashFiles('conanfile.py') }}
+          restore-keys: conan-windows-release-
+
+      - name: Install dependencies
+        run: conan install . --build=missing --output-folder=build/Release -s build_type=Release
+
+      - name: Configure CMake
+        run: |
+          call build\Release\generators\conanbuild.bat
+          cmake -S . -B build/Release ^
+            -G Ninja ^
+            -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            "-DCMAKE_PREFIX_PATH=%QT6_DIR%"
+        shell: cmd
+
+      - name: Build
+        run: cmake --build build/Release --config Release
+
+      - name: Run unit tests
+        run: build\Release\bin\tests\unit_tests.exe
+        shell: cmd
+
+      - name: Run integration tests
+        run: build\Release\bin\tests\integration_tests.exe
+        shell: cmd
