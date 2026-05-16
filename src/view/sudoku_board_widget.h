@@ -60,7 +60,7 @@ public:
     explicit SudokuBoardWidget(BoardPainter::Config config, QWidget* parent = nullptr);
 
     /// Set the board data to render
-    void setBoard(const BoardRenderData& data);
+    void setBoard(const BoardRenderData& render_data);
 
     /// Clear the board (shows "no game loaded" state)
     void clearBoard();
