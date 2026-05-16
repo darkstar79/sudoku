@@ -5,9 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] — 2026-05
+## [Unreleased]
 
-First tagged release. Adds the custom-puzzle feature suite on top of the generated-puzzle baseline.
+> Planned as the **1.0.0** release — not yet tagged. The release process is still being established (see [CONTRIBUTING.md](CONTRIBUTING.md#releases)); until then, downstream builds on the openSUSE Build Service use date-stamped snapshots (`YYYYMMDD+git.<sha>`). The heading below will be promoted to `## [1.0.0] — YYYY-MM-DD` when the tag is cut.
+
+First tagged release (in preparation). Adds the custom-puzzle feature suite on top of the generated-puzzle baseline.
 
 ### Added — Custom puzzles
 
