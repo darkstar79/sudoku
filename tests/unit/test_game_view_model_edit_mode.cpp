@@ -24,11 +24,9 @@
 #include "../../src/core/sudoku_solver.h"
 #include "../../src/view_model/game_view_model.h"
 #include "../helpers/test_utils.h"
+#include "../helpers/timeout_score_analyzer.h"
 
-#include <chrono>
-#include <expected>
 #include <memory>
-#include <string_view>
 #include <utility>
 
 #include <catch2/catch_test_macros.hpp>
@@ -67,49 +65,19 @@ struct EditModeFixture {
     }
 
     // Lay down the same easy 81-cell board via the edit-mode API.
-    void layDownEasyPuzzle();
-};
-
-/// Wraps a real IPuzzleAnalyzer and forces scoreDifficulty to return ScoringError::Timeout.
-/// Drives the auto-analysis timeout-swallow path deterministically without depending on
-/// wall-clock against an adversarial board.
-class TimeoutScoreWrapper : public IPuzzleAnalyzer {
-public:
-    explicit TimeoutScoreWrapper(std::shared_ptr<IPuzzleAnalyzer> inner) : inner_(std::move(inner)) {
-    }
-    [[nodiscard]] std::expected<BoardData, ParseErrorDetail> parseString(std::string_view input) const override {
-        return inner_->parseString(input);
-    }
-    [[nodiscard]] std::string serializeToString(const BoardData& board) const override {
-        return inner_->serializeToString(board);
-    }
-    [[nodiscard]] std::expected<void, BoardValidationError> validate(const BoardData& board) const override {
-        return inner_->validate(board);
-    }
-    [[nodiscard]] UniquenessResult checkUniqueness(const BoardData& board) const override {
-        return inner_->checkUniqueness(board);
-    }
-    [[nodiscard]] std::expected<DifficultyScore, ScoringError>
-    scoreDifficulty(const BoardData& /*board*/, std::chrono::milliseconds /*budget*/) const override {
-        return std::unexpected(ScoringError::Timeout);
-    }
-
-private:
-    std::shared_ptr<IPuzzleAnalyzer> inner_;
-};
-
-inline void EditModeFixture::layDownEasyPuzzle() {
-    constexpr int easy[81] = {0, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7,
-                              8, 5, 9, 7, 6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6,
-                              9, 6, 1, 5, 3, 7, 2, 8, 4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9};
-    for (size_t i = 0; i < 81; ++i) {
-        const size_t r = i / 9;
-        const size_t c = i % 9;
-        if (easy[i] != 0) {
-            view_model->setEditModeGiven({.row = r, .col = c}, easy[i]);
+    void layDownEasyPuzzle() {
+        constexpr int easy[81] = {0, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7,
+                                  8, 5, 9, 7, 6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6,
+                                  9, 6, 1, 5, 3, 7, 2, 8, 4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9};
+        for (size_t i = 0; i < 81; ++i) {
+            const size_t r = i / 9;
+            const size_t c = i % 9;
+            if (easy[i] != 0) {
+                view_model->setEditModeGiven({.row = r, .col = c}, easy[i]);
+            }
         }
     }
-}
+};
 
 }  // namespace
 
@@ -261,7 +229,7 @@ TEST_CASE("commitEditedPuzzle silently swallows scoring timeout", "[game_view_mo
     auto inner = std::make_shared<PuzzleAnalyzer>(std::make_shared<GameValidator>(),
                                                   std::make_shared<SudokuSolver>(std::make_shared<GameValidator>()),
                                                   std::make_shared<SolutionCounter>());
-    auto timeout_analyzer = std::make_shared<TimeoutScoreWrapper>(inner);
+    auto timeout_analyzer = std::make_shared<sudoku::test::TimeoutScoreAnalyzer>(inner);
     EditModeFixture fixture(timeout_analyzer);
 
     fixture.view_model->enterEditMode();

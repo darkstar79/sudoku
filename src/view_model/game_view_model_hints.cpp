@@ -435,13 +435,14 @@ void GameViewModel::applyDifficultyScore(const core::BoardData& board) {
                 // toast would conflate two outcomes.
                 spdlog::info("Auto-analysis timed out after {} ms; rating left unknown", elapsed_ms);
                 break;
+            // Callers must validate + check uniqueness before calling. Reaching either of the
+            // arms below post-validation means the strategy chain disagrees with the
+            // validator/solution-counter — a real bug worth catching, but not user-facing.
             case core::ScoringError::NoSolution:
+                spdlog::warn("Auto-analysis returned NoSolution post-validation — unexpected");
+                break;
             case core::ScoringError::InvalidInput:
-                // Caller must validate + check uniqueness before calling. Reaching either of
-                // these arms post-validation means the strategy chain disagrees with the
-                // validator/solution-counter — a real bug worth catching, but not user-facing.
-                spdlog::warn("Auto-analysis returned {} post-validation — unexpected",
-                             score.error() == core::ScoringError::NoSolution ? "NoSolution" : "InvalidInput");
+                spdlog::warn("Auto-analysis returned InvalidInput post-validation — unexpected");
                 break;
         }
         return;
