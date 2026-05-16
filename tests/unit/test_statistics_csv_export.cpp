@@ -213,6 +213,9 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV export with no g
 
 TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV export error handling for invalid path",
                  "[statistics][csv_export][error]") {
+#ifdef _WIN32
+    SKIP("Windows does not honour POSIX read-only directory permissions via std::filesystem");
+#else
     using namespace sudoku::core;
 
     // Try to export to read-only directory
@@ -228,6 +231,7 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV export error han
 
     // Restore permissions for cleanup
     fs::permissions(readonly_dir, fs::perms::owner_all);
+#endif
 }
 
 TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - CSV timestamp formatting validation",
