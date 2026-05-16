@@ -25,7 +25,11 @@
 #include "../../src/view_model/game_view_model.h"
 #include "../helpers/test_utils.h"
 
+#include <chrono>
+#include <expected>
 #include <memory>
+#include <string_view>
+#include <utility>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -46,32 +50,66 @@ struct EditModeFixture {
     std::shared_ptr<IPuzzleAnalyzer> analyzer;
     std::unique_ptr<GameViewModel> view_model;
 
-    EditModeFixture() {
+    explicit EditModeFixture(std::shared_ptr<IPuzzleAnalyzer> custom_analyzer = nullptr) {
         validator = std::make_shared<GameValidator>();
         generator = std::make_shared<PuzzleGenerator>();
         solver = std::make_shared<SudokuSolver>(validator);
         counter = std::make_shared<SolutionCounter>();
         stats_manager = std::make_shared<StatisticsManager>(temp_dir.path());
         save_manager = std::make_shared<SaveManager>(temp_dir.path());
-        analyzer = std::make_shared<PuzzleAnalyzer>(validator, solver, counter);
+        if (custom_analyzer) {
+            analyzer = std::move(custom_analyzer);
+        } else {
+            analyzer = std::make_shared<PuzzleAnalyzer>(validator, solver, counter);
+        }
         view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
                                                      /*settings_manager*/ nullptr, analyzer);
     }
 
-    // Lay down the kEasyImport board's givens via the edit-mode API.
-    void layDownEasyPuzzle() {
-        constexpr int easy[81] = {0, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7,
-                                  8, 5, 9, 7, 6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6,
-                                  9, 6, 1, 5, 3, 7, 2, 8, 4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9};
-        for (size_t i = 0; i < 81; ++i) {
-            const size_t r = i / 9;
-            const size_t c = i % 9;
-            if (easy[i] != 0) {
-                view_model->setEditModeGiven({.row = r, .col = c}, easy[i]);
-            }
+    // Lay down the same easy 81-cell board via the edit-mode API.
+    void layDownEasyPuzzle();
+};
+
+/// Wraps a real IPuzzleAnalyzer and forces scoreDifficulty to return ScoringError::Timeout.
+/// Drives the auto-analysis timeout-swallow path deterministically without depending on
+/// wall-clock against an adversarial board.
+class TimeoutScoreWrapper : public IPuzzleAnalyzer {
+public:
+    explicit TimeoutScoreWrapper(std::shared_ptr<IPuzzleAnalyzer> inner) : inner_(std::move(inner)) {
+    }
+    [[nodiscard]] std::expected<BoardData, ParseErrorDetail> parseString(std::string_view input) const override {
+        return inner_->parseString(input);
+    }
+    [[nodiscard]] std::string serializeToString(const BoardData& board) const override {
+        return inner_->serializeToString(board);
+    }
+    [[nodiscard]] std::expected<void, BoardValidationError> validate(const BoardData& board) const override {
+        return inner_->validate(board);
+    }
+    [[nodiscard]] UniquenessResult checkUniqueness(const BoardData& board) const override {
+        return inner_->checkUniqueness(board);
+    }
+    [[nodiscard]] std::expected<DifficultyScore, ScoringError>
+    scoreDifficulty(const BoardData& /*board*/, std::chrono::milliseconds /*budget*/) const override {
+        return std::unexpected(ScoringError::Timeout);
+    }
+
+private:
+    std::shared_ptr<IPuzzleAnalyzer> inner_;
+};
+
+inline void EditModeFixture::layDownEasyPuzzle() {
+    constexpr int easy[81] = {0, 3, 4, 6, 7, 8, 9, 1, 2, 6, 7, 2, 1, 9, 5, 3, 4, 8, 1, 9, 8, 3, 4, 2, 5, 6, 7,
+                              8, 5, 9, 7, 6, 1, 4, 2, 3, 4, 2, 6, 8, 5, 3, 7, 9, 1, 7, 1, 3, 9, 2, 4, 8, 5, 6,
+                              9, 6, 1, 5, 3, 7, 2, 8, 4, 2, 8, 7, 4, 1, 9, 6, 3, 5, 3, 4, 5, 2, 8, 6, 1, 7, 9};
+    for (size_t i = 0; i < 81; ++i) {
+        const size_t r = i / 9;
+        const size_t c = i % 9;
+        if (easy[i] != 0) {
+            view_model->setEditModeGiven({.row = r, .col = c}, easy[i]);
         }
     }
-};
+}
 
 }  // namespace
 
@@ -195,4 +233,47 @@ TEST_CASE("enterEditMode finalizes the prior active game session as abandoned", 
     REQUIRE(after.has_value());
     REQUIRE(after->games_played[static_cast<int>(core::Difficulty::Easy)] == played_before + 1);
     REQUIRE(after->games_completed[static_cast<int>(core::Difficulty::Easy)] == completed_before);
+}
+
+// Auto-analysis: a successful commit synchronously scores the new puzzle and publishes the
+// rating + technique set to UIState. Makes edited puzzles consistent with generated puzzles
+// (which arrive pre-rated from the generator).
+TEST_CASE("commitEditedPuzzle auto-populates puzzle rating + techniques", "[game_view_model][edit_mode][rating]") {
+    EditModeFixture fixture;
+    fixture.view_model->enterEditMode();
+    fixture.layDownEasyPuzzle();
+
+    fixture.view_model->commitEditedPuzzle();
+
+    REQUIRE(fixture.view_model->errorMessage.get().empty());
+    REQUIRE(fixture.view_model->isGameActive());
+
+    const auto& ui = fixture.view_model->uiState.get();
+    REQUIRE(ui.puzzle_rating > 0.0);
+    REQUIRE_FALSE(ui.puzzle_techniques.empty());
+}
+
+// Timeout swallowing: a committed adversarial puzzle could exceed the 1 s scoring budget.
+// The commit itself still succeeds (validated + unique), the user sees no error toast, and
+// the rating stays at its default (0 = "unknown") rather than fabricating a misleading toast
+// on what is otherwise a successful commit.
+TEST_CASE("commitEditedPuzzle silently swallows scoring timeout", "[game_view_model][edit_mode][rating][timeout]") {
+    auto inner = std::make_shared<PuzzleAnalyzer>(std::make_shared<GameValidator>(),
+                                                  std::make_shared<SudokuSolver>(std::make_shared<GameValidator>()),
+                                                  std::make_shared<SolutionCounter>());
+    auto timeout_analyzer = std::make_shared<TimeoutScoreWrapper>(inner);
+    EditModeFixture fixture(timeout_analyzer);
+
+    fixture.view_model->enterEditMode();
+    fixture.layDownEasyPuzzle();
+    fixture.view_model->commitEditedPuzzle();
+
+    // Commit itself succeeded — game is active, in Normal mode, no error toast.
+    REQUIRE(fixture.view_model->isGameActive());
+    REQUIRE(fixture.view_model->getInputMode() == InputMode::Normal);
+    REQUIRE(fixture.view_model->errorMessage.get().empty());
+
+    // But scoring was swallowed: rating stays at the unknown default.
+    const auto& ui = fixture.view_model->uiState.get();
+    REQUIRE(ui.puzzle_rating == 0.0);
 }

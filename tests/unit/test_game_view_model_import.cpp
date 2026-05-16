@@ -25,8 +25,11 @@
 #include "../../src/view_model/game_view_model.h"
 #include "../helpers/test_utils.h"
 
+#include <chrono>
+#include <expected>
 #include <memory>
 #include <string_view>
+#include <utility>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -58,17 +61,49 @@ struct ImportFixture {
     std::shared_ptr<IPuzzleAnalyzer> analyzer;
     std::unique_ptr<GameViewModel> view_model;
 
-    ImportFixture() {
+    explicit ImportFixture(std::shared_ptr<IPuzzleAnalyzer> custom_analyzer = nullptr) {
         validator = std::make_shared<GameValidator>();
         generator = std::make_shared<PuzzleGenerator>();
         solver = std::make_shared<SudokuSolver>(validator);
         counter = std::make_shared<SolutionCounter>();
         stats_manager = std::make_shared<StatisticsManager>(temp_dir.path());
         save_manager = std::make_shared<SaveManager>(temp_dir.path());
-        analyzer = std::make_shared<PuzzleAnalyzer>(validator, solver, counter);
+        if (custom_analyzer) {
+            analyzer = std::move(custom_analyzer);
+        } else {
+            analyzer = std::make_shared<PuzzleAnalyzer>(validator, solver, counter);
+        }
         view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
                                                      /*settings_manager*/ nullptr, analyzer);
     }
+};
+
+/// Wraps a real IPuzzleAnalyzer and forces scoreDifficulty to return ScoringError::Timeout.
+/// Lets us drive the auto-analysis timeout-swallow path deterministically without depending on
+/// wall-clock against an adversarial board.
+class TimeoutScoreWrapper : public IPuzzleAnalyzer {
+public:
+    explicit TimeoutScoreWrapper(std::shared_ptr<IPuzzleAnalyzer> inner) : inner_(std::move(inner)) {
+    }
+    [[nodiscard]] std::expected<BoardData, ParseErrorDetail> parseString(std::string_view input) const override {
+        return inner_->parseString(input);
+    }
+    [[nodiscard]] std::string serializeToString(const BoardData& board) const override {
+        return inner_->serializeToString(board);
+    }
+    [[nodiscard]] std::expected<void, BoardValidationError> validate(const BoardData& board) const override {
+        return inner_->validate(board);
+    }
+    [[nodiscard]] UniquenessResult checkUniqueness(const BoardData& board) const override {
+        return inner_->checkUniqueness(board);
+    }
+    [[nodiscard]] std::expected<DifficultyScore, ScoringError>
+    scoreDifficulty(const BoardData& /*board*/, std::chrono::milliseconds /*budget*/) const override {
+        return std::unexpected(ScoringError::Timeout);
+    }
+
+private:
+    std::shared_ptr<IPuzzleAnalyzer> inner_;
 };
 
 }  // namespace
@@ -182,6 +217,43 @@ TEST_CASE("importPuzzleFromString rejects a multi-solution puzzle", "[game_view_
     fixture.view_model->importPuzzleFromString(sparse);
 
     REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
+}
+
+// Auto-analysis: after a successful import the analyzer's scoreDifficulty runs synchronously
+// and the resulting rating + technique set are published to UIState. This makes imported
+// puzzles consistent with generated puzzles (which arrive pre-rated from the generator).
+TEST_CASE("importPuzzleFromString auto-populates puzzle rating + techniques", "[game_view_model][import][rating]") {
+    ImportFixture fixture;
+    fixture.view_model->importPuzzleFromString(kEasyImport);
+
+    REQUIRE(fixture.view_model->errorMessage.get().empty());
+    REQUIRE(fixture.view_model->isGameActive());
+
+    const auto& ui = fixture.view_model->uiState.get();
+    REQUIRE(ui.puzzle_rating > 0.0);
+    REQUIRE_FALSE(ui.puzzle_techniques.empty());
+}
+
+// Timeout swallowing: an adversarial paste-input can take longer than the 1 s scoring budget.
+// The import itself must still succeed (it's valid + unique), the user must see no error
+// toast, and the rating must stay at its default (0 = "unknown") rather than triggering a
+// confusing "Could not analyze difficulty" message on what is otherwise a successful import.
+TEST_CASE("importPuzzleFromString silently swallows scoring timeout", "[game_view_model][import][rating][timeout]") {
+    auto inner = std::make_shared<PuzzleAnalyzer>(std::make_shared<GameValidator>(),
+                                                  std::make_shared<SudokuSolver>(std::make_shared<GameValidator>()),
+                                                  std::make_shared<SolutionCounter>());
+    auto timeout_analyzer = std::make_shared<TimeoutScoreWrapper>(inner);
+    ImportFixture fixture(timeout_analyzer);
+
+    fixture.view_model->importPuzzleFromString(kEasyImport);
+
+    // Import itself succeeded — game is active, no error toast surfaced to the user.
+    REQUIRE(fixture.view_model->isGameActive());
+    REQUIRE(fixture.view_model->errorMessage.get().empty());
+
+    // But scoring was swallowed: the rating stays at the unknown default.
+    const auto& ui = fixture.view_model->uiState.get();
+    REQUIRE(ui.puzzle_rating == 0.0);
 }
 
 TEST_CASE("importPuzzleFromString persists origin through save/load round-trip", "[game_view_model][import][origin]") {

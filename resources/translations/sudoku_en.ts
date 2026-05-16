@@ -421,10 +421,6 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Analyze Difficulty</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Copy Puzzle as Text</source>
         <translation type="unfinished"></translation>
     </message>
@@ -826,18 +822,6 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Puzzle has multiple solutions</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Could not analyze difficulty within budget</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Puzzle is unsolvable</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Puzzle is invalid</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

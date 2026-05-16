@@ -210,18 +210,12 @@ public:
     /// is an exploratory action, not the standard hint flow.
     void findStepByTechnique(core::SolvingTechnique technique);
 
-    /// Imported-puzzle scoring (Option β): synchronously runs the analyzer's scoreDifficulty
-    /// against the current board within a 1-second budget. On success, publishes the rating
-    /// and technique set via UIState. On Timeout / NoSolution / InvalidInput, publishes a
-    /// descriptive errorMessage and leaves the rating fields at their existing values.
-    /// No-op if no analyzer was wired at construction.
-    void analyzeDifficulty();
-
     /// Replaces the current game state with a puzzle parsed from `input`. Runs the analyzer
-    /// pipeline (parse → validate → uniqueness) and sets the new game's origin to
+    /// pipeline (parse → validate → uniqueness → score) and sets the new game's origin to
     /// PuzzleOrigin::ImportedString. On any failure (parse / validation conflict / multiple
     /// solutions / no analyzer wired), publishes errorMessage and leaves state untouched.
-    /// Scoring is NOT performed here — call analyzeDifficulty() afterward if desired.
+    /// Scoring timeout is swallowed silently — the import still succeeds and rating stays at
+    /// the unknown default.
     void importPuzzleFromString(std::string_view input);
 
     /// Where the current puzzle came from. Tracked at runtime so saveCurrentGame and autoSave
@@ -238,10 +232,11 @@ public:
     /// caught at commit time, allowing the user to fix conflicts before committing.
     void setEditModeGiven(const core::Position& pos, int value);
 
-    /// Commits the edit-mode board as a new game. Runs validate + checkUniqueness via the
-    /// analyzer; on success, locks the givens in, switches InputMode to Normal, and sets
+    /// Commits the edit-mode board as a new game. Runs validate + checkUniqueness + score via
+    /// the analyzer; on success, locks the givens in, switches InputMode to Normal, and sets
     /// origin to ImportedEditMode. On failure, publishes errorMessage and stays in edit mode
-    /// so the user can fix the issue.
+    /// so the user can fix the issue. Scoring timeout is swallowed silently — the commit
+    /// still succeeds and rating stays at the unknown default.
     void commitEditedPuzzle();
 
     /// Serializes the current puzzle's GIVENS-only state via IPuzzleAnalyzer::serializeToString
@@ -347,6 +342,15 @@ private:
     // Hint system helpers
     [[nodiscard]] std::string formatHintExplanation(const core::SolveStep& step) const;
     [[nodiscard]] std::string statisticsErrorToString(core::StatisticsError error) const;
+
+    /// Runs analyzer_->scoreDifficulty against `board` within a 1-second budget and writes the
+    /// result to current_puzzle_rating_ / current_puzzle_techniques_ /
+    /// current_puzzle_requires_backtracking_. On Timeout, leaves those fields untouched (caller
+    /// is expected to seed them to the unknown-defaults beforehand). NoSolution / InvalidInput
+    /// post-validation indicate a solver/validator disagreement and are logged as warnings.
+    /// Used by importPuzzleFromString and commitEditedPuzzle to auto-rate user-supplied
+    /// puzzles after the uniqueness check passes. No-op if no analyzer is wired.
+    void applyDifficultyScore(const core::BoardData& board);
 
     // Coaching hint state — step and snapshot are always set/cleared together
     struct CoachingContext {
