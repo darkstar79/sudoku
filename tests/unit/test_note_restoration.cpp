@@ -83,12 +83,16 @@ TEST_CASE("Note Restoration - Undo Restores Notes", "[note_restoration]") {
         // Start a new game
         fixture.view_model->startNewGame(Difficulty::Easy);
 
-        // Find three empty cells using test helper (no goto!)
+        // Three empty cells in the SAME row — required for this section's
+        // assertion to hold deterministically. Note cleanup at note_pos only
+        // fires when first_pos shares a unit, and the post-undo "still
+        // blocked" check needs second_pos to share one too. Arbitrary
+        // scan-order empties produced ~1% CI flake on random puzzles where
+        // the cells happened to land in unrelated units.
         const auto& initial_state = fixture.view_model->gameState.get();
-        auto empty_cells_opt = test::findEmptyCells(initial_state, 3);
-        REQUIRE(empty_cells_opt.has_value());  // Fail if fewer than 3 empty cells
+        auto empty_cells_opt = test::findThreeEmptyCellsInRow(initial_state);
+        REQUIRE(empty_cells_opt.has_value());
 
-        // Use first three empty cells
         auto empty_cells = empty_cells_opt.value();
         Position first_pos = empty_cells[0];
         Position second_pos = empty_cells[1];
