@@ -267,8 +267,6 @@ void GameViewModel::importPuzzleFromString(std::string_view input) {
     // Build a fresh game state from the imported board.
     model::GameState new_state;
     new_state.loadPuzzle(*parsed);
-    // Imported puzzles have no a-priori difficulty; default Easy. analyzeDifficulty refines
-    // the rating later if requested.
     new_state.setDifficulty(core::Difficulty::Easy);
 
     gameState.set(new_state);
@@ -278,11 +276,15 @@ void GameViewModel::importPuzzleFromString(std::string_view input) {
     move_history_index_ = -1;
     last_valid_state_index_ = -1;
 
-    // Reset rating fields — import is unrated until analyzeDifficulty is called.
+    // Seed rating fields to the unknown-defaults; applyDifficultyScore overwrites on success
+    // and leaves them at defaults on timeout (silent fallback — see helper docs).
     current_puzzle_rating_ = 0.0;
     current_puzzle_techniques_.clear();
     current_puzzle_requires_backtracking_ = false;
     current_puzzle_origin_ = core::PuzzleOrigin::ImportedString;
+
+    // Auto-analyze before startGameSession so the stats record uses the real rating.
+    applyDifficultyScore(*parsed);
 
     // Start statistics session so the game is countable on completion.
     startGameSession();
@@ -397,10 +399,15 @@ void GameViewModel::commitEditedPuzzle() {
     move_history_index_ = -1;
     last_valid_state_index_ = -1;
 
+    // Seed rating fields to the unknown-defaults; applyDifficultyScore overwrites on success
+    // and leaves them at defaults on timeout (silent fallback — see helper docs).
     current_puzzle_rating_ = 0.0;
     current_puzzle_techniques_.clear();
     current_puzzle_requires_backtracking_ = false;
     current_puzzle_origin_ = core::PuzzleOrigin::ImportedEditMode;
+
+    // Auto-analyze before startGameSession so the stats record uses the real rating.
+    applyDifficultyScore(board);
 
     startGameSession();
     setInputMode(InputMode::Normal);
@@ -409,36 +416,32 @@ void GameViewModel::commitEditedPuzzle() {
     spdlog::info("Edit-mode commit accepted");
 }
 
-void GameViewModel::analyzeDifficulty() {
+void GameViewModel::applyDifficultyScore(const core::BoardData& board) {
     if (!analyzer_) {
-        spdlog::warn("analyzeDifficulty called without an analyzer dependency wired");
-        return;
-    }
-    if (!isGameActive()) {
         return;
     }
 
-    const auto& state = gameState.get();
-    auto board = state.extractNumbers();
-
-    // 1 s budget per plan Step 4.4 — acceptable synchronous block for an explicit user action.
-    constexpr std::chrono::milliseconds kAnalyzeBudget{1000};
+    constexpr std::chrono::milliseconds kBudget{1000};
     const auto t0 = std::chrono::steady_clock::now();
-    auto score = analyzer_->scoreDifficulty(board, kAnalyzeBudget);
-    const auto elapsed = std::chrono::steady_clock::now() - t0;
-    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
-    spdlog::info("analyzeDifficulty completed in {} ms (has_value={})", elapsed_ms, score.has_value());
+    auto score = analyzer_->scoreDifficulty(board, kBudget);
+    const auto elapsed_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
 
     if (!score) {
         switch (score.error()) {
             case core::ScoringError::Timeout:
-                errorMessage.set(std::string(core::loc("Sudoku", "Could not analyze difficulty within budget")));
+                // Adversarial input — leave rating at the caller's seed (unknown). Silent
+                // fallback by design: the import/commit itself succeeded, surfacing an error
+                // toast would conflate two outcomes.
+                spdlog::info("Auto-analysis timed out after {} ms; rating left unknown", elapsed_ms);
                 break;
             case core::ScoringError::NoSolution:
-                errorMessage.set(std::string(core::loc("Sudoku", "Puzzle is unsolvable")));
-                break;
             case core::ScoringError::InvalidInput:
-                errorMessage.set(std::string(core::loc("Sudoku", "Puzzle is invalid")));
+                // Caller must validate + check uniqueness before calling. Reaching either of
+                // these arms post-validation means the strategy chain disagrees with the
+                // validator/solution-counter — a real bug worth catching, but not user-facing.
+                spdlog::warn("Auto-analysis returned {} post-validation — unexpected",
+                             score.error() == core::ScoringError::NoSolution ? "NoSolution" : "InvalidInput");
                 break;
         }
         return;
@@ -450,7 +453,8 @@ void GameViewModel::analyzeDifficulty() {
     for (int id : score->technique_ids) {
         current_puzzle_techniques_.insert(static_cast<core::SolvingTechnique>(id));
     }
-    updateUIState();
+    spdlog::info("Auto-analysis completed in {} ms (rating={:.1f}, techniques={})", elapsed_ms, score->max_rating,
+                 score->technique_ids.size());
 }
 
 void GameViewModel::findStepByTechnique(core::SolvingTechnique technique) {

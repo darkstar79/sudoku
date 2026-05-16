@@ -10,7 +10,6 @@ set(UI_TEST_SOURCES
     test_language_change.cpp
     test_import_dialog.cpp
     test_edit_mode.cpp
-    test_analyze_difficulty.cpp
     test_copy_as_string.cpp
     test_find_by_technique.cpp
 )

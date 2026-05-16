@@ -422,10 +422,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Eigenes Rätsel erstellen</translation>
     </message>
     <message>
-        <source>Analyze Difficulty</source>
-        <translation>Schwierigkeit analysieren</translation>
-    </message>
-    <message>
         <source>Copy Puzzle as Text</source>
         <translation>Rätsel als Text kopieren</translation>
     </message>
@@ -828,18 +824,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Puzzle has multiple solutions</source>
         <translation>Rätsel hat mehrere Lösungen</translation>
-    </message>
-    <message>
-        <source>Could not analyze difficulty within budget</source>
-        <translation>Schwierigkeitsanalyse konnte nicht innerhalb der Zeit abgeschlossen werden</translation>
-    </message>
-    <message>
-        <source>Puzzle is unsolvable</source>
-        <translation>Rätsel ist nicht lösbar</translation>
-    </message>
-    <message>
-        <source>Puzzle is invalid</source>
-        <translation>Rätsel ist ungültig</translation>
     </message>
     <message>
         <source>No {} available in this puzzle</source>
