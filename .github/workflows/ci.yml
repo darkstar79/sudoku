@@ -204,6 +204,7 @@ jobs:
             -G Ninja ^
             -DCMAKE_TOOLCHAIN_FILE=build/Release/generators/conan_toolchain.cmake ^
             -DCMAKE_BUILD_TYPE=Release ^
+            -DSUDOKU_ENABLE_UI_TESTS=ON ^
             "-DCMAKE_PREFIX_PATH=%QT6_DIR%"
         shell: cmd
 
@@ -216,4 +217,12 @@ jobs:
 
       - name: Run integration tests
         run: build\Release\bin\tests\integration_tests.exe
+        shell: cmd
+
+      - name: Run UI tests (offscreen)
+        # UI tests register themselves via add_test() with the
+        # QT_QPA_PLATFORM=offscreen environment already set per-test in
+        # tests/ui/CMakeLists.txt. The "^test_" regex matches only the UI
+        # tests (unit_tests / integration_tests don't share that prefix).
+        run: ctest --test-dir build/Release -R "^test_" --output-on-failure
         shell: cmd
