@@ -133,6 +133,18 @@ void SettingsManager::setLanguage(std::string_view locale_code) {
     notifyIfChanged(old);
 }
 
+void SettingsManager::setExperimentalTrainingMode(bool value) {
+    auto old = settings_;
+    settings_.experimental_training_mode = value;
+    notifyIfChanged(old);
+}
+
+void SettingsManager::setExperimentalCoachingHints(bool value) {
+    auto old = settings_;
+    settings_.experimental_coaching_hints = value;
+    notifyIfChanged(old);
+}
+
 Observable<Settings>& SettingsManager::settingsObservable() {
     return observable_;
 }

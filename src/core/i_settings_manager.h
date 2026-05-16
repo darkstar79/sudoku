@@ -44,6 +44,8 @@ public:
     virtual void setCollectDetailedStats(bool value) = 0;
     virtual void setEncryptDetailedStats(bool value) = 0;
     virtual void setLanguage(std::string_view locale_code) = 0;
+    virtual void setExperimentalTrainingMode(bool value) = 0;
+    virtual void setExperimentalCoachingHints(bool value) = 0;
 
     /// Observable for reactive UI updates when settings change.
     [[nodiscard]] virtual Observable<Settings>& settingsObservable() = 0;

@@ -116,6 +116,74 @@ TEST_CASE("SettingsManager - Experimental flags persist across save/load", "[set
     CHECK(mgr2.getSettings().max_hints == 11);
 }
 
+TEST_CASE("SettingsManager - setExperimentalTrainingMode persists value", "[settings][experimental]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        SettingsManager mgr(path);
+        REQUIRE(mgr.getSettings().experimental_training_mode == false);
+        mgr.setExperimentalTrainingMode(true);
+        CHECK(mgr.getSettings().experimental_training_mode == true);
+    }
+
+    SettingsManager mgr2(path);
+    CHECK(mgr2.getSettings().experimental_training_mode == true);
+}
+
+TEST_CASE("SettingsManager - setExperimentalCoachingHints persists value", "[settings][experimental]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        SettingsManager mgr(path);
+        REQUIRE(mgr.getSettings().experimental_coaching_hints == false);
+        mgr.setExperimentalCoachingHints(true);
+        CHECK(mgr.getSettings().experimental_coaching_hints == true);
+    }
+
+    SettingsManager mgr2(path);
+    CHECK(mgr2.getSettings().experimental_coaching_hints == true);
+}
+
+TEST_CASE("SettingsManager - Experimental setters notify observers on change only", "[settings][experimental]") {
+    // Matches the existing notifyIfChanged convention: setting the same value
+    // must NOT fire the observable, only an actual transition does.
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    SettingsManager mgr(path);
+
+    int notify_count = 0;
+    Settings last_notified;
+    mgr.settingsObservable().subscribe([&](const Settings& s) {
+        ++notify_count;
+        last_notified = s;
+    });
+
+    mgr.setExperimentalTrainingMode(true);
+    CHECK(notify_count == 1);
+    CHECK(last_notified.experimental_training_mode == true);
+
+    // No-op transition: same value, no notification.
+    mgr.setExperimentalTrainingMode(true);
+    CHECK(notify_count == 1);
+
+    mgr.setExperimentalCoachingHints(true);
+    CHECK(notify_count == 2);
+    CHECK(last_notified.experimental_coaching_hints == true);
+
+    mgr.setExperimentalCoachingHints(true);
+    CHECK(notify_count == 2);
+
+    // Both flags off again — two more notifications.
+    mgr.setExperimentalTrainingMode(false);
+    mgr.setExperimentalCoachingHints(false);
+    CHECK(notify_count == 4);
+    CHECK(last_notified.experimental_training_mode == false);
+    CHECK(last_notified.experimental_coaching_hints == false);
+}
+
 TEST_CASE("SettingsManager - Save and load round-trip", "[settings]") {
     sudoku::test::TempTestDir tmp;
     auto path = tmp.path() / "settings.yaml";

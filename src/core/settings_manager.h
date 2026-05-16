@@ -44,6 +44,8 @@ public:
     void setCollectDetailedStats(bool value) override;
     void setEncryptDetailedStats(bool value) override;
     void setLanguage(std::string_view locale_code) override;
+    void setExperimentalTrainingMode(bool value) override;
+    void setExperimentalCoachingHints(bool value) override;
 
     [[nodiscard]] Observable<Settings>& settingsObservable() override;
 
