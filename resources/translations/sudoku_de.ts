@@ -414,6 +414,46 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Aktuelles Spiel</translation>
     </message>
     <message>
+        <source>Import Custom Puzzle…</source>
+        <translation>Eigenes Rätsel importieren…</translation>
+    </message>
+    <message>
+        <source>Edit Custom Puzzle</source>
+        <translation>Eigenes Rätsel erstellen</translation>
+    </message>
+    <message>
+        <source>Analyze Difficulty</source>
+        <translation>Schwierigkeit analysieren</translation>
+    </message>
+    <message>
+        <source>Copy Puzzle as Text</source>
+        <translation>Rätsel als Text kopieren</translation>
+    </message>
+    <message>
+        <source>Puzzle copied to clipboard</source>
+        <translation>Rätsel in die Zwischenablage kopiert</translation>
+    </message>
+    <message>
+        <source>Find Step by Technique…</source>
+        <translation>Schritt nach Technik suchen…</translation>
+    </message>
+    <message>
+        <source>Done Editing</source>
+        <translation>Fertig</translation>
+    </message>
+    <message>
+        <source>Import Custom Puzzle</source>
+        <translation>Eigenes Rätsel importieren</translation>
+    </message>
+    <message>
+        <source>Importing replaces your current puzzle. Continue?</source>
+        <translation>Beim Import wird das aktuelle Rätsel ersetzt. Fortfahren?</translation>
+    </message>
+    <message>
+        <source>Editing replaces your current puzzle. Continue?</source>
+        <translation>Beim Bearbeiten wird das aktuelle Rätsel ersetzt. Fortfahren?</translation>
+    </message>
+    <message>
         <source>Difficulty</source>
         <translation>Schwierigkeit</translation>
     </message>
@@ -742,8 +782,68 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Zelle hat bereits einen Wert</translation>
     </message>
     <message>
+        <source>No hint available within budget</source>
+        <translation>Innerhalb der verfügbaren Zeit kein Tipp gefunden</translation>
+    </message>
+    <message>
         <source>No logical technique found for this puzzle</source>
         <translation>Keine logische Technik für dieses Rätsel gefunden</translation>
+    </message>
+    <message>
+        <source>Import is not available (analyzer not wired)</source>
+        <translation>Import ist nicht verfügbar (Analyzer nicht eingebunden)</translation>
+    </message>
+    <message>
+        <source>Pasted text is too large</source>
+        <translation>Eingefügter Text ist zu lang</translation>
+    </message>
+    <message>
+        <source>Pasted text contained no Sudoku cells</source>
+        <translation>Eingefügter Text enthielt keine Sudoku-Zellen</translation>
+    </message>
+    <message>
+        <source>Pasted puzzle has {} cells, expected 81</source>
+        <translation>Eingefügtes Rätsel hat {} Zellen, erwartet wurden 81</translation>
+    </message>
+    <message>
+        <source>Invalid character &apos;{}&apos; at position {}</source>
+        <translation>Ungültiges Zeichen &apos;{}&apos; an Position {}</translation>
+    </message>
+    <message>
+        <source>Pasted puzzle violates Sudoku rules</source>
+        <translation>Eingefügtes Rätsel verletzt die Sudoku-Regeln</translation>
+    </message>
+    <message>
+        <source>Pasted puzzle has multiple solutions</source>
+        <translation>Eingefügtes Rätsel hat mehrere Lösungen</translation>
+    </message>
+    <message>
+        <source>Commit is not available (analyzer not wired)</source>
+        <translation>Übernehmen nicht verfügbar (Analyzer nicht eingebunden)</translation>
+    </message>
+    <message>
+        <source>Puzzle violates Sudoku rules</source>
+        <translation>Rätsel verletzt die Sudoku-Regeln</translation>
+    </message>
+    <message>
+        <source>Puzzle has multiple solutions</source>
+        <translation>Rätsel hat mehrere Lösungen</translation>
+    </message>
+    <message>
+        <source>Could not analyze difficulty within budget</source>
+        <translation>Schwierigkeitsanalyse konnte nicht innerhalb der Zeit abgeschlossen werden</translation>
+    </message>
+    <message>
+        <source>Puzzle is unsolvable</source>
+        <translation>Rätsel ist nicht lösbar</translation>
+    </message>
+    <message>
+        <source>Puzzle is invalid</source>
+        <translation>Rätsel ist ungültig</translation>
+    </message>
+    <message>
+        <source>No {} available in this puzzle</source>
+        <translation>Kein {} in diesem Rätsel verfügbar</translation>
     </message>
     <message>
         <source>Suggestion: Place {0} at R{1}C{2}</source>
@@ -1956,6 +2056,34 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Grouped Nice Loop: alternating inference chain from {0} to {1} — eliminates {2}</source>
         <translation>Gruppierter Nice Loop: Alternierende Schlussfolgerungskette von {0} nach {1} — eliminiert {2}</translation>
+    </message>
+    <message>
+        <source>Paste an 81-character puzzle. Use digits 1-9 and &apos;.&apos;, &apos;0&apos;, or &apos;_&apos; for empty cells.</source>
+        <translation>81-Zeichen-Rätsel einfügen. Ziffern 1-9 und &apos;.&apos;, &apos;0&apos; oder &apos;_&apos; für leere Zellen verwenden.</translation>
+    </message>
+    <message>
+        <source>Paste puzzle here…</source>
+        <translation>Rätsel hier einfügen…</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Abbrechen</translation>
+    </message>
+    <message>
+        <source>Import</source>
+        <translation>Importieren</translation>
+    </message>
+    <message>
+        <source>Find Step by Technique</source>
+        <translation>Schritt nach Technik suchen</translation>
+    </message>
+    <message>
+        <source>Pick a solving technique:</source>
+        <translation>Lösungstechnik auswählen:</translation>
+    </message>
+    <message>
+        <source>Find</source>
+        <translation>Suchen</translation>
     </message>
 </context>
 </TS>
