@@ -39,6 +39,7 @@
 #include "core/training_statistics_manager.h"
 #include "infrastructure/app_directory_manager.h"
 #include "infrastructure/qt_clipboard_provider.h"
+#include "sudoku/version.h"
 #include "view/main_window.h"
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
@@ -140,7 +141,7 @@ std::shared_ptr<sudoku::viewmodel::GameViewModel> createViewModel() {
 int main(int argc, char* argv[]) {
     QApplication qt_app(argc, argv);
     QApplication::setApplicationName("Sudoku");
-    QApplication::setApplicationVersion("1.0.0");
+    QApplication::setApplicationVersion(sudoku::kAppVersion);
 
     // Setup multi-sink logger: console + debug log file (truncated each launch)
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();

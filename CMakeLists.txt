@@ -7,6 +7,14 @@ project(
     LANGUAGES CXX
 )
 
+# Generate version header from PROJECT_VERSION. CMake project() is the single
+# source of truth; main.cpp and tests consume sudoku::kAppVersion.
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated/sudoku/version.h"
+    @ONLY
+)
+
 # C++23 standard
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -143,6 +151,11 @@ set(SOURCES ${PROJECT_SOURCES})
 # Main executable
 add_executable(${PROJECT_NAME} ${SOURCES})
 
+# Generated version header (sudoku/version.h)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
+)
+
 # Enable clang-tidy for project sources
 if(CLANG_TIDY_EXE)
     set_source_files_properties(${PROJECT_SOURCES} PROPERTIES
@@ -272,7 +285,7 @@ if(WIN32)
         "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk'")
     set(CPACK_NSIS_MUI_FINISHPAGE_RUN     "${PROJECT_NAME}.exe")
 
-    # Output filename: Sudoku-1.0.0-win64.exe
+    # Output filename: Sudoku-<version>-win64.exe
     set(CPACK_SYSTEM_NAME                 "win64")
     set(CPACK_PACKAGE_FILE_NAME           "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
 endif()
