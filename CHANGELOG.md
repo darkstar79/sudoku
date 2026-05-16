@@ -35,3 +35,27 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 - New `IPuzzleAnalyzer` interface (`parseString`, `serializeToString`, `validate`, `checkUniqueness`, `scoreDifficulty`) backs all custom-puzzle workflows.
 - Localization updated for new strings (English, German).
 - Test coverage: 980 unit / 14 integration / 11 UI; lines 88.3% / functions 89.8% / branches 55.5% (all above 80% / 70% / 55% thresholds).
+
+### Experimental
+
+The following features are compiled in but hidden by default. Enable them under *Settings → Experimental*. They are **not part of the 1.0 stability commitment** — data formats, UI, and behavior may change or be removed in any 1.x release.
+
+- **Training Mode** — interactive technique trainer with 11 categories of progressive hints, mastery tracking, and per-technique statistics. Reached via *Game → Training Mode* once enabled.
+- **Progressive coaching hints** — in-game hint that walks you through the next step in three levels of help before applying it, with a check/apply workflow. Reached via *Help → Get Coaching Hint* (Shift+H) once enabled.
+
+### Platform support
+
+- **Linux (Fedora)** — primary development platform; full interactive use by the maintainer.
+- **Linux (Ubuntu 24.04)** — built and full test suite run in CI on every push.
+- **Windows 11** — installer artifact attached to the release. Built and tested in CI on `windows-2025` (per push to `main` and on demand); smoke-tested by the maintainer on Win11 before tagging.
+- **Linux (openSUSE)** — RPM snapshots produced downstream via the openSUSE Build Service (not built directly by the project).
+- **macOS** — not supported in 1.0; out of scope.
+
+See [README.md](README.md#platform-support) for the difference between "tested", "CI-built", and "packaged downstream".
+
+### Known limitations
+
+- No user-facing timer pause. The timer runs continuously while a puzzle is open.
+- Language change persists across restart but does not retranslate the running UI — a Qt Linguist runtime swap is not yet wired. Quit and relaunch to apply the new language.
+- No theme system; colors are fixed (light theme).
+- Save file format v1.1 is the 1.0 stability boundary. Older v1.0 saves still load (the missing `PuzzleOrigin` field defaults to `Generated`). Pre-1.0 snapshot binaries may not load v1.1 saves; downgrading after upgrading is not supported.
