@@ -180,6 +180,12 @@ if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         WIN32_EXECUTABLE TRUE
     )
+    # Embed application icon into the .exe so Explorer/taskbar/Alt-Tab show it.
+    # rc.exe resolves ICON paths relative to the .rc file's directory.
+    enable_language(RC)
+    target_sources(${PROJECT_NAME} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.rc"
+    )
 elseif(UNIX AND NOT APPLE)
     # Linux-specific settings
     target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
@@ -231,6 +237,9 @@ if(WIN32)
     # Windows: flat layout for NSIS installer
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ".")
     install(FILES ${SUDOKU_QM_FILES} DESTINATION "translations")
+    # Ship the .ico so the Add/Remove Programs entry can reference it.
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.ico"
+        DESTINATION ".")
 
     # Qt runtime via windeployqt
     # QT6_DIR is set as an environment variable by the build scripts; read it with $ENV{}
@@ -284,6 +293,11 @@ if(WIN32)
     set(CPACK_NSIS_DELETE_ICONS_EXTRA
         "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk'")
     set(CPACK_NSIS_MUI_FINISHPAGE_RUN     "${PROJECT_NAME}.exe")
+    # Branding: same icon as AppImage/Flatpak (rasterized from the SVG).
+    set(CPACK_NSIS_MUI_ICON               "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.ico")
+    set(CPACK_NSIS_MUI_UNIICON            "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.ico")
+    # Icon shown in Add/Remove Programs (path is relative to $INSTDIR).
+    set(CPACK_NSIS_INSTALLED_ICON_NAME    "sudoku.ico")
 
     # Output filename: Sudoku-<version>-win64.exe
     set(CPACK_SYSTEM_NAME                 "win64")
