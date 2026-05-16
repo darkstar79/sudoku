@@ -41,7 +41,7 @@ class SudokuConan(ConanFile):
 
         # Testing framework (conditional)
         if self.options.with_tests:
-            self.requires("catch2/3.4.0")
+            self.requires("catch2/3.7.1")
     
     def build_requirements(self):
         self.tool_requires("cmake/3.31.11")
