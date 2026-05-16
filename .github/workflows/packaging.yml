@@ -11,6 +11,10 @@ permissions:
 
 env:
   VERSION: ${{ github.ref_name || 'dev' }}
+  # Filename-safe version: tags (v1.0.0) pass through unchanged, but branch
+  # names like feature/release-1.0-prep would otherwise embed a literal '/'
+  # in artifact paths and break flatpak build-bundle / linuxdeploy output.
+  VERSION_SAFE: ${{ replace(github.ref_name || 'dev', '/', '-') }}
 
 jobs:
   flatpak:
@@ -37,7 +41,7 @@ jobs:
       - name: Create Flatpak bundle
         run: |
           flatpak build-bundle repo \
-            Sudoku-${{ env.VERSION }}-x86_64.flatpak \
+            Sudoku-${{ env.VERSION_SAFE }}-x86_64.flatpak \
             org.sudoku_cpp.Sudoku
 
       - name: Upload Flatpak bundle
@@ -99,7 +103,7 @@ jobs:
 
       - name: Create AppImage
         env:
-          LDAI_OUTPUT: Sudoku-${{ env.VERSION }}-x86_64.AppImage
+          LDAI_OUTPUT: Sudoku-${{ env.VERSION_SAFE }}-x86_64.AppImage
         run: |
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
