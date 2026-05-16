@@ -133,6 +133,11 @@ private:
     QPushButton* mode_btn_{nullptr};
     QAction* done_editing_action_{nullptr};
 
+    // Experimental menu entries — visibility driven by settings.experimental_*.
+    // Hidden by default; revealed when the user opts in via Settings -> Experimental.
+    QAction* training_mode_action_{nullptr};
+    QAction* coaching_hint_action_{nullptr};
+
     // Timers
     QTimer* auto_save_timer_{nullptr};
     QTimer* clock_timer_{nullptr};
