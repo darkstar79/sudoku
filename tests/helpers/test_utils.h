@@ -81,6 +81,13 @@ findTwoEmptyCellsInColumn(const model::GameState& state);
 [[nodiscard]] std::optional<std::pair<core::Position, core::Position>>
 findTwoEmptyCellsInBox(const model::GameState& state);
 
+/// Find three empty cells in the same row
+/// Guarantees all three share row/col/box relations needed for tests that
+/// assert on inter-cell note propagation (which require the cells to be
+/// peers, not arbitrary scan-order empties).
+/// @return Vector of three positions in same row, or nullopt if not found
+[[nodiscard]] std::optional<std::vector<core::Position>> findThreeEmptyCellsInRow(const model::GameState& state);
+
 /// Find first cell matching a predicate
 /// @param predicate Callable taking const model::Cell& and returning bool
 /// @return Position of first matching cell, or nullopt if none found

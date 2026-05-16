@@ -110,6 +110,21 @@ std::optional<std::pair<core::Position, core::Position>> findTwoEmptyCellsInColu
     return std::nullopt;
 }
 
+std::optional<std::vector<core::Position>> findThreeEmptyCellsInRow(const model::GameState& state) {
+    for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
+        std::vector<core::Position> empty_in_row;
+        for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
+            if (state.getCell(row, col).value == 0) {
+                empty_in_row.push_back({.row = row, .col = col});
+                if (empty_in_row.size() == 3) {
+                    return empty_in_row;
+                }
+            }
+        }
+    }
+    return std::nullopt;
+}
+
 std::optional<std::pair<core::Position, core::Position>> findTwoEmptyCellsInBox(const model::GameState& state) {
     // Iterate through each 3x3 box
     for (size_t box_row = 0; box_row < 3; ++box_row) {
