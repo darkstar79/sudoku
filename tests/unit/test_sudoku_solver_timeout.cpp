@@ -138,21 +138,24 @@ TEST_CASE("findNextStepByTechnique returns matching technique", "[sudoku_solver]
     SudokuSolver solver(validator);
 
     SECTION("Returns NakedSingle when requested on naked-single board") {
-        auto result = solver.findNextStepByTechnique(makeEasyNakedSingle(), SolvingTechnique::NakedSingle);
+        auto result =
+            solver.findNextStepByTechnique(makeEasyNakedSingle(), makeEasyNakedSingle(), SolvingTechnique::NakedSingle);
         REQUIRE(result.has_value());
         REQUIRE(result->technique == SolvingTechnique::NakedSingle);
     }
 
     SECTION("Returns Unsolvable when requested technique does not apply") {
         // Easy puzzle has no SueDeCoq step.
-        auto result = solver.findNextStepByTechnique(makeEasyNakedSingle(), SolvingTechnique::SueDeCoq);
+        auto result =
+            solver.findNextStepByTechnique(makeEasyNakedSingle(), makeEasyNakedSingle(), SolvingTechnique::SueDeCoq);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == SolverError::Unsolvable);
     }
 
     SECTION("Returns InvalidBoard for Backtracking sentinel technique") {
         // Backtracking is the fallback sentinel; there is no strategy registered for it.
-        auto result = solver.findNextStepByTechnique(makeEasyNakedSingle(), SolvingTechnique::Backtracking);
+        auto result = solver.findNextStepByTechnique(makeEasyNakedSingle(), makeEasyNakedSingle(),
+                                                     SolvingTechnique::Backtracking);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == SolverError::InvalidBoard);
     }
@@ -161,8 +164,42 @@ TEST_CASE("findNextStepByTechnique returns matching technique", "[sudoku_solver]
         BoardData complete = {{5, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
                               {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
                               {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
-        auto result = solver.findNextStepByTechnique(complete, SolvingTechnique::NakedSingle);
+        auto result = solver.findNextStepByTechnique(complete, complete, SolvingTechnique::NakedSingle);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == SolverError::Unsolvable);
     }
+}
+
+// Regression: AvoidableRectangleStrategy early-exits when CandidateGrid::hasGivensInfo() is false.
+// Without propagating original_puzzle through findNextStepByTechnique, picking Avoidable Rectangle
+// in the technique dialog always reported "No Avoidable Rectangle available" — even on a board
+// where one logically applies. Pattern is borrowed from test_avoidable_rectangle_strategy.cpp.
+TEST_CASE("findNextStepByTechnique propagates givens for Avoidable Rectangle", "[sudoku_solver][by_technique]") {
+    auto validator = std::make_shared<GameValidator>();
+    SudokuSolver solver(validator);
+
+    // Original puzzle: only a few cells are givens; the rectangle corners are NOT givens.
+    BoardData original_puzzle{};
+    original_puzzle[0][1] = 5;
+    original_puzzle[1][0] = 6;
+    original_puzzle[1][3] = 7;
+
+    // Current board: solver has placed values at 3 rectangle corners {(0,0)=1, (0,3)=2, (2,0)=2};
+    // (2,3) is empty. AvoidableRectangle should eliminate 1 from (2,3).
+    BoardData board{};
+    board[0][0] = 1;
+    board[0][3] = 2;
+    board[2][0] = 2;
+    board[0][1] = 5;
+    board[1][0] = 6;
+    board[1][3] = 7;
+
+    auto result = solver.findNextStepByTechnique(board, original_puzzle, SolvingTechnique::AvoidableRectangle);
+
+    REQUIRE(result.has_value());
+    REQUIRE(result->technique == SolvingTechnique::AvoidableRectangle);
+    REQUIRE_FALSE(result->eliminations.empty());
+    REQUIRE(result->eliminations[0].position.row == 2);
+    REQUIRE(result->eliminations[0].position.col == 3);
+    REQUIRE(result->eliminations[0].value == 1);
 }

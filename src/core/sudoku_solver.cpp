@@ -89,6 +89,14 @@ namespace sudoku::core {
 SudokuSolver::SudokuSolver(std::shared_ptr<IGameValidator> validator, std::shared_ptr<ITimeProvider> time_provider)
     : validator_(std::move(validator)), time_provider_(std::move(time_provider)) {
     initializeStrategies();
+    buildTechniqueIndex();
+}
+
+void SudokuSolver::buildTechniqueIndex() {
+    technique_index_.reserve(strategies_.size());
+    for (const auto& strategy : strategies_) {
+        technique_index_.emplace(strategy->getTechnique(), strategy.get());
+    }
 }
 
 void SudokuSolver::initializeStrategies() {
@@ -189,6 +197,17 @@ std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const BoardData
 }
 
 std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardData& board) const {
+    return solvePuzzleImpl(board, std::nullopt);
+}
+
+std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardData& board,
+                                                                   std::chrono::milliseconds budget) const {
+    return solvePuzzleImpl(board, time_provider_->steadyNow() + budget);
+}
+
+std::expected<SolverResult, SolverError>
+SudokuSolver::solvePuzzleImpl(const BoardData& board,
+                              std::optional<std::chrono::steady_clock::time_point> deadline) const {
     if (isComplete(board)) {
         return SolverResult{.solution = board, .solve_path = {}, .used_backtracking = false};
     }
@@ -201,68 +220,24 @@ std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardDa
     constexpr int MAX_ITERATIONS = 200;
     int iterations = 0;
 
-    while (!isComplete(working_board)) {
-        if (++iterations > MAX_ITERATIONS) {
-            spdlog::warn("Solver hit iteration limit, using backtracking fallback");
-            if (!solveWithBacktracking(working_board)) {
-                return std::unexpected(SolverError::Unsolvable);
-            }
-            used_backtracking = true;
-            break;
-        }
-
-        auto step_result = findNextStep(working_board, candidates);
-
-        if (step_result.has_value()) {
-            auto& step = step_result.value();
-            bool applied = applyStep(working_board, candidates, step);
-            if (!applied) {
-                return std::unexpected(SolverError::Unsolvable);
-            }
-            solve_path.push_back(step);
-        } else {
-            if (!solveWithBacktracking(working_board)) {
-                return std::unexpected(SolverError::Unsolvable);
-            }
-            used_backtracking = true;
-            break;
-        }
-    }
-
-    return SolverResult{.solution = working_board, .solve_path = solve_path, .used_backtracking = used_backtracking};
-}
-
-std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardData& board,
-                                                                   std::chrono::milliseconds budget) const {
-    if (isComplete(board)) {
-        return SolverResult{.solution = board, .solve_path = {}, .used_backtracking = false};
-    }
-
-    const auto deadline = time_provider_->steadyNow() + budget;
-
-    auto working_board = board;
-    CandidateGrid candidates(working_board);
-    std::vector<SolveStep> solve_path;
-    bool used_backtracking = false;
-
-    constexpr int MAX_ITERATIONS = 200;
-    int iterations = 0;
+    // Wall-clock check helper: true iff a deadline is set and has been reached. Granularity is
+    // "between strategy iterations" (R2 plan note) — strategies run sub-ms in the common case.
+    const auto deadlineReached = [this, &deadline]() {
+        return deadline.has_value() && time_provider_->steadyNow() >= *deadline;
+    };
+    // Post-backtracking error mapping: distinguish deadline-abort from genuine unsolvability
+    // so the caller can surface "tighten budget" vs. "puzzle has no solution".
+    const auto onBacktrackFailed = [&]() { return deadlineReached() ? SolverError::Timeout : SolverError::Unsolvable; };
 
     while (!isComplete(working_board)) {
-        // Wall-clock check between strategy iterations (R2: granularity is fine — strategies run in sub-ms).
-        if (time_provider_->steadyNow() >= deadline) {
+        if (deadlineReached()) {
             return std::unexpected(SolverError::Timeout);
         }
 
         if (++iterations > MAX_ITERATIONS) {
             spdlog::warn("Solver hit iteration limit, using backtracking fallback");
             if (!solveWithBacktracking(working_board, deadline)) {
-                // Distinguish deadline-abort from genuine unsolvability so the caller can
-                // surface "tighten budget" vs. "puzzle has no solution".
-                if (time_provider_->steadyNow() >= deadline) {
-                    return std::unexpected(SolverError::Timeout);
-                }
-                return std::unexpected(SolverError::Unsolvable);
+                return std::unexpected(onBacktrackFailed());
             }
             used_backtracking = true;
             break;
@@ -272,17 +247,13 @@ std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardDa
 
         if (step_result.has_value()) {
             auto& step = step_result.value();
-            bool applied = applyStep(working_board, candidates, step);
-            if (!applied) {
+            if (!applyStep(working_board, candidates, step)) {
                 return std::unexpected(SolverError::Unsolvable);
             }
             solve_path.push_back(step);
         } else {
             if (!solveWithBacktracking(working_board, deadline)) {
-                if (time_provider_->steadyNow() >= deadline) {
-                    return std::unexpected(SolverError::Timeout);
-                }
-                return std::unexpected(SolverError::Unsolvable);
+                return std::unexpected(onBacktrackFailed());
             }
             used_backtracking = true;
             break;
@@ -320,25 +291,29 @@ std::expected<SolveStep, SolverError> SudokuSolver::findNextStep(const BoardData
 }
 
 std::expected<SolveStep, SolverError> SudokuSolver::findNextStepByTechnique(const BoardData& board,
+                                                                            const BoardData& original_puzzle,
                                                                             SolvingTechnique technique) const {
     if (isComplete(board)) {
         return std::unexpected(SolverError::Unsolvable);
     }
 
+    // Givens info is required for AvoidableRectangleStrategy (it distinguishes solver-placed
+    // values from puzzle givens). Propagating it for every technique is harmless — the other
+    // strategies simply ignore the givens mask.
     CandidateGrid candidates(board);
+    candidates.setGivensFromPuzzle(original_puzzle);
 
-    for (const auto& strategy : strategies_) {
-        if (strategy->getTechnique() == technique) {
-            auto step = strategy->findStep(board, candidates);
-            if (step.has_value()) {
-                return step.value();
-            }
-            return std::unexpected(SolverError::Unsolvable);
-        }
+    auto it = technique_index_.find(technique);
+    if (it == technique_index_.end()) {
+        // No strategy registered for this technique (e.g. SolvingTechnique::Backtracking sentinel).
+        return std::unexpected(SolverError::InvalidBoard);
     }
 
-    // No strategy registered for this technique (e.g. SolvingTechnique::Backtracking sentinel).
-    return std::unexpected(SolverError::InvalidBoard);
+    auto step = it->second->findStep(board, candidates);
+    if (step.has_value()) {
+        return step.value();
+    }
+    return std::unexpected(SolverError::Unsolvable);
 }
 
 bool SudokuSolver::applyStep(BoardData& board, const SolveStep& step) const {

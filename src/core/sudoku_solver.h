@@ -28,6 +28,7 @@
 #include <expected>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 namespace sudoku::core {
@@ -57,7 +58,8 @@ public:
                                                                      std::chrono::milliseconds budget) const override;
 
     [[nodiscard]] std::expected<SolveStep, SolverError>
-    findNextStepByTechnique(const BoardData& board, SolvingTechnique technique) const override;
+    findNextStepByTechnique(const BoardData& board, const BoardData& original_puzzle,
+                            SolvingTechnique technique) const override;
 
     [[nodiscard]] std::expected<SolverResult, SolverError> solvePuzzle(const BoardData& board) const override;
 
@@ -72,9 +74,23 @@ private:
     std::shared_ptr<IGameValidator> validator_;
     std::shared_ptr<ITimeProvider> time_provider_;
     std::vector<std::unique_ptr<ISolvingStrategy>> strategies_;
+    /// O(1) lookup from technique → strategy pointer (into strategies_). Built once in the
+    /// constructor after initializeStrategies(); never mutated afterward, so raw pointers
+    /// remain valid for the lifetime of the solver.
+    std::unordered_map<SolvingTechnique, ISolvingStrategy*> technique_index_;
 
     /// Initializes strategy chain in difficulty order
     void initializeStrategies();
+
+    /// Builds technique_index_ from strategies_. Must be called after initializeStrategies()
+    /// and before strategies_ is mutated again (which it never is in practice).
+    void buildTechniqueIndex();
+
+    /// Shared body for both solvePuzzle overloads. When `deadline` is set, checks the wall
+    /// clock between strategy iterations and propagates the deadline into the backtracking
+    /// fallback. When unset, behaves identically to the original no-budget loop.
+    [[nodiscard]] std::expected<SolverResult, SolverError>
+    solvePuzzleImpl(const BoardData& board, std::optional<std::chrono::steady_clock::time_point> deadline) const;
 
     /// Checks if board is complete (no empty cells)
     [[nodiscard]] static bool isComplete(const BoardData& board);

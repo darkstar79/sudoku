@@ -845,7 +845,11 @@ void MainWindow::showImportPuzzleDialog() {
     auto* dialog = new PuzzleImportDialog(this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     connect(dialog, &PuzzleImportDialog::importRequested, this, [this, dialog](const QString& text) {
+        // importPuzzleFromString runs the analyzer's uniqueness check synchronously, which can
+        // burn up to its 1 s budget on adversarial input. Signal the freeze with a wait cursor.
+        QApplication::setOverrideCursor(Qt::WaitCursor);
         view_model_->importPuzzleFromString(text.toStdString());
+        QApplication::restoreOverrideCursor();
         const auto& err = view_model_->errorMessage.get();
         if (err.empty()) {
             board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
@@ -879,7 +883,11 @@ void MainWindow::commitEditedPuzzle() {
     if (!view_model_) {
         return;
     }
+    // commitEditedPuzzle runs validate + uniqueness synchronously (up to 1 s budget). Signal
+    // the freeze with a wait cursor — same convention as showImportPuzzleDialog / analyzeDifficulty.
+    QApplication::setOverrideCursor(Qt::WaitCursor);
     view_model_->commitEditedPuzzle();
+    QApplication::restoreOverrideCursor();
     const auto& err = view_model_->errorMessage.get();
     if (!err.empty() && toast_widget_) {
         toast_widget_->show(qstr(err));
