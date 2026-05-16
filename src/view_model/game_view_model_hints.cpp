@@ -125,6 +125,11 @@ CoachingCheckResult evaluateEliminationCheck(const core::SolveStep& step, const 
 }  // namespace
 
 void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
+    // Clear any prior hint text up front. Every non-success exit in this method previously
+    // left stale content visible alongside the new errorMessage; the View observes both
+    // independently and has no way to know hintMessage is from the previous request.
+    hintMessage.set("");
+
     const int hints_remaining = getHintCount();
     if (!isGameActive() || hints_remaining <= 0) {
         if (hints_remaining <= 0) {

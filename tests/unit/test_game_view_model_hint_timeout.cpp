@@ -138,3 +138,27 @@ TEST_CASE("requestCoachingHint reports timeout via errorMessage when solver exce
     // Hint credit is NOT consumed on timeout.
     REQUIRE(fixture.view_model->getHintCount() == initial_hints);
 }
+
+// Stale-hintMessage regression: a successful hint leaves text in hintMessage; if the user
+// then requests another hint and the solver times out (or any validation fails), the previous
+// hint text was left visible alongside the error message. The View has no way to know it's
+// stale because hintMessage observers only fire on .set(). Fix: getHint() must clear
+// hintMessage on every non-success exit so the View renders a clean slate.
+TEST_CASE("getHint clears any prior hintMessage when the new lookup times out", "[game_view_model][hints][timeout]") {
+    HintTimeoutFixture fixture;
+    fixture.view_model->startNewGame(Difficulty::Easy);
+
+    // Simulate the residue of a previous successful hint.
+    const std::string stale = "Previous hint: NakedSingle at R3C5 = 7";
+    fixture.view_model->hintMessage.set(stale);
+    REQUIRE(fixture.view_model->hintMessage.get() == stale);
+
+    const auto& state = fixture.view_model->gameState.get();
+    auto empty_cell = sudoku::test::findEmptyCell(state);
+    REQUIRE(empty_cell.has_value());
+
+    fixture.view_model->getHint(*empty_cell);
+
+    REQUIRE(fixture.view_model->hintMessage.get().empty());
+    REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
+}
