@@ -24,9 +24,8 @@
 #include "../../src/core/sudoku_solver.h"
 #include "../../src/view_model/game_view_model.h"
 #include "../helpers/test_utils.h"
+#include "../helpers/timeout_score_analyzer.h"
 
-#include <chrono>
-#include <expected>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -76,34 +75,6 @@ struct ImportFixture {
         view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
                                                      /*settings_manager*/ nullptr, analyzer);
     }
-};
-
-/// Wraps a real IPuzzleAnalyzer and forces scoreDifficulty to return ScoringError::Timeout.
-/// Lets us drive the auto-analysis timeout-swallow path deterministically without depending on
-/// wall-clock against an adversarial board.
-class TimeoutScoreWrapper : public IPuzzleAnalyzer {
-public:
-    explicit TimeoutScoreWrapper(std::shared_ptr<IPuzzleAnalyzer> inner) : inner_(std::move(inner)) {
-    }
-    [[nodiscard]] std::expected<BoardData, ParseErrorDetail> parseString(std::string_view input) const override {
-        return inner_->parseString(input);
-    }
-    [[nodiscard]] std::string serializeToString(const BoardData& board) const override {
-        return inner_->serializeToString(board);
-    }
-    [[nodiscard]] std::expected<void, BoardValidationError> validate(const BoardData& board) const override {
-        return inner_->validate(board);
-    }
-    [[nodiscard]] UniquenessResult checkUniqueness(const BoardData& board) const override {
-        return inner_->checkUniqueness(board);
-    }
-    [[nodiscard]] std::expected<DifficultyScore, ScoringError>
-    scoreDifficulty(const BoardData& /*board*/, std::chrono::milliseconds /*budget*/) const override {
-        return std::unexpected(ScoringError::Timeout);
-    }
-
-private:
-    std::shared_ptr<IPuzzleAnalyzer> inner_;
 };
 
 }  // namespace
@@ -242,7 +213,7 @@ TEST_CASE("importPuzzleFromString silently swallows scoring timeout", "[game_vie
     auto inner = std::make_shared<PuzzleAnalyzer>(std::make_shared<GameValidator>(),
                                                   std::make_shared<SudokuSolver>(std::make_shared<GameValidator>()),
                                                   std::make_shared<SolutionCounter>());
-    auto timeout_analyzer = std::make_shared<TimeoutScoreWrapper>(inner);
+    auto timeout_analyzer = std::make_shared<sudoku::test::TimeoutScoreAnalyzer>(inner);
     ImportFixture fixture(timeout_analyzer);
 
     fixture.view_model->importPuzzleFromString(kEasyImport);
