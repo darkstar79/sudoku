@@ -646,6 +646,30 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Sitzungsdaten werden standardmäßig zum Schutz der Privatsphäre verschlüsselt. Deaktivieren, um die Rohdaten selbst einzusehen.</translation>
     </message>
     <message>
+        <source>These features are not part of the 1.0 stability commitment. Their UI, data formats, and behavior may change or be removed in any 1.x release. Disable if you prefer to stay on the stable surface.</source>
+        <translation>Diese Funktionen sind nicht Teil der Stabilitätszusicherung von 1.0. Benutzeroberfläche, Datenformate und Verhalten können sich in jeder 1.x-Version ändern oder entfernt werden. Deaktivieren Sie sie, wenn Sie auf der stabilen Oberfläche bleiben möchten.</translation>
+    </message>
+    <message>
+        <source>Enable Training Mode</source>
+        <translation>Trainingsmodus aktivieren</translation>
+    </message>
+    <message>
+        <source>Interactive technique trainer. When enabled, appears under Game → Training Mode.</source>
+        <translation>Interaktives Techniktraining. Wenn aktiviert, erscheint unter Spiel → Trainingsmodus.</translation>
+    </message>
+    <message>
+        <source>Enable progressive coaching hints</source>
+        <translation>Schrittweise Coaching-Tipps aktivieren</translation>
+    </message>
+    <message>
+        <source>Three-level guided hint with check/apply workflow. When enabled, appears under Help → Get Coaching Hint (Shift+H).</source>
+        <translation>Dreistufiger geführter Tipp mit Prüf-/Übernehmen-Ablauf. Wenn aktiviert, erscheint unter Hilfe → Coaching-Tipp (Umschalt+H).</translation>
+    </message>
+    <message>
+        <source>Experimental</source>
+        <translation>Experimentell</translation>
+    </message>
+    <message>
         <source>Disabling session tracking will stop recording per-game statistics. Would you like to delete existing session history?</source>
         <translation>Das Deaktivieren beendet die Aufzeichnung von Einzelspielstatistiken. Möchten Sie den vorhandenen Sitzungsverlauf löschen?</translation>
     </message>

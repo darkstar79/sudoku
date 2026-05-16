@@ -308,8 +308,11 @@ void MainWindow::setupMenuBar() {
 
     game_menu->addSeparator();
 
-    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Training Mode"))), this,
-                         [this]() { central_stack_->setCurrentIndex(1); });
+    training_mode_action_ = game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Training Mode"))), this,
+                                                 [this]() { central_stack_->setCurrentIndex(1); });
+    // Hidden by default; setSettingsManager() applies the user's preference
+    // and the settingsObservable subscription keeps it in sync afterwards.
+    training_mode_action_->setVisible(false);
 
     game_menu->addAction(
         QString("&%1").arg(qstr(core::loc("Sudoku", "Analyze Position"))), QKeySequence("F2"), this, [this]() {
@@ -384,11 +387,14 @@ void MainWindow::setupMenuBar() {
             view_model_->getHint(board_widget_->selectedCell());
         }
     });
-    help_menu->addAction(qstr(core::loc("Sudoku", "Get Coaching Hint")), QKeySequence("Shift+H"), this, [this]() {
-        if (view_model_) {
-            view_model_->requestCoachingHint();
-        }
-    });
+    coaching_hint_action_ =
+        help_menu->addAction(qstr(core::loc("Sudoku", "Get Coaching Hint")), QKeySequence("Shift+H"), this, [this]() {
+            if (view_model_) {
+                view_model_->requestCoachingHint();
+            }
+        });
+    // Hidden by default; gated by settings.experimental_coaching_hints.
+    coaching_hint_action_->setVisible(false);
     help_menu->addAction(qstr(core::loc("Sudoku", "Find Step by Technique…")), this,
                          &MainWindow::showFindByTechniqueDialog);
     help_menu->addSeparator();
@@ -601,16 +607,31 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
         // top-level widgets, which retranslates the UI via changeEvent.
         applyLocale(settings_manager_->getSettings().language);
 
+        // Apply initial visibility for experimental menu entries before the
+        // observer takes over (the observer only fires on subsequent changes).
+        if (training_mode_action_) {
+            training_mode_action_->setVisible(settings_manager_->getSettings().experimental_training_mode);
+        }
+        if (coaching_hint_action_) {
+            coaching_hint_action_->setVisible(settings_manager_->getSettings().experimental_coaching_hints);
+        }
+
         // React to language changes from the Settings dialog. Compare against
         // the previous locale so we only reload the translator when it
         // actually changes (other settings — auto-save interval, hint
-        // visibility, etc. — also fire this observer).
+        // visibility, experimental flags, etc. — also fire this observer).
         settings_manager_->settingsObservable().subscribe([this](const core::Settings& s) {
             if (auto_save_timer_) {
                 auto_save_timer_->setInterval(s.auto_save_interval_ms);
             }
             if (s.language != current_locale_) {
                 applyLocale(s.language);
+            }
+            if (training_mode_action_) {
+                training_mode_action_->setVisible(s.experimental_training_mode);
+            }
+            if (coaching_hint_action_) {
+                coaching_hint_action_->setVisible(s.experimental_coaching_hints);
             }
         });
     }
@@ -1487,6 +1508,38 @@ void MainWindow::showSettingsDialog() {
     stats_layout->addStretch();
     tabs->addTab(stats_page, qstr(core::loc("Sudoku", "Statistics")));
 
+    // === Experimental Tab ===
+    auto* experimental_page = new QWidget();
+    auto* experimental_layout = new QVBoxLayout(experimental_page);
+
+    auto* experimental_header = new QLabel(qstr(core::loc(
+        "Sudoku",
+        "These features are not part of the 1.0 stability commitment. Their UI, data formats, and behavior may change "
+        "or be removed in any 1.x release. Disable if you prefer to stay on the stable surface.")));
+    experimental_header->setWordWrap(true);
+    QFont header_font = experimental_header->font();
+    header_font.setItalic(true);
+    experimental_header->setFont(header_font);
+    experimental_layout->addWidget(experimental_header);
+    experimental_layout->addSpacing(8);
+
+    auto* training_mode_cb = new QCheckBox(qstr(core::loc("Sudoku", "Enable Training Mode")));
+    training_mode_cb->setChecked(settings_manager_->getSettings().experimental_training_mode);
+    training_mode_cb->setToolTip(
+        qstr(core::loc("Sudoku", "Interactive technique trainer. When enabled, appears under Game → Training Mode.")));
+    experimental_layout->addWidget(training_mode_cb);
+
+    auto* coaching_hints_cb = new QCheckBox(qstr(core::loc("Sudoku", "Enable progressive coaching hints")));
+    coaching_hints_cb->setChecked(settings_manager_->getSettings().experimental_coaching_hints);
+    coaching_hints_cb->setToolTip(qstr(core::loc(
+        "Sudoku",
+        "Three-level guided hint with check/apply workflow. When enabled, appears under Help → Get Coaching Hint "
+        "(Shift+H).")));
+    experimental_layout->addWidget(coaching_hints_cb);
+
+    experimental_layout->addStretch();
+    tabs->addTab(experimental_page, qstr(core::loc("Sudoku", "Experimental")));
+
     // === Dialog layout ===
     auto* main_layout = new QVBoxLayout(dialog);
     main_layout->addWidget(tabs);
@@ -1541,6 +1594,12 @@ void MainWindow::showSettingsDialog() {
     });
 
     connectCheckBox(encrypt_stats_cb, [this](bool checked) { settings_manager_->setEncryptDetailedStats(checked); });
+
+    connectCheckBox(training_mode_cb,
+                    [this](bool checked) { settings_manager_->setExperimentalTrainingMode(checked); });
+
+    connectCheckBox(coaching_hints_cb,
+                    [this](bool checked) { settings_manager_->setExperimentalCoachingHints(checked); });
 
     dialog->exec();
 }

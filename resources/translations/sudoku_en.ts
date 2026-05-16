@@ -645,6 +645,30 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>These features are not part of the 1.0 stability commitment. Their UI, data formats, and behavior may change or be removed in any 1.x release. Disable if you prefer to stay on the stable surface.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable Training Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Interactive technique trainer. When enabled, appears under Game → Training Mode.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable progressive coaching hints</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Three-level guided hint with check/apply workflow. When enabled, appears under Help → Get Coaching Hint (Shift+H).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Experimental</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Disabling session tracking will stop recording per-game statistics. Would you like to delete existing session history?</source>
         <translation type="unfinished"></translation>
     </message>
