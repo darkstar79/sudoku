@@ -184,6 +184,15 @@ void SettingsManager::load() {
             settings_.language = v.as<std::string>();
         }
 
+        if (auto experimental = root["experimental"]) {
+            if (auto v = experimental["training_mode"]) {
+                settings_.experimental_training_mode = v.as<bool>();
+            }
+            if (auto v = experimental["coaching_hints"]) {
+                settings_.experimental_coaching_hints = v.as<bool>();
+            }
+        }
+
         observable_.set(settings_);
         spdlog::debug("Settings loaded from {}", settings_path_.string());
     } catch (const std::exception& e) {
@@ -212,6 +221,11 @@ void SettingsManager::save() const {
         root["display"] = display;
 
         root["language"] = settings_.language;
+
+        YAML::Node experimental;
+        experimental["training_mode"] = settings_.experimental_training_mode;
+        experimental["coaching_hints"] = settings_.experimental_coaching_hints;
+        root["experimental"] = experimental;
 
         std::ofstream file(settings_path_);
         if (!file.is_open()) {
