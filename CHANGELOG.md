@@ -56,6 +56,6 @@ See [README.md](README.md#platform-support) for the difference between "tested",
 ### Known limitations
 
 - No user-facing timer pause. The timer runs continuously while a puzzle is open.
-- Language change persists across restart but does not retranslate the running UI — a Qt Linguist runtime swap is not yet wired. Quit and relaunch to apply the new language.
+- Open sub-dialogs (Settings, Import Custom Puzzle, Find Step by Technique) do not re-translate when the language is changed from within them — close and reopen the affected dialog to see it in the new language. The main window shell (menu bar, toolbar, button panel, status bar) and the Training Mode widget retranslate immediately.
 - No theme system; colors are fixed (light theme).
 - Save file format v1.1 is the 1.0 stability boundary. Older v1.0 saves still load (the missing `PuzzleOrigin` field defaults to `Generated`). Pre-1.0 snapshot binaries may not load v1.1 saves; downgrading after upgrading is not supported.

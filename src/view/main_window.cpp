@@ -1461,8 +1461,10 @@ void MainWindow::showSettingsDialog() {
     show_hints_cb->setChecked(settings_manager_->getSettings().show_hints);
     display_layout->addWidget(show_hints_cb);
 
-    // Language selection. Setting persists across restart but does not retranslate
-    // the running UI (Qt Linguist runtime swap not yet wired).
+    // Language selection. The combo applies the new locale via setLanguage(),
+    // which fires the settings observer -> applyLocale() -> LanguageChange
+    // events on top-level widgets. This dialog itself was built once, so its
+    // labels don't update live -- close and reopen to see them retranslated.
     {
         display_layout->addSpacing(10);
         auto* lang_layout = new QHBoxLayout();
