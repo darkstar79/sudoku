@@ -10,11 +10,12 @@ permissions:
   contents: read
 
 env:
+  # VERSION is the raw ref name; tags (v1.0.0) are filename-safe but
+  # branch names like feature/release-1.0-prep contain '/'. Steps that
+  # embed VERSION into output paths sanitize it with bash parameter
+  # expansion: "${VERSION//\//-}". GHA expressions have no replace()
+  # function, so the substitution has to happen in shell.
   VERSION: ${{ github.ref_name || 'dev' }}
-  # Filename-safe version: tags (v1.0.0) pass through unchanged, but branch
-  # names like feature/release-1.0-prep would otherwise embed a literal '/'
-  # in artifact paths and break flatpak build-bundle / linuxdeploy output.
-  VERSION_SAFE: ${{ replace(github.ref_name || 'dev', '/', '-') }}
 
 jobs:
   flatpak:
@@ -40,8 +41,9 @@ jobs:
 
       - name: Create Flatpak bundle
         run: |
+          version_safe="${VERSION//\//-}"
           flatpak build-bundle repo \
-            Sudoku-${{ env.VERSION_SAFE }}-x86_64.flatpak \
+            "Sudoku-${version_safe}-x86_64.flatpak" \
             org.sudoku_cpp.Sudoku
 
       - name: Upload Flatpak bundle
@@ -102,9 +104,9 @@ jobs:
           chmod +x linuxdeploy-*.AppImage
 
       - name: Create AppImage
-        env:
-          LDAI_OUTPUT: Sudoku-${{ env.VERSION_SAFE }}-x86_64.AppImage
         run: |
+          version_safe="${VERSION//\//-}"
+          export LDAI_OUTPUT="Sudoku-${version_safe}-x86_64.AppImage"
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --plugin qt \
