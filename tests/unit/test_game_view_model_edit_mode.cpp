@@ -144,3 +144,33 @@ TEST_CASE("commitEditedPuzzle rejects a multi-solution board and stays in edit m
     REQUIRE_FALSE(fixture.view_model->errorMessage.get().empty());
     REQUIRE(fixture.view_model->getInputMode() == InputMode::EditGivens);
 }
+
+// Reviewer note (Issue #2): entering edit mode while a game is in progress used to leave the
+// previous game's StatisticsManager session unfinalized — orphaned, never counted in
+// aggregate stats, never recoverable if the user closed the app from edit mode. The fix is to
+// have enterEditMode finalize-as-abandoned, the same way startGameSession does when a session
+// is already active. Observable proof: games_played for the abandoned game's difficulty
+// increments without games_completed.
+TEST_CASE("enterEditMode finalizes the prior active game session as abandoned", "[game_view_model][edit_mode]") {
+    EditModeFixture fixture;
+
+    // Lay down a game first: enter edit mode, commit a valid easy puzzle so a real stats
+    // session is open. (This avoids depending on the random PuzzleGenerator.)
+    fixture.view_model->enterEditMode();
+    fixture.layDownEasyPuzzle();
+    fixture.view_model->commitEditedPuzzle();
+    REQUIRE(fixture.view_model->isGameActive());
+
+    auto before = fixture.stats_manager->getAggregateStats();
+    REQUIRE(before.has_value());
+    const int played_before = before->games_played[static_cast<int>(core::Difficulty::Easy)];
+    const int completed_before = before->games_completed[static_cast<int>(core::Difficulty::Easy)];
+
+    // Now enter edit mode again — the prior session must be closed as abandoned (not completed).
+    fixture.view_model->enterEditMode();
+
+    auto after = fixture.stats_manager->getAggregateStats();
+    REQUIRE(after.has_value());
+    REQUIRE(after->games_played[static_cast<int>(core::Difficulty::Easy)] == played_before + 1);
+    REQUIRE(after->games_completed[static_cast<int>(core::Difficulty::Easy)] == completed_before);
+}

@@ -306,6 +306,14 @@ void GameViewModel::exportPuzzleAsString() {
 }
 
 void GameViewModel::enterEditMode() {
+    // Finalize any in-progress game session as abandoned BEFORE we wipe the board. Without
+    // this, the prior session leaks past app exit — its end_time is never written and it
+    // never reaches aggregate stats. The View prompts the user about dirty state, but the
+    // ViewModel must defend its statistics-manager contract independently.
+    if (isGameActive()) {
+        endGameSession(false);
+    }
+
     // Clear board to an all-empty state. No move history, no givens.
     model::GameState empty_state;
     empty_state.loadPuzzle(core::BoardData{});  // all zeros
