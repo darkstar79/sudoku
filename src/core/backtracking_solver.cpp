@@ -31,10 +31,11 @@ namespace sudoku::core {
 BacktrackingSolver::BacktrackingSolver(std::shared_ptr<IGameValidator> validator) : validator_(std::move(validator)) {
 }
 
-bool BacktrackingSolver::solve(BoardData& board, ValueSelectionStrategy strategy, std::mt19937* rng) const {
+bool BacktrackingSolver::solve(BoardData& board, ValueSelectionStrategy strategy, std::mt19937* rng,
+                               std::optional<std::chrono::steady_clock::time_point> deadline) const {
     // Legacy path: convert to Board, solve, convert back
     auto board_flat = Board::fromBoardData(board);
-    bool result = solve(board_flat, strategy, rng);
+    bool result = solve(board_flat, strategy, rng, deadline);
     if (result) {
         // Copy solution back to original vector
         board = board_flat.toBoardData();
@@ -42,10 +43,18 @@ bool BacktrackingSolver::solve(BoardData& board, ValueSelectionStrategy strategy
     return result;
 }
 
-bool BacktrackingSolver::solve(Board& board, ValueSelectionStrategy strategy, std::mt19937* rng) const {
+bool BacktrackingSolver::solve(Board& board, ValueSelectionStrategy strategy, std::mt19937* rng,
+                               std::optional<std::chrono::steady_clock::time_point> deadline) const {
     // Performance-optimized path: uses ConstraintState for O(1) validation
+    // Early exit if the deadline has already elapsed before any recursion. Matches the
+    // SudokuSolver wrapper's wall-clock contract so unsolvable-by-deadline returns fast.
+    if (deadline.has_value() && std::chrono::steady_clock::now() >= *deadline) {
+        return false;
+    }
     ConstraintState state(board);
-    return solveRecursive(board, state, strategy, rng);
+    std::uint32_t recursion_count = 0;
+    bool timed_out = false;
+    return solveRecursive(board, state, strategy, rng, deadline, recursion_count, timed_out);
 }
 
 std::optional<Position> BacktrackingSolver::findEmptyPosition(const Board& board) {
@@ -96,7 +105,24 @@ std::vector<int> BacktrackingSolver::getValuesToTry(const Position& pos, Constra
 }
 
 bool BacktrackingSolver::solveRecursive(Board& board, ConstraintState& state, ValueSelectionStrategy strategy,
-                                        std::mt19937* rng) const {
+                                        std::mt19937* rng,
+                                        std::optional<std::chrono::steady_clock::time_point> deadline,
+                                        std::uint32_t& recursion_count, bool& timed_out) const {
+    // Wall-clock sampling: 64-node cadence. Looser than per-node (avoids vDSO bottleneck) but
+    // tighter than SolutionCounter's 1024-stride — backtracking nodes here are ConstraintState
+    // operations, not the SIMD hot path counter uses, so we measure per-node at ~hundreds of ns
+    // and the cadence must keep overshoot inside R2's 4× budget envelope (50 ms budget ⇒ ≤200 ms
+    // elapsed). The 1024-stride overshot by ~230 ms on AI Escargot fallback.
+    if (deadline.has_value() && (++recursion_count & 0x3FU) == 0) {
+        if (std::chrono::steady_clock::now() >= *deadline) {
+            timed_out = true;
+            return false;
+        }
+    }
+    if (timed_out) {
+        return false;
+    }
+
     auto pos_opt = findEmptyPosition(board);
 
     // Base case: If no empty position, puzzle is solved
@@ -116,13 +142,18 @@ bool BacktrackingSolver::solveRecursive(Board& board, ConstraintState& state, Va
         state.placeValue(pos.row, pos.col, num);
 
         // Recurse
-        if (solveRecursive(board, state, strategy, rng)) {
+        if (solveRecursive(board, state, strategy, rng, deadline, recursion_count, timed_out)) {
             return true;  // Solution found
         }
 
         // Backtrack: remove number from board and ConstraintState
         board[pos.row][pos.col] = 0;
         state.removeValue(pos.row, pos.col, num);
+
+        // Abort partway through the children loop if a deeper recursion tripped the deadline.
+        if (timed_out) {
+            return false;
+        }
     }
 
     return false;  // No solution found

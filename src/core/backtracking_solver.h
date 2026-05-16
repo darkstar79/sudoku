@@ -18,6 +18,7 @@
 
 #include "i_game_validator.h"
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -56,10 +57,14 @@ public:
      * @param board The board to solve (modified in-place)
      * @param strategy Which value selection strategy to use
      * @param rng Random number generator (required if strategy == Randomized)
+     * @param deadline Optional wall-clock cutoff. When set, solve() short-circuits on entry if
+     *        the deadline has already passed and aborts mid-recursion at ~1024-node intervals.
+     *        Returns false on abort so callers can map it to a solver-level Timeout.
      * @return true if a solution was found, false otherwise
      */
     [[nodiscard]] bool solve(BoardData& board, ValueSelectionStrategy strategy = ValueSelectionStrategy::Sequential,
-                             std::mt19937* rng = nullptr) const;
+                             std::mt19937* rng = nullptr,
+                             std::optional<std::chrono::steady_clock::time_point> deadline = std::nullopt) const;
 
     /**
      * Solve using flat Board representation with O(1) ConstraintState validation.
@@ -68,10 +73,12 @@ public:
      * @param board Flat board to solve (modified in-place)
      * @param strategy Which value selection strategy to use
      * @param rng Random number generator (required if strategy == Randomized)
+     * @param deadline See deadline parameter on the BoardData overload.
      * @return true if a solution was found, false otherwise
      */
     [[nodiscard]] bool solve(Board& board, ValueSelectionStrategy strategy = ValueSelectionStrategy::Sequential,
-                             std::mt19937* rng = nullptr) const;
+                             std::mt19937* rng = nullptr,
+                             std::optional<std::chrono::steady_clock::time_point> deadline = std::nullopt) const;
 
 private:
     std::shared_ptr<IGameValidator> validator_;
@@ -81,7 +88,8 @@ private:
     [[nodiscard]] static std::vector<int> getValuesToTry(const Position& pos, ConstraintState& state,
                                                          ValueSelectionStrategy strategy, std::mt19937* rng);
     [[nodiscard]] bool solveRecursive(Board& board, ConstraintState& state, ValueSelectionStrategy strategy,
-                                      std::mt19937* rng) const;
+                                      std::mt19937* rng, std::optional<std::chrono::steady_clock::time_point> deadline,
+                                      std::uint32_t& recursion_count, bool& timed_out) const;
 };
 
 }  // namespace sudoku::core

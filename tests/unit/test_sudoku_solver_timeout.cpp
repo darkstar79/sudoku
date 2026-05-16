@@ -87,6 +87,26 @@ TEST_CASE("solvePuzzle bails out on AI Escargot within wall-clock budget", "[sud
     // the only thing we verify is the wall-clock bound.
 }
 
+// Backtracking-under-pressure: AI Escargot has no logical-only path, so the strategy chain
+// exhausts and the solver falls into BacktrackingSolver. Without a deadline-aware backtracker
+// this leg ran unbounded (1.8s+ measured). With the deadline propagated, the solver must
+// surface Timeout — not Unsolvable — when the wall clock has expired. Tight 5ms budget ensures
+// the run is dominated by the backtracking path on any reasonable machine.
+TEST_CASE("solvePuzzle propagates deadline into backtracking fallback", "[sudoku_solver][timeout][.integration]") {
+    auto validator = std::make_shared<GameValidator>();
+    SudokuSolver solver(validator);
+
+    auto t0 = std::chrono::steady_clock::now();
+    auto result = solver.solvePuzzle(makeAIEscargot(), 5ms);
+    auto elapsed = std::chrono::steady_clock::now() - t0;
+
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error() == SolverError::Timeout);
+    // Hard ceiling: must not exceed the budget by more than the ~1024-node check cadence.
+    // 500 ms is two orders of magnitude beyond the budget — anything beyond is a regression.
+    REQUIRE(elapsed < 500ms);
+}
+
 // Step 1.2 plumbing test (R2 idiom 1) for findNextStep(board, original_puzzle, budget).
 // Per F2, the 2-arg form (with original_puzzle for Avoidable Rectangle) is the production path.
 TEST_CASE("findNextStep returns Timeout when budget is already exceeded", "[sudoku_solver][timeout]") {

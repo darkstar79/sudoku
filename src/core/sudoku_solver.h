@@ -27,6 +27,7 @@
 #include <chrono>
 #include <expected>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace sudoku::core {
@@ -86,10 +87,13 @@ private:
     [[nodiscard]] static bool applyStep(BoardData& board, CandidateGrid& candidates, const SolveStep& step);
 
     /// Solves puzzle using simple backtracking (no circular dependency on generator)
-    /// Uses unified BacktrackingSolver with MostConstrained strategy
+    /// Uses unified BacktrackingSolver with MostConstrained strategy.
     /// @param board Board to solve (modified in-place)
-    /// @return true if solution found, false if unsolvable
-    bool solveWithBacktracking(BoardData& board) const;
+    /// @param deadline Optional wall-clock cutoff; aborts recursion past the deadline so the
+    ///        budgeted solvePuzzle overload can't be defeated by deep backtracking fallback.
+    /// @return true if solution found, false if unsolvable or aborted by deadline.
+    bool solveWithBacktracking(BoardData& board,
+                               std::optional<std::chrono::steady_clock::time_point> deadline = std::nullopt) const;
 };
 
 }  // namespace sudoku::core
