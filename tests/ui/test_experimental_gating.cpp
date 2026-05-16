@@ -34,11 +34,12 @@ class TestExperimentalGating : public QObject {
 private slots:
     void initTestCase();
     void cleanupTestCase();
+    void init();
     void defaultsHideBothActions();
-    void enablingTrainingModeShowsAction();
-    void enablingCoachingHintsShowsAction();
-    void disablingTrainingModeHidesActionAgain();
-    void disablingCoachingHintsHidesActionAgain();
+    void onlyTrainingShowsOnlyTraining();
+    void onlyCoachingShowsOnlyCoaching();
+    void bothFlagsOnShowsBoth();
+    void togglingBackToFalseHidesAgain();
 
 private:
     std::unique_ptr<test::UITestContext> ctx_;
@@ -77,6 +78,15 @@ void TestExperimentalGating::cleanupTestCase() {
     }
 }
 
+// Reset both experimental flags to a known-false state before each test slot
+// so individual tests don't depend on declaration order or what a prior slot
+// left behind. Each test then drives the exact transition it wants to assert.
+void TestExperimentalGating::init() {
+    settings_->setExperimentalTrainingMode(false);
+    settings_->setExperimentalCoachingHints(false);
+    QApplication::processEvents();
+}
+
 QAction* TestExperimentalGating::findMenuAction(const QString& text) const {
     for (auto* action : window_->menuBar()->findChildren<QAction*>()) {
         if (action->text().contains(text, Qt::CaseInsensitive)) {
@@ -95,55 +105,58 @@ void TestExperimentalGating::defaultsHideBothActions() {
     QVERIFY(!coaching->isVisible());
 }
 
-void TestExperimentalGating::enablingTrainingModeShowsAction() {
+void TestExperimentalGating::onlyTrainingShowsOnlyTraining() {
     settings_->setExperimentalTrainingMode(true);
     QApplication::processEvents();
 
     auto* training = findMenuAction("Training Mode");
-    QVERIFY(training != nullptr);
-    QVERIFY(training->isVisible());
-
-    // Coaching action stays hidden — flags are independent.
     auto* coaching = findMenuAction("Coaching Hint");
+    QVERIFY(training != nullptr);
     QVERIFY(coaching != nullptr);
+    QVERIFY(training->isVisible());
     QVERIFY(!coaching->isVisible());
 }
 
-void TestExperimentalGating::enablingCoachingHintsShowsAction() {
+void TestExperimentalGating::onlyCoachingShowsOnlyCoaching() {
     settings_->setExperimentalCoachingHints(true);
     QApplication::processEvents();
 
-    auto* coaching = findMenuAction("Coaching Hint");
-    QVERIFY(coaching != nullptr);
-    QVERIFY(coaching->isVisible());
-
-    // Training stays visible from the previous test — order matters and we
-    // verify both flags coexist without interfering.
     auto* training = findMenuAction("Training Mode");
+    auto* coaching = findMenuAction("Coaching Hint");
     QVERIFY(training != nullptr);
-    QVERIFY(training->isVisible());
+    QVERIFY(coaching != nullptr);
+    QVERIFY(!training->isVisible());
+    QVERIFY(coaching->isVisible());
 }
 
-void TestExperimentalGating::disablingTrainingModeHidesActionAgain() {
-    settings_->setExperimentalTrainingMode(false);
+void TestExperimentalGating::bothFlagsOnShowsBoth() {
+    settings_->setExperimentalTrainingMode(true);
+    settings_->setExperimentalCoachingHints(true);
     QApplication::processEvents();
 
     auto* training = findMenuAction("Training Mode");
-    QVERIFY(training != nullptr);
-    QVERIFY(!training->isVisible());
-
-    // Coaching unaffected.
     auto* coaching = findMenuAction("Coaching Hint");
+    QVERIFY(training != nullptr);
     QVERIFY(coaching != nullptr);
+    QVERIFY(training->isVisible());
     QVERIFY(coaching->isVisible());
 }
 
-void TestExperimentalGating::disablingCoachingHintsHidesActionAgain() {
+void TestExperimentalGating::togglingBackToFalseHidesAgain() {
+    // Turn on, then off, and verify the menu actions hide again.
+    settings_->setExperimentalTrainingMode(true);
+    settings_->setExperimentalCoachingHints(true);
+    QApplication::processEvents();
+
+    settings_->setExperimentalTrainingMode(false);
     settings_->setExperimentalCoachingHints(false);
     QApplication::processEvents();
 
+    auto* training = findMenuAction("Training Mode");
     auto* coaching = findMenuAction("Coaching Hint");
+    QVERIFY(training != nullptr);
     QVERIFY(coaching != nullptr);
+    QVERIFY(!training->isVisible());
     QVERIFY(!coaching->isVisible());
 }
 
