@@ -19,6 +19,7 @@
 #include "core/backtracking_solver.h"
 #include "core/game_validator.h"
 
+#include <chrono>
 #include <random>
 
 #include <catch2/catch_test_macros.hpp>
@@ -162,3 +163,30 @@ TEST_CASE("BacktrackingSolver - Edge Cases", "[backtracking_solver]") {
 
 // NOTE: Backtracking behavior tests removed - too slow (only 20-23 clues = huge search space)
 // The solver IS tested for correctness with faster test cases above
+
+// Deadline plumbing: a past steady_clock deadline must short-circuit the solve() before any
+// recursion, even on adversarial inputs. Mirrors SudokuSolver's wall-clock budget contract so
+// the strategy loop can fall through to backtracking without losing the timeout guarantee.
+TEST_CASE("BacktrackingSolver returns false when deadline has already passed", "[backtracking_solver][timeout]") {
+    auto validator = std::make_shared<GameValidator>();
+    BacktrackingSolver solver(validator);
+
+    // AI Escargot — 17-clue, no logical path, would otherwise consume seconds of backtracking.
+    BoardData board = {{1, 0, 0, 0, 0, 7, 0, 9, 0}, {0, 3, 0, 0, 2, 0, 0, 0, 8}, {0, 0, 9, 6, 0, 0, 5, 0, 0},
+                       {0, 0, 5, 3, 0, 0, 9, 0, 0}, {0, 1, 0, 0, 8, 0, 0, 0, 2}, {6, 0, 0, 0, 0, 4, 0, 0, 0},
+                       {3, 0, 0, 0, 0, 0, 0, 1, 0}, {0, 4, 0, 0, 0, 0, 0, 0, 7}, {0, 0, 7, 0, 0, 0, 3, 0, 0}};
+
+    const auto past_deadline = std::chrono::steady_clock::now() - std::chrono::seconds(1);
+
+    auto t0 = std::chrono::steady_clock::now();
+    bool result = solver.solve(board, ValueSelectionStrategy::MostConstrained, /*rng*/ nullptr, past_deadline);
+    auto elapsed = std::chrono::steady_clock::now() - t0;
+
+    REQUIRE_FALSE(result);
+    // Must exit essentially immediately — backtracking should not have meaningfully started.
+    REQUIRE(elapsed < std::chrono::milliseconds(50));
+}
+
+// In-recursion deadline enforcement is exercised end-to-end by the AI-Escargot timeout test
+// in test_sudoku_solver_timeout.cpp; a deterministic unit-level reproducer would require a
+// backtracking-slow board we don't have a stable example of.

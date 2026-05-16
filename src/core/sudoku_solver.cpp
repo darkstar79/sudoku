@@ -256,7 +256,12 @@ std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardDa
 
         if (++iterations > MAX_ITERATIONS) {
             spdlog::warn("Solver hit iteration limit, using backtracking fallback");
-            if (!solveWithBacktracking(working_board)) {
+            if (!solveWithBacktracking(working_board, deadline)) {
+                // Distinguish deadline-abort from genuine unsolvability so the caller can
+                // surface "tighten budget" vs. "puzzle has no solution".
+                if (time_provider_->steadyNow() >= deadline) {
+                    return std::unexpected(SolverError::Timeout);
+                }
                 return std::unexpected(SolverError::Unsolvable);
             }
             used_backtracking = true;
@@ -273,7 +278,10 @@ std::expected<SolverResult, SolverError> SudokuSolver::solvePuzzle(const BoardDa
             }
             solve_path.push_back(step);
         } else {
-            if (!solveWithBacktracking(working_board)) {
+            if (!solveWithBacktracking(working_board, deadline)) {
+                if (time_provider_->steadyNow() >= deadline) {
+                    return std::unexpected(SolverError::Timeout);
+                }
                 return std::unexpected(SolverError::Unsolvable);
             }
             used_backtracking = true;
@@ -370,9 +378,10 @@ bool SudokuSolver::isComplete(const BoardData& board) {
     return true;
 }
 
-bool SudokuSolver::solveWithBacktracking(BoardData& board) const {
+bool SudokuSolver::solveWithBacktracking(BoardData& board,
+                                         std::optional<std::chrono::steady_clock::time_point> deadline) const {
     BacktrackingSolver solver(validator_);
-    return solver.solve(board, ValueSelectionStrategy::MostConstrained);
+    return solver.solve(board, ValueSelectionStrategy::MostConstrained, /*rng*/ nullptr, deadline);
 }
 
 std::vector<SolveStep> SudokuSolver::findAllApplicableSteps(const BoardData& board) const {
