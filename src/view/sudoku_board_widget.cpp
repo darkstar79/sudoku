@@ -42,8 +42,8 @@ SudokuBoardWidget::SudokuBoardWidget(BoardPainter::Config config, QWidget* paren
     setMouseTracking(true);
 }
 
-void SudokuBoardWidget::setBoard(const BoardRenderData& data) {
-    board_ = data;
+void SudokuBoardWidget::setBoard(const BoardRenderData& render_data) {
+    board_ = render_data;
     has_board_ = true;
     hovered_candidate_ = 0;
     update();
