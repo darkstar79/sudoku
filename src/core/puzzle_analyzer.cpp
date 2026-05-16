@@ -124,7 +124,10 @@ UniquenessResult PuzzleAnalyzer::checkUniqueness(const BoardData& board) const {
     // Pre-mortem #9: clear cache before each call so memory does not balloon across imports.
     counter_->clearCache();
 
-    constexpr std::chrono::milliseconds kBudget{5000};
+    // 1 s budget: this runs synchronously on the UI thread (import dialog / edit-mode commit).
+    // Legitimate puzzles finish well under 100 ms via SolutionCounter's SIMD path; the budget
+    // exists to cap adversarial inputs. Anything that needs >1 s is treated as non-unique.
+    constexpr std::chrono::milliseconds kBudget{1000};
     constexpr int kMaxSolutions = 2;
     const int count = counter_->countSolutionsWithTimeout(board, kMaxSolutions, kBudget);
 

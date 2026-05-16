@@ -462,8 +462,9 @@ void GameViewModel::findStepByTechnique(core::SolvingTechnique technique) {
 
     const auto& state = gameState.get();
     auto board = state.extractNumbers();
+    auto original_puzzle = state.extractGivenNumbers();
 
-    auto step_result = solver_->findNextStepByTechnique(board, technique);
+    auto step_result = solver_->findNextStepByTechnique(board, original_puzzle, technique);
 
     if (!step_result.has_value()) {
         // Both Unsolvable and InvalidBoard collapse into "this technique isn't available here"

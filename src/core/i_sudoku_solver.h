@@ -95,6 +95,8 @@ public:
 
     /// Finds the next step using a specific technique (for technique-targeted hints / learning mode).
     /// @param board Current board state
+    /// @param original_puzzle Original puzzle (non-zero cells are givens). Required for
+    ///        strategies that distinguish givens from solver-placed values (Avoidable Rectangle).
     /// @param technique Technique to attempt
     /// @return SolveStep produced by the matching strategy, or
     ///   - SolverError::InvalidBoard if no strategy is registered for the technique
@@ -102,9 +104,10 @@ public:
     ///   - SolverError::Unsolvable if the strategy is registered but produces no step.
     /// @note Default returns Unsolvable; implementations override to dispatch to the matching strategy.
     [[nodiscard]] virtual std::expected<SolveStep, SolverError>
-    findNextStepByTechnique(const BoardData& board, SolvingTechnique /*technique*/) const {
+    findNextStepByTechnique(const BoardData& board, const BoardData& original_puzzle,
+                            SolvingTechnique /*technique*/) const {
         // Generic fallback — implementations should override for real technique dispatch.
-        return findNextStep(board);
+        return findNextStep(board, original_puzzle);
     }
 
     /// Applies a solving step to modify the board
