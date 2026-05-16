@@ -60,6 +60,33 @@ public:
     }
 };
 
+/// IPuzzleAnalyzer mock that returns a configurable ScoringError. Drives the NoSolution and
+/// InvalidInput branches in analyzeDifficulty without needing a hand-crafted board state.
+class FixedErrorAnalyzer : public IPuzzleAnalyzer {
+public:
+    explicit FixedErrorAnalyzer(ScoringError err) : err_(err) {
+    }
+    [[nodiscard]] std::expected<BoardData, ParseErrorDetail> parseString(std::string_view /*input*/) const override {
+        return std::unexpected(ParseErrorDetail{.code = ParseError::Empty});
+    }
+    [[nodiscard]] std::string serializeToString(const BoardData& /*board*/) const override {
+        return {};
+    }
+    [[nodiscard]] std::expected<void, BoardValidationError> validate(const BoardData& /*board*/) const override {
+        return {};
+    }
+    [[nodiscard]] UniquenessResult checkUniqueness(const BoardData& /*board*/) const override {
+        return UniquenessResult::Unique;
+    }
+    [[nodiscard]] std::expected<DifficultyScore, ScoringError>
+    scoreDifficulty(const BoardData& /*board*/, std::chrono::milliseconds /*budget*/) const override {
+        return std::unexpected(err_);
+    }
+
+private:
+    ScoringError err_;
+};
+
 struct AnalyzeFixture {
     sudoku::test::TempTestDir temp_dir;
     std::shared_ptr<IGameValidator> validator;
@@ -131,4 +158,28 @@ TEST_CASE("analyzeDifficulty is a no-op without an analyzer dependency", "[game_
     // Should not crash — graceful no-op or set errorMessage; we just require no crash and
     // that the UIState is not silently corrupted.
     REQUIRE_NOTHROW(vm.analyzeDifficulty());
+}
+
+// Cover the NoSolution and InvalidInput branches of the analyzeDifficulty error switch.
+// Each maps to a distinct localized errorMessage; collapsing arms would silently break copy.
+TEST_CASE("analyzeDifficulty surfaces scoring-error variants distinctly", "[game_view_model][analyze]") {
+    SECTION("NoSolution → 'unsolvable' message") {
+        AnalyzeFixture fixture(std::make_shared<FixedErrorAnalyzer>(ScoringError::NoSolution));
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->errorMessage.set("");
+
+        fixture.view_model->analyzeDifficulty();
+
+        REQUIRE(fixture.view_model->errorMessage.get().find("unsolvable") != std::string::npos);
+    }
+
+    SECTION("InvalidInput → 'invalid' message") {
+        AnalyzeFixture fixture(std::make_shared<FixedErrorAnalyzer>(ScoringError::InvalidInput));
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->errorMessage.set("");
+
+        fixture.view_model->analyzeDifficulty();
+
+        REQUIRE(fixture.view_model->errorMessage.get().find("invalid") != std::string::npos);
+    }
 }

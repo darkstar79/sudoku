@@ -145,6 +145,28 @@ TEST_CASE("commitEditedPuzzle rejects a multi-solution board and stays in edit m
     REQUIRE(fixture.view_model->getInputMode() == InputMode::EditGivens);
 }
 
+// commitEditedPuzzle without an analyzer wired must surface a clean error rather than crash.
+// Covers the analyzer-nullptr guard before validation.
+TEST_CASE("commitEditedPuzzle reports gracefully when no analyzer is wired", "[game_view_model][edit_mode]") {
+    sudoku::test::TempTestDir temp_dir;
+    auto validator = std::make_shared<GameValidator>();
+    auto generator = std::make_shared<PuzzleGenerator>();
+    auto solver = std::make_shared<SudokuSolver>(validator);
+    auto stats_manager = std::make_shared<StatisticsManager>(temp_dir.path());
+    auto save_manager = std::make_shared<SaveManager>(temp_dir.path());
+    auto view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
+                                                      /*settings_manager*/ nullptr, /*analyzer*/ nullptr);
+
+    view_model->enterEditMode();
+    view_model->setEditModeGiven({.row = 0, .col = 0}, 5);
+    view_model->commitEditedPuzzle();
+
+    REQUIRE_FALSE(view_model->errorMessage.get().empty());
+    REQUIRE(view_model->errorMessage.get().find("analyzer") != std::string::npos);
+    // Stays in edit mode since commit cannot be validated.
+    REQUIRE(view_model->getInputMode() == InputMode::EditGivens);
+}
+
 // Reviewer note (Issue #2): entering edit mode while a game is in progress used to leave the
 // previous game's StatisticsManager session unfinalized — orphaned, never counted in
 // aggregate stats, never recoverable if the user closed the app from edit mode. The fix is to
