@@ -140,3 +140,61 @@ TEST_CASE("Default-constructed SavedGame has origin == Generated", "[save_manage
     SavedGame game;
     REQUIRE(game.origin == PuzzleOrigin::Generated);
 }
+
+// Forward-compat regression: a save written by a future build with a new PuzzleOrigin variant
+// must NOT fail the load. The deserializer's default arm falls back to Generated and logs a
+// warning — exercise that arm so it isn't silently broken by future enum churn.
+constexpr const char* kFutureYamlUnknownOrigin = R"(version: "1.1"
+save_id: "future_test"
+display_name: "Future-origin save"
+created_time: 1747350000
+last_modified: 1747350000
+puzzle_data:
+  difficulty: 0
+  puzzle_seed: 42
+  origin: 99
+  original_puzzle:
+    - [5, 3, 0, 0, 7, 0, 0, 0, 0]
+    - [6, 0, 0, 1, 9, 5, 0, 0, 0]
+    - [0, 9, 8, 0, 0, 0, 0, 6, 0]
+    - [8, 0, 0, 0, 6, 0, 0, 0, 3]
+    - [4, 0, 0, 8, 0, 3, 0, 0, 1]
+    - [7, 0, 0, 0, 2, 0, 0, 0, 6]
+    - [0, 6, 0, 0, 0, 0, 2, 8, 0]
+    - [0, 0, 0, 4, 1, 9, 0, 0, 5]
+    - [0, 0, 0, 0, 8, 0, 0, 7, 9]
+  current_state:
+    - [5, 3, 0, 0, 7, 0, 0, 0, 0]
+    - [6, 0, 0, 1, 9, 5, 0, 0, 0]
+    - [0, 9, 8, 0, 0, 0, 0, 6, 0]
+    - [8, 0, 0, 0, 6, 0, 0, 0, 3]
+    - [4, 0, 0, 8, 0, 3, 0, 0, 1]
+    - [7, 0, 0, 0, 2, 0, 0, 0, 6]
+    - [0, 6, 0, 0, 0, 0, 2, 8, 0]
+    - [0, 0, 0, 4, 1, 9, 0, 0, 5]
+    - [0, 0, 0, 0, 8, 0, 0, 7, 9]
+progress:
+  elapsed_time: 12345
+  moves_made: 0
+  hints_used: 0
+  mistakes: 0
+  is_complete: false
+)";
+
+TEST_CASE("Loading a save with an unknown PuzzleOrigin value falls back to Generated",
+          "[integration][save_manager][origin][regression]") {
+    OriginTestFixture fixture;
+
+    const std::string save_id = "future_test";
+    auto save_path = fs::path(fixture.test_dir_) / (save_id + ".yaml");
+    {
+        std::ofstream out(save_path, std::ios::binary);
+        REQUIRE(out.is_open());
+        out << kFutureYamlUnknownOrigin;
+    }
+
+    auto loaded = fixture.save_manager_.loadGame(save_id);
+
+    REQUIRE(loaded.has_value());
+    REQUIRE(loaded->origin == PuzzleOrigin::Generated);
+}

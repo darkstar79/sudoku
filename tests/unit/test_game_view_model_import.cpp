@@ -105,6 +105,62 @@ TEST_CASE("importPuzzleFromString rejects malformed input via errorMessage", "[g
     REQUIRE(fixture.view_model->isGameActive() == was_active_before);
 }
 
+// Parse-error fan-out: each ParseError variant has a distinct localized message branch in
+// importPuzzleFromString. Cover all four to lock in user-facing copy and prevent future regressions
+// where a refactor collapses two arms into the same string (or breaks one of them).
+TEST_CASE("importPuzzleFromString surfaces parse-error variants distinctly", "[game_view_model][import]") {
+    ImportFixture fixture;
+
+    SECTION("Empty input → 'no Sudoku cells' message") {
+        fixture.view_model->errorMessage.set("");
+        fixture.view_model->importPuzzleFromString("");
+        REQUIRE(fixture.view_model->errorMessage.get().find("no Sudoku cells") != std::string::npos);
+    }
+
+    SECTION("Wrong-length numeric input → 'expected 81' message") {
+        fixture.view_model->errorMessage.set("");
+        // 80 digits — passes character filter, fails length check.
+        std::string short_digits(80, '0');
+        fixture.view_model->importPuzzleFromString(short_digits);
+        REQUIRE(fixture.view_model->errorMessage.get().find("expected 81") != std::string::npos);
+    }
+
+    SECTION("Input over 4 KiB → 'too large' message") {
+        fixture.view_model->errorMessage.set("");
+        // PuzzleAnalyzer::kMaxInputBytes is 4096. Anything larger trips InputTooLarge before parsing.
+        std::string huge(5000, '.');
+        fixture.view_model->importPuzzleFromString(huge);
+        REQUIRE(fixture.view_model->errorMessage.get().find("too large") != std::string::npos);
+    }
+
+    SECTION("Non-digit/dot character → 'Invalid character' message") {
+        fixture.view_model->errorMessage.set("");
+        std::string with_letter(81, '0');
+        with_letter[40] = 'X';
+        fixture.view_model->importPuzzleFromString(with_letter);
+        REQUIRE(fixture.view_model->errorMessage.get().find("Invalid character") != std::string::npos);
+    }
+}
+
+// Defensive: GameViewModel constructed without an analyzer must surface a clean error rather
+// than crash. Covers the analyzer-nullptr guard at the top of importPuzzleFromString.
+TEST_CASE("importPuzzleFromString reports gracefully when no analyzer is wired", "[game_view_model][import]") {
+    sudoku::test::TempTestDir temp_dir;
+    auto validator = std::make_shared<GameValidator>();
+    auto generator = std::make_shared<PuzzleGenerator>();
+    auto solver = std::make_shared<SudokuSolver>(validator);
+    auto stats_manager = std::make_shared<StatisticsManager>(temp_dir.path());
+    auto save_manager = std::make_shared<SaveManager>(temp_dir.path());
+    auto view_model = std::make_unique<GameViewModel>(validator, generator, solver, stats_manager, save_manager,
+                                                      /*settings_manager*/ nullptr, /*analyzer*/ nullptr);
+
+    view_model->importPuzzleFromString(kEasyImport);
+
+    REQUIRE_FALSE(view_model->errorMessage.get().empty());
+    REQUIRE(view_model->errorMessage.get().find("analyzer") != std::string::npos);
+    REQUIRE_FALSE(view_model->isGameActive());
+}
+
 TEST_CASE("importPuzzleFromString rejects a board with rule conflicts", "[game_view_model][import]") {
     ImportFixture fixture;
     // Same easy import but with a duplicate 3 in row 0.
