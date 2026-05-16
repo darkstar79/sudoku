@@ -13,7 +13,7 @@ This project is entirely **vibe coded** using [Claude Code](https://docs.anthrop
 
 - Puzzle generation with 5 difficulty levels and guaranteed unique solutions
 - 54 solving strategies with step-by-step hints
-- Training mode for learning solving techniques
+- Training mode for learning solving techniques *(experimental — enable in Settings → Experimental)*
 - Custom puzzles: paste-import an 81-character string, or enter givens manually in edit mode
 - Copy current puzzle to clipboard, look up the next step by technique
 - Automatic difficulty rating for imported and edited puzzles
@@ -22,6 +22,18 @@ This project is entirely **vibe coded** using [Claude Code](https://docs.anthrop
 - Statistics tracking
 - Localization (English, German)
 - SIMD-accelerated solver (AVX2/AVX-512)
+
+## Platform Support
+
+The four lines below describe four *different strengths of claim*. "Tested" means the maintainer personally exercises the app there; "CI-built" means GitHub Actions builds and runs the test suite but no human verifies UX polish; "packaged downstream" means a third party builds it.
+
+- **Linux (Fedora)** — primary development platform. All interactive testing by the maintainer happens here.
+- **Linux (Ubuntu 24.04)** — built and full test suite run in GitHub Actions CI on every push. Not interactively exercised by the maintainer.
+- **Windows 11** — installer artifact attached to each release. Built and tested in CI on `windows-2025` (per push to `main` and on demand); smoke-tested by the maintainer on a Win11 secondary machine before each release tag. Not a daily-driver environment — please file issues if you hit anything.
+- **Linux (openSUSE)** — RPM snapshots produced downstream via the [openSUSE Build Service](https://build.opensuse.org/) (namespace `home:AndnoVember:LXQt:Qt6`). Built and validated by the downstream packager, not directly by the project.
+- **macOS** — **not supported in 1.0.** Out of scope.
+
+Other Linux distributions are likely to work (the Qt6 / CMake / Conan stack is portable) but are not on the test matrix.
 
 ## Technology Stack
 
@@ -44,7 +56,7 @@ This project is entirely **vibe coded** using [Claude Code](https://docs.anthrop
 
 ## Building the Project
 
-### Quick Start (Linux/macOS)
+### Quick Start (Linux)
 
 ```bash
 # Install dependencies, configure, and build
