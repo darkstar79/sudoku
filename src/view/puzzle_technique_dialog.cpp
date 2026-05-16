@@ -104,6 +104,7 @@ PuzzleTechniqueDialog::PuzzleTechniqueDialog(QWidget* parent) : QDialog(parent) 
     auto* layout = new QVBoxLayout(this);
 
     auto* prompt = new QLabel(qstr(core::loc("Sudoku", "Pick a solving technique:")));
+    prompt->setTextFormat(Qt::PlainText);
     layout->addWidget(prompt);
 
     technique_combo_ = new QComboBox;

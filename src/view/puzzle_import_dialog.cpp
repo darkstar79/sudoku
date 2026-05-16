@@ -22,6 +22,9 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QSignalBlocker>
+#include <QTextCursor>
+#include <QTextDocument>
 #include <QTextEdit>
 #include <QVBoxLayout>
 
@@ -44,15 +47,31 @@ PuzzleImportDialog::PuzzleImportDialog(QWidget* parent) : QDialog(parent) {
 
     auto* prompt = new QLabel(qstr(
         core::loc("Sudoku", "Paste an 81-character puzzle. Use digits 1-9 and '.', '0', or '_' for empty cells.")));
+    prompt->setTextFormat(Qt::PlainText);
     prompt->setWordWrap(true);
     layout->addWidget(prompt);
 
     text_edit_ = new QTextEdit;
     text_edit_->setAcceptRichText(false);
     text_edit_->setPlaceholderText(qstr(core::loc("Sudoku", "Paste puzzle here…")));
+    // Cap document growth in-place so an oversized paste doesn't sit in memory until
+    // the analyzer's PuzzleAnalyzer::kMaxInputBytes (4096) check runs. Trim with
+    // QTextCursor to avoid an intermediate toPlainText() copy of the full buffer.
+    auto* doc = text_edit_->document();
+    connect(doc, &QTextDocument::contentsChange, this, [doc](int, int, int) {
+        constexpr int kMaxInputChars = 4096;
+        if (doc->characterCount() > kMaxInputChars + 1) {
+            QSignalBlocker blocker(doc);
+            QTextCursor cursor(doc);
+            cursor.setPosition(kMaxInputChars);
+            cursor.movePosition(QTextCursor::End, QTextCursor::KeepAnchor);
+            cursor.removeSelectedText();
+        }
+    });
     layout->addWidget(text_edit_, 1);
 
     error_label_ = new QLabel;
+    error_label_->setTextFormat(Qt::PlainText);
     error_label_->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleColors::ERROR_COLOR));
     error_label_->setWordWrap(true);
     error_label_->setVisible(false);
