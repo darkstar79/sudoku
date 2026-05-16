@@ -37,6 +37,83 @@ TEST_CASE("SettingsManager - Default values when no file exists", "[settings]") 
     CHECK(s.show_conflicts == true);
     CHECK(s.show_hints == true);
     CHECK(s.language == "en");
+    CHECK(s.experimental_training_mode == false);
+    CHECK(s.experimental_coaching_hints == false);
+}
+
+TEST_CASE("SettingsManager - Experimental flags load from YAML when present", "[settings][experimental]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        std::ofstream out(path);
+        out << "gameplay:\n"
+            << "  max_hints: 10\n"
+            << "experimental:\n"
+            << "  training_mode: true\n"
+            << "  coaching_hints: true\n";
+    }
+
+    SettingsManager mgr(path);
+    CHECK(mgr.getSettings().experimental_training_mode == true);
+    CHECK(mgr.getSettings().experimental_coaching_hints == true);
+}
+
+TEST_CASE("SettingsManager - Missing experimental section defaults to off (backward compat)",
+          "[settings][experimental]") {
+    // Simulates a settings.yaml written by a pre-1.0 binary that doesn't know
+    // about the experimental section. Loading it must default both flags to false,
+    // not crash, not throw.
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        std::ofstream out(path);
+        out << "gameplay:\n"
+            << "  max_hints: 7\n"
+            << "  default_difficulty: Hard\n"
+            << "display:\n"
+            << "  show_conflicts: false\n"
+            << "language: de\n";
+    }
+
+    SettingsManager mgr(path);
+    const auto& s = mgr.getSettings();
+
+    // Sanity check that the file did load (non-default values present)
+    CHECK(s.max_hints == 7);
+    CHECK(s.default_difficulty == Difficulty::Hard);
+    CHECK(s.show_conflicts == false);
+    CHECK(s.language == "de");
+
+    // Experimental flags default to false when the section is absent
+    CHECK(s.experimental_training_mode == false);
+    CHECK(s.experimental_coaching_hints == false);
+}
+
+TEST_CASE("SettingsManager - Experimental flags persist across save/load", "[settings][experimental]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    // Write a YAML file with both flags on, simulating a save by a 1.0 binary.
+    {
+        std::ofstream out(path);
+        out << "experimental:\n"
+            << "  training_mode: true\n"
+            << "  coaching_hints: false\n";
+    }
+
+    SettingsManager mgr(path);
+    CHECK(mgr.getSettings().experimental_training_mode == true);
+    CHECK(mgr.getSettings().experimental_coaching_hints == false);
+
+    // Force a save by toggling an orthogonal field, then reload — the experimental
+    // values must round-trip through save() unchanged.
+    mgr.setMaxHints(11);
+    SettingsManager mgr2(path);
+    CHECK(mgr2.getSettings().experimental_training_mode == true);
+    CHECK(mgr2.getSettings().experimental_coaching_hints == false);
+    CHECK(mgr2.getSettings().max_hints == 11);
 }
 
 TEST_CASE("SettingsManager - Save and load round-trip", "[settings]") {

@@ -38,6 +38,11 @@ struct Settings {
     // Language
     std::string language{"en"};
 
+    // Experimental — gated UI; not part of the 1.0 stability commitment.
+    // Default off. Reached via Settings → Experimental in the UI.
+    bool experimental_training_mode{false};
+    bool experimental_coaching_hints{false};
+
     bool operator==(const Settings&) const = default;
 };
 
