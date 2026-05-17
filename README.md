@@ -7,7 +7,11 @@ An offline Sudoku game built with C++23 and Qt6 for desktop users who prefer key
 
 This project is entirely **vibe coded** using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — no manual coding involved. It serves as a personal experiment to explore what's possible with AI-assisted development and how to work effectively with Claude Code on a non-trivial C++ codebase.
 
-![Sudoku C++ Screenshot](screenshot.png)
+![Game in progress with pencil-mark candidates and related-cell highlighting](resources/screenshots/gameplay-candidates.png)
+
+![Fresh Master-difficulty puzzle with row, column, and box highlighting](resources/screenshots/gameplay-clean-board.png)
+
+![Puzzle Difficulty dialog showing the SE rating and required solving techniques](resources/screenshots/difficulty-dialog.png)
 
 ## Features
 
