@@ -16,22 +16,22 @@
   <description>
     <p>
       A feature-rich Sudoku application built with C++23 and Qt6. Play puzzles
-      across multiple difficulty levels, get intelligent hints powered by 42
-      solving strategies, and track your progress with detailed statistics.
+      across multiple difficulty levels, backed by a logical solver with 54
+      solving strategies for accurate difficulty rating, and track your
+      progress with detailed statistics.
     </p>
     <p xml:lang="de">
       Eine funktionsreiche Sudoku-Anwendung, entwickelt mit C++23 und Qt6.
-      Spielen Sie Rätsel in verschiedenen Schwierigkeitsstufen, erhalten Sie
-      intelligente Hinweise basierend auf 42 Lösungsstrategien und verfolgen
-      Sie Ihren Fortschritt mit detaillierten Statistiken.
+      Spielen Sie Rätsel in verschiedenen Schwierigkeitsstufen, unterstützt
+      durch einen logischen Solver mit 54 Lösungsstrategien für eine präzise
+      Schwierigkeitsbewertung, und verfolgen Sie Ihren Fortschritt mit
+      detaillierten Statistiken.
     </p>
     <p>Features include:</p>
     <p xml:lang="de">Funktionen umfassen:</p>
     <ul>
       <li>Multiple difficulty levels from Easy to Extreme</li>
       <li xml:lang="de">Mehrere Schwierigkeitsstufen von Einfach bis Extrem</li>
-      <li>Intelligent hint system with step-by-step explanations</li>
-      <li xml:lang="de">Intelligentes Hinweissystem mit Schritt-für-Schritt-Erklärungen</li>
       <li>Candidate (pencil mark) support</li>
       <li xml:lang="de">Unterstützung für Notizen (Bleistift-Markierungen)</li>
       <li>Undo/redo with full move history</li>
