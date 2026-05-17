@@ -73,8 +73,19 @@
 
   <screenshots>
     <screenshot type="default">
-      <caption>Main game window with an in-progress Sudoku puzzle</caption>
-      <image>https://raw.githubusercontent.com/darkstar79/sudoku-cpp/main/screenshot.png</image>
+      <caption>Game in progress with pencil-mark candidates and related-cell highlighting</caption>
+      <caption xml:lang="de">Spiel im Verlauf mit Bleistift-Notizen und Hervorhebung verwandter Zellen</caption>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku-cpp/main/resources/screenshots/gameplay-candidates.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Fresh Master-difficulty puzzle with row, column, and box highlighting</caption>
+      <caption xml:lang="de">Frisches Rätsel auf Master-Schwierigkeit mit Zeilen-, Spalten- und Block-Hervorhebung</caption>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku-cpp/main/resources/screenshots/gameplay-clean-board.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Puzzle Difficulty dialog showing the SE rating and required solving techniques</caption>
+      <caption xml:lang="de">Schwierigkeits-Dialog mit SE-Bewertung und benötigten Lösungstechniken</caption>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku-cpp/main/resources/screenshots/difficulty-dialog.png</image>
     </screenshot>
   </screenshots>
 
