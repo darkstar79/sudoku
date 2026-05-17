@@ -31,6 +31,8 @@
     <ul>
       <li>Multiple difficulty levels from Easy to Extreme</li>
       <li xml:lang="de">Mehrere Schwierigkeitsstufen von Einfach bis Extrem</li>
+      <li>Import puzzles from the clipboard or enter your own givens manually</li>
+      <li xml:lang="de">Rätsel aus der Zwischenablage importieren oder eigene Vorgaben manuell eingeben</li>
       <li>Candidate (pencil mark) support</li>
       <li xml:lang="de">Unterstützung für Notizen (Bleistift-Markierungen)</li>
       <li>Undo/redo with full move history</li>
