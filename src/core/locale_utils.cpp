@@ -104,8 +104,6 @@ std::vector<std::string> scanInstalledLocales(const std::filesystem::path& trans
     }
 
     std::ranges::sort(result);
-    const auto trim = std::ranges::unique(result);
-    result.erase(trim.begin(), trim.end());
     return result;
 }
 

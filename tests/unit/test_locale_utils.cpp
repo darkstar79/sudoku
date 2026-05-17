@@ -131,13 +131,12 @@ TEST_CASE("scanInstalledLocales rejects invalid locale codes in filenames", "[lo
     CHECK(result[0] == "en");
 }
 
-TEST_CASE("scanInstalledLocales deduplicates if a code appears twice", "[locale]") {
+TEST_CASE("scanInstalledLocales is non-recursive", "[locale]") {
     sudoku::test::TempTestDir tmp;
     auto sub = tmp.path() / "sub";
     std::filesystem::create_directory(sub);
     touch(tmp.path() / "sudoku_en.qm");
-    touch(sub / "sudoku_en.qm");
-    // Non-recursive scan: subdir entry must not leak in.
+    touch(sub / "sudoku_de.qm");
 
     auto result = scanInstalledLocales(tmp.path());
 
