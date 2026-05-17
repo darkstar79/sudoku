@@ -127,9 +127,10 @@ void GameViewModel::cycleInputMode() {
         case InputMode::Notes:
             next = InputMode::Color;
             break;
-        // EditGivens is an explicit-entry mode (enterEditMode/commitEditedPuzzle). The cycle
-        // button shouldn't bring users here or out of here; map back to Normal defensively in
-        // case the View triggers it anyway — same target as the Color case.
+        // Color and EditGivens deliberately share a body — both reset to Normal.
+        // EditGivens is an explicit-entry mode (enterEditMode/commitEditedPuzzle), so the
+        // cycle button shouldn't reach it; mapping to Normal is a defensive fallback in case
+        // the View triggers it anyway.
         case InputMode::Color:
         case InputMode::EditGivens:
             next = InputMode::Normal;

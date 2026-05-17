@@ -286,7 +286,7 @@ std::expected<std::vector<GameStats>, StatisticsError> StatisticsManager::getRec
     return all;
 }
 
-std::array<std::chrono::milliseconds, 5> StatisticsManager::getBestTimes() const {
+std::array<std::chrono::milliseconds, DIFFICULTY_COUNT> StatisticsManager::getBestTimes() const {
     auto stats_result = getAggregateStats();
     if (!stats_result) {
         return {};  // Return empty array on error
@@ -295,14 +295,14 @@ std::array<std::chrono::milliseconds, 5> StatisticsManager::getBestTimes() const
     return stats_result->best_times;
 }
 
-std::array<double, 5> StatisticsManager::getCompletionRates() const {
+std::array<double, DIFFICULTY_COUNT> StatisticsManager::getCompletionRates() const {
     auto stats_result = getAggregateStats();
     if (!stats_result) {
         return {};  // Return empty array on error
     }
 
     const auto& stats = *stats_result;
-    std::array<double, 5> rates{};
+    std::array<double, DIFFICULTY_COUNT> rates{};
 
     for (size_t i = 0; i < DIFFICULTY_COUNT; ++i) {
         if (stats.games_played[i] > 0) {
