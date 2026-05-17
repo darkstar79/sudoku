@@ -94,7 +94,7 @@
   <releases>
     <release version="1.0.0" date="2026-03-20">
       <description>
-        <p>Initial release with full Sudoku gameplay, 42 solving strategies,
+        <p>Initial release with full Sudoku gameplay, 54 solving strategies,
            training mode, and multi-language support.</p>
       </description>
     </release>
