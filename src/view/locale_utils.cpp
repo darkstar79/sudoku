@@ -43,9 +43,9 @@ std::vector<LocaleEntry> discoverInstalledLocales() {
 
     // "en" is the source language: even with no .qm files, the UI still works
     // in English. Guarantee it appears in the combo.
-    if (std::find(codes.begin(), codes.end(), "en") == codes.end()) {
+    if (std::ranges::find(codes, "en") == codes.end()) {
         codes.emplace_back("en");
-        std::sort(codes.begin(), codes.end());
+        std::ranges::sort(codes);
     }
 
     std::vector<LocaleEntry> entries;
@@ -56,7 +56,7 @@ std::vector<LocaleEntry> discoverInstalledLocales() {
         if (display.isEmpty()) {
             display = QString::fromStdString(code);
         }
-        entries.push_back({std::move(code), std::move(display)});
+        entries.push_back({.code = std::move(code), .native_name = std::move(display)});
     }
     return entries;
 }
