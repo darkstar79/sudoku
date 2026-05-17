@@ -265,11 +265,11 @@ else()
     install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
     install(FILES ${SUDOKU_QM_FILES}
         DESTINATION "${CMAKE_INSTALL_DATADIR}/sudoku/translations")
-    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/linux/org.sudoku_cpp.Sudoku.desktop"
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/linux/io.github.darkstar79.Sudoku_CPP.desktop"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
-    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/linux/org.sudoku_cpp.Sudoku.metainfo.xml"
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/linux/io.github.darkstar79.Sudoku_CPP.metainfo.xml"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/metainfo")
-    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/org.sudoku_cpp.Sudoku.svg"
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/io.github.darkstar79.Sudoku_CPP.svg"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps")
 endif()
 

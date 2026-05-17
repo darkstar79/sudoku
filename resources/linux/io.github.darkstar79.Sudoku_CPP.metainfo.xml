@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>org.sudoku_cpp.Sudoku</id>
+  <id>io.github.darkstar79.Sudoku_CPP</id>
 
   <name>Sudoku</name>
   <summary>Play and solve Sudoku puzzles</summary>
   <summary xml:lang="de">Sudoku-Rätsel spielen und lösen</summary>
 
-  <developer id="org.sudoku_cpp">
+  <developer id="io.github.darkstar79">
     <name>Alexander Bendlin</name>
   </developer>
 
@@ -32,7 +32,7 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">org.sudoku_cpp.Sudoku.desktop</launchable>
+  <launchable type="desktop-id">io.github.darkstar79.Sudoku_CPP.desktop</launchable>
 
   <url type="homepage">https://github.com/darkstar79/sudoku-cpp</url>
   <url type="bugtracker">https://github.com/darkstar79/sudoku-cpp/issues</url>
@@ -41,6 +41,13 @@
   <provides>
     <binary>sudoku</binary>
   </provides>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main game window with an in-progress Sudoku puzzle</caption>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku-cpp/main/screenshot.png</image>
+    </screenshot>
+  </screenshots>
 
   <content_rating type="oars-1.1"/>
 

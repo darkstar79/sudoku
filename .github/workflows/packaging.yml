@@ -37,14 +37,14 @@ jobs:
       - name: Build Flatpak
         run: |
           flatpak-builder --user --force-clean --repo=repo \
-            build-flatpak flatpak/org.sudoku_cpp.Sudoku.yml
+            build-flatpak flatpak/io.github.darkstar79.Sudoku_CPP.yml
 
       - name: Create Flatpak bundle
         run: |
           version_safe="${VERSION//\//-}"
           flatpak build-bundle repo \
             "Sudoku-${version_safe}-x86_64.flatpak" \
-            org.sudoku_cpp.Sudoku
+            io.github.darkstar79.Sudoku_CPP
 
       - name: Upload Flatpak bundle
         uses: actions/upload-artifact@v7

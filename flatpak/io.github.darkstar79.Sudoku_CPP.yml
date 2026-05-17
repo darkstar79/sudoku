@@ -1,4 +1,4 @@
-app-id: org.sudoku_cpp.Sudoku
+app-id: io.github.darkstar79.Sudoku_CPP
 runtime: org.kde.Platform
 runtime-version: '6.10'
 sdk: org.kde.Sdk
@@ -43,8 +43,8 @@ modules:
     buildsystem: autotools
     sources:
       - type: archive
-        url: https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz
-        sha256: 6f504490b342a4f8a4c4a02fc9b866cbef8622d5df4e5452b46be121e46636c1
+        url: https://github.com/jedisct1/libsodium/releases/download/1.0.21-RELEASE/libsodium-1.0.21.tar.gz
+        sha256: 9e4285c7a419e82dedb0be63a72eea357d6943bc3e28e6735bf600dd4883feaf
 
   # sudoku (the application)
   - name: sudoku
