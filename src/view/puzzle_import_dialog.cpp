@@ -38,7 +38,9 @@ QString qstr(std::string_view sv) {
 
 }  // namespace
 
-PuzzleImportDialog::PuzzleImportDialog(QWidget* parent) : QDialog(parent) {
+PuzzleImportDialog::PuzzleImportDialog(QWidget* parent)
+    : QDialog(parent), text_edit_(new QTextEdit), import_btn_(new QPushButton(qstr(core::loc("Sudoku", "Import")))),
+      cancel_btn_(new QPushButton(qstr(core::loc("Sudoku", "Cancel")))), error_label_(new QLabel) {
     setWindowTitle(qstr(core::loc("Sudoku", "Import Custom Puzzle")));
     setModal(true);
     resize(420, 320);
@@ -51,7 +53,6 @@ PuzzleImportDialog::PuzzleImportDialog(QWidget* parent) : QDialog(parent) {
     prompt->setWordWrap(true);
     layout->addWidget(prompt);
 
-    text_edit_ = new QTextEdit;
     text_edit_->setAcceptRichText(false);
     text_edit_->setPlaceholderText(qstr(core::loc("Sudoku", "Paste puzzle here…")));
     // Cap document growth in-place so an oversized paste doesn't sit in memory until
@@ -70,7 +71,6 @@ PuzzleImportDialog::PuzzleImportDialog(QWidget* parent) : QDialog(parent) {
     });
     layout->addWidget(text_edit_, 1);
 
-    error_label_ = new QLabel;
     error_label_->setTextFormat(Qt::PlainText);
     error_label_->setStyleSheet(QString("QLabel { color: %1; }").arg(StyleColors::ERROR_COLOR));
     error_label_->setWordWrap(true);
@@ -79,8 +79,6 @@ PuzzleImportDialog::PuzzleImportDialog(QWidget* parent) : QDialog(parent) {
 
     auto* buttons = new QHBoxLayout;
     buttons->addStretch();
-    cancel_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Cancel")));
-    import_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Import")));
     import_btn_->setDefault(true);
     buttons->addWidget(cancel_btn_);
     buttons->addWidget(import_btn_);

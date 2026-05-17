@@ -96,7 +96,9 @@ constexpr std::array kSelectableTechniques = {
 
 }  // namespace
 
-PuzzleTechniqueDialog::PuzzleTechniqueDialog(QWidget* parent) : QDialog(parent) {
+PuzzleTechniqueDialog::PuzzleTechniqueDialog(QWidget* parent)
+    : QDialog(parent), technique_combo_(new QComboBox), find_btn_(new QPushButton(qstr(core::loc("Sudoku", "Find")))),
+      cancel_btn_(new QPushButton(qstr(core::loc("Sudoku", "Cancel")))) {
     setWindowTitle(qstr(core::loc("Sudoku", "Find Step by Technique")));
     setModal(true);
     resize(360, 140);
@@ -107,7 +109,6 @@ PuzzleTechniqueDialog::PuzzleTechniqueDialog(QWidget* parent) : QDialog(parent) 
     prompt->setTextFormat(Qt::PlainText);
     layout->addWidget(prompt);
 
-    technique_combo_ = new QComboBox;
     for (auto t : kSelectableTechniques) {
         technique_combo_->addItem(qstr(core::getLocalizedTechniqueName(t)), static_cast<int>(t));
     }
@@ -115,8 +116,6 @@ PuzzleTechniqueDialog::PuzzleTechniqueDialog(QWidget* parent) : QDialog(parent) 
 
     auto* buttons = new QHBoxLayout;
     buttons->addStretch();
-    cancel_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Cancel")));
-    find_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Find")));
     find_btn_->setDefault(true);
     buttons->addWidget(cancel_btn_);
     buttons->addWidget(find_btn_);

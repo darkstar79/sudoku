@@ -147,6 +147,9 @@ private:
 
     // Setup methods
     void setupMenuBar();
+    void setupGameMenu();
+    void setupEditMenu();
+    void setupHelpMenu();
     void setupToolBar();
     void setupStatusBar();
     void setupCentralWidget();

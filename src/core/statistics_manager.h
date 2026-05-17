@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "core/constants.h"
 #include "core/i_puzzle_generator.h"
 #include "encryption_manager.h"
 #include "i_statistics_manager.h"
@@ -64,8 +65,8 @@ public:
     [[nodiscard]] std::expected<std::vector<GameStats>, StatisticsError> getAllSessions() const override;
     [[nodiscard]] std::expected<std::vector<GameStats>, StatisticsError> getRecentGames(int count) const override;
 
-    std::array<std::chrono::milliseconds, 5> getBestTimes() const override;
-    std::array<double, 5> getCompletionRates() const override;
+    std::array<std::chrono::milliseconds, DIFFICULTY_COUNT> getBestTimes() const override;
+    std::array<double, DIFFICULTY_COUNT> getCompletionRates() const override;
 
     // Import/Export
     std::expected<void, StatisticsError> exportStats(const std::string& file_path) const override;

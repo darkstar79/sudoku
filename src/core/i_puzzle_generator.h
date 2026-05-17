@@ -17,9 +17,11 @@
 #pragma once
 
 #include "core/board_data.h"
+#include "core/constants.h"
 #include "cpu_features.h"
 #include "solving_technique.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <optional>
@@ -38,6 +40,11 @@ enum class Difficulty : std::uint8_t {
     Expert = 3,  // 17-27 clues (rating determines difficulty)
     Master = 4   // 17-27 clues (open-ended, hardest puzzles)
 };
+
+// Keep DIFFICULTY_COUNT in lockstep with the enum. If a level is added or removed,
+// bump DIFFICULTY_COUNT in core/constants.h or this assertion fires at compile time.
+static_assert(static_cast<std::size_t>(Difficulty::Master) + 1 == DIFFICULTY_COUNT,
+              "DIFFICULTY_COUNT must match the number of Difficulty enum values");
 
 /// Puzzle generation settings
 struct GenerationSettings {

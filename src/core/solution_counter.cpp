@@ -334,7 +334,7 @@ void SolutionCounter::countSolutionsHelper(Board& board, ConstraintState& state,
 
 void SolutionCounter::initializeZobristTable() {
     // Use fixed seed for Zobrist table (must be consistent across runs)
-    // NOLINTNEXTLINE(cert-msc32-c,cert-msc51-cpp) - Deterministic seed required for Zobrist hashing
+    // NOLINTNEXTLINE(cert-msc32-c,cert-msc51-cpp,bugprone-random-generator-seed) - Deterministic seed required for Zobrist hashing
     std::mt19937_64 rng(0x123456789ABCDEF0ULL);
     std::uniform_int_distribution<uint64_t> dist(0, UINT64_MAX);
 

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "core/constants.h"
 #include "i_puzzle_generator.h"
 
 #include <array>
@@ -45,21 +46,21 @@ struct GameStats {
 /// Aggregate statistics across multiple games
 struct AggregateStats {
     // Per difficulty level
-    std::array<int, 5> games_played{0, 0, 0, 0, 0};  // Easy, Medium, Hard, Expert, Master
-    std::array<int, 5> games_completed{0, 0, 0, 0, 0};
-    std::array<std::chrono::milliseconds, 5> best_times{
+    std::array<int, DIFFICULTY_COUNT> games_played{0, 0, 0, 0, 0};  // Easy, Medium, Hard, Expert, Master
+    std::array<int, DIFFICULTY_COUNT> games_completed{0, 0, 0, 0, 0};
+    std::array<std::chrono::milliseconds, DIFFICULTY_COUNT> best_times{
         std::chrono::milliseconds::max(), std::chrono::milliseconds::max(), std::chrono::milliseconds::max(),
         std::chrono::milliseconds::max(), std::chrono::milliseconds::max()};
-    std::array<std::chrono::milliseconds, 5> average_times{std::chrono::milliseconds{0}, std::chrono::milliseconds{0},
-                                                           std::chrono::milliseconds{0}, std::chrono::milliseconds{0},
-                                                           std::chrono::milliseconds{0}};
+    std::array<std::chrono::milliseconds, DIFFICULTY_COUNT> average_times{
+        std::chrono::milliseconds{0}, std::chrono::milliseconds{0}, std::chrono::milliseconds{0},
+        std::chrono::milliseconds{0}, std::chrono::milliseconds{0}};
 
     // Rating statistics per difficulty (SE scale)
-    std::array<double, 5> average_ratings{0.0, 0.0, 0.0, 0.0, 0.0};
-    std::array<double, 5> min_ratings{std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
-                                      std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
-                                      std::numeric_limits<double>::max()};
-    std::array<double, 5> max_ratings{0.0, 0.0, 0.0, 0.0, 0.0};
+    std::array<double, DIFFICULTY_COUNT> average_ratings{0.0, 0.0, 0.0, 0.0, 0.0};
+    std::array<double, DIFFICULTY_COUNT> min_ratings{
+        std::numeric_limits<double>::max(), std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
+        std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
+    std::array<double, DIFFICULTY_COUNT> max_ratings{0.0, 0.0, 0.0, 0.0, 0.0};
 
     // Overall stats
     int total_games{0};
@@ -144,11 +145,11 @@ public:
 
     /// Gets personal best times for each difficulty
     /// @return Array of best times [Easy, Medium, Hard, Expert, Master]
-    [[nodiscard]] virtual std::array<std::chrono::milliseconds, 5> getBestTimes() const = 0;
+    [[nodiscard]] virtual std::array<std::chrono::milliseconds, DIFFICULTY_COUNT> getBestTimes() const = 0;
 
     /// Calculates completion percentage for each difficulty
     /// @return Array of completion percentages [Easy, Medium, Hard, Expert, Master]
-    [[nodiscard]] virtual std::array<double, 5> getCompletionRates() const = 0;
+    [[nodiscard]] virtual std::array<double, DIFFICULTY_COUNT> getCompletionRates() const = 0;
 
     /// Exports statistics to a file
     /// @param file_path Path to export file

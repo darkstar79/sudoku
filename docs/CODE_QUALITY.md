@@ -667,6 +667,38 @@ release April 23, 2026), the following CI/tooling simplifications become possibl
 3. **`.clang-tidy` / `conanfile.py`** — No changes needed; C++23 settings
    remain correct.
 
+### Tech debt: newer clang-tidy versions surface ~1,400 extra findings
+
+CI pins clang-tidy-19 (Ubuntu 24.04 default). Running `./scripts/tidy.sh check`
+on a host with a newer clang-tidy (e.g., LLVM 21 on the upcoming Ubuntu 26.04
+runner, or LLVM 22 on a developer machine) surfaces **~1,400 additional
+warnings** from checks that didn't exist in v19. None of these block CI today,
+but they will the moment the runner is upgraded, so a decision is needed per
+check: **fix in code** or **suppress in `.clang-tidy`**.
+
+Snapshot from a clang-tidy 22 run on `main` (2026-05-17). Counts are raw
+per-emission; clang-tidy deduplicates headers reported across multiple
+translation units down to ~1,400 unique issues.
+
+| Check | Count | Recommended disposition |
+| --- | ---: | --- |
+| `cppcoreguidelines-pro-bounds-avoid-unchecked-container-access` | 4305 | **Suppress.** Flags every `vec[i]`/`arr[i]` access; replacing with `.at()` adds exception-throw branches everywhere a fixed-size 9×9 board is indexed by a known-valid coordinate. Cost is real (perf + churn), value is low for a Sudoku domain where indices are derived from `Position{row,col}` already constrained to 0–8. |
+| `modernize-avoid-c-style-cast` | 6 | **Fix in code.** Small count, mechanical conversion to `static_cast` / `reinterpret_cast`. |
+| `modernize-use-designated-initializers` | 5 | **Fix in code.** Aligns with the project's existing C++20 designated-initializer style. |
+| `readability-math-missing-parentheses` | 2 | **Fix in code.** Trivial. |
+
+**Already resolved on `bugfix/clang-tidy-warnings` (2026-05-17):**
+
+- `bugprone-random-generator-seed` (1 emission, `solution_counter.cpp:338`) — false positive; the fixed Zobrist seed is required for hash stability across runs. Already NOLINT'd for `cert-msc32-c,cert-msc51-cpp` (the v18-era names of the same check); extended the existing NOLINTNEXTLINE to cover the new check name.
+- `bugprone-exception-escape` (1 emission, `main.cpp:141`) — false positive; clang-tidy didn't track the `has_value()` guard preceding `result.value()`. Replaced `result.value()` with `*result` (non-throwing dereference, canonical idiom after a guard).
+
+**Recommended sequencing for the remaining work:** address the small-count
+checks in code (single small commit each), then add
+`-cppcoreguidelines-pro-bounds-avoid-unchecked-container-access` to the disable
+list in `.clang-tidy` with a comment explaining the rationale. Do this
+**before** the Ubuntu 26.04 migration step above lands, so the runner upgrade
+doesn't turn 4,300 warnings into a CI breakage.
+
 ---
 
 ## AddressSanitizer + UBSan
