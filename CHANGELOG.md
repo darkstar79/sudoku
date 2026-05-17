@@ -25,6 +25,7 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 - **Solver gains budget-bearing overloads** — `solvePuzzle(board, std::chrono::milliseconds)` and a technique-targeted dispatch. The backtracking fallback now honors the deadline so adversarial inputs cannot hang the UI.
 - **Hint message clearing** — stale `hintMessage` is cleared on every `getHint` exit path so dismissed hints don't reappear after subsequent moves.
 - **Session lifecycle** — entering edit mode finalizes any active statistics session as abandoned (previously orphaned).
+- **Language selector** now discovers installed translations automatically. Packagers can ship a new locale by adding `sudoku_<code>.qm` to the translations directory and a matching `.ts` entry in `CMakeLists.txt`; no C++ change is required. Locale codes from `settings.yaml`, the legacy `language.txt`, and the Settings dialog are validated against a BCP 47 subset (`^[a-z]{2,3}(_[A-Z]{2})?$`) before being interpolated into a filesystem path.
 
 ### Removed
 

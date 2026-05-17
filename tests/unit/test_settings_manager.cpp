@@ -306,6 +306,53 @@ TEST_CASE("SettingsManager - No migration if settings.yaml already exists", "[se
     CHECK(mgr.getSettings().language == "en");
 }
 
+TEST_CASE("SettingsManager - setLanguage rejects invalid codes", "[settings][security]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    SettingsManager mgr(path);
+    REQUIRE(mgr.getSettings().language == "en");
+
+    mgr.setLanguage("../../tmp/evil");
+    CHECK(mgr.getSettings().language == "en");
+
+    mgr.setLanguage("EN");
+    CHECK(mgr.getSettings().language == "en");
+
+    mgr.setLanguage("");
+    CHECK(mgr.getSettings().language == "en");
+
+    // Valid code is still accepted.
+    mgr.setLanguage("de");
+    CHECK(mgr.getSettings().language == "de");
+}
+
+TEST_CASE("SettingsManager - YAML with bogus language falls back to default", "[settings][security]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        std::ofstream out(path);
+        out << "language: \"../etc/passwd\"\n";
+    }
+
+    SettingsManager mgr(path);
+    CHECK(mgr.getSettings().language == "en");
+}
+
+TEST_CASE("SettingsManager - language.txt migration rejects invalid code", "[settings][security]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        std::ofstream out(tmp.path() / "language.txt");
+        out << "../../";
+    }
+
+    SettingsManager mgr(path);
+    CHECK(mgr.getSettings().language == "en");
+}
+
 TEST_CASE("SettingsManager - All difficulty values round-trip", "[settings]") {
     sudoku::test::TempTestDir tmp;
     auto path = tmp.path() / "settings.yaml";

@@ -17,6 +17,7 @@
 #include "settings_manager.h"
 
 #include "infrastructure/app_directory_manager.h"
+#include "locale_utils.h"
 
 #include <algorithm>
 #include <fstream>
@@ -44,6 +45,20 @@ namespace {
             return "Master";
         default:
             return "Medium";
+    }
+}
+
+void loadLanguageField(const YAML::Node& root, Settings& settings, const std::filesystem::path& path) {
+    auto v = root["language"];
+    if (!v) {
+        return;
+    }
+    auto code = v.as<std::string>();
+    if (isValidLocaleCode(code)) {
+        settings.language = std::move(code);
+    } else {
+        spdlog::warn("Ignoring invalid 'language' value '{}' in {}; keeping default '{}'", code, path.string(),
+                     settings.language);
     }
 }
 
@@ -128,6 +143,10 @@ void SettingsManager::setEncryptDetailedStats(bool value) {
 }
 
 void SettingsManager::setLanguage(std::string_view locale_code) {
+    if (!isValidLocaleCode(locale_code)) {
+        spdlog::warn("Rejected invalid locale code '{}' from setLanguage()", locale_code);
+        return;
+    }
     auto old = settings_;
     settings_.language = std::string(locale_code);
     notifyIfChanged(old);
@@ -192,9 +211,7 @@ void SettingsManager::load() {
             // auto_notes_on_startup: ignored (feature removed)
         }
 
-        if (auto v = root["language"]) {
-            settings_.language = v.as<std::string>();
-        }
+        loadLanguageField(root, settings_, settings_path_);
 
         if (auto experimental = root["experimental"]) {
             if (auto v = experimental["training_mode"]) {
@@ -263,6 +280,10 @@ void SettingsManager::migrateLanguageFile() {
     std::ifstream in(language_file);
     std::string locale_code;
     if (in && std::getline(in, locale_code) && !locale_code.empty()) {
+        if (!isValidLocaleCode(locale_code)) {
+            spdlog::warn("Ignoring invalid locale code '{}' in legacy language.txt", locale_code);
+            return;
+        }
         settings_.language = locale_code;
         save();
         spdlog::info("Migrated language preference '{}' from language.txt to settings.yaml", locale_code);
