@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
                 spdlog::info("Auto-save contains completed game, starting fresh");
                 view_model->startNewGame(default_difficulty);
             } else {
-                view_model->restoreGameState(result.value());
+                view_model->restoreGameState(*result);
             }
         } else {
             spdlog::warn("Auto-save load failed: {}, starting new game", static_cast<int>(result.error()));
