@@ -16,7 +16,7 @@ This project is entirely **vibe coded** using [Claude Code](https://docs.anthrop
 ## Features
 
 - Puzzle generation with 5 difficulty levels and guaranteed unique solutions
-- 54 solving strategies with step-by-step hints
+- 54 solving strategies powering difficulty rating and puzzle generation
 - Training mode for learning solving techniques *(experimental — enable in Settings → Experimental)*
 - Custom puzzles: paste-import an 81-character string, or enter givens manually in edit mode
 - Copy current puzzle to clipboard, look up the next step by technique
