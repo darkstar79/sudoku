@@ -19,8 +19,10 @@
 #include "core/constants.h"
 #include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
+#include "core/locale_utils.h"
 #include "core/observable.h"
 #include "infrastructure/app_directory_manager.h"
+#include "locale_utils.h"
 #include "model/game_state.h"
 #include "puzzle_import_dialog.h"
 #include "puzzle_technique_dialog.h"
@@ -650,16 +652,16 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
 }
 
 void MainWindow::applyLocale(const std::string& locale_code) {
-    // Locate sudoku_<locale>.qm next to the executable (dev/Windows layout)
-    // or under ../share/sudoku/translations (FHS install).
-    auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
-    std::filesystem::path translations_dir;
-    for (const auto& candidate : {exe_dir / "translations", exe_dir / ".." / "share" / "sudoku" / "translations"}) {
-        if (std::filesystem::exists(candidate)) {
-            translations_dir = candidate;
-            break;
-        }
+    // Defense in depth: by the time we reach here the code has already been
+    // validated by SettingsManager, but applyLocale interpolates `locale_code`
+    // into a path passed to QTranslator::load(). Rejecting bad codes here
+    // closes the loop if a future caller skips the SettingsManager gate.
+    if (!core::isValidLocaleCode(locale_code)) {
+        spdlog::warn("Rejected invalid locale code '{}' in applyLocale", locale_code);
+        return;
     }
+
+    auto translations_dir = findTranslationsDir();
 
     QCoreApplication::removeTranslator(&translator_);
 
@@ -1480,12 +1482,11 @@ void MainWindow::showSettingsDialog() {
         auto* lang_layout = new QHBoxLayout();
         lang_layout->addWidget(new QLabel(qstr(core::loc("Sudoku", "Language"))));
         auto* lang_combo = new QComboBox();
-        static const std::array<std::pair<const char*, const char*>, 2> kLocales = {
-            {{"en", "English"}, {"de", "Deutsch"}}};
+        const auto locales = discoverInstalledLocales();
         int current_idx = 0;
-        for (size_t i = 0; i < kLocales.size(); ++i) {
-            lang_combo->addItem(QString::fromUtf8(kLocales[i].second), QString::fromUtf8(kLocales[i].first));
-            if (kLocales[i].first == settings_manager_->getSettings().language) {
+        for (size_t i = 0; i < locales.size(); ++i) {
+            lang_combo->addItem(locales[i].native_name, QString::fromStdString(locales[i].code));
+            if (locales[i].code == settings_manager_->getSettings().language) {
                 current_idx = static_cast<int>(i);
             }
         }
