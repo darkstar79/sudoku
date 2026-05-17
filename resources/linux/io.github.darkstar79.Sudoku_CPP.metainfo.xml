@@ -19,24 +19,52 @@
       across multiple difficulty levels, get intelligent hints powered by 42
       solving strategies, and track your progress with detailed statistics.
     </p>
+    <p xml:lang="de">
+      Eine funktionsreiche Sudoku-Anwendung, entwickelt mit C++23 und Qt6.
+      Spielen Sie Rätsel in verschiedenen Schwierigkeitsstufen, erhalten Sie
+      intelligente Hinweise basierend auf 42 Lösungsstrategien und verfolgen
+      Sie Ihren Fortschritt mit detaillierten Statistiken.
+    </p>
     <p>Features include:</p>
+    <p xml:lang="de">Funktionen umfassen:</p>
     <ul>
       <li>Multiple difficulty levels from Easy to Extreme</li>
+      <li xml:lang="de">Mehrere Schwierigkeitsstufen von Einfach bis Extrem</li>
       <li>Intelligent hint system with step-by-step explanations</li>
+      <li xml:lang="de">Intelligentes Hinweissystem mit Schritt-für-Schritt-Erklärungen</li>
       <li>Candidate (pencil mark) support</li>
+      <li xml:lang="de">Unterstützung für Notizen (Bleistift-Markierungen)</li>
       <li>Undo/redo with full move history</li>
+      <li xml:lang="de">Rückgängig/Wiederholen mit vollständigem Zugverlauf</li>
       <li>Auto-save and manual save/load</li>
+      <li xml:lang="de">Automatisches Speichern sowie manuelles Speichern/Laden</li>
       <li>Game statistics and progress tracking</li>
+      <li xml:lang="de">Spielstatistiken und Fortschrittsverfolgung</li>
       <li>Training mode to practice specific solving techniques</li>
+      <li xml:lang="de">Trainingsmodus zum Üben bestimmter Lösungstechniken</li>
       <li>English and German localizations</li>
+      <li xml:lang="de">Englische und deutsche Lokalisierungen</li>
     </ul>
   </description>
+
+  <keywords>
+    <keyword>sudoku</keyword>
+    <keyword>puzzle</keyword>
+    <keyword>logic</keyword>
+    <keyword>number</keyword>
+    <keyword xml:lang="de">sudoku</keyword>
+    <keyword xml:lang="de">rätsel</keyword>
+    <keyword xml:lang="de">logik</keyword>
+    <keyword xml:lang="de">zahlen</keyword>
+  </keywords>
 
   <launchable type="desktop-id">io.github.darkstar79.Sudoku_CPP.desktop</launchable>
 
   <url type="homepage">https://github.com/darkstar79/sudoku-cpp</url>
   <url type="bugtracker">https://github.com/darkstar79/sudoku-cpp/issues</url>
   <url type="vcs-browser">https://github.com/darkstar79/sudoku-cpp</url>
+  <url type="contribute">https://github.com/darkstar79/sudoku-cpp/blob/main/CONTRIBUTING.md</url>
+  <url type="translate">https://github.com/darkstar79/sudoku-cpp/blob/main/docs/TRANSLATIONS.md</url>
 
   <provides>
     <binary>sudoku</binary>
