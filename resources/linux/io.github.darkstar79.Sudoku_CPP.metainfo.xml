@@ -15,17 +15,16 @@
 
   <description>
     <p>
-      A feature-rich Sudoku application built with C++23 and Qt6. Play puzzles
-      across multiple difficulty levels, backed by a logical solver with 54
-      solving strategies for accurate difficulty rating, and track your
-      progress with detailed statistics.
+      A polished offline Sudoku game. Play puzzles across multiple difficulty
+      levels, backed by a logical solver with 54 solving strategies for
+      accurate difficulty rating, and track your progress with detailed
+      statistics.
     </p>
     <p xml:lang="de">
-      Eine funktionsreiche Sudoku-Anwendung, entwickelt mit C++23 und Qt6.
-      Spielen Sie Rätsel in verschiedenen Schwierigkeitsstufen, unterstützt
-      durch einen logischen Solver mit 54 Lösungsstrategien für eine präzise
-      Schwierigkeitsbewertung, und verfolgen Sie Ihren Fortschritt mit
-      detaillierten Statistiken.
+      Ein durchdachtes Offline-Sudoku-Spiel. Spielen Sie Rätsel in
+      verschiedenen Schwierigkeitsstufen, unterstützt durch einen logischen
+      Solver mit 54 Lösungsstrategien für eine präzise Schwierigkeitsbewertung,
+      und verfolgen Sie Ihren Fortschritt mit detaillierten Statistiken.
     </p>
     <p>Features include:</p>
     <p xml:lang="de">Funktionen umfassen:</p>
