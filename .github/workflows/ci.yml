@@ -233,20 +233,36 @@ jobs:
         run: ctest --test-dir build/Release -R "^test_" --output-on-failure
         shell: cmd
 
-      - name: Re-run failed UI tests with Qt verbose output
-        # On Windows, QTest's plain-text logger uses a buffered FILE* on
-        # stdout that gets dropped if the test exits abnormally — so a
-        # crashing slot leaves CTest with only the unbuffered spdlog
-        # lines, hiding which assertion actually failed. Re-run with
-        # --verbose so output streams live, and dump LastTest.log too.
+      - name: Re-run failed UI tests with QTest file logger
+        # QTest's stdout logger is buffered on Windows and gets dropped
+        # when a slot fails via QVERIFY (the process exits via abort()),
+        # so ctest --verbose only shows the unbuffered spdlog lines and
+        # hides the actual assertion. Re-invoke each failed binary
+        # directly with `-o file,txt` so QTest flushes to disk, then
+        # dump the file. LastTestsFailed.log holds the failing test
+        # names in `<index>:<name>` form.
         if: failure()
         run: |
-          ctest --test-dir build/Release -R "^test_" --rerun-failed --verbose --output-on-failure || ver > nul
-          if exist build\Release\Testing\Temporary\LastTest.log (
-            echo === LastTest.log ===
-            type build\Release\Testing\Temporary\LastTest.log
+          if not exist build\Release\Testing\Temporary\LastTestsFailed.log (
+            echo No LastTestsFailed.log — nothing to re-run.
+            exit /b 0
+          )
+          for /f "usebackq tokens=2 delims=:" %%n in (`type build\Release\Testing\Temporary\LastTestsFailed.log`) do (
+            echo === QTest output for %%n ===
+            build\Release\bin\tests\ui\%%n.exe -o qtest_%%n.txt,txt -v2 || ver > nul
+            if exist qtest_%%n.txt type qtest_%%n.txt
           )
         shell: cmd
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Upload QTest output files on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qtest-windows-output
+          path: qtest_*.txt
+          if-no-files-found: ignore
 
       - name: Upload CTest log on failure
         if: failure()

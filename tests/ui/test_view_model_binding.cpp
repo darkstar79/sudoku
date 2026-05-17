@@ -82,14 +82,19 @@ void TestViewModelBinding::ratingButtonVisibleAfterNewGame() {
     window.show();
     QVERIFY(QTest::qWaitForWindowExposed(&window));
 
-    // Before game: rating button hidden
-    QVERIFY(!window.rating_btn_->isVisible());
+    // Before game: rating toolbar entry hidden
+    QVERIFY(!window.rating_action_->isVisible());
 
     ctx.game_vm->startNewGame(core::Difficulty::Easy);
-    QApplication::processEvents();
 
-    // After game: rating button should be visible (puzzle rating > 0)
-    QVERIFY(window.rating_btn_->isVisible());
+    // After game: rating toolbar entry should be visible (puzzle rating > 0).
+    // Check the QAction, not rating_btn_->isVisible(): the QWidget visibility
+    // of a toolbar-embedded button depends on the toolbar's own layout pass,
+    // which on the Windows offscreen platform never completes for a
+    // never-mapped widget — leaving isVisible() permanently false even
+    // though the action is shown. rating_action_->isVisible() reflects the
+    // semantic state that updateToolBar() actually controls.
+    QTRY_VERIFY(window.rating_action_->isVisible());
     QVERIFY(!window.rating_btn_->text().isEmpty());
 }
 
