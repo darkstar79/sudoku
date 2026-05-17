@@ -272,6 +272,12 @@ void MainWindow::setupCentralWidget() {
 }
 
 void MainWindow::setupMenuBar() {
+    setupGameMenu();
+    setupEditMenu();
+    setupHelpMenu();
+}
+
+void MainWindow::setupGameMenu() {
     auto* game_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Game"))));
 
     game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "New Game"))), QKeySequence("Ctrl+N"), this,
@@ -348,7 +354,9 @@ void MainWindow::setupMenuBar() {
     game_menu->addSeparator();
     game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Exit"))), QKeySequence("Alt+F4"), this,
                          &QWidget::close);
+}
 
+void MainWindow::setupEditMenu() {
     auto* edit_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Edit"))));
     edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Undo"))), QKeySequence("Ctrl+Z"), this, [this]() {
         if (view_model_) {
@@ -380,7 +388,9 @@ void MainWindow::setupMenuBar() {
                                  view_model_->clearCell(pos.value());
                              }
                          });
+}
 
+void MainWindow::setupHelpMenu() {
     auto* help_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Help"))));
     help_menu->addAction(qstr(core::loc("Sudoku", "Get Hint")), QKeySequence("H"), this, [this]() {
         if (view_model_ && view_model_->getHintCount() > 0) {

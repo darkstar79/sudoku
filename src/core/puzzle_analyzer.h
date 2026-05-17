@@ -57,7 +57,7 @@ struct ParseErrorDetail {
 /// Carries the offending cells so the View can highlight them (pre-mortem #5).
 /// Empty `conflicting_cells` is a sentinel meaning "no specific cells" (not currently emitted).
 struct BoardValidationError {
-    std::vector<Position> conflicting_cells{};
+    std::vector<Position> conflicting_cells;
 
     bool operator==(const BoardValidationError&) const = default;
 };
@@ -84,7 +84,7 @@ enum class UniquenessResult : std::uint8_t {
 struct DifficultyScore {
     double max_rating{0.0};
     bool requires_backtracking{false};
-    std::vector<int> technique_ids{};
+    std::vector<int> technique_ids;
 
     bool operator==(const DifficultyScore&) const = default;
 };

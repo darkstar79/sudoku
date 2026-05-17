@@ -167,7 +167,7 @@ std::expected<DifficultyScore, ScoringError> PuzzleAnalyzer::scoreDifficulty(con
     for (const auto& step : result->solve_path) {
         score.max_rating = std::max(score.max_rating, step.rating);
         const int id = static_cast<int>(step.technique);
-        if (std::find(score.technique_ids.begin(), score.technique_ids.end(), id) == score.technique_ids.end()) {
+        if (std::ranges::find(score.technique_ids, id) == score.technique_ids.end()) {
             score.technique_ids.push_back(id);
         }
     }
