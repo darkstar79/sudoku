@@ -74,35 +74,51 @@ cmake --build --preset release
 
 ### Windows (MSVC + Qt6)
 
-**Prerequisites:**
+**Prerequisites (one-time, system-wide installs):**
 
-1. **Visual Studio 2022/2026** with the *Desktop development with C++* workload
-2. **Qt6** — install via [Qt Online Installer](https://www.qt.io/download-qt-installer), selecting the **MSVC 2022 64-bit** component
-3. **Conan 2** — `pip install conan`
-4. **CMake** — install separately or provided via Conan `tool_requires`
+1. **Visual Studio 2022 or 2026** with the *Desktop development with C++* workload — Build Tools or the full IDE both work.
+2. **Qt6** (any 6.8+) via the [Qt Online Installer](https://www.qt.io/download-qt-installer) — **tick the MSVC 2022 64-bit kit specifically**. The MinGW kit is not supported by the build scripts; both kits can coexist if you want MinGW for other work.
+3. **Python 3.10+** with [uv](https://github.com/astral-sh/uv) recommended (`winget install astral-sh.uv`). Any `pip`-capable Python works as a fallback.
+
+**One-time setup (Python toolchain in a per-repo venv):**
+
+```powershell
+uv venv
+.\.venv\Scripts\Activate.ps1
+uv pip install -r requirements.txt   # conan + cmake + ninja
+conan profile detect --force         # seeds %USERPROFILE%\.conan2\profiles\default
+```
+
+`requirements.txt` brings Conan, CMake, and Ninja — no separate downloads. The auto-detected `default` Conan profile is what the build scripts use; no `--profile=msvc-*` flag needed on Windows.
+
+**Sanity-check the toolchain:**
+
+```powershell
+conan --version ; cmake --version ; ninja --version
+```
 
 **Build and run:**
 
-```bat
-REM Release build
-scripts\build_windows.bat
-
-REM Debug build
-scripts\build_windows_debug.bat
-
-REM Run
-build\Release\bin\sudoku.exe
+```powershell
+.\scripts\build_windows.bat          # Release
+.\scripts\build_windows_debug.bat    # Debug
+.\build\Release\bin\sudoku.exe       # Run
 ```
 
-The build scripts auto-detect the Visual Studio installation via `vswhere`.
+The build scripts auto-detect:
+
+- **Visual Studio** via `vswhere -latest -prerelease` (newest install wins, including 2026 previews).
+- **Qt6** via [scripts/find_qt6.ps1](scripts/find_qt6.ps1) — scans `C:\Qt\6.*` for the newest version with an `msvc2022_64` kit (proper version sort, so 6.11 ranks above 6.9). Set `QT6_DIR=<path-to-msvc2022_64>` to override for non-default install locations.
 
 **Creating a Windows installer:**
 
 Requires [NSIS](https://nsis.sourceforge.io/Download) (`winget install NSIS.NSIS`).
 
-```bat
-scripts\create_installer.bat
+```powershell
+.\scripts\create_installer.bat
 ```
+
+**Pre-commit hook:** [scripts/setup-hooks.sh](scripts/setup-hooks.sh) is bash-only; run it from Git Bash, or skip on Windows (CI re-checks formatting on push).
 
 ### Build Configurations
 

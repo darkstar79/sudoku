@@ -7,9 +7,10 @@ REM   - Qt6 installed via Qt Online Installer (msvc2022_64 kit)
 REM   - Conan 2 and CMake available on PATH
 REM
 REM Qt6 discovery:
-REM   Set the QT6_DIR environment variable to your Qt6 MSVC kit directory, e.g.:
-REM     set QT6_DIR=C:\Qt\6.10.2\msvc2022_64
-REM   If not set, the script will attempt common Qt installer locations.
+REM   If QT6_DIR is set, it is used as-is. Otherwise the script auto-detects
+REM   the newest C:\Qt\6.*\msvc2022_64 install with a valid Qt6 CMake config.
+REM   Override example:
+REM     set QT6_DIR=D:\Qt\6.11.1\msvc2022_64
 
 REM Self-logging: if not already redirected, re-invoke with output to build_log_debug.txt
 if not defined BUILD_LOGGING (
@@ -58,20 +59,18 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM ---------------------------------------------------------------------------
 REM 3. Resolve Qt6 path
+REM    Auto-detects the newest C:\Qt\6.*\msvc2022_64 kit (proper version sort,
+REM    so 6.11 ranks above 6.9). Set QT6_DIR to override.
 REM ---------------------------------------------------------------------------
 if not defined QT6_DIR (
-    for %%v in (6.10.2 6.10.1 6.10.0 6.9.1 6.9.0 6.8.0) do (
-        if exist "C:\Qt\%%v\msvc2022_64\lib\cmake\Qt6" (
-            set "QT6_DIR=C:\Qt\%%v\msvc2022_64"
-            echo Auto-detected Qt6: !QT6_DIR!
-            goto :qt6_found
-        )
-    )
-    echo ERROR: QT6_DIR not set and Qt6 not found in common locations.
-    echo        Set QT6_DIR=C:\Qt\^<version^>\msvc2022_64 and retry.
+    for /f "usebackq delims=" %%d in (`powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0find_qt6.ps1"`) do set "QT6_DIR=%%d"
+)
+if not defined QT6_DIR (
+    echo ERROR: Qt6 not found. Install the MSVC 2022 64-bit kit via the Qt
+    echo        Online Installer, or set QT6_DIR manually, e.g.:
+    echo            set QT6_DIR=C:\Qt\6.11.1\msvc2022_64
     exit /b 1
 )
-:qt6_found
 echo Using Qt6: %QT6_DIR%
 
 REM ---------------------------------------------------------------------------

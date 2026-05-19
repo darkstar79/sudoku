@@ -39,6 +39,8 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 - Localization updated for new strings (English, German).
 - Test coverage: 980 unit / 14 integration / 11 UI; lines 88.3% / functions 89.8% / branches 55.5% (all above 80% / 70% / 55% thresholds).
 - `requirements.txt` now also pins `cmake>=3.28` and `ninja>=1.11`, so `pip install -r requirements.txt` (or `uv pip install -r requirements.txt`) brings the full Python-installable build toolchain. The Ninja generator referenced by `CMakePresets.json` needs `ninja.exe` on PATH; this removes one manual setup step for new contributors on Windows.
+- Windows build scripts now auto-detect the newest installed Qt6 MSVC 2022 64-bit kit under `C:\Qt\6.*` (proper `[version]` sort, so 6.11 ranks above 6.9) via a new `scripts\find_qt6.ps1` helper. Replaces the previous hardcoded version allow-list (which topped out at 6.10.2 and silently failed on any newer release). `QT6_DIR` still overrides for non-default install locations.
+- Windows-setup docs in [README.md](README.md) refreshed to lead with a `uv venv` + `requirements.txt` workflow, mention the MinGW-vs-MSVC kit gotcha explicitly, and document the new Qt6 auto-detect path. [docs/CONAN_PROFILES.md](docs/CONAN_PROFILES.md) rewritten to reflect that the Windows build path uses the auto-detected `default` Conan profile (the previously-documented `msvc-release`/`msvc-debug` named profiles were never shipped in the repo and would have confused new contributors).
 
 ### Experimental
 
