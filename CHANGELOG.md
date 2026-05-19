@@ -38,6 +38,7 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 - New `IPuzzleAnalyzer` interface (`parseString`, `serializeToString`, `validate`, `checkUniqueness`, `scoreDifficulty`) backs all custom-puzzle workflows.
 - Localization updated for new strings (English, German).
 - Test coverage: 980 unit / 14 integration / 11 UI; lines 88.3% / functions 89.8% / branches 55.5% (all above 80% / 70% / 55% thresholds).
+- `requirements.txt` now also pins `cmake>=3.28` and `ninja>=1.11`, so `pip install -r requirements.txt` (or `uv pip install -r requirements.txt`) brings the full Python-installable build toolchain. The Ninja generator referenced by `CMakePresets.json` needs `ninja.exe` on PATH; this removes one manual setup step for new contributors on Windows.
 
 ### Experimental
 

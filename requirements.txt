@@ -1,5 +1,13 @@
 # Python dependencies for development tooling
 # Install with: pip install -r requirements.txt
+# Or with uv: uv venv && uv pip install -r requirements.txt
 
 # C++ package manager (see README for build instructions)
 conan>=2.18.1
+
+# Build tools. Conan also provides cmake via tool_requires, but the repo's
+# CMakePresets.json uses the Ninja generator, so ninja must be on PATH.
+# Pinning both via pip keeps dev environments reproducible without relying
+# on system packages.
+cmake>=3.28
+ninja>=1.11
