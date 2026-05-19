@@ -18,14 +18,60 @@ $ErrorActionPreference = 'Stop'
 
 $scriptDir = $PSScriptRoot
 $repoRoot = Split-Path -Parent $scriptDir
-$logFile = Join-Path $scriptDir 'installer_log.txt'
+$script:LogFile = Join-Path $scriptDir 'installer_log.txt'
 
-Start-Transcript -Path $logFile -Force | Out-Null
+# UTF-8 (no BOM) so the log opens cleanly in any editor / CI tail.
+$script:LogEncoding = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText(
+    $script:LogFile,
+    "=== create_installer.ps1 started at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ===`r`n",
+    $script:LogEncoding
+)
+
+function Write-Log {
+    param([Parameter(Mandatory, ValueFromPipeline)][string]$Message)
+    process {
+        Write-Host $Message
+        [System.IO.File]::AppendAllText($script:LogFile, "$Message`r`n", $script:LogEncoding)
+    }
+}
+
+function Invoke-LoggedStep {
+    param(
+        [Parameter(Mandatory)][string]$Description,
+        [Parameter(Mandatory)][scriptblock]$ScriptBlock
+    )
+    Write-Log $Description
+    # PS 5.1 with $ErrorActionPreference='Stop' treats native-command stderr
+    # writes as terminating errors; relax to 'Continue' here and rely on
+    # $LASTEXITCODE for the real success signal.
+    $oldEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $writer = [System.IO.StreamWriter]::new($script:LogFile, $true, $script:LogEncoding)
+    try {
+        & $ScriptBlock 2>&1 | ForEach-Object {
+            $line = if ($_ -is [System.Management.Automation.ErrorRecord] -and $null -ne $_.TargetObject) {
+                [string]$_.TargetObject
+            } else {
+                [string]$_
+            }
+            Write-Host $line
+            $writer.WriteLine($line)
+        }
+    }
+    finally {
+        $writer.Dispose()
+        $ErrorActionPreference = $oldEap
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed (exit $LASTEXITCODE)"
+    }
+}
 
 try {
-    Write-Host "=================================================="
-    Write-Host " Sudoku Windows Installer Builder"
-    Write-Host "=================================================="
+    Write-Log "=================================================="
+    Write-Log " Sudoku Windows Installer Builder"
+    Write-Log "=================================================="
 
     # -------------------------------------------------------------------------
     # 1. Locate NSIS (also check default install location if not on PATH)
@@ -41,7 +87,7 @@ try {
     if (-not $makensis) {
         throw "NSIS not found. Install with one of:`n    winget install NSIS.NSIS`n    choco install nsis`nThen ensure makensis.exe is on your PATH."
     }
-    Write-Host "Found NSIS: $($makensis.Source)"
+    Write-Log "Found NSIS: $($makensis.Source)"
 
     # -------------------------------------------------------------------------
     # 2. Locate the cmake bundled with Visual Studio (4.x — needed for the
@@ -60,25 +106,21 @@ try {
     if (-not (Test-Path $vsCMake)) {
         throw "cmake not found in VS installation at $vsCMakeBin"
     }
-    Write-Host "Found VS cmake: $vsCMake"
+    Write-Log "Found VS cmake: $vsCMake"
 
     # -------------------------------------------------------------------------
     # 3. Release build (incremental — skips if already up to date)
     # -------------------------------------------------------------------------
-    Write-Host "[1/2] Building Release..."
-    & (Join-Path $scriptDir 'build_windows.ps1') -Config Release
-    if ($LASTEXITCODE -ne 0) {
-        throw "Release build failed. See $($scriptDir)\build_log_release.txt for details."
+    Invoke-LoggedStep "[1/2] Building Release..." {
+        & (Join-Path $scriptDir 'build_windows.ps1') -Config Release
     }
 
     # -------------------------------------------------------------------------
     # 4. CPack: stage install tree + run NSIS
     # -------------------------------------------------------------------------
-    Write-Host "[2/2] Packaging installer..."
     $env:PATH = "$vsCMakeBin;$env:PATH"
-    & $vsCMake -E chdir (Join-Path $repoRoot 'build\Release') cpack -G NSIS -C Release
-    if ($LASTEXITCODE -ne 0) {
-        throw "CPack/NSIS packaging failed (exit $LASTEXITCODE)."
+    Invoke-LoggedStep "[2/2] Packaging installer..." {
+        & $vsCMake -E chdir (Join-Path $repoRoot 'build\Release') cpack -G NSIS -C Release
     }
 
     # Move installer to project root
@@ -87,11 +129,14 @@ try {
         Move-Item -Path $installer.FullName -Destination $repoRoot -Force
     }
 
-    Write-Host "=================================================="
-    Write-Host "Installer ready!"
-    Get-ChildItem -Path $repoRoot -Filter 'Sudoku-*-win64.exe' | ForEach-Object { Write-Host "Installer: $($_.Name)" }
-    Write-Host "=================================================="
+    Write-Log "=================================================="
+    Write-Log "Installer ready!"
+    Get-ChildItem -Path $repoRoot -Filter 'Sudoku-*-win64.exe' | ForEach-Object {
+        Write-Log "Installer: $($_.Name)"
+    }
+    Write-Log "=================================================="
 }
-finally {
-    Stop-Transcript | Out-Null
+catch {
+    Write-Log "ERROR: $($_.Exception.Message)"
+    throw
 }

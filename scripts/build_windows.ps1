@@ -25,14 +25,66 @@ $ErrorActionPreference = 'Stop'
 
 $scriptDir = $PSScriptRoot
 $repoRoot = Split-Path -Parent $scriptDir
-$logFile = Join-Path $scriptDir "build_log_$($Config.ToLower()).txt"
+$script:LogFile = Join-Path $scriptDir "build_log_$($Config.ToLower()).txt"
 
-Start-Transcript -Path $logFile -Force | Out-Null
+# UTF-8 (no BOM) so the log opens cleanly in any editor / CI tail.
+$script:LogEncoding = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText(
+    $script:LogFile,
+    "=== build_windows.ps1 -Config $Config started at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') ===`r`n",
+    $script:LogEncoding
+)
+
+function Write-Log {
+    param([Parameter(Mandatory, ValueFromPipeline)][string]$Message)
+    process {
+        Write-Host $Message
+        [System.IO.File]::AppendAllText($script:LogFile, "$Message`r`n", $script:LogEncoding)
+    }
+}
+
+function Invoke-LoggedStep {
+    param(
+        [Parameter(Mandatory)][string]$Description,
+        [Parameter(Mandatory)][scriptblock]$ScriptBlock
+    )
+    Write-Log $Description
+    # PS 5.1 with $ErrorActionPreference='Stop' converts native-command stderr
+    # writes into terminating errors before $LASTEXITCODE is even checked.
+    # Conan/cmake routinely write progress to stderr with exit 0, so scope
+    # the preference to 'Continue' here and rely on $LASTEXITCODE for the
+    # real success signal.
+    $oldEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $writer = [System.IO.StreamWriter]::new($script:LogFile, $true, $script:LogEncoding)
+    try {
+        & $ScriptBlock 2>&1 | ForEach-Object {
+            # When 2>&1 merges native stderr into the success stream, PS wraps
+            # the lines in ErrorRecord objects whose ToString() adds noisy
+            # "PS>line:N" framing. Use .TargetObject to recover the original
+            # stderr text; fall back to ToString() for everything else.
+            $line = if ($_ -is [System.Management.Automation.ErrorRecord] -and $null -ne $_.TargetObject) {
+                [string]$_.TargetObject
+            } else {
+                [string]$_
+            }
+            Write-Host $line
+            $writer.WriteLine($line)
+        }
+    }
+    finally {
+        $writer.Dispose()
+        $ErrorActionPreference = $oldEap
+    }
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed (exit $LASTEXITCODE)"
+    }
+}
 
 try {
-    Write-Host "=================================================="
-    Write-Host "Building sudoku-cpp for Windows ($Config)"
-    Write-Host "=================================================="
+    Write-Log "=================================================="
+    Write-Log "Building sudoku-cpp for Windows ($Config)"
+    Write-Log "=================================================="
 
     # -------------------------------------------------------------------------
     # 1. Locate Visual Studio via vswhere (includes Build Tools and prereleases)
@@ -51,7 +103,7 @@ try {
     if (-not $vsPath) {
         throw 'No Visual Studio installation found.'
     }
-    Write-Host "Found Visual Studio: $vsPath"
+    Write-Log "Found Visual Studio: $vsPath"
 
     # -------------------------------------------------------------------------
     # 2. Initialize MSVC environment (import vcvarsall.bat env into PS session)
@@ -62,13 +114,19 @@ try {
     }
     $vcvarsOutput = & cmd /c "`"$vcvars`" x64 && set" 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw "vcvarsall.bat failed: $vcvarsOutput"
+        [System.IO.File]::AppendAllText(
+            $script:LogFile,
+            (($vcvarsOutput | ForEach-Object { [string]$_ }) -join "`r`n") + "`r`n",
+            $script:LogEncoding
+        )
+        throw "vcvarsall.bat failed (see $script:LogFile)"
     }
     foreach ($line in $vcvarsOutput) {
         if ($line -match '^([^=]+)=(.*)$') {
             Set-Item -Path "env:$($matches[1])" -Value $matches[2]
         }
     }
+    Write-Log "Initialized MSVC environment (vcvarsall.bat x64)"
 
     # -------------------------------------------------------------------------
     # 3. Verify Conan is on PATH (expected: activated venv from requirements.txt)
@@ -77,7 +135,7 @@ try {
     if (-not $conan) {
         throw "conan not found on PATH. Activate the venv first:`n    .\.venv\Scripts\Activate.ps1`nIf you have not set up the venv, see README.md (Windows section)."
     }
-    Write-Host "Found Conan: $($conan.Source)"
+    Write-Log "Found Conan: $($conan.Source)"
 
     # -------------------------------------------------------------------------
     # 4. Resolve Qt6 path
@@ -88,7 +146,7 @@ try {
     if (-not $env:QT6_DIR) {
         throw "Qt6 not found. Install the MSVC 2022 64-bit kit via the Qt Online Installer, or set `$env:QT6_DIR manually, e.g.:`n    `$env:QT6_DIR = 'C:\Qt\6.11.1\msvc2022_64'"
     }
-    Write-Host "Using Qt6: $env:QT6_DIR"
+    Write-Log "Using Qt6: $env:QT6_DIR"
 
     Push-Location $repoRoot
     try {
@@ -98,30 +156,30 @@ try {
         #    built ABI-compatible with the project's C++23 code, regardless of
         #    what `conan profile detect` defaulted to in the user's profile.
         # ---------------------------------------------------------------------
-        Write-Host "[1/3] Installing dependencies with Conan ($Config)..."
-        & conan install . `
-            --build=missing `
-            -s build_type=$Config `
-            -s compiler.cppstd=23 `
-            --output-folder="build\$Config"
-        if ($LASTEXITCODE -ne 0) { throw "Conan dependency installation failed (exit $LASTEXITCODE)" }
+        Invoke-LoggedStep "[1/3] Installing dependencies with Conan ($Config)..." {
+            conan install . `
+                --build=missing `
+                -s build_type=$Config `
+                -s compiler.cppstd=23 `
+                --output-folder="build\$Config"
+        }
 
         # ---------------------------------------------------------------------
         # 6. Configure CMake (Conan toolchain + Qt6 prefix path)
         # ---------------------------------------------------------------------
-        Write-Host "[2/3] Configuring CMake ($Config)..."
-        & cmake -S . -B "build\$Config" `
-            "-DCMAKE_TOOLCHAIN_FILE=build\$Config\generators\conan_toolchain.cmake" `
-            "-DCMAKE_BUILD_TYPE=$Config" `
-            "-DCMAKE_PREFIX_PATH=$env:QT6_DIR"
-        if ($LASTEXITCODE -ne 0) { throw "CMake configuration failed (exit $LASTEXITCODE)" }
+        Invoke-LoggedStep "[2/3] Configuring CMake ($Config)..." {
+            cmake -S . -B "build\$Config" `
+                "-DCMAKE_TOOLCHAIN_FILE=build\$Config\generators\conan_toolchain.cmake" `
+                "-DCMAKE_BUILD_TYPE=$Config" `
+                "-DCMAKE_PREFIX_PATH=$env:QT6_DIR"
+        }
 
         # ---------------------------------------------------------------------
         # 7. Build
         # ---------------------------------------------------------------------
-        Write-Host "[3/3] Building project ($Config)..."
-        & cmake --build "build\$Config" --config $Config
-        if ($LASTEXITCODE -ne 0) { throw "Build failed (exit $LASTEXITCODE)" }
+        Invoke-LoggedStep "[3/3] Building project ($Config)..." {
+            cmake --build "build\$Config" --config $Config
+        }
 
         # ---------------------------------------------------------------------
         # 8. Deploy Qt runtime DLLs via windeployqt
@@ -132,19 +190,21 @@ try {
             # Single-config generators (Ninja) drop the inner $Config subdir
             $exePath = "build\$Config\bin\sudoku.exe"
         }
-        Write-Host "Deploying Qt runtime (windeployqt) for $exePath..."
-        & (Join-Path $env:QT6_DIR 'bin\windeployqt.exe') $deployFlag --no-translations $exePath
-        if ($LASTEXITCODE -ne 0) { throw "windeployqt failed (exit $LASTEXITCODE)" }
+        $windeployqt = Join-Path $env:QT6_DIR 'bin\windeployqt.exe'
+        Invoke-LoggedStep "Deploying Qt runtime (windeployqt) for $exePath..." {
+            & $windeployqt $deployFlag --no-translations $exePath
+        }
     }
     finally {
         Pop-Location
     }
 
-    Write-Host "=================================================="
-    Write-Host "$Config build successful!"
-    Write-Host "Executable: $exePath"
-    Write-Host "=================================================="
+    Write-Log "=================================================="
+    Write-Log "$Config build successful!"
+    Write-Log "Executable: $exePath"
+    Write-Log "=================================================="
 }
-finally {
-    Stop-Transcript | Out-Null
+catch {
+    Write-Log "ERROR: $($_.Exception.Message)"
+    throw
 }
