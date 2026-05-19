@@ -1,5 +1,5 @@
 # Discover the newest Qt6 MSVC 2022 64-bit kit under C:\Qt.
-# Used by scripts\build_windows.bat and scripts\build_windows_debug.bat.
+# Used by scripts\build_windows.ps1.
 #
 # Prints the absolute path to <Qt-root>\msvc2022_64 on stdout, or nothing
 # if no usable kit is found. Exit code is always 0 — callers detect "not

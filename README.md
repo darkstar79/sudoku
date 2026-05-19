@@ -100,22 +100,31 @@ conan --version ; cmake --version ; ninja --version
 **Build and run:**
 
 ```powershell
-.\scripts\build_windows.bat          # Release
-.\scripts\build_windows_debug.bat    # Debug
-.\build\Release\bin\sudoku.exe       # Run
+.\scripts\build_windows.ps1                  # Release (default)
+.\scripts\build_windows.ps1 -Config Debug    # Debug
+.\build\Release\bin\sudoku.exe               # Run
 ```
 
-The build scripts auto-detect:
+The build script auto-detects:
 
 - **Visual Studio** via `vswhere -latest -prerelease` (newest install wins, including 2026 previews).
-- **Qt6** via [scripts/find_qt6.ps1](scripts/find_qt6.ps1) — scans `C:\Qt\6.*` for the newest version with an `msvc2022_64` kit (proper version sort, so 6.11 ranks above 6.9). Set `QT6_DIR=<path-to-msvc2022_64>` to override for non-default install locations.
+- **Qt6** via [scripts/find_qt6.ps1](scripts/find_qt6.ps1) — scans `C:\Qt\6.*` for the newest version with an `msvc2022_64` kit (proper version sort, so 6.11 ranks above 6.9). Set `$env:QT6_DIR` to override for non-default install locations.
+
+It also passes `-s compiler.cppstd=23` to Conan so dependency builds (Catch2, spdlog, …) stay ABI-compatible with the project's C++23 code, independent of whatever `conan profile detect` chose for your local `default` profile.
+
+**Run the tests:**
+
+```powershell
+.\scripts\run_tests_windows.ps1              # Release
+.\scripts\run_tests_windows.ps1 -Config Debug
+```
 
 **Creating a Windows installer:**
 
 Requires [NSIS](https://nsis.sourceforge.io/Download) (`winget install NSIS.NSIS`).
 
 ```powershell
-.\scripts\create_installer.bat
+.\scripts\create_installer.ps1
 ```
 
 **Pre-commit hook:** [scripts/setup-hooks.sh](scripts/setup-hooks.sh) is bash-only; run it from Git Bash, or skip on Windows (CI re-checks formatting on push).

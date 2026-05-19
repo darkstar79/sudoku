@@ -6,7 +6,7 @@ This document describes the available Conan profiles for building the sudoku-cpp
 
 ### Windows / MSVC
 
-On Windows the build scripts ([scripts/build_windows.bat](../scripts/build_windows.bat) and [scripts/build_windows_debug.bat](../scripts/build_windows_debug.bat)) use the auto-detected `default` profile — **no named MSVC profile lives in the repo**. After installing Visual Studio, run:
+On Windows the build script [scripts/build_windows.ps1](../scripts/build_windows.ps1) uses the auto-detected `default` profile — **no named MSVC profile lives in the repo**. After installing Visual Studio, run:
 
 ```bat
 conan profile detect --force
@@ -18,7 +18,7 @@ This writes `%USERPROFILE%\.conan2\profiles\default` with settings matching your
 conan profile show
 ```
 
-You should see `compiler=msvc`, `compiler.runtime=dynamic`, and a `compiler.version` of `193` (VS2022) or `194`/`195` (VS2026 preview/RTM). Build type is set on the command line by the build scripts (`-s build_type=Debug` for the Debug script; Release is the profile default).
+You should see `compiler=msvc`, `compiler.runtime=dynamic`, and a `compiler.version` of `193` (VS2022) or `194`/`195` (VS2026 preview/RTM). The build script overrides `build_type` and `compiler.cppstd` on the command line (`-s build_type=$Config -s compiler.cppstd=23`), so the profile's defaults for those two settings don't matter — only `compiler`, `compiler.runtime`, `compiler.version`, `os`, and `arch` need to be correct.
 
 > **Qt6 prerequisite.** Install Qt6 via the [Qt Online Installer](https://www.qt.io/download-qt-installer) and tick the **MSVC 2022 64-bit** kit. The build scripts auto-detect the newest installed version under `C:\Qt\6.*`; set `QT6_DIR=C:\Qt\<version>\msvc2022_64` only to override for non-default install paths.
 
@@ -41,7 +41,7 @@ os=Windows
 tools.cmake.cmaketoolchain:generator=Ninja
 ```
 
-Use `--profile=msvc-release` on `conan install` to apply it. The build scripts don't reference named profiles, so you'd also need to invoke `conan install` manually instead of using `scripts\build_windows.bat`.
+Use `--profile=msvc-release` on `conan install` to apply it. The build script doesn't reference named profiles, so you'd also need to invoke `conan install` manually instead of using `scripts\build_windows.ps1`.
 
 > `compiler.runtime=dynamic` (`/MD`/`/MDd`) is required to link against Qt6 shared libraries from the Qt installer. Don't change it.
 
