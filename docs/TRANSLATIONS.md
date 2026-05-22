@@ -74,10 +74,19 @@ no drift between source and `.ts`).
 1. Copy `sudoku_de.ts` to `sudoku_<lang>.ts` (e.g. `sudoku_ru.ts`).
 2. Update the `<TS language="...">` attribute to the new language code.
 3. Translate every `<translation>` element.
-4. Add the language to `qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES ...)`
-   in [CMakeLists.txt](../CMakeLists.txt).
-5. Add the language code to the `kLocales` map in
-   [src/view/main_window.cpp](../src/view/main_window.cpp) (Settings → Language dropdown).
+4. Register the language in [CMakeLists.txt](../CMakeLists.txt) in two places:
+   - Append the code to `qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES en de)` at line 99.
+   - Append the `.ts` path to the `SUDOKU_TS_FILES` list at line 203.
+
+That's it — **no C++ change is required**. The Settings → Language combo
+discovers installed locales at runtime by scanning the translations directory
+for `sudoku_<code>.qm` files (see [src/view/locale_utils.h](../src/view/locale_utils.h)),
+so a new language appears in the dropdown automatically once the `.qm` file
+is built and installed.
+
+Distribution packagers adding a locale via a downstream patch should follow
+the same recipe; see [docs/PACKAGING.md](PACKAGING.md#2026-05--dynamic-locale-discovery-no-c-change-required-to-add-a-language)
+for the packager-facing variant.
 
 ## Packager workflow
 
