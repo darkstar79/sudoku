@@ -83,7 +83,7 @@ function Invoke-LoggedStep {
 
 try {
     Write-Log "=================================================="
-    Write-Log "Building sudoku-cpp for Windows ($Config)"
+    Write-Log "Building sudoku for Windows ($Config)"
     Write-Log "=================================================="
 
     # -------------------------------------------------------------------------
