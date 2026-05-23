@@ -1,40 +1,31 @@
 # Conan Profiles Guide
 
-This document describes the available Conan profiles for building the sudoku-cpp project with different compilers and build configurations.
+This document describes the available Conan profiles for building the sudoku project with different compilers and build configurations.
 
 ## Available Profiles
 
-### Windows / MSVC Profiles
+### Windows / MSVC
 
-- **msvc-release**: MSVC with Release build (optimized, no debug symbols)
-- **msvc-debug**: MSVC with Debug build (no optimization, full debug symbols)
-
-> **Prerequisite:** Install Qt6 via the [Qt Online Installer](https://www.qt.io/download-qt-installer).
-> Select the **MSVC 2022 64-bit** component for your Qt6 version.
-> Then set `QT6_DIR` before building:
-> ```bat
-> set QT6_DIR=C:\Qt\6.10.0\msvc2022_64
-> ```
-
-#### Auto-generate an MSVC profile (recommended)
-
-Run this once after installing Visual Studio to create a profile matching your installed compiler:
+On Windows the build script [scripts/build_windows.ps1](../scripts/build_windows.ps1) uses the auto-detected `default` profile — **no named MSVC profile lives in the repo**. After installing Visual Studio, run:
 
 ```bat
-conan profile detect --name msvc-release
+conan profile detect --force
 ```
 
-Conan will detect the MSVC version automatically. Verify it looks correct:
+This writes `%USERPROFILE%\.conan2\profiles\default` with settings matching your VS install. Verify:
 
 ```bat
-conan profile show --profile msvc-release
+conan profile show
 ```
 
-#### Manual profile content
+You should see `compiler=msvc`, `compiler.runtime=dynamic`, and a `compiler.version` of `193` (VS2022) or `194`/`195` (VS2026 preview/RTM). The build script overrides `build_type` and `compiler.cppstd` on the command line (`-s build_type=$Config -s compiler.cppstd=23`), so the profile's defaults for those two settings don't matter — only `compiler`, `compiler.runtime`, `compiler.version`, `os`, and `arch` need to be correct.
 
-If you prefer to create profiles manually, place these files in `%USERPROFILE%\.conan2\profiles\`:
+> **Qt6 prerequisite.** Install Qt6 via the [Qt Online Installer](https://www.qt.io/download-qt-installer) and tick the **MSVC 2022 64-bit** kit. The build scripts auto-detect the newest installed version under `C:\Qt\6.*`; set `QT6_DIR=C:\Qt\<version>\msvc2022_64` only to override for non-default install paths.
 
-**`msvc-release`:**
+#### Manual profile content (reference)
+
+If you want to pin a specific MSVC config, place this in `%USERPROFILE%\.conan2\profiles\msvc-release`:
+
 ```ini
 [settings]
 arch=x86_64
@@ -43,34 +34,16 @@ compiler=msvc
 compiler.cppstd=23
 compiler.runtime=dynamic
 compiler.runtime_type=Release
-compiler.version=194
+compiler.version=195
 os=Windows
 
 [conf]
 tools.cmake.cmaketoolchain:generator=Ninja
 ```
 
-**`msvc-debug`:**
-```ini
-[settings]
-arch=x86_64
-build_type=Debug
-compiler=msvc
-compiler.cppstd=23
-compiler.runtime=dynamic
-compiler.runtime_type=Debug
-compiler.version=194
-os=Windows
+Use `--profile=msvc-release` on `conan install` to apply it. The build script doesn't reference named profiles, so you'd also need to invoke `conan install` manually instead of using `scripts\build_windows.ps1`.
 
-[conf]
-tools.cmake.cmaketoolchain:generator=Ninja
-```
-
-> **Note on `compiler.version`:** Conan uses the MSVC cl.exe major version prefix.
-> VS2022 → `193`, VS2026 Preview (v18, cl.exe 19.4x) → `194`.
-> Use `conan profile detect` to let Conan pick the right value automatically.
-> `compiler.runtime=dynamic` uses `/MD`/`/MDd` (dynamic CRT), which is required
-> to link against Qt6 shared libraries from the Qt installer.
+> `compiler.runtime=dynamic` (`/MD`/`/MDd`) is required to link against Qt6 shared libraries from the Qt installer. Don't change it.
 
 ### GCC 15 Profiles
 
@@ -88,12 +61,14 @@ tools.cmake.cmaketoolchain:generator=Ninja
 
 ## Profile Configurations
 
-### Common Settings (All Profiles)
+### Common Settings (Linux GCC/Clang Profiles)
 - **Architecture:** x86_64
 - **C++ Standard:** gnu23 (C++23 with GNU extensions)
 - **Standard Library:** libstdc++11
 - **Operating System:** Linux
 - **CMake Generator:** Ninja
+
+(MSVC profiles differ: `os=Windows`, `compiler.cppstd=23` without GNU extensions, no `libcxx` setting. See the [Windows / MSVC](#windows--msvc) section above.)
 
 ### Build Type Specific Settings
 

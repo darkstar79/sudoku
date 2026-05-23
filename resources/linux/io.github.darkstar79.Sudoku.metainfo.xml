@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.darkstar79.Sudoku</id>
+
+  <name>Sudoku</name>
+  <summary>Play and solve Sudoku puzzles</summary>
+  <summary xml:lang="de">Sudoku-Rätsel spielen und lösen</summary>
+
+  <developer id="io.github.darkstar79">
+    <name>Alexander Bendlin</name>
+  </developer>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <description>
+    <p>
+      A polished offline Sudoku game. Play puzzles across multiple difficulty
+      levels, backed by a logical solver with 54 solving strategies for
+      accurate difficulty rating, and track your progress with detailed
+      statistics.
+    </p>
+    <p xml:lang="de">
+      Ein durchdachtes Offline-Sudoku-Spiel. Spielen Sie Rätsel in
+      verschiedenen Schwierigkeitsstufen, unterstützt durch einen logischen
+      Solver mit 54 Lösungsstrategien für eine präzise Schwierigkeitsbewertung,
+      und verfolgen Sie Ihren Fortschritt mit detaillierten Statistiken.
+    </p>
+    <p>Features include:</p>
+    <p xml:lang="de">Funktionen umfassen:</p>
+    <ul>
+      <li>Multiple difficulty levels from Easy to Extreme</li>
+      <li xml:lang="de">Mehrere Schwierigkeitsstufen von Einfach bis Extrem</li>
+      <li>Import puzzles from the clipboard or enter your own givens manually</li>
+      <li xml:lang="de">Rätsel aus der Zwischenablage importieren oder eigene Vorgaben manuell eingeben</li>
+      <li>Candidate (pencil mark) support</li>
+      <li xml:lang="de">Unterstützung für Notizen (Bleistift-Markierungen)</li>
+      <li>Undo/redo with full move history</li>
+      <li xml:lang="de">Rückgängig/Wiederholen mit vollständigem Zugverlauf</li>
+      <li>Auto-save and manual save/load</li>
+      <li xml:lang="de">Automatisches Speichern sowie manuelles Speichern/Laden</li>
+      <li>Game statistics and progress tracking</li>
+      <li xml:lang="de">Spielstatistiken und Fortschrittsverfolgung</li>
+      <li>Training mode to practice specific solving techniques</li>
+      <li xml:lang="de">Trainingsmodus zum Üben bestimmter Lösungstechniken</li>
+      <li>English and German localizations</li>
+      <li xml:lang="de">Englische und deutsche Lokalisierungen</li>
+    </ul>
+  </description>
+
+  <keywords>
+    <keyword>sudoku</keyword>
+    <keyword>puzzle</keyword>
+    <keyword>logic</keyword>
+    <keyword>number</keyword>
+    <keyword xml:lang="de">sudoku</keyword>
+    <keyword xml:lang="de">rätsel</keyword>
+    <keyword xml:lang="de">logik</keyword>
+    <keyword xml:lang="de">zahlen</keyword>
+  </keywords>
+
+  <launchable type="desktop-id">io.github.darkstar79.Sudoku.desktop</launchable>
+
+  <url type="homepage">https://github.com/darkstar79/sudoku</url>
+  <url type="bugtracker">https://github.com/darkstar79/sudoku/issues</url>
+  <url type="vcs-browser">https://github.com/darkstar79/sudoku</url>
+  <url type="contribute">https://github.com/darkstar79/sudoku/blob/main/CONTRIBUTING.md</url>
+  <url type="translate">https://github.com/darkstar79/sudoku/blob/main/docs/TRANSLATIONS.md</url>
+
+  <provides>
+    <binary>sudoku</binary>
+  </provides>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Game in progress with pencil-mark candidates and related-cell highlighting</caption>
+      <caption xml:lang="de">Spiel im Verlauf mit Bleistift-Notizen und Hervorhebung verwandter Zellen</caption>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku/main/resources/screenshots/gameplay-candidates.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Fresh Master-difficulty puzzle with row, column, and box highlighting</caption>
+      <caption xml:lang="de">Frisches Rätsel auf Master-Schwierigkeit mit Zeilen-, Spalten- und Block-Hervorhebung</caption>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku/main/resources/screenshots/gameplay-clean-board.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Puzzle Difficulty dialog showing the SE rating and required solving techniques</caption>
+      <caption xml:lang="de">Schwierigkeits-Dialog mit SE-Bewertung und benötigten Lösungstechniken</caption>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku/main/resources/screenshots/difficulty-dialog.png</image>
+    </screenshot>
+  </screenshots>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0.0" date="2026-03-20">
+      <description>
+        <p>Initial release with full Sudoku gameplay, 54 solving strategies,
+           training mode, and multi-language support.</p>
+      </description>
+    </release>
+  </releases>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#2563eb</color>
+    <color type="primary" scheme_preference="dark">#1e40af</color>
+  </branding>
+</component>

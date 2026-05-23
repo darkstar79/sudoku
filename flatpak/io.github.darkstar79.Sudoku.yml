@@ -1,14 +1,23 @@
-app-id: org.sudoku_cpp.Sudoku
+app-id: io.github.darkstar79.Sudoku
 runtime: org.kde.Platform
 runtime-version: '6.10'
 sdk: org.kde.Sdk
 command: sudoku
 
 finish-args:
+  # Required when XWayland fallback is in use (Qt shares an X11 IPC connection)
   - --share=ipc
+  # XWayland fallback for X11-only sessions; no-op on pure-Wayland desktops
   - --socket=fallback-x11
+  # Native Wayland surface (preferred path on modern desktops)
   - --socket=wayland
+  # GPU access for Qt's accelerated rendering
   - --device=dri
+# Sandbox notes:
+# - No --filesystem=* entries: saves live inside the sandbox at
+#   ~/.var/app/io.github.darkstar79.Sudoku/data/ (does NOT migrate from the
+#   non-Flatpak path ~/.local/share/sudoku/saves/).
+# - No --talk-name=* entries: no D-Bus access; the app is fully self-contained.
 
 modules:
   # spdlog (header-only mode with fmt bundled)
@@ -43,8 +52,8 @@ modules:
     buildsystem: autotools
     sources:
       - type: archive
-        url: https://github.com/jedisct1/libsodium/releases/download/1.0.18-RELEASE/libsodium-1.0.18.tar.gz
-        sha256: 6f504490b342a4f8a4c4a02fc9b866cbef8622d5df4e5452b46be121e46636c1
+        url: https://github.com/jedisct1/libsodium/releases/download/1.0.21-RELEASE/libsodium-1.0.21.tar.gz
+        sha256: 9e4285c7a419e82dedb0be63a72eea357d6943bc3e28e6735bf600dd4883feaf
 
   # sudoku (the application)
   - name: sudoku
@@ -52,5 +61,13 @@ modules:
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
     sources:
+      # Local development: builds the working copy from the parent directory.
       - type: dir
         path: ..
+      # Flathub submission: comment out the `type: dir` above and uncomment
+      # this block. Bump `tag` + `commit` on each release. Flathub's buildbot
+      # rejects `type: dir` because it requires immutable, reproducible refs.
+      # - type: git
+      #   url: https://github.com/darkstar79/sudoku.git
+      #   tag: v1.0.0
+      #   commit: <fill with `git rev-parse v1.0.0` after tagging>

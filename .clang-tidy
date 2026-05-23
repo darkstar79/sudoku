@@ -1,4 +1,4 @@
-# Simplified clang-tidy configuration for sudoku-cpp project
+# Simplified clang-tidy configuration for sudoku project
 # Focus on most important checks with minimal false positives
 
 Checks: '

@@ -35,9 +35,9 @@ class SudokuConan(ConanFile):
         # Core dependencies
         # Note: Qt6 is provided by system packages (dnf install qt6-qtbase-devel)
         self.requires("spdlog/1.15.3")
-        self.requires("yaml-cpp/0.8.0")
+        self.requires("yaml-cpp/0.9.0")
         self.requires("zlib/1.3.1")  # For save file compression
-        self.requires("libsodium/1.0.18")  # For save file encryption
+        self.requires("libsodium/1.0.21")  # For save file encryption
 
         # Testing framework (conditional)
         if self.options.with_tests:

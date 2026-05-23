@@ -1,5 +1,5 @@
 #!/bin/bash
-# Coverage analysis script for sudoku-cpp project
+# Coverage analysis script for sudoku project
 # Usage: ./scripts/coverage.sh [clean|summary|html|xml|json|all|help] [--report-only]
 
 set -e

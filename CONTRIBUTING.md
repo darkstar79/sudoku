@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in sudoku-cpp!
+Thank you for your interest in sudoku!
 
 ## Bug Reports and Feature Requests
 

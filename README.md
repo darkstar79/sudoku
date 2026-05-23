@@ -1,18 +1,22 @@
 # Sudoku C++
 
-[![CI](https://github.com/darkstar79/sudoku-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/darkstar79/sudoku-cpp/actions/workflows/ci.yml)
-[![Nightly](https://github.com/darkstar79/sudoku-cpp/actions/workflows/nightly.yml/badge.svg)](https://github.com/darkstar79/sudoku-cpp/actions/workflows/nightly.yml)
+[![CI](https://github.com/darkstar79/sudoku/actions/workflows/ci.yml/badge.svg)](https://github.com/darkstar79/sudoku/actions/workflows/ci.yml)
+[![Nightly](https://github.com/darkstar79/sudoku/actions/workflows/nightly.yml/badge.svg)](https://github.com/darkstar79/sudoku/actions/workflows/nightly.yml)
 
 An offline Sudoku game built with C++23 and Qt6 for desktop users who prefer keyboard navigation and offline-only operation.
 
 This project is entirely **vibe coded** using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — no manual coding involved. It serves as a personal experiment to explore what's possible with AI-assisted development and how to work effectively with Claude Code on a non-trivial C++ codebase.
 
-![Sudoku C++ Screenshot](screenshot.png)
+![Game in progress with pencil-mark candidates and related-cell highlighting](resources/screenshots/gameplay-candidates.png)
+
+![Fresh Master-difficulty puzzle with row, column, and box highlighting](resources/screenshots/gameplay-clean-board.png)
+
+![Puzzle Difficulty dialog showing the SE rating and required solving techniques](resources/screenshots/difficulty-dialog.png)
 
 ## Features
 
 - Puzzle generation with 5 difficulty levels and guaranteed unique solutions
-- 54 solving strategies with step-by-step hints
+- 54 solving strategies powering difficulty rating and puzzle generation
 - Training mode for learning solving techniques *(experimental — enable in Settings → Experimental)*
 - Custom puzzles: paste-import an 81-character string, or enter givens manually in edit mode
 - Copy current puzzle to clipboard, look up the next step by technique
@@ -70,35 +74,60 @@ cmake --build --preset release
 
 ### Windows (MSVC + Qt6)
 
-**Prerequisites:**
+**Prerequisites (one-time, system-wide installs):**
 
-1. **Visual Studio 2022/2026** with the *Desktop development with C++* workload
-2. **Qt6** — install via [Qt Online Installer](https://www.qt.io/download-qt-installer), selecting the **MSVC 2022 64-bit** component
-3. **Conan 2** — `pip install conan`
-4. **CMake** — install separately or provided via Conan `tool_requires`
+1. **Visual Studio 2022 or 2026** with the *Desktop development with C++* workload — Build Tools or the full IDE both work.
+2. **Qt6** (any 6.8+) via the [Qt Online Installer](https://www.qt.io/download-qt-installer) — **tick the MSVC 2022 64-bit kit specifically**. The MinGW kit is not supported by the build scripts; both kits can coexist if you want MinGW for other work.
+3. **Python 3.10+** with [uv](https://github.com/astral-sh/uv) recommended (`winget install astral-sh.uv`). Any `pip`-capable Python works as a fallback.
+
+**One-time setup (Python toolchain in a per-repo venv):**
+
+```powershell
+uv venv
+.\.venv\Scripts\Activate.ps1
+uv pip install -r requirements.txt   # conan + cmake + ninja
+conan profile detect --force         # seeds %USERPROFILE%\.conan2\profiles\default
+```
+
+`requirements.txt` brings Conan, CMake, and Ninja — no separate downloads. The auto-detected `default` Conan profile is what the build scripts use; no `--profile=msvc-*` flag needed on Windows.
+
+**Sanity-check the toolchain:**
+
+```powershell
+conan --version ; cmake --version ; ninja --version
+```
 
 **Build and run:**
 
-```bat
-REM Release build
-scripts\build_windows.bat
-
-REM Debug build
-scripts\build_windows_debug.bat
-
-REM Run
-build\Release\bin\sudoku.exe
+```powershell
+.\scripts\build_windows.ps1                  # Release (default)
+.\scripts\build_windows.ps1 -Config Debug    # Debug
+.\build\Release\bin\sudoku.exe               # Run
 ```
 
-The build scripts auto-detect the Visual Studio installation via `vswhere`.
+The build script auto-detects:
+
+- **Visual Studio** via `vswhere -latest -prerelease` (newest install wins, including 2026 previews).
+- **Qt6** via [scripts/find_qt6.ps1](scripts/find_qt6.ps1) — scans `C:\Qt\6.*` for the newest version with an `msvc2022_64` kit (proper version sort, so 6.11 ranks above 6.9). Set `$env:QT6_DIR` to override for non-default install locations.
+
+It also passes `-s compiler.cppstd=23` to Conan so dependency builds (Catch2, spdlog, …) stay ABI-compatible with the project's C++23 code, independent of whatever `conan profile detect` chose for your local `default` profile.
+
+**Run the tests:**
+
+```powershell
+.\scripts\run_tests_windows.ps1              # Release
+.\scripts\run_tests_windows.ps1 -Config Debug
+```
 
 **Creating a Windows installer:**
 
 Requires [NSIS](https://nsis.sourceforge.io/Download) (`winget install NSIS.NSIS`).
 
-```bat
-scripts\create_installer.bat
+```powershell
+.\scripts\create_installer.ps1
 ```
+
+**Pre-commit hook:** [scripts/setup-hooks.sh](scripts/setup-hooks.sh) is bash-only; run it from Git Bash, or skip on Windows (CI re-checks formatting on push).
 
 ### Build Configurations
 
@@ -171,7 +200,7 @@ QT_QPA_PLATFORM=offscreen ctest --test-dir build/Release -R "^test_" --output-on
 ## Project Structure
 
 ```
-sudoku-cpp/
+sudoku/
 ├── src/
 │   ├── core/              # Business logic (Model layer)
 │   ├── model/             # Domain models

@@ -1,4 +1,4 @@
-// sudoku-cpp - Offline Sudoku Game
+// sudoku - Offline Sudoku Game
 // Copyright (C) 2025-2026 Alexander Bendlin (darkstar79)
 //
 // Custom Catch2 entry point that owns a QCoreApplication for the lifetime of

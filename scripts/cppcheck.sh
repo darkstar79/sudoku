@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# cppcheck static analysis script for sudoku-cpp project
+# cppcheck static analysis script for sudoku project
 # Complements clang-tidy with additional bug detection (buffer overflows,
 # null pointer dereferences, memory leaks, and more)
 
