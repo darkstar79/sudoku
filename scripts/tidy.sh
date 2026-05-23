@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# clang-tidy analysis script for sudoku-cpp project
+# clang-tidy analysis script for sudoku project
 # Provides comprehensive static analysis with multiple output formats
 
 set -euo pipefail
@@ -272,7 +272,7 @@ generate_report() {
         echo "clang-tidy Analysis Report"
         echo "========================================"
         echo "Generated: $(date)"
-        echo "Project: sudoku-cpp"
+        echo "Project: sudoku"
         echo "Config: $TIDY_CONFIG"
         echo ""
         

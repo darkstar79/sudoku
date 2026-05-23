@@ -1,7 +1,7 @@
 # Sudoku C++
 
-[![CI](https://github.com/darkstar79/sudoku-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/darkstar79/sudoku-cpp/actions/workflows/ci.yml)
-[![Nightly](https://github.com/darkstar79/sudoku-cpp/actions/workflows/nightly.yml/badge.svg)](https://github.com/darkstar79/sudoku-cpp/actions/workflows/nightly.yml)
+[![CI](https://github.com/darkstar79/sudoku/actions/workflows/ci.yml/badge.svg)](https://github.com/darkstar79/sudoku/actions/workflows/ci.yml)
+[![Nightly](https://github.com/darkstar79/sudoku/actions/workflows/nightly.yml/badge.svg)](https://github.com/darkstar79/sudoku/actions/workflows/nightly.yml)
 
 An offline Sudoku game built with C++23 and Qt6 for desktop users who prefer keyboard navigation and offline-only operation.
 
@@ -200,7 +200,7 @@ QT_QPA_PLATFORM=offscreen ctest --test-dir build/Release -R "^test_" --output-on
 ## Project Structure
 
 ```
-sudoku-cpp/
+sudoku/
 ├── src/
 │   ├── core/              # Business logic (Model layer)
 │   ├── model/             # Domain models

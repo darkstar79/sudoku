@@ -1,6 +1,6 @@
 # Conan Profiles Guide
 
-This document describes the available Conan profiles for building the sudoku-cpp project with different compilers and build configurations.
+This document describes the available Conan profiles for building the sudoku project with different compilers and build configurations.
 
 ## Available Profiles
 

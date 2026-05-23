@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.darkstar79.Sudoku_CPP</id>
+  <id>io.github.darkstar79.Sudoku</id>
 
   <name>Sudoku</name>
   <summary>Play and solve Sudoku puzzles</summary>
@@ -59,13 +59,13 @@
     <keyword xml:lang="de">zahlen</keyword>
   </keywords>
 
-  <launchable type="desktop-id">io.github.darkstar79.Sudoku_CPP.desktop</launchable>
+  <launchable type="desktop-id">io.github.darkstar79.Sudoku.desktop</launchable>
 
-  <url type="homepage">https://github.com/darkstar79/sudoku-cpp</url>
-  <url type="bugtracker">https://github.com/darkstar79/sudoku-cpp/issues</url>
-  <url type="vcs-browser">https://github.com/darkstar79/sudoku-cpp</url>
-  <url type="contribute">https://github.com/darkstar79/sudoku-cpp/blob/main/CONTRIBUTING.md</url>
-  <url type="translate">https://github.com/darkstar79/sudoku-cpp/blob/main/docs/TRANSLATIONS.md</url>
+  <url type="homepage">https://github.com/darkstar79/sudoku</url>
+  <url type="bugtracker">https://github.com/darkstar79/sudoku/issues</url>
+  <url type="vcs-browser">https://github.com/darkstar79/sudoku</url>
+  <url type="contribute">https://github.com/darkstar79/sudoku/blob/main/CONTRIBUTING.md</url>
+  <url type="translate">https://github.com/darkstar79/sudoku/blob/main/docs/TRANSLATIONS.md</url>
 
   <provides>
     <binary>sudoku</binary>
@@ -75,17 +75,17 @@
     <screenshot type="default">
       <caption>Game in progress with pencil-mark candidates and related-cell highlighting</caption>
       <caption xml:lang="de">Spiel im Verlauf mit Bleistift-Notizen und Hervorhebung verwandter Zellen</caption>
-      <image>https://raw.githubusercontent.com/darkstar79/sudoku-cpp/main/resources/screenshots/gameplay-candidates.png</image>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku/main/resources/screenshots/gameplay-candidates.png</image>
     </screenshot>
     <screenshot>
       <caption>Fresh Master-difficulty puzzle with row, column, and box highlighting</caption>
       <caption xml:lang="de">Frisches Rätsel auf Master-Schwierigkeit mit Zeilen-, Spalten- und Block-Hervorhebung</caption>
-      <image>https://raw.githubusercontent.com/darkstar79/sudoku-cpp/main/resources/screenshots/gameplay-clean-board.png</image>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku/main/resources/screenshots/gameplay-clean-board.png</image>
     </screenshot>
     <screenshot>
       <caption>Puzzle Difficulty dialog showing the SE rating and required solving techniques</caption>
       <caption xml:lang="de">Schwierigkeits-Dialog mit SE-Bewertung und benötigten Lösungstechniken</caption>
-      <image>https://raw.githubusercontent.com/darkstar79/sudoku-cpp/main/resources/screenshots/difficulty-dialog.png</image>
+      <image>https://raw.githubusercontent.com/darkstar79/sudoku/main/resources/screenshots/difficulty-dialog.png</image>
     </screenshot>
   </screenshots>
 

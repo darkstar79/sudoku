@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Pre-commit hook for sudoku-cpp
+# Pre-commit hook for sudoku
 # FAST checks on staged files only (typically <2 seconds)
 #
 # What runs here (fast):
@@ -49,7 +49,7 @@ echo -e "${YELLOW}[pre-commit] Checking license headers on $FILE_COUNT staged fi
 LICENSE_FAILED=false
 while IFS= read -r file; do
     if [ -f "$file" ]; then
-        if ! head -1 "$file" | grep -q "// sudoku-cpp - Offline Sudoku Game"; then
+        if ! head -1 "$file" | grep -q "// sudoku - Offline Sudoku Game"; then
             echo -e "  ${RED}Missing license header:${NC} $file"
             LICENSE_FAILED=true
         fi

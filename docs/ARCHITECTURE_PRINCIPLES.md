@@ -1,6 +1,6 @@
 # Architecture Principles
 
-This document provides a deep dive into the architectural design principles that guide the sudoku-cpp codebase. These principles ensure maintainability, testability, and separation of concerns.
+This document provides a deep dive into the architectural design principles that guide the sudoku codebase. These principles ensure maintainability, testability, and separation of concerns.
 
 ---
 

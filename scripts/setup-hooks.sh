@@ -18,7 +18,7 @@ if [ -z "$REPO_ROOT" ]; then
     exit 1
 fi
 
-echo -e "${YELLOW}Installing Git hooks for sudoku-cpp...${NC}\n"
+echo -e "${YELLOW}Installing Git hooks for sudoku...${NC}\n"
 
 # Install pre-commit hook
 PRE_COMMIT_SRC="$REPO_ROOT/scripts/pre-commit"

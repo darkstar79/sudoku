@@ -1,6 +1,6 @@
 # C++23 Style Guide
 
-This document defines the C++23 coding standards for the sudoku-cpp project. These standards ensure safe, maintainable, and modern C++ code.
+This document defines the C++23 coding standards for the sudoku project. These standards ensure safe, maintainable, and modern C++ code.
 
 ---
 

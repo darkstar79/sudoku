@@ -2,7 +2,7 @@
 
 ## Scope
 
-sudoku-cpp is an offline desktop application. It has no network-facing components, no server, and no user accounts. The attack surface is limited to:
+sudoku is an offline desktop application. It has no network-facing components, no server, and no user accounts. The attack surface is limited to:
 
 - **Save file parsing** (YAML + zlib + libsodium decryption)
 - **Local file I/O** (save/load, statistics, configuration)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Include-what-you-use analysis script for sudoku-cpp project
+# Include-what-you-use analysis script for sudoku project
 # Usage: ./scripts/iwyu.sh [--fix] [--help]
 
 set -euo pipefail

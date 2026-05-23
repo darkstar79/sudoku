@@ -1,6 +1,6 @@
 # Third-Party Licenses
 
-This document lists all third-party dependencies used in the sudoku-cpp project and their respective licenses.
+This document lists all third-party dependencies used in the sudoku project and their respective licenses.
 
 ## License Compliance
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copy-paste detection script for sudoku-cpp project
+# Copy-paste detection script for sudoku project
 # Uses PMD CPD to find duplicated code blocks in source files
 
 set -euo pipefail

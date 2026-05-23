@@ -1,6 +1,6 @@
 # Code Quality Tools and Guidelines
 
-This document describes the code quality tools and processes for the sudoku-cpp project.
+This document describes the code quality tools and processes for the sudoku project.
 
 ## Overview
 

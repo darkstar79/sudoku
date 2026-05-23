@@ -21,7 +21,8 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 
 ### Changed
 
-- **Reverse-DNS app ID** changed from `org.sudoku_cpp.Sudoku` to `io.github.darkstar79.Sudoku_CPP` (follows Flathub naming convention for GitHub-hosted projects without a custom domain). The `.desktop`, AppStream metainfo, and SVG icon files are renamed in lockstep; downstream `.spec` and packaging recipes that hardcode the old paths or `Icon=` value need to be updated.
+- **Repository renamed** from `sudoku-cpp` to `sudoku` (GitHub URL is now `https://github.com/darkstar79/sudoku`; the old path redirects). Downstream packaging recipes that fetch source by URL should switch to the new path.
+- **Reverse-DNS app ID** changed from `org.sudoku_cpp.Sudoku` to `io.github.darkstar79.Sudoku` (follows Flathub naming convention for GitHub-hosted projects without a custom domain, derived from the new repo name). The `.desktop`, AppStream metainfo, and SVG icon files are renamed in lockstep; downstream `.spec` and packaging recipes that hardcode the old paths or `Icon=` value need to be updated.
 - **Bundled dependencies bumped** for the Flatpak module set and the Conan recipe used by the Windows build: libsodium `1.0.18` → `1.0.21`, yaml-cpp `0.8.0` → `0.9.0` (Conan recipe was already at parity-via-Flatpak for yaml-cpp; both now align).
 - **Save file format** bumped from 1.0 → 1.1. A new `PuzzleOrigin` field records whether a puzzle was generated, paste-imported, or entered in edit mode. Loading older 1.0 saves remains supported; missing field defaults to `Generated`.
 - **Solver gains budget-bearing overloads** — `solvePuzzle(board, std::chrono::milliseconds)` and a technique-targeted dispatch. The backtracking fallback now honors the deadline so adversarial inputs cannot hang the UI.

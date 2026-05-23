@@ -1,4 +1,4 @@
-app-id: io.github.darkstar79.Sudoku_CPP
+app-id: io.github.darkstar79.Sudoku
 runtime: org.kde.Platform
 runtime-version: '6.10'
 sdk: org.kde.Sdk
@@ -15,7 +15,7 @@ finish-args:
   - --device=dri
 # Sandbox notes:
 # - No --filesystem=* entries: saves live inside the sandbox at
-#   ~/.var/app/io.github.darkstar79.Sudoku_CPP/data/ (does NOT migrate from the
+#   ~/.var/app/io.github.darkstar79.Sudoku/data/ (does NOT migrate from the
 #   non-Flatpak path ~/.local/share/sudoku/saves/).
 # - No --talk-name=* entries: no D-Bus access; the app is fully self-contained.
 
@@ -68,6 +68,6 @@ modules:
       # this block. Bump `tag` + `commit` on each release. Flathub's buildbot
       # rejects `type: dir` because it requires immutable, reproducible refs.
       # - type: git
-      #   url: https://github.com/darkstar79/sudoku-cpp.git
+      #   url: https://github.com/darkstar79/sudoku.git
       #   tag: v1.0.0
       #   commit: <fill with `git rev-parse v1.0.0` after tagging>

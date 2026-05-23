@@ -1,4 +1,4 @@
-# clang-format configuration for sudoku-cpp project
+# clang-format configuration for sudoku project
 # Based on LLVM style with C++23 customizations
 
 ---

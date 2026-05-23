@@ -1,5 +1,5 @@
 #!/bin/bash
-# Automated code formatting script for sudoku-cpp project
+# Automated code formatting script for sudoku project
 # Uses clang-format to enforce consistent code style
 
 set -e

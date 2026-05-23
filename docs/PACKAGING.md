@@ -27,19 +27,19 @@ What `make install` lands under `${CMAKE_INSTALL_PREFIX}` (typically `/usr`):
 | ----------------------------------------------------------------------------- | --------------------------------------------------------------- |
 | `bin/sudoku`                                                                  | the executable (target name unchanged)                          |
 | `share/sudoku/translations/sudoku_<code>.qm`                                  | compiled translation catalogs (one per `.ts` file)              |
-| `share/applications/io.github.darkstar79.Sudoku_CPP.desktop`                  | [resources/linux/...](../resources/linux/io.github.darkstar79.Sudoku_CPP.desktop) |
-| `share/metainfo/io.github.darkstar79.Sudoku_CPP.metainfo.xml`                 | [resources/linux/...](../resources/linux/io.github.darkstar79.Sudoku_CPP.metainfo.xml) |
-| `share/icons/hicolor/scalable/apps/io.github.darkstar79.Sudoku_CPP.svg`       | [resources/icons/...](../resources/icons/io.github.darkstar79.Sudoku_CPP.svg) |
+| `share/applications/io.github.darkstar79.Sudoku.desktop`                  | [resources/linux/...](../resources/linux/io.github.darkstar79.Sudoku.desktop) |
+| `share/metainfo/io.github.darkstar79.Sudoku.metainfo.xml`                 | [resources/linux/...](../resources/linux/io.github.darkstar79.Sudoku.metainfo.xml) |
+| `share/icons/hicolor/scalable/apps/io.github.darkstar79.Sudoku.svg`       | [resources/icons/...](../resources/icons/io.github.darkstar79.Sudoku.svg) |
 
 The Linux install rules live in [CMakeLists.txt](../CMakeLists.txt#L262-L274).
-The reverse-DNS app ID (`io.github.darkstar79.Sudoku_CPP`) is the only
+The reverse-DNS app ID (`io.github.darkstar79.Sudoku`) is the only
 non-trivial filename in the tree; everything else is named `sudoku*`.
 
 ---
 
 ## Active migrations
 
-### App-ID rename — `org.sudoku_cpp.Sudoku` → `io.github.darkstar79.Sudoku_CPP`
+### App-ID rename — `org.sudoku_cpp.Sudoku` → `io.github.darkstar79.Sudoku`
 
 Landed on `main` as part of the Flathub-prep PR. Touches three installed
 filenames and the `Icon=` value inside the `.desktop`.
@@ -48,12 +48,12 @@ filenames and the `Icon=` value inside the `.desktop`.
 
 | Artifact            | Old install path                                                            | New install path                                                                                  |
 | ------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `.desktop`          | `share/applications/org.sudoku_cpp.Sudoku.desktop`                          | `share/applications/io.github.darkstar79.Sudoku_CPP.desktop`                                      |
-| AppStream metainfo  | `share/metainfo/org.sudoku_cpp.Sudoku.metainfo.xml`                         | `share/metainfo/io.github.darkstar79.Sudoku_CPP.metainfo.xml`                                     |
-| Scalable icon (SVG) | `share/icons/hicolor/scalable/apps/org.sudoku_cpp.Sudoku.svg`               | `share/icons/hicolor/scalable/apps/io.github.darkstar79.Sudoku_CPP.svg`                           |
+| `.desktop`          | `share/applications/org.sudoku_cpp.Sudoku.desktop`                          | `share/applications/io.github.darkstar79.Sudoku.desktop`                                      |
+| AppStream metainfo  | `share/metainfo/org.sudoku_cpp.Sudoku.metainfo.xml`                         | `share/metainfo/io.github.darkstar79.Sudoku.metainfo.xml`                                     |
+| Scalable icon (SVG) | `share/icons/hicolor/scalable/apps/org.sudoku_cpp.Sudoku.svg`               | `share/icons/hicolor/scalable/apps/io.github.darkstar79.Sudoku.svg`                           |
 
 **Plus**, inside the `.desktop` file, the `Icon=` line moved from
-`Icon=org.sudoku_cpp.Sudoku` to `Icon=io.github.darkstar79.Sudoku_CPP`.
+`Icon=org.sudoku_cpp.Sudoku` to `Icon=io.github.darkstar79.Sudoku`.
 
 **What did *not* change:** the executable name (`sudoku`), its install path
 (`bin/sudoku`), the binary's expected runtime data dir (`share/sudoku/`),
@@ -71,14 +71,38 @@ the upstream tarball name, and the upstream project name in `CMakeLists.txt`
       If `debian/*.lintian-overrides` references the old ID, rename.
 - [ ] **All distros** — re-validate post-build:
       ```sh
-      appstreamcli validate /usr/share/metainfo/io.github.darkstar79.Sudoku_CPP.metainfo.xml
-      desktop-file-validate /usr/share/applications/io.github.darkstar79.Sudoku_CPP.desktop
+      appstreamcli validate /usr/share/metainfo/io.github.darkstar79.Sudoku.metainfo.xml
+      desktop-file-validate /usr/share/applications/io.github.darkstar79.Sudoku.desktop
       ```
 
 The rename is driven by Flathub's
 [reverse-DNS naming convention](https://docs.flathub.org/docs/for-app-authors/requirements/#correct-application-id)
 for GitHub-hosted projects without a custom domain. It is a one-shot change;
 the new ID is final.
+
+### Repo rename — `darkstar79/sudoku-cpp` → `darkstar79/sudoku`
+
+Landed in lockstep with the App-ID rename above. The GitHub repository was
+renamed from `sudoku-cpp` to `sudoku`. GitHub's HTTP redirect covers the old
+URL for now, but that redirect breaks the moment someone else takes the old
+slug.
+
+**Action checklist per distro:**
+
+- [ ] **Fedora / LXQt:Qt6 `.spec`** — update `Source0:` (and any
+      `URL:` / `%changelog` references) from `…/sudoku-cpp/…` to `…/sudoku/…`.
+- [ ] **Arch `PKGBUILD`** — same for `source=(…)` and `url=`.
+- [ ] **Debian `debian/watch` + `debian/control` `Homepage:`** — same.
+- [ ] **All distros (optional, cosmetic):** the OBS package itself is still
+      named `sudoku-cpp` under `home:AndnoVember:*`. Renaming the OBS package
+      to `sudoku` would align with the upstream rename but is the packager's
+      call.
+
+The reverse-DNS app ID (`io.github.darkstar79.Sudoku`) is derived from the
+new repo name and was renamed in the same commit, so a packager updating
+`Source0:` for one will typically be updating filenames for both. The
+executable name (`sudoku`), CMake project name (`sudoku`), and install tree
+under `share/sudoku/` were already at the target name and are unaffected.
 
 ---
 
@@ -87,25 +111,25 @@ the new ID is final.
 Newest first. Each entry links the commit that introduced the change and
 the upstream `CHANGELOG.md` line.
 
-### 2026-05 — App-ID rename + metainfo overhaul
+### 2026-05 — Repo rename + App-ID rename + metainfo overhaul
 
-- Commits: [`24921d9`](https://github.com/darkstar79/sudoku-cpp/commit/24921d9) (rename), [`eaf5f77`](https://github.com/darkstar79/sudoku-cpp/commit/eaf5f77) (metainfo sandbox + source switch), plus follow-ups on the same branch.
-- CHANGELOG: see `[Unreleased] → Changed → Reverse-DNS app ID`.
-- Action: see [App-ID rename](#app-id-rename--orgsudoku_cppsudoku--iogithubdarkstar79sudoku_cpp) above.
+- Commits: [`24921d9`](https://github.com/darkstar79/sudoku/commit/24921d9) (initial app-ID rename to `Sudoku_CPP`), [`eaf5f77`](https://github.com/darkstar79/sudoku/commit/eaf5f77) (metainfo sandbox + source switch), [`2973d8f`](https://github.com/darkstar79/sudoku/commit/2973d8f) (repo rename `sudoku-cpp` → `sudoku` + final app-ID `Sudoku_CPP` → `Sudoku`), plus follow-ups on the same branch.
+- CHANGELOG: see `[Unreleased] → Changed → Repository renamed` and `[Unreleased] → Changed → Reverse-DNS app ID`.
+- Action: see [App-ID rename](#app-id-rename--orgsudoku_cppsudoku--iogithubdarkstar79sudoku) above.
 
 ### 2026-05 — Bundled-dep bumps (Flatpak + Conan only)
 
 - libsodium `1.0.18` → `1.0.21`, yaml-cpp `0.8.0` → `0.9.0`.
 - **Distro packagers using system libs are unaffected.** The bumps only
   touch [conanfile.py](../conanfile.py) (Windows build) and the Flatpak
-  module set in [flatpak/io.github.darkstar79.Sudoku_CPP.yml](../flatpak/io.github.darkstar79.Sudoku_CPP.yml).
+  module set in [flatpak/io.github.darkstar79.Sudoku.yml](../flatpak/io.github.darkstar79.Sudoku.yml).
   Linux distro builds use system `libsodium-devel` / `libyaml-cpp-devel`
   and pick up whatever version the distro ships.
 - Action: none for `.spec` / `PKGBUILD` / `debian/control`.
 
 ### 2026-05 — Dynamic locale discovery (no C++ change required to add a language)
 
-- Commit: [`3bbcf63`](https://github.com/darkstar79/sudoku-cpp/commit/3bbcf63) (`feat(i18n): dynamic locale discovery + BCP 47 validation`).
+- Commit: [`3bbcf63`](https://github.com/darkstar79/sudoku/commit/3bbcf63) (`feat(i18n): dynamic locale discovery + BCP 47 validation`).
 - CHANGELOG: `[Unreleased] → Changed → Language selector`.
 - **What changed:** the Settings → Language combo used to read from a
   hardcoded `{en, de}` map in C++ source. It now scans
@@ -136,7 +160,7 @@ the upstream `CHANGELOG.md` line.
 Flathub submission is **staged but not active**. Two artifacts in-tree are
 deliberately set to "pre-submission" state:
 
-- [flatpak/io.github.darkstar79.Sudoku_CPP.yml](../flatpak/io.github.darkstar79.Sudoku_CPP.yml)
+- [flatpak/io.github.darkstar79.Sudoku.yml](../flatpak/io.github.darkstar79.Sudoku.yml)
   uses `sources: [{type: dir, path: ..}]` (local working copy). The
   Flathub-required `type: git` block is present but commented; it will be
   uncommented and pointed at a release tag when submission happens.
@@ -154,26 +178,6 @@ path only.
 
 Listed so distro recipes can plan, not because anything is scheduled.
 
-### Repo rename: `sudoku_cpp` → `sudoku`
-
-Upstream intends to rename the GitHub repository from `darkstar79/sudoku-cpp`
-to `darkstar79/sudoku` (or similar — final name TBD). Expected fallout:
-
-- `Source0:` / `Source:` URLs in `.spec` / `PKGBUILD` / `debian/watch` need
-  to point at the new repo. GitHub redirects `git clone` for renamed repos,
-  but URL-based tarball downloads in OBS recipes are safer to update
-  explicitly than to rely on the redirect indefinitely.
-- The Flatpak manifest's `type: git` `url:` will need updating in the same
-  motion.
-- **Out of scope** for the repo rename: the reverse-DNS app ID
-  (`io.github.darkstar79.Sudoku_CPP`) is independent of the GitHub repo
-  slug and will *not* change again. The executable name (`sudoku`),
-  CMake project name (`sudoku`), and install tree under `share/sudoku/`
-  are also already at the target name.
-
-Upstream will announce on the OBS packager comms channel before
-flipping the repo rename.
-
 ### Eventual 1.0.0 tag
 
 CHANGELOG `[Unreleased]` will become `[1.0.0] — <date>`. The OBS namespace
@@ -188,10 +192,10 @@ Run after every install-tree-affecting change:
 
 ```sh
 # AppStream metainfo
-appstreamcli validate /usr/share/metainfo/io.github.darkstar79.Sudoku_CPP.metainfo.xml
+appstreamcli validate /usr/share/metainfo/io.github.darkstar79.Sudoku.metainfo.xml
 
 # Desktop entry
-desktop-file-validate /usr/share/applications/io.github.darkstar79.Sudoku_CPP.desktop
+desktop-file-validate /usr/share/applications/io.github.darkstar79.Sudoku.desktop
 
 # (Fedora) rpmlint on the built package
 rpmlint sudoku-cpp-<version>-<release>.<arch>.rpm
@@ -199,7 +203,7 @@ rpmlint sudoku-cpp-<version>-<release>.<arch>.rpm
 
 If any of these emit errors that look like they're caused by an upstream
 change rather than a local recipe issue, file an issue at
-[github.com/darkstar79/sudoku-cpp/issues](https://github.com/darkstar79/sudoku-cpp/issues)
+[github.com/darkstar79/sudoku/issues](https://github.com/darkstar79/sudoku/issues)
 referencing this document.
 
 ---
