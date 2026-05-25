@@ -17,6 +17,8 @@
 #include "core/observable.h"
 
 #include <memory>
+#include <stdexcept>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -662,6 +664,95 @@ TEST_CASE("Observable - reentrant set is deferred and drained (BL-11)", "[observ
 
         CHECK(observer->seen == std::vector<int>{4, 8});
         CHECK(obs.get() == 8);
+    }
+}
+
+// Defense-in-depth follow-up to BL-11: notifyAndDrain() flipped `notifying_` true around
+// notifyObservers(). If a subscriber threw, the exception propagated up before the false-
+// reset ran, leaving the Observable permanently stuck in "notifying" state. Every later
+// set()/update() would then take the reentrant branch, silently queue into `pending_value_`,
+// and never notify anyone — a black hole. Fix: RAII guard resets both `notifying_` and any
+// queued `pending_value_` on exception so the Observable degrades gracefully.
+TEST_CASE("Observable - throwing subscriber does not wedge notification state", "[observable]") {
+    SECTION("Throwing callback leaves Observable usable for the next set()") {
+        Observable<int> obs(0);
+
+        obs.subscribe([](int) { throw std::runtime_error("boom"); });
+
+        REQUIRE_THROWS_AS(obs.set(1), std::runtime_error);
+
+        // Pre-fix: notifying_ stuck true → these sets get queued into pending_value_ and
+        // never reach a subscriber.
+        obs.clearSubscriptions();
+        int seen_count = 0;
+        int seen_last = -1;
+        obs.subscribe([&](int v) {
+            seen_count++;
+            seen_last = v;
+        });
+
+        obs.set(2);
+        obs.set(3);
+        CHECK(seen_count == 2);
+        CHECK(seen_last == 3);
+        CHECK(obs.get() == 3);
+    }
+
+    SECTION("Throwing IObserver leaves Observable usable for the next set()") {
+        class Thrower : public IObserver<int> {
+        public:
+            void onNotify(const int&) override {
+                throw std::runtime_error("boom");
+            }
+        };
+        class Counter : public IObserver<int> {
+        public:
+            int count = 0;
+            int last = -1;
+            void onNotify(const int& v) override {
+                count++;
+                last = v;
+            }
+        };
+
+        Observable<int> obs(0);
+        auto thrower = std::make_shared<Thrower>();
+        auto counter = std::make_shared<Counter>();
+
+        obs.subscribe(thrower);
+        obs.subscribe(counter);
+
+        REQUIRE_THROWS_AS(obs.set(1), std::runtime_error);
+
+        obs.unsubscribe(thrower);
+        obs.set(7);
+        CHECK(counter->last == 7);
+        CHECK(obs.get() == 7);
+    }
+
+    SECTION("Reentrantly queued pending value is discarded when the batch throws") {
+        // Subscriber reentrantly queues set(99), then throws. The queued value should not
+        // surface on the next external set() — "last write wins" only counts completed
+        // operations.
+        Observable<int> obs(0);
+        bool reentered = false;
+        obs.subscribe([&](int v) {
+            if (v == 1 && !reentered) {
+                reentered = true;
+                obs.set(99);  // queued into pending_value_
+                throw std::runtime_error("boom");
+            }
+        });
+
+        REQUIRE_THROWS_AS(obs.set(1), std::runtime_error);
+
+        obs.clearSubscriptions();
+        std::vector<int> seen;
+        obs.subscribe([&](int v) { seen.push_back(v); });
+
+        obs.set(7);
+        CHECK(seen == std::vector<int>{7});  // not {99, 7}
+        CHECK(obs.get() == 7);
     }
 }
 

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -180,29 +181,56 @@ private:
     /// Run one notification pass, then drain any reentrant set()/update() calls that
     /// arrived during that pass. Chains of reentrant updates are handled by looping until
     /// no more pending value remains.
+    ///
+    /// Exception safety: if any subscriber callback throws, the RAII guard resets
+    /// `notifying_` and discards `pending_value_` before rethrowing, so the Observable is
+    /// not wedged into a permanent "notifying" state in which all future writes would be
+    /// silently queued. Reentrant intent queued before the throw is discarded — only
+    /// completed operations contribute to subsequent state.
     void notifyAndDrain() {
+        struct ResetOnExit {
+            Observable* self;
+            explicit ResetOnExit(Observable* s) : self(s) {
+            }
+            ~ResetOnExit() {
+                self->notifying_ = false;
+                self->pending_value_.reset();
+            }
+            ResetOnExit(const ResetOnExit&) = delete;
+            ResetOnExit& operator=(const ResetOnExit&) = delete;
+            ResetOnExit(ResetOnExit&&) = delete;
+            ResetOnExit& operator=(ResetOnExit&&) = delete;
+        } guard(this);
+
         notifying_ = true;
         notifyObservers();
-        notifying_ = false;
+        // Defensive cap on drain iterations. A well-behaved subscriber chain terminates in
+        // a small number of steps (typically 1); a runaway loop here means a subscriber is
+        // unconditionally writing a fresh value on every notification — a logic bug we
+        // surface as an assertion in debug and a graceful bail-out in release.
+        constexpr int kMaxDrainDepth = 64;
+        int depth = 0;
         while (pending_value_.has_value()) {
+            assert(++depth <= kMaxDrainDepth &&
+                   "Observable drain loop exceeded max depth (pathological reentrant subscriber)");
+            if (depth > kMaxDrainDepth) {
+                return;  // guard discards remaining pending_value_
+            }
             T queued = std::move(*pending_value_);
             pending_value_.reset();
             if (value_ != queued) {
                 value_ = std::move(queued);
-                notifying_ = true;
                 notifyObservers();
-                notifying_ = false;
             }
         }
     }
 
     void notifyObservers() {
-        // Snapshot value_ once for the entire batch. Without this, a callback that
-        // reentrantly mutates value_ would cause subsequent callbacks in the same batch to
-        // see the newer value — but reentrant sets are deferred in notifyAndDrain(), so
-        // value_ is in fact stable here. The local copy still serves as a defensive guard
-        // and avoids re-reading the member through `this` for each callback.
-        const T snapshot = value_;
+        // Bind a reference rather than copying — reentrant set()/update() are deferred by
+        // notifyAndDrain() (notifying_ gate), so value_ is provably stable across this
+        // call. Avoiding the copy matters for large T (e.g., GameState, UIState) on hot
+        // notification paths.
+        const T& snapshot = value_;
 
         // Snapshot interface observers (weak_ptrs) so we can safely iterate even if a
         // callback triggers unsubscribe()/clearSubscriptions() — both mutate observers_ via
@@ -215,7 +243,10 @@ private:
             }
             // Gate on the live observers_: if the callback unsubscribed this observer
             // earlier in the batch (or destroyed its parent View), don't invoke it.
-            // Mirrors the callbacks_.count(id) > 0 guard on the callback path.
+            // Mirrors the callbacks_.count(id) > 0 guard on the callback path. This is
+            // O(N) per observer = O(N²) per batch; acceptable for the small subscriber
+            // counts seen in single-View MVVM. If N ever grows past a couple dozen, switch
+            // to a side-table of raw pointers.
             const bool still_subscribed =
                 std::any_of(observers_.begin(), observers_.end(),
                             [&](const std::weak_ptr<IObserver<T>>& w) { return w.lock() == observer; });
