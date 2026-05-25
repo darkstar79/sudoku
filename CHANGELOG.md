@@ -38,6 +38,10 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 
 - **Manual "Analyze Difficulty" menu action.** Auto-rating makes it obsolete — every playable puzzle is now rated at creation time (or loaded with its rating from a save). Retry would have been a placebo anyway since `scoreDifficulty` is deterministic on a given board.
 
+### Security
+
+- **Save-file decompression is now capped at 64 MiB.** Previously the zlib decompression loop could allocate up to ~4096× the compressed input before giving up — a crafted 10 MiB save file could demand ~40 GiB of RAM and crash the process via OOM. The cap is far above any realistic save (YAML saves are typically <1 MiB) but small enough to keep the decompressor's memory bounded; oversized inputs are now rejected with `CompressionError`. Affects both regular save loading and `importSave`. (#12)
+
 ### Fixed
 
 - **Master-difficulty saves now load correctly.** Previously the save loader's range check hardcoded `MAX_DIFFICULTY = 3` (Expert), so every Master save (difficulty 4) was silently rejected with `InvalidSaveData` — permanent data loss for Master-difficulty games. The range now tracks the `Difficulty` enum end-to-end. Existing saves that would not load before this fix will load after it. (#11)

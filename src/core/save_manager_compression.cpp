@@ -36,6 +36,12 @@ inline constexpr int DEFAULT_COMPRESSION_LEVEL = 6;
 inline constexpr int INITIAL_DECOMPRESSION_MULTIPLIER = 4;
 inline constexpr int MAX_DECOMPRESSION_ATTEMPTS = 10;
 inline constexpr int BUFFER_SIZE_MULTIPLIER = 2;
+// Maximum allowed uncompressed size — decompression-bomb protection (#12 / BL-9).
+// A YAML save is typically <1 MiB; 64 MiB is far above any realistic save while
+// being small enough to fit in memory on any platform we support. Without this
+// cap, the doubling loop below could allocate up to data.size() * 4096 (~40 GiB
+// for a 10 MiB input) before giving up.
+inline constexpr size_t MAX_DECOMPRESSED_SIZE = 64UL * 1024 * 1024;
 }  // namespace
 
 namespace sudoku::core {
@@ -71,21 +77,30 @@ std::expected<std::vector<uint8_t>, SaveError> SaveManager::decompressData(const
         return std::vector<uint8_t>{};
     }
 
-    // Start with initial multiplier of compressed size as initial guess
-    auto uncompressed_size = static_cast<uLongf>(data.size() * INITIAL_DECOMPRESSION_MULTIPLIER);
+    // Start with initial multiplier of compressed size, clamped to the bomb cap.
+    auto uncompressed_size =
+        static_cast<uLongf>(std::min<size_t>(data.size() * INITIAL_DECOMPRESSION_MULTIPLIER, MAX_DECOMPRESSED_SIZE));
     std::vector<uint8_t> uncompressed(uncompressed_size);
 
     int result = Z_BUF_ERROR;
     int attempts = 0;
 
-    // Try decompression with increasing buffer sizes
+    // Try decompression with increasing buffer sizes, refusing to grow past the cap.
     while (result == Z_BUF_ERROR && attempts < MAX_DECOMPRESSION_ATTEMPTS) {
         result = uncompress(uncompressed.data(), &uncompressed_size, data.data(), static_cast<uLong>(data.size()));
 
         if (result == Z_BUF_ERROR) {
-            // Buffer too small, double it
-            uncompressed_size *= BUFFER_SIZE_MULTIPLIER;
-            uncompressed.resize(uncompressed_size);
+            // Refuse to grow past the decompression-bomb cap.
+            if (uncompressed.size() >= MAX_DECOMPRESSED_SIZE) {
+                spdlog::error("Decompression refused: would exceed max size {} bytes after {} attempts "
+                              "(likely a zlib bomb)",
+                              MAX_DECOMPRESSED_SIZE, attempts);
+                return std::unexpected(SaveError::CompressionError);
+            }
+            // Buffer too small, double it (clamped to the cap).
+            auto new_size = std::min<size_t>(uncompressed.size() * BUFFER_SIZE_MULTIPLIER, MAX_DECOMPRESSED_SIZE);
+            uncompressed.resize(new_size);
+            uncompressed_size = static_cast<uLongf>(new_size);
             ++attempts;
         }
     }
