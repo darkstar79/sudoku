@@ -19,10 +19,13 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <zlib.h>
 
 using namespace sudoku::core;
 using sudoku::test::TempTestDir;
@@ -306,6 +309,56 @@ TEST_CASE("Compression handles empty game data", "[save_manager][compression]") 
             REQUIRE(loaded_game.current_state[row][col] == 0);
         }
     }
+}
+
+// =============================================================================
+// Regression: decompressData refuses zlib bombs (#12 / BL-9)
+//
+// Before the fix, the decompression loop doubled the output buffer up to
+// 10 times starting from data.size() * 4 — i.e., it would allocate up to
+// 4096x the compressed input before giving up. A 10 MB crafted blob can
+// demand ~40 GB of memory. The fix adds an absolute MAX_DECOMPRESSED_SIZE
+// cap (64 MiB) so the loop refuses to grow past the cap and returns
+// CompressionError instead of attempting an unbounded allocation.
+// See docs/CODE_REVIEW_2026-05-25.md §BL-9.
+// =============================================================================
+
+TEST_CASE("Decompression refuses zlib bombs above the cap",
+          "[save_manager][compression][regression][bug-zlib-decompression-bomb]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // Build a 65 MiB block of zeros — one byte above the 64 MiB cap.
+    // Zeros compress to a few-hundred-byte zlib stream (~1000:1 ratio),
+    // so the on-disk "bomb" file stays tiny while the decompressed
+    // payload would blow past the cap. The 65 MiB plaintext is also small
+    // enough to be allocatable by `compress2` on any CI runner.
+    constexpr size_t kBombPlaintextBytes = (64UL * 1024 * 1024) + (1UL * 1024 * 1024);  // 65 MiB
+    std::vector<uint8_t> plaintext(kBombPlaintextBytes, 0);
+
+    uLongf compressed_size = compressBound(static_cast<uLong>(plaintext.size()));
+    std::vector<uint8_t> compressed(compressed_size);
+    const int rc = compress2(compressed.data(), &compressed_size, plaintext.data(),
+                             static_cast<uLong>(plaintext.size()), Z_DEFAULT_COMPRESSION);
+    REQUIRE(rc == Z_OK);
+    compressed.resize(compressed_size);
+    REQUIRE(compressed.size() < 1UL * 1024 * 1024);  // sanity: small on disk
+
+    // Drop the plaintext to free the 65 MiB before the decompressor runs.
+    plaintext = std::vector<uint8_t>{};
+
+    // Write as an unencrypted save file. Deserialization will sniff the
+    // zlib magic byte and route into decompressData.
+    auto bomb_path = tmp.path() / "bomb.yaml";
+    {
+        std::ofstream f(bomb_path, std::ios::binary);
+        REQUIRE(f.is_open());
+        f.write(reinterpret_cast<const char*>(compressed.data()), static_cast<std::streamsize>(compressed.size()));
+    }
+
+    auto result = mgr.loadGame("bomb");
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error() == SaveError::CompressionError);
 }
 
 TEST_CASE("Decompression handles malformed data", "[save_manager][compression]") {
