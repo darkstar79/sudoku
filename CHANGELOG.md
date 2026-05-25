@@ -41,6 +41,7 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 ### Fixed
 
 - **Master-difficulty saves now load correctly.** Previously the save loader's range check hardcoded `MAX_DIFFICULTY = 3` (Expert), so every Master save (difficulty 4) was silently rejected with `InvalidSaveData` — permanent data loss for Master-difficulty games. The range now tracks the `Difficulty` enum end-to-end. Existing saves that would not load before this fix will load after it. (#11)
+- **AVX-512 dispatch now requires the BITALG sub-feature.** The solver's AVX-512 path issues `_mm512_popcnt_epi16` (in `findMRVCell`), which requires AVX-512 BITALG — present on Zen 5+ and Ice Lake-SP+, but missing on Skylake-X / Cascade Lake / Zen 4. Previously the dispatch gate only checked AVX-512F + AVX-512BW, so these CPUs were selected onto the AVX-512 path and crashed with SIGILL on first popcount. Detection now reads CPUID(7,0).ECX bit 12 and dispatch falls back to AVX2 (or scalar) when BITALG is absent. (#17)
 
 ### Internal
 
