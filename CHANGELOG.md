@@ -38,6 +38,10 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 
 - **Manual "Analyze Difficulty" menu action.** Auto-rating makes it obsolete — every playable puzzle is now rated at creation time (or loaded with its rating from a save). Retry would have been a placebo anyway since `scoreDifficulty` is deterministic on a given board.
 
+### Fixed
+
+- **Master-difficulty saves now load correctly.** Previously the save loader's range check hardcoded `MAX_DIFFICULTY = 3` (Expert), so every Master save (difficulty 4) was silently rejected with `InvalidSaveData` — permanent data loss for Master-difficulty games. The range now tracks the `Difficulty` enum end-to-end. Existing saves that would not load before this fix will load after it. (#11)
+
 ### Internal
 
 - New `IPuzzleAnalyzer` interface (`parseString`, `serializeToString`, `validate`, `checkUniqueness`, `scoreDifficulty`) backs all custom-puzzle workflows.
