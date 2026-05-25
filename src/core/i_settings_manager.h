@@ -41,6 +41,7 @@ public:
     virtual void setDefaultDifficulty(Difficulty difficulty) = 0;
     virtual void setShowConflicts(bool value) = 0;
     virtual void setShowHints(bool value) = 0;
+    virtual void setShowSessionTimer(bool value) = 0;
     virtual void setCollectDetailedStats(bool value) = 0;
     virtual void setEncryptDetailedStats(bool value) = 0;
     virtual void setLanguage(std::string_view locale_code) = 0;

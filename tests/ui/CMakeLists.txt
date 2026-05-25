@@ -13,6 +13,7 @@ set(UI_TEST_SOURCES
     test_copy_as_string.cpp
     test_find_by_technique.cpp
     test_experimental_gating.cpp
+    test_session_timer.cpp
 )
 
 foreach(TEST_SOURCE ${UI_TEST_SOURCES})

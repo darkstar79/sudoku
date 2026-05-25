@@ -69,8 +69,8 @@ if (condition) {
 
 ### Requirements
 
-- clang-format version 15+ (for InsertBraces feature)
-- Current system: clang-format 21.1.7 ✅
+- **Pinned version: clang-format 22.1.5** (CI installs this via `pip install clang-format==22.1.5`; Fedora 44 ships the same version system-wide). Output is sensitive to the major version — contributors on other distros should `pip install clang-format==22.1.5` to match CI.
+- Minimum: clang-format 15+ (for InsertBraces feature) — but the pinned version is what CI enforces.
 
 ## Static Analysis (clang-tidy)
 
@@ -628,7 +628,7 @@ Format specific files instead of entire project:
 
 ## Version Requirements
 
-- **clang-format:** 15+ (current: 21.1.7) ✅
+- **clang-format:** pinned to 22.1.5 (install via `pip install clang-format==22.1.5` to match CI) ✅
 - **clang-tidy:** Any recent version (current: 21.1.7) ✅
 - **gcovr:** 5.0+ (current: installed) ✅
 - **CMake:** 3.28+ ✅

@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 First tagged release (in preparation). Adds the custom-puzzle feature suite on top of the generated-puzzle baseline.
 
+### Added — UI
+
+- **Session timer (right of status bar)** — optional indicator showing total time since the app launched, intended as a reminder for long sessions. Toggle via Settings → Display → *Show session timer*. Off by default. Independent of the per-puzzle timer on the left; keeps ticking through menus and pauses. Persists as `display.show_session_timer` in `~/.local/share/sudoku/settings.yaml` (downstream packagers: new YAML key, default `false`, gracefully ignored by older binaries).
+
 ### Added — Custom puzzles
 
 - **Paste-string import** — paste an 81-character puzzle string (digits + `.`/`0` for empty) into the import dialog. Input is validated, length-checked, capped at 4 KiB, and rejected if it has multiple solutions.

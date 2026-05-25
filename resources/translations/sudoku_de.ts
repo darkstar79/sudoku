@@ -634,6 +634,14 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Hinweise anzeigen</translation>
     </message>
     <message>
+        <source>Show session timer (right of status bar)</source>
+        <translation>Sitzungszeit anzeigen (rechts in der Statusleiste)</translation>
+    </message>
+    <message>
+        <source>Display total time since the app launched, on the right side of the status bar. Helpful as a reminder to take breaks. Independent of the per-puzzle timer on the left.</source>
+        <translation>Zeigt die Gesamtzeit seit dem Start der App rechts in der Statusleiste an. Hilfreich als Erinnerung an eine Pause. Unabhängig vom Rätsel-Timer auf der linken Seite.</translation>
+    </message>
+    <message>
         <source>Collect detailed match statistics</source>
         <translation>Detaillierte Spielstatistiken erfassen</translation>
     </message>

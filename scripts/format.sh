@@ -97,6 +97,7 @@ format_files() {
         echo -e "  Files that would be formatted: $changed_count"
         if [ $changed_count -gt 0 ]; then
             echo -e "${YELLOW}Run './scripts/format.sh' to apply formatting${NC}"
+            return 1
         else
             echo -e "${GREEN}All files are properly formatted!${NC}"
         fi
@@ -163,7 +164,6 @@ case "${1:-}" in
         ;;
     check)
         format_files true
-        exit 0
         ;;
     "")
         format_files false
