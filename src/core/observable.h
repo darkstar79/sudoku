@@ -17,9 +17,12 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace sudoku::core {
@@ -40,7 +43,20 @@ protected:
     IObserver& operator=(IObserver&&) = default;
 };
 
-/// Observable wrapper for any value type
+/// Observable wrapper for any value type.
+///
+/// Subscriber lifetime contract: callback-based subscribers (closures registered via
+/// `subscribe(CallbackFn)`) must outlive any captured references for the lifetime of the
+/// subscription. The returned unsubscribe lambda — or `clearSubscriptions()` — must be
+/// invoked from the subscriber's owner before that owner is destroyed; otherwise a later
+/// notification can call the closure with a dangling capture. Interface-based subscribers
+/// (`subscribe(ObserverPtr)`) hold a weak_ptr internally, so a destroyed observer is
+/// detected and skipped automatically.
+///
+/// Reentrancy: subscribers may call `set()` / `update()` / `subscribe()` / `unsubscribe()`
+/// / `clearSubscriptions()` from inside a notification callback. Reentrant value changes
+/// are queued and drained after the outer notification completes, so every subscriber in a
+/// given batch observes the same value.
 template <typename T>
 class Observable {
 public:
@@ -57,17 +73,35 @@ public:
         return value_;
     }
 
-    /// Set new value and notify observers
+    /// Set new value and notify observers.
+    ///
+    /// Reentrancy: if called from inside a subscriber's callback (during a notification),
+    /// the new value is queued in `pending_value_` and the outer notification continues with
+    /// the unchanged `value_`. The queued value is applied and re-notified after the outer
+    /// notification drains. Repeated reentrant sets coalesce — only the latest value is kept.
     void set(T new_value) {
+        if (notifying_) {
+            pending_value_ = std::move(new_value);
+            return;
+        }
         if (value_ != new_value) {
             value_ = std::move(new_value);
-            notifyObservers();
+            notifyAndDrain();
         }
     }
 
-    /// Update value in-place and notify observers
+    /// Update value in-place and notify observers.
+    ///
+    /// Reentrancy: see `set()`. During a notification, the updater is applied to a working
+    /// copy (built from any pending value if present, otherwise from `value_`) and queued.
     template <typename Func>
     void update(Func&& updater) {
+        if (notifying_) {
+            T working = pending_value_.has_value() ? *pending_value_ : value_;
+            std::forward<Func>(updater)(working);
+            pending_value_ = std::move(working);
+            return;
+        }
         T old_value = value_;
         std::forward<Func>(updater)(value_);
 #ifdef _MSC_VER
@@ -75,7 +109,7 @@ public:
 #    pragma warning(disable : 4702)  // MSVC false positive: unreachable code in template instantiation
 #endif
         if (value_ != old_value) {
-            notifyObservers();
+            notifyAndDrain();
         }
 #ifdef _MSC_VER
 #    pragma warning(pop)
@@ -141,27 +175,94 @@ private:
     std::vector<std::weak_ptr<IObserver<T>>> observers_;
     std::unordered_map<CallbackId, CallbackFn> callbacks_;
     CallbackId next_callback_id_{0};
+    bool notifying_{false};
+    std::optional<T> pending_value_;
 
-    void notifyObservers() {
-        // Notify interface-based observers
-        auto it = observers_.begin();
-        while (it != observers_.end()) {
-            if (auto observer = it->lock()) {
-                observer->onNotify(value_);
-                ++it;
-            } else {
-                // Remove expired weak_ptr
-                it = observers_.erase(it);
+    /// Run one notification pass, then drain any reentrant set()/update() calls that
+    /// arrived during that pass. Chains of reentrant updates are handled by looping until
+    /// no more pending value remains.
+    ///
+    /// Exception safety: if any subscriber callback throws, the RAII guard resets
+    /// `notifying_` and discards `pending_value_` before rethrowing, so the Observable is
+    /// not wedged into a permanent "notifying" state in which all future writes would be
+    /// silently queued. Reentrant intent queued before the throw is discarded — only
+    /// completed operations contribute to subsequent state.
+    void notifyAndDrain() {
+        struct ResetOnExit {
+            Observable* self;
+            explicit ResetOnExit(Observable* s) : self(s) {
+            }
+            ~ResetOnExit() {
+                self->notifying_ = false;
+                self->pending_value_.reset();
+            }
+            ResetOnExit(const ResetOnExit&) = delete;
+            ResetOnExit& operator=(const ResetOnExit&) = delete;
+            ResetOnExit(ResetOnExit&&) = delete;
+            ResetOnExit& operator=(ResetOnExit&&) = delete;
+        } guard(this);
+
+        notifying_ = true;
+        notifyObservers();
+        // Defensive cap on drain iterations. A well-behaved subscriber chain terminates in
+        // a small number of steps (typically 1); a runaway loop here means a subscriber is
+        // unconditionally writing a fresh value on every notification — a logic bug we
+        // surface as an assertion in debug and a graceful bail-out in release.
+        constexpr int kMaxDrainDepth = 64;
+        int depth = 0;
+        while (pending_value_.has_value()) {
+            assert(++depth <= kMaxDrainDepth &&
+                   "Observable drain loop exceeded max depth (pathological reentrant subscriber)");
+            if (depth > kMaxDrainDepth) {
+                return;  // guard discards remaining pending_value_
+            }
+            T queued = std::move(*pending_value_);
+            pending_value_.reset();
+            if (value_ != queued) {
+                value_ = std::move(queued);
+                notifyObservers();
             }
         }
+    }
 
-        // Notify callback-based observers
-        // Make a copy to avoid iterator invalidation if callbacks modify the map
+    void notifyObservers() {
+        // Bind a reference rather than copying — reentrant set()/update() are deferred by
+        // notifyAndDrain() (notifying_ gate), so value_ is provably stable across this
+        // call. Avoiding the copy matters for large T (e.g., GameState, UIState) on hot
+        // notification paths.
+        const T& snapshot = value_;
+
+        // Snapshot interface observers (weak_ptrs) so we can safely iterate even if a
+        // callback triggers unsubscribe()/clearSubscriptions() — both mutate observers_ via
+        // std::erase_if/clear(), invalidating any live iterator into observers_.
+        auto observers_copy = observers_;
+        for (auto& weak_obs : observers_copy) {
+            auto observer = weak_obs.lock();
+            if (!observer) {
+                continue;
+            }
+            // Gate on the live observers_: if the callback unsubscribed this observer
+            // earlier in the batch (or destroyed its parent View), don't invoke it.
+            // Mirrors the callbacks_.count(id) > 0 guard on the callback path. This is
+            // O(N) per observer = O(N²) per batch; acceptable for the small subscriber
+            // counts seen in single-View MVVM. If N ever grows past a couple dozen, switch
+            // to a side-table of raw pointers.
+            const bool still_subscribed =
+                std::any_of(observers_.begin(), observers_.end(),
+                            [&](const std::weak_ptr<IObserver<T>>& w) { return w.lock() == observer; });
+            if (still_subscribed) {
+                observer->onNotify(snapshot);
+            }
+        }
+        // Prune expired weak_ptrs (was previously done inline in the iteration loop).
+        std::erase_if(observers_, [](const std::weak_ptr<IObserver<T>>& w) { return w.expired(); });
+
+        // Notify callback-based observers. Snapshot the map so callbacks that mutate
+        // callbacks_ (subscribe/unsubscribe/clearSubscriptions) don't invalidate iteration.
         auto callbacks_copy = callbacks_;
         for (const auto& [id, callback] : callbacks_copy) {
-            // Check if callback still exists (might have been removed during notification)
             if (callbacks_.count(id) > 0) {
-                callback(value_);
+                callback(snapshot);
             }
         }
     }
