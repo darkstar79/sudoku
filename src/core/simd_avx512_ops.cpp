@@ -26,20 +26,54 @@
 #include "simd_avx512_ops.h"
 
 #include "core/constants.h"
+#include "core/simd_constraint_state.h"  // for SIMD_ALIGNMENT
+
+#include <cassert>
+#include <cstdint>
 
 #include <bit>
 #include <immintrin.h>
 
 namespace sudoku::core::avx512 {
 
+// SIMDConstraintState is alignas(SIMD_ALIGNMENT) and its `candidates` array is
+// the first member, so `_mm512_load_si512` (aligned) is safe. If alignment is
+// ever weakened, this static_assert catches it at compile time, and the
+// runtime assert in `assertSimdAligned` catches an under-aligned caller before
+// the SIGSEGV fires.
+static_assert(SIMD_ALIGNMENT >= 64, "AVX-512 aligned loads require 64-byte alignment");
+
+namespace {
+
+/// Aligned-load guard for AVX-512 entry points.
+///
+/// Callers pass `candidates` by reference to a `std::array<uint16_t, 96>` that
+/// is the first member of `SIMDConstraintState` (which is `alignas(64)`), so the
+/// pointer is naturally 64-byte aligned. The parameter type alone does not carry
+/// that promise, so we assert it at every entry. This pairs with the switch
+/// from `_mm512_loadu_si512` to `_mm512_load_si512` (aligned): a regression that
+/// passes an under-aligned buffer fails loudly in Debug instead of an
+/// intermittent SIGSEGV in Release where GCC may already substitute aligned
+/// loads when it infers alignment from the surrounding context.
+inline void assertSimdAligned([[maybe_unused]] const void* p) {
+    assert((reinterpret_cast<uintptr_t>(p) % SIMD_ALIGNMENT) == 0 &&
+           "AVX-512 op called with under-aligned candidates buffer; expected alignas(64)");
+}
+
+}  // namespace
+
 int findMRVCell(const std::array<uint16_t, SIMD_PADDED_CELLS_512>& candidates) {
+    assertSimdAligned(candidates.data());
+
     int best_cell = -1;
     int best_count = 10;  // Max possible + 1
 
     // Process 32 cells at a time with AVX-512 (3 iterations for 96 cells)
     for (size_t i = 0; i < SIMD_PADDED_CELLS_512; i += 32) {
-        // Load 32 candidate masks (512 bits)
-        __m512i cands = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(&candidates[i]));
+        // Load 32 candidate masks (512 bits). Aligned load — the candidates
+        // array lives inside a `alignas(64)` SIMDConstraintState, so every
+        // 32-element chunk starts at a 64-byte boundary.
+        __m512i cands = _mm512_load_si512(reinterpret_cast<const __m512i*>(&candidates[i]));
 
         // Native per-word popcount via AVX-512 BITALG
         __m512i counts = _mm512_popcnt_epi16(cands);
@@ -74,12 +108,14 @@ int findMRVCell(const std::array<uint16_t, SIMD_PADDED_CELLS_512>& candidates) {
 }
 
 int findNakedSingle(const std::array<uint16_t, SIMD_PADDED_CELLS_512>& candidates, const Board& board) {
+    assertSimdAligned(candidates.data());
+
     const __m512i zero = _mm512_setzero_si512();
     const __m512i ones = _mm512_set1_epi16(1);
 
-    // Process 32 cells at a time
+    // Process 32 cells at a time. Aligned load — see findMRVCell comment.
     for (size_t i = 0; i < SIMD_PADDED_CELLS_512; i += 32) {
-        __m512i cands = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(&candidates[i]));
+        __m512i cands = _mm512_load_si512(reinterpret_cast<const __m512i*>(&candidates[i]));
 
         // Check for power-of-2 (exactly one candidate): (cands & (cands - 1)) == 0
         __m512i cands_minus1 = _mm512_sub_epi16(cands, ones);

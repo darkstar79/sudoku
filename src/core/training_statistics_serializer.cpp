@@ -17,6 +17,7 @@
 #include "training_statistics_serializer.h"
 
 #include "core/solving_technique.h"
+#include "core/training_learning_path.h"
 
 #include <chrono>
 #include <cstdint>
@@ -68,16 +69,19 @@ serializeToYaml(const std::unordered_map<SolvingTechnique, TechniqueStats>& stat
 
 namespace {
 
-/// Map technique name string back to SolvingTechnique enum
+/// Map technique name string back to SolvingTechnique enum.
+///
+/// Iterate `kAllTechniques` (the canonical list of all 54 logical techniques)
+/// rather than a hard-coded enum-value range, so new strategies are picked up
+/// automatically when added to the learning path. Backtracking is handled
+/// separately because it is not part of the logical-technique set.
 [[nodiscard]] std::optional<SolvingTechnique> techniqueFromName(const std::string& name) {
-    // Check all techniques by name
-    for (int i = 0; i <= static_cast<int>(SolvingTechnique::GroupedXCycles); ++i) {
-        auto tech = static_cast<SolvingTechnique>(i);
+    for (auto tech : kAllTechniques) {
         if (getTechniqueName(tech) == name) {
             return tech;
         }
     }
-    if (name == "Backtracking") {
+    if (name == getTechniqueName(SolvingTechnique::Backtracking)) {
         return SolvingTechnique::Backtracking;
     }
     return std::nullopt;

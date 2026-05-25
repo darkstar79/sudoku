@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include "../../src/core/training_learning_path.h"
 #include "../../src/core/training_statistics_serializer.h"
 #include "../helpers/test_utils.h"
 
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -140,6 +142,68 @@ TEST_CASE("training_stats_serializer — multiple techniques round-trip", "[Trai
     CHECK(result->at(SolvingTechnique::NakedSingle).total_correct == 5);
     CHECK(result->at(SolvingTechnique::XWing).total_correct == 3);
     CHECK(result->at(SolvingTechnique::ForcingChain).total_correct == 1);
+}
+
+// Regression for #13 (BL-10): the prior loop bound stopped at GroupedXCycles (41),
+// silently dropping every technique with enum value 42..53 on reload. Round-trip
+// representatives from that range to ensure each survives a save/load cycle.
+TEST_CASE("training_stats_serializer — advanced techniques (≥42) round-trip", "[TrainingSerializer]") {
+    sudoku::test::TempTestDir tmp;
+    auto file = tmp.path() / "advanced.yaml";
+
+    std::unordered_map<SolvingTechnique, TechniqueStats> stats;
+    const std::array advanced = {
+        SolvingTechnique::SashimiXWing,        // 42
+        SolvingTechnique::SashimiSwordfish,    // 43
+        SolvingTechnique::SashimiJellyfish,    // 44
+        SolvingTechnique::UnitForcingChain,    // 45
+        SolvingTechnique::RegionForcingChain,  // 46
+        SolvingTechnique::MutantFish,          // 47
+        SolvingTechnique::KrakenFish,          // 48
+        SolvingTechnique::ALSChain,            // 49
+        SolvingTechnique::JuniorExocet,        // 50
+        SolvingTechnique::UniqueLoop,          // 51
+        SolvingTechnique::ContinuousNiceLoop,  // 52
+        SolvingTechnique::GroupedNiceLoop,     // 53
+    };
+    int n = 1;
+    for (auto tech : advanced) {
+        stats[tech].total_correct = n++;
+    }
+
+    REQUIRE(serializeToYaml(stats, file).has_value());
+
+    auto result = deserializeFromYaml(file);
+    REQUIRE(result.has_value());
+    CHECK(result->size() == advanced.size());
+    int expected = 1;
+    for (auto tech : advanced) {
+        INFO("technique = " << getTechniqueName(tech));
+        REQUIRE(result->contains(tech));
+        CHECK(result->at(tech).total_correct == expected++);
+    }
+}
+
+// Defense-in-depth: every technique in kAllTechniques must round-trip by name,
+// so a future addition that forgets to wire up getTechniqueName() fails loudly.
+TEST_CASE("training_stats_serializer — every kAllTechniques entry round-trips", "[TrainingSerializer]") {
+    sudoku::test::TempTestDir tmp;
+    auto file = tmp.path() / "all.yaml";
+
+    std::unordered_map<SolvingTechnique, TechniqueStats> stats;
+    int n = 1;
+    for (auto tech : kAllTechniques) {
+        stats[tech].total_correct = n++;
+    }
+
+    REQUIRE(serializeToYaml(stats, file).has_value());
+    auto result = deserializeFromYaml(file);
+    REQUIRE(result.has_value());
+    CHECK(result->size() == kAllTechniques.size());
+    for (auto tech : kAllTechniques) {
+        INFO("technique = " << getTechniqueName(tech));
+        CHECK(result->contains(tech));
+    }
 }
 
 TEST_CASE("training_stats_serializer — Backtracking technique round-trip", "[TrainingSerializer]") {
