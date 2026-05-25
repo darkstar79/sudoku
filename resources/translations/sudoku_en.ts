@@ -633,6 +633,14 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Show session timer (right of status bar)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Display total time since the app launched, on the right side of the status bar. Helpful as a reminder to take breaks. Independent of the per-puzzle timer on the left.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Collect detailed match statistics</source>
         <translation type="unfinished"></translation>
     </message>

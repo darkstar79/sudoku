@@ -22,6 +22,7 @@
 #include "../view_model/training_view_model.h"
 #include "core/i_puzzle_generator.h"
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -124,6 +125,11 @@ private:
     QAction* rating_action_{nullptr};
     QLabel* status_label_{nullptr};
     QLabel* timer_label_{nullptr};
+    QLabel* session_time_label_{nullptr};
+
+    // Wall-clock when MainWindow was constructed. Drives the right-side
+    // session-time indicator (Settings -> Display -> "Show session timer").
+    std::chrono::steady_clock::time_point session_start_time_{std::chrono::steady_clock::now()};
 
     // Button panel below board
     QPushButton* undo_btn_{nullptr};

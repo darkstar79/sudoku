@@ -36,6 +36,7 @@ TEST_CASE("SettingsManager - Default values when no file exists", "[settings]") 
     CHECK(s.default_difficulty == Difficulty::Medium);
     CHECK(s.show_conflicts == true);
     CHECK(s.show_hints == true);
+    CHECK(s.show_elapsed_time == false);
     CHECK(s.language == "en");
     CHECK(s.experimental_training_mode == false);
     CHECK(s.experimental_coaching_hints == false);
@@ -182,6 +183,47 @@ TEST_CASE("SettingsManager - Experimental setters notify observers on change onl
     CHECK(notify_count == 4);
     CHECK(last_notified.experimental_training_mode == false);
     CHECK(last_notified.experimental_coaching_hints == false);
+}
+
+TEST_CASE("SettingsManager - setShowElapsedTime persists value", "[settings]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        SettingsManager mgr(path);
+        REQUIRE(mgr.getSettings().show_elapsed_time == false);
+        mgr.setShowElapsedTime(true);
+        CHECK(mgr.getSettings().show_elapsed_time == true);
+    }
+
+    SettingsManager mgr2(path);
+    CHECK(mgr2.getSettings().show_elapsed_time == true);
+}
+
+TEST_CASE("SettingsManager - setShowElapsedTime notifies observers on change only", "[settings]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    SettingsManager mgr(path);
+
+    int notify_count = 0;
+    Settings last_notified;
+    mgr.settingsObservable().subscribe([&](const Settings& s) {
+        ++notify_count;
+        last_notified = s;
+    });
+
+    mgr.setShowElapsedTime(true);
+    CHECK(notify_count == 1);
+    CHECK(last_notified.show_elapsed_time == true);
+
+    // No-op: same value, no notification.
+    mgr.setShowElapsedTime(true);
+    CHECK(notify_count == 1);
+
+    mgr.setShowElapsedTime(false);
+    CHECK(notify_count == 2);
+    CHECK(last_notified.show_elapsed_time == false);
 }
 
 TEST_CASE("SettingsManager - Save and load round-trip", "[settings]") {

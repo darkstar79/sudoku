@@ -130,6 +130,12 @@ void SettingsManager::setShowHints(bool value) {
     notifyIfChanged(old);
 }
 
+void SettingsManager::setShowElapsedTime(bool value) {
+    auto old = settings_;
+    settings_.show_elapsed_time = value;
+    notifyIfChanged(old);
+}
+
 void SettingsManager::setCollectDetailedStats(bool value) {
     auto old = settings_;
     settings_.collect_detailed_stats = value;
@@ -202,6 +208,9 @@ void SettingsManager::load() {
             if (auto v = display["show_hints"]) {
                 settings_.show_hints = v.as<bool>();
             }
+            if (auto v = display["show_elapsed_time"]) {
+                settings_.show_elapsed_time = v.as<bool>();
+            }
             if (auto v = display["collect_detailed_stats"]) {
                 settings_.collect_detailed_stats = v.as<bool>();
             }
@@ -245,6 +254,7 @@ void SettingsManager::save() const {
         YAML::Node display;
         display["show_conflicts"] = settings_.show_conflicts;
         display["show_hints"] = settings_.show_hints;
+        display["show_elapsed_time"] = settings_.show_elapsed_time;
         display["collect_detailed_stats"] = settings_.collect_detailed_stats;
         display["encrypt_detailed_stats"] = settings_.encrypt_detailed_stats;
         root["display"] = display;

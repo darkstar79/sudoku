@@ -32,6 +32,7 @@ struct Settings {
     // Display
     bool show_conflicts{true};
     bool show_hints{true};
+    bool show_elapsed_time{false};
     bool collect_detailed_stats{false};
     bool encrypt_detailed_stats{true};
 

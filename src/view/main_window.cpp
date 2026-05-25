@@ -495,6 +495,18 @@ void MainWindow::setupStatusBar() {
     statusBar()->addWidget(timer_label_);
     status_label_ = new QLabel(qstr(core::loc("Sudoku", "Ready")));
     statusBar()->addWidget(status_label_, 1);
+
+    // Right-side session timer (wall-clock since app launch). Toggled by
+    // Settings -> Display -> "Show session timer". addPermanentWidget()
+    // anchors the label to the right of the status bar.
+    session_time_label_ = new QLabel();
+    statusBar()->addPermanentWidget(session_time_label_);
+    if (settings_manager_) {
+        session_time_label_->setVisible(settings_manager_->getSettings().show_elapsed_time);
+    } else {
+        session_time_label_->setVisible(false);
+    }
+
     statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; border-top: 1px solid %2; color: %3; }")
                                    .arg(StyleColors::SURFACE_STATUS, StyleColors::DIVIDER, StyleColors::TEXT_MUTED));
 
@@ -645,6 +657,12 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
             if (coaching_hint_action_) {
                 coaching_hint_action_->setVisible(s.experimental_coaching_hints);
             }
+            if (session_time_label_) {
+                session_time_label_->setVisible(s.show_elapsed_time);
+                if (s.show_elapsed_time) {
+                    updateStatusBar();
+                }
+            }
         });
     }
 
@@ -780,6 +798,15 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 }
 
 void MainWindow::updateStatusBar() {
+    // Right-side session timer: ticks unconditionally from app launch,
+    // independent of game state. Hidden unless the user enabled it in
+    // Settings -> Display.
+    if (session_time_label_ && session_time_label_->isVisible()) {
+        const auto session_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - session_start_time_);
+        session_time_label_->setText(QString::fromStdString(viewmodel::GameViewModel::formatDuration(session_elapsed)));
+    }
+
     if (!view_model_) {
         timer_label_->clear();
         status_label_->setText(qstr(core::loc("Sudoku", "Ready")));
@@ -1473,6 +1500,13 @@ void MainWindow::showSettingsDialog() {
     show_hints_cb->setChecked(settings_manager_->getSettings().show_hints);
     display_layout->addWidget(show_hints_cb);
 
+    auto* show_elapsed_cb = new QCheckBox(qstr(core::loc("Sudoku", "Show session timer (right of status bar)")));
+    show_elapsed_cb->setChecked(settings_manager_->getSettings().show_elapsed_time);
+    show_elapsed_cb->setToolTip(qstr(
+        core::loc("Sudoku", "Display total time since the app launched, on the right side of the status bar. "
+                            "Helpful as a reminder to take breaks. Independent of the per-puzzle timer on the left.")));
+    display_layout->addWidget(show_elapsed_cb);
+
     // Language selection. The combo applies the new locale via setLanguage(),
     // which fires the settings observer -> applyLocale() -> LanguageChange
     // events on top-level widgets. This dialog itself was built once, so its
@@ -1590,6 +1624,8 @@ void MainWindow::showSettingsDialog() {
             view_model_->setShowHints(checked);
         }
     });
+
+    connectCheckBox(show_elapsed_cb, [this](bool checked) { settings_manager_->setShowElapsedTime(checked); });
 
     connectCheckBox(collect_stats_cb, [this, encrypt_stats_cb](bool checked) {
         encrypt_stats_cb->setEnabled(checked);
