@@ -116,9 +116,13 @@ namespace {
     }
 
     // EBX bit 16: AVX-512F, bit 30: AVX-512BW (requires OS AVX-512 support)
+    // ECX bit 12: AVX-512 BITALG — required for `_mm512_popcnt_epi16` used in
+    // findMRVCell. Skylake-X / Cascade Lake / Zen 4 have F+BW but no BITALG;
+    // dispatch onto those CPUs without this gate would SIGILL (#17 / BL-1).
     if (osSupportsAvx512()) {
         features.has_avx512f = (ebx & (1U << 16)) != 0;
         features.has_avx512bw = (ebx & (1U << 30)) != 0;
+        features.has_avx512_bitalg = (ecx & (1U << 12)) != 0;
     }
 
     return features;

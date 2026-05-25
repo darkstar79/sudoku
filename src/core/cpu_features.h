@@ -27,10 +27,11 @@ namespace sudoku::core {
  * Scalar/AVX2/AVX512 code paths based on the running CPU.
  */
 struct CpuFeatures {
-    bool has_avx2{false};      ///< AVX2 (256-bit SIMD)
-    bool has_avx512f{false};   ///< AVX-512 Foundation
-    bool has_avx512bw{false};  ///< AVX-512 Byte/Word
-    bool has_popcnt{false};    ///< Hardware POPCNT instruction
+    bool has_avx2{false};           ///< AVX2 (256-bit SIMD)
+    bool has_avx512f{false};        ///< AVX-512 Foundation
+    bool has_avx512bw{false};       ///< AVX-512 Byte/Word
+    bool has_avx512_bitalg{false};  ///< AVX-512 BITALG (`_mm512_popcnt_epi16`, Zen 5+ / Ice Lake-SP+)
+    bool has_popcnt{false};         ///< Hardware POPCNT instruction
 };
 
 /**
@@ -52,12 +53,29 @@ struct CpuFeatures {
 }
 
 /**
- * @brief Convenience: is AVX-512 available at runtime?
- * @return true if CPU supports AVX-512F + AVX-512BW and OS enables AVX-512 state saving
+ * @brief Logic-only AVX-512 availability check on a given feature set.
+ *
+ * The project's AVX-512 path issues `_mm512_popcnt_epi16` (`findMRVCell`), which
+ * requires the BITALG sub-feature in addition to AVX-512F + AVX-512BW. Without
+ * the BITALG gate, dispatch onto Skylake-X / Cascade Lake / Zen 4 (F+BW present,
+ * BITALG absent) crashes with SIGILL on first popcount. See #17 / BL-1.
+ *
+ * Exposed as an overload taking the feature struct so the gate logic is unit-
+ * testable independently of the running CPU.
+ *
+ * @return true iff F + BW + BITALG are all present
+ */
+[[nodiscard]] constexpr bool hasAvx512(const CpuFeatures& features) noexcept {
+    return features.has_avx512f && features.has_avx512bw && features.has_avx512_bitalg;
+}
+
+/**
+ * @brief Convenience: is AVX-512 available at runtime on this CPU?
+ * @return true if the running CPU supports AVX-512F + AVX-512BW + AVX-512BITALG
+ *         and the OS enables AVX-512 state saving
  */
 [[nodiscard]] inline bool hasAvx512() {
-    const auto& features = getCpuFeatures();
-    return features.has_avx512f && features.has_avx512bw;
+    return hasAvx512(getCpuFeatures());
 }
 
 /// Solver SIMD path selection for benchmarking and forced dispatch.
