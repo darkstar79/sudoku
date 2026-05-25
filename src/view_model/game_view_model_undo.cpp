@@ -95,11 +95,21 @@ void GameViewModel::undoToLastValid() {
         return;
     }
 
-    // Undo to the last known valid state
+    resetCoachingIfNotTryIt();
+
+    // Walk back exactly one move per iteration. Delegating to undo() in a loop is unsafe:
+    // a single undo() call decrements move_history_index_ by 1 + (number of contiguous hint
+    // moves immediately below current), which can step past last_valid_state_index_.
     while (move_history_index_ > last_valid_state_index_) {
-        undo();
+        const auto& move = move_history_[move_history_index_];
+        if (move.move_type != core::MoveType::PlaceHint) {
+            revertMove(move);
+        }
+        move_history_index_--;
     }
 
+    updateConflictHighlighting();
+    updateUIState();
     uiState.update(
         [this](auto& ui) { ui.status_message = std::string(core::loc("Sudoku", "Undone to last valid state")); });
 }
@@ -171,6 +181,10 @@ void GameViewModel::recordMove(const core::Move& move, bool is_mistake) {
     // Add to history (truncate any redo moves)
     if (move_history_index_ + 1 < static_cast<int>(move_history_.size())) {
         move_history_.erase(move_history_.begin() + (move_history_index_ + 1), move_history_.end());
+        // Truncation may have dropped the move that last_valid_state_index_ points at, leaving
+        // the index dangling past the new array end. Clamp so undoToLastValid never references
+        // a deleted move.
+        last_valid_state_index_ = std::min(last_valid_state_index_, move_history_index_);
     }
     move_history_.push_back(move);
     move_history_index_ = static_cast<int>(move_history_.size()) - 1;
