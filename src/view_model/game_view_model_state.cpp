@@ -200,19 +200,17 @@ bool GameViewModel::hasError() const {
 }
 
 void GameViewModel::updateUIState() {
-    UIState ui;
-    ui.is_game_active = isGameActive();
-    ui.is_complete = isGameComplete();
-    ui.is_paused = isGamePaused();
-    ui.time_display = getFormattedTime();
-    ui.puzzle_rating = current_puzzle_rating_;
-    ui.puzzle_techniques = formatTechniques(current_puzzle_techniques_, current_puzzle_requires_backtracking_);
-    // Preserve user preferences across UI state updates
-    const auto& prev = uiState.get();
-    ui.input_mode = prev.input_mode;
-    ui.notes_filled = prev.notes_filled;
-
-    uiState.set(ui);
+    // Mutate in place so sticky fields (show_conflicts, show_hints, status_message, input_mode,
+    // notes_filled) survive. The previous implementation built a fresh UIState and forwarded
+    // only a hand-picked subset, silently resetting the rest on every keystroke / undo.
+    uiState.update([this](UIState& ui) {
+        ui.is_game_active = isGameActive();
+        ui.is_complete = isGameComplete();
+        ui.is_paused = isGamePaused();
+        ui.time_display = getFormattedTime();
+        ui.puzzle_rating = current_puzzle_rating_;
+        ui.puzzle_techniques = formatTechniques(current_puzzle_techniques_, current_puzzle_requires_backtracking_);
+    });
 }
 
 std::vector<std::string> GameViewModel::formatTechniques(const std::set<core::SolvingTechnique>& techniques,

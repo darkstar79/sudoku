@@ -231,6 +231,141 @@ TEST_CASE("GameViewModel - Undo/Redo Edge Cases", "[game_view_model][undo]") {
 
         REQUIRE(fixture.view_model->getMoveCount() >= 0);
     }
+
+    // BL-14a: recordMove must clamp last_valid_state_index_ when the redo tail is truncated;
+    // otherwise the tracked index dangles past the new array and undoToLastValid silently
+    // no-ops while telling the user the board was reverted.
+    SECTION("Undo to last valid after redo-branch truncation actually reverts the wrong move") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+
+        const auto& state = fixture.view_model->gameState.get();
+        REQUIRE(state.hasSolution());
+        const auto& solution = state.getSolutionBoard();
+
+        // Three correct placements in distinct empty cells → last_valid_state_index_ = 2.
+        auto empties_opt = test::findEmptyCells(state, 4);
+        REQUIRE(empties_opt.has_value());
+        const auto& empties = *empties_opt;
+        const auto& p0 = empties[0];
+        const auto& p1 = empties[1];
+        const auto& p2 = empties[2];
+        const auto& p_wrong = empties[3];
+
+        fixture.view_model->enterNumber(p0, solution[p0.row][p0.col]);
+        fixture.view_model->enterNumber(p1, solution[p1.row][p1.col]);
+        fixture.view_model->enterNumber(p2, solution[p2.row][p2.col]);
+
+        // Roll back two moves, then place a value at a fresh cell that does NOT match the
+        // solution. Pick "solution + 1 (mod 9, +1)" to guarantee an error vs the solution.
+        fixture.view_model->undo();
+        fixture.view_model->undo();
+
+        const int correct = solution[p_wrong.row][p_wrong.col];
+        const int wrong = (correct % 9) + 1;  // always 1..9 and != correct
+        REQUIRE(wrong != correct);
+        fixture.view_model->enterNumber(p_wrong, wrong);
+
+        // Sanity: wrong value is on the board before we ask for revert.
+        REQUIRE(fixture.view_model->gameState.get().getValue(p_wrong) == wrong);
+
+        fixture.view_model->undoToLastValid();
+
+        // BL-14a regression: without the clamp, last_valid_state_index_ still points into
+        // the truncated tail (was 2, now beyond size-1). The loop condition becomes false
+        // and the wrong move is left on the board.
+        CHECK(fixture.view_model->gameState.get().getValue(p_wrong) == 0);
+        // The original correct placement at p0 must still be on the board.
+        CHECK(fixture.view_model->gameState.get().getValue(p0) == solution[p0.row][p0.col]);
+    }
+
+    // BL-14b: undoToLastValid must land EXACTLY at last_valid_state_index_ without help from
+    // undo()'s hint-skipping. This test exercises the wrong-move-after-undo path (same setup
+    // as the BL-14a test) and additionally verifies the redo state — if undoToLastValid
+    // overshot, redo would not be available because move_history_index_ would be below the
+    // truncation point.
+    SECTION("Undo to last valid leaves the surviving correct prefix redoable") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+
+        const auto& state = fixture.view_model->gameState.get();
+        REQUIRE(state.hasSolution());
+        const auto& solution = state.getSolutionBoard();
+
+        auto empties_opt = test::findEmptyCells(state, 3);
+        REQUIRE(empties_opt.has_value());
+        const auto& empties = *empties_opt;
+        const auto& p0 = empties[0];
+        const auto& p1 = empties[1];
+        const auto& p_wrong = empties[2];
+
+        fixture.view_model->enterNumber(p0, solution[p0.row][p0.col]);
+        fixture.view_model->enterNumber(p1, solution[p1.row][p1.col]);
+        fixture.view_model->undo();  // move_history_index_ now points at p0
+
+        const int correct = solution[p_wrong.row][p_wrong.col];
+        const int wrong = (correct % 9) + 1;
+        REQUIRE(wrong != correct);
+        fixture.view_model->enterNumber(p_wrong, wrong);
+
+        REQUIRE(fixture.view_model->canRedo() == false);  // sanity: tail was truncated
+
+        fixture.view_model->undoToLastValid();
+
+        // After reverting the wrong move, we should be sitting at p0 (the surviving valid
+        // state), with p_wrong cleared and redo of the wrong move available.
+        CHECK(fixture.view_model->gameState.get().getValue(p_wrong) == 0);
+        CHECK(fixture.view_model->gameState.get().getValue(p0) == solution[p0.row][p0.col]);
+        CHECK(fixture.view_model->canRedo());  // wrong move still in history at index+1
+    }
+}
+
+// BL-13: updateUIState() built a fresh UIState every call, carrying forward only input_mode
+// and notes_filled. show_conflicts, show_hints, and status_message were silently reset to
+// their defaults on every keystroke / undo / completion check.
+TEST_CASE("GameViewModel - UIState sticky-field preservation (BL-13)", "[game_view_model][uistate]") {
+    EdgeCaseTestFixture fixture;
+
+    SECTION("setShowConflicts(false) survives the next move") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->setShowConflicts(false);
+        REQUIRE(fixture.view_model->uiState.get().show_conflicts == false);
+
+        const auto& state = fixture.view_model->gameState.get();
+        auto empty = test::findEmptyCell(state);
+        REQUIRE(empty.has_value());
+        fixture.view_model->enterNumber(*empty, 5);
+
+        // Regression: pre-fix this resets to the default `true`.
+        CHECK(fixture.view_model->uiState.get().show_conflicts == false);
+    }
+
+    SECTION("setShowHints(false) survives the next move") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->setShowHints(false);
+        REQUIRE(fixture.view_model->uiState.get().show_hints == false);
+
+        const auto& state = fixture.view_model->gameState.get();
+        auto empty = test::findEmptyCell(state);
+        REQUIRE(empty.has_value());
+        fixture.view_model->enterNumber(*empty, 5);
+
+        CHECK(fixture.view_model->uiState.get().show_hints == false);
+    }
+
+    SECTION("status_message survives a subsequent updateUIState trigger") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+
+        const std::string msg = "stick-around-please";
+        fixture.view_model->uiState.update([&msg](auto& ui) { ui.status_message = msg; });
+        REQUIRE(fixture.view_model->uiState.get().status_message == msg);
+
+        // Trigger updateUIState() via a public API (enterNumber calls it at the end).
+        const auto& state = fixture.view_model->gameState.get();
+        auto empty = test::findEmptyCell(state);
+        REQUIRE(empty.has_value());
+        fixture.view_model->enterNumber(*empty, 5);
+
+        CHECK(fixture.view_model->uiState.get().status_message == msg);
+    }
 }
 
 TEST_CASE("GameViewModel - Save/Load Error Paths", "[game_view_model][save]") {
