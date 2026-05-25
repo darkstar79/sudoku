@@ -47,9 +47,11 @@ namespace {
 // backward compatibility (regression-tested in test_save_origin_integration.cpp).
 inline constexpr const char* SAVE_FILE_VERSION = "1.1";
 
-// Difficulty validation constants (min/max values for range checking)
-inline constexpr int MIN_DIFFICULTY = 0;  // Easy
-inline constexpr int MAX_DIFFICULTY = 3;  // Expert
+// Difficulty validation constants (min/max values for range checking).
+// MUST track the Difficulty enum in i_puzzle_generator.h; a hardcoded Expert
+// bound silently rejected every Master save (see #11 / BL-8).
+inline constexpr int MIN_DIFFICULTY = static_cast<int>(sudoku::core::Difficulty::Easy);
+inline constexpr int MAX_DIFFICULTY = static_cast<int>(sudoku::core::Difficulty::Master);
 
 // Zlib compression magic bytes
 // All zlib compressed data starts with 0x78 followed by a compression level indicator

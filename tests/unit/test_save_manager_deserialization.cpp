@@ -163,7 +163,7 @@ TEST_CASE("SaveManager - deserialize: invalid difficulty value → InvalidSaveDa
                        "created_time: 1000000000\n"
                        "last_modified: 1000000000\n"
                        "puzzle_data:\n"
-                       "  difficulty: 99\n"  // invalid: only 0-3 are valid
+                       "  difficulty: 99\n"  // invalid: only 0-4 are valid (Easy..Master)
                        "  puzzle_seed: 1\n";
     yaml += nineRowBoard("original_puzzle");
     yaml += nineRowBoard("current_state");
@@ -173,6 +173,36 @@ TEST_CASE("SaveManager - deserialize: invalid difficulty value → InvalidSaveDa
     auto result = mgr.loadGame("bad-difficulty");
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::InvalidSaveData);
+}
+
+// ============================================================================
+// Master difficulty (4) must load successfully (regression: #11 / BL-8)
+// Before the fix, MAX_DIFFICULTY = 3 (Expert) caused Master saves to be
+// rejected with InvalidSaveData — permanent data loss for Master-difficulty
+// games. See docs/CODE_REVIEW_2026-05-25.md §BL-8.
+// ============================================================================
+
+TEST_CASE("SaveManager - deserialize: Master difficulty (4) loads successfully",
+          "[save_manager_deser][regression][bug-master-save-rejected]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    std::string yaml = "version: '1.0'\n"
+                       "save_id: master-save\n"
+                       "display_name: Master Game\n"
+                       "created_time: 1000000000\n"
+                       "last_modified: 1000000000\n"
+                       "puzzle_data:\n"
+                       "  difficulty: 4\n"  // Difficulty::Master
+                       "  puzzle_seed: 1\n";
+    yaml += nineRowBoard("original_puzzle");
+    yaml += nineRowBoard("current_state");
+
+    writeYaml(tmp.path(), "master-save", yaml);
+
+    auto result = mgr.loadGame("master-save");
+    REQUIRE(result.has_value());
+    REQUIRE(result.value().difficulty == Difficulty::Master);
 }
 
 // ============================================================================
