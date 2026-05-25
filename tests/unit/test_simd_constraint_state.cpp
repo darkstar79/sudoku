@@ -20,7 +20,9 @@
  */
 
 #include "../helpers/test_utils.h"
+#include "core/board.h"
 #include "core/constants.h"
+#include "core/cpu_features.h"
 #include "core/simd_constraint_state.h"
 
 #include <chrono>
@@ -347,5 +349,74 @@ TEST_CASE("SIMDConstraintState - Correctness vs scalar popcount", "[simd][correc
             int scalar_count = std::popcount(mask);
             REQUIRE(simd_count == scalar_count);
         }
+    }
+}
+
+// ============================================================================
+// Test Case 9: AVX-512 aligned-loader regression (#18 / BL-2)
+// ============================================================================
+//
+// SIMDConstraintState is alignas(64) and `candidates` is its first member, so
+// the AVX-512 ops were switched from `_mm512_loadu_si512` to the aligned
+// `_mm512_load_si512` paired with an `assertSimdAligned()` runtime check. The
+// previous unaligned-load form was a latent SIGSEGV per the "Aligned Loader"
+// bestiary entry: GCC could substitute `vmovdqa64` (aligned) once it inferred
+// alignment from the wrapper struct, which segfaults on any caller that ever
+// passed an under-aligned buffer.
+//
+// This test exercises the AVX-512 entry points on boundary inputs (all-empty,
+// all-full, mid-array minimum) to anchor the path in CI. If alignment ever
+// weakens, the assert fires in Debug or aligned-load crashes in Release.
+TEST_CASE("SIMDConstraintState - AVX-512 path on aligned buffer", "[simd][avx512]") {
+    if (!isSolverPathAvailable(SolverPath::AVX512)) {
+        SKIP("AVX-512 not available on this CPU");
+    }
+
+    SIMDConstraintState state;
+    state.setSimdLevel(SolverPath::AVX512);
+
+    // Sanity: the wrapper struct really did honor alignas(64). If this ever
+    // fails we have bigger problems than the load instruction.
+    REQUIRE((reinterpret_cast<uintptr_t>(state.candidates.data()) % 64U) == 0);
+
+    SECTION("findMRVCell on all-empty (every cell has 9 candidates)") {
+        // Default ctor leaves every real cell at ALL_CANDIDATES_MASK.
+        int cell = state.findMRVCell();
+        REQUIRE(cell >= 0);
+        REQUIRE(cell < static_cast<int>(BOARD_SIZE * BOARD_SIZE));
+        REQUIRE(state.countCandidates(static_cast<size_t>(cell)) > 1);
+    }
+
+    SECTION("findMRVCell on all-solved board returns -1") {
+        for (size_t i = 0; i < BOARD_SIZE * BOARD_SIZE; ++i) {
+            state.candidates[i] = 1;  // single candidate = solved
+        }
+        REQUIRE(state.findMRVCell() == -1);
+    }
+
+    SECTION("findMRVCell picks a bivalue at the last cell (96-aligned tail)") {
+        for (size_t i = 0; i < BOARD_SIZE * BOARD_SIZE; ++i) {
+            state.candidates[i] = ALL_CANDIDATES_MASK;
+        }
+        state.candidates[(BOARD_SIZE * BOARD_SIZE) - 1] = 0b000000011;  // 2 cands
+        REQUIRE(state.findMRVCell() == static_cast<int>((BOARD_SIZE * BOARD_SIZE) - 1));
+    }
+
+    SECTION("findNakedSingle locates a single-candidate empty cell") {
+        Board board{};  // all zeros
+        for (size_t i = 0; i < BOARD_SIZE * BOARD_SIZE; ++i) {
+            state.candidates[i] = ALL_CANDIDATES_MASK;
+        }
+        state.candidates[42] = 0b000000100;  // single candidate
+        REQUIRE(state.findNakedSingle(board) == 42);
+    }
+
+    SECTION("findNakedSingle on solved board returns -1") {
+        Board board{};
+        for (size_t i = 0; i < BOARD_SIZE * BOARD_SIZE; ++i) {
+            board.cells[i] = 1;
+            state.candidates[i] = 0b000000001;
+        }
+        REQUIRE(state.findNakedSingle(board) == -1);
     }
 }

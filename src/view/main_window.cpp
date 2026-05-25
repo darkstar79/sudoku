@@ -643,7 +643,13 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
         // the previous locale so we only reload the translator when it
         // actually changes (other settings — auto-save interval, hint
         // visibility, experimental flags, etc. — also fire this observer).
-        settings_manager_->settingsObservable().subscribe([this](const core::Settings& s) {
+        //
+        // Route through `observer_` (CompositeObserver) so the subscription is
+        // torn down in ~MainWindow. settings_manager_ is a shared_ptr owned by
+        // DIContainer and outlives MainWindow, so a direct subscribe() would
+        // leave a callback dereferencing a destroyed `this` on the next
+        // setSettings() (use-after-free).
+        observer_.observe(settings_manager_->settingsObservable(), [this](const core::Settings& s) {
             if (auto_save_timer_) {
                 auto_save_timer_->setInterval(s.auto_save_interval_ms);
             }
