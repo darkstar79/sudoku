@@ -502,7 +502,7 @@ void MainWindow::setupStatusBar() {
     session_time_label_ = new QLabel();
     statusBar()->addPermanentWidget(session_time_label_);
     if (settings_manager_) {
-        session_time_label_->setVisible(settings_manager_->getSettings().show_elapsed_time);
+        session_time_label_->setVisible(settings_manager_->getSettings().show_session_timer);
     } else {
         session_time_label_->setVisible(false);
     }
@@ -658,8 +658,8 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
                 coaching_hint_action_->setVisible(s.experimental_coaching_hints);
             }
             if (session_time_label_) {
-                session_time_label_->setVisible(s.show_elapsed_time);
-                if (s.show_elapsed_time) {
+                session_time_label_->setVisible(s.show_session_timer);
+                if (s.show_session_timer) {
                     updateStatusBar();
                 }
             }
@@ -1500,12 +1500,12 @@ void MainWindow::showSettingsDialog() {
     show_hints_cb->setChecked(settings_manager_->getSettings().show_hints);
     display_layout->addWidget(show_hints_cb);
 
-    auto* show_elapsed_cb = new QCheckBox(qstr(core::loc("Sudoku", "Show session timer (right of status bar)")));
-    show_elapsed_cb->setChecked(settings_manager_->getSettings().show_elapsed_time);
-    show_elapsed_cb->setToolTip(qstr(
+    auto* show_session_timer_cb = new QCheckBox(qstr(core::loc("Sudoku", "Show session timer (right of status bar)")));
+    show_session_timer_cb->setChecked(settings_manager_->getSettings().show_session_timer);
+    show_session_timer_cb->setToolTip(qstr(
         core::loc("Sudoku", "Display total time since the app launched, on the right side of the status bar. "
                             "Helpful as a reminder to take breaks. Independent of the per-puzzle timer on the left.")));
-    display_layout->addWidget(show_elapsed_cb);
+    display_layout->addWidget(show_session_timer_cb);
 
     // Language selection. The combo applies the new locale via setLanguage(),
     // which fires the settings observer -> applyLocale() -> LanguageChange
@@ -1625,7 +1625,7 @@ void MainWindow::showSettingsDialog() {
         }
     });
 
-    connectCheckBox(show_elapsed_cb, [this](bool checked) { settings_manager_->setShowElapsedTime(checked); });
+    connectCheckBox(show_session_timer_cb, [this](bool checked) { settings_manager_->setShowSessionTimer(checked); });
 
     connectCheckBox(collect_stats_cb, [this, encrypt_stats_cb](bool checked) {
         encrypt_stats_cb->setEnabled(checked);
