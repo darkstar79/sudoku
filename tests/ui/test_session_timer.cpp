@@ -16,7 +16,6 @@
 
 #include <QApplication>
 #include <QLabel>
-#include <QList>
 #include <QStatusBar>
 #include <QTest>
 
@@ -80,37 +79,8 @@ void TestSessionTimer::init() {
     QApplication::processEvents();
 }
 
-// The session-timer label is the QLabel attached via addPermanentWidget(),
-// which makes it a child of QStatusBar. The left-side timer_label_ and
-// status_label_ are attached via addWidget(); they're also QLabels but only
-// the permanent (right-anchored) one is the session timer. We disambiguate
-// by matching the addPermanentWidget pattern: the label whose parent is the
-// status bar AND that isn't one of the addWidget()-attached ones. Since
-// timer_label_ is empty and status_label_ has translated text like "Ready"
-// or "Playing", finding the third QLabel child works in practice — but to
-// be robust we look for the one that's visible-or-empty when toggled.
-//
-// Simpler: there are exactly three QLabels in the status bar in this build.
-// The session timer is the only one anchored via addPermanentWidget(), which
-// means QStatusBar lays it out on the right. We can't observe the layout
-// directly, but we can rely on identity: when show_session_timer is false
-// the session-timer label is the only one with isVisible() == false among
-// the three (the other two are always visible).
 QLabel* TestSessionTimer::findSessionTimerLabel() const {
-    auto* bar = window_->statusBar();
-    auto labels = bar->findChildren<QLabel*>();
-    // Heuristic: the session timer is the only QLabel child of the status bar
-    // whose visibility we drive from settings; on a fresh window with the
-    // setting at its default (false) it is the unique hidden label.
-    for (auto* label : labels) {
-        if (label->parent() == bar && !label->isVisible()) {
-            return label;
-        }
-    }
-    // If the setting is currently on, fall back to "the only non-empty label
-    // whose text matches HH:MM:SS" — but for our test sequencing we always
-    // start from the false state in init(), so the loop above suffices.
-    return nullptr;
+    return window_->statusBar()->findChild<QLabel*>("sessionTimerLabel");
 }
 
 void TestSessionTimer::defaultHidesLabel() {

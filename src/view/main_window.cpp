@@ -498,14 +498,13 @@ void MainWindow::setupStatusBar() {
 
     // Right-side session timer (wall-clock since app launch). Toggled by
     // Settings -> Display -> "Show session timer". addPermanentWidget()
-    // anchors the label to the right of the status bar.
+    // anchors the label to the right of the status bar. Hidden until
+    // setSettingsManager() wires the observer and re-applies the persisted
+    // flag; objectName lets UI tests find it without layout heuristics.
     session_time_label_ = new QLabel();
+    session_time_label_->setObjectName("sessionTimerLabel");
     statusBar()->addPermanentWidget(session_time_label_);
-    if (settings_manager_) {
-        session_time_label_->setVisible(settings_manager_->getSettings().show_session_timer);
-    } else {
-        session_time_label_->setVisible(false);
-    }
+    session_time_label_->setVisible(false);
 
     statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; border-top: 1px solid %2; color: %3; }")
                                    .arg(StyleColors::SURFACE_STATUS, StyleColors::DIVIDER, StyleColors::TEXT_MUTED));
@@ -799,8 +798,9 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
 
 void MainWindow::updateStatusBar() {
     // Right-side session timer: ticks unconditionally from app launch,
-    // independent of game state. Hidden unless the user enabled it in
-    // Settings -> Display.
+    // independent of game state — kept above the !view_model_ early return
+    // below so it stays accurate even before a puzzle is loaded. Hidden
+    // unless the user enabled it in Settings -> Display.
     if (session_time_label_ && session_time_label_->isVisible()) {
         const auto session_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - session_start_time_);
