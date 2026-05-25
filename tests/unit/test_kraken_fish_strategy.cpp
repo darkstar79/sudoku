@@ -70,13 +70,11 @@ TEST_CASE("KrakenFishStrategy - Returns nullopt for empty board with no finned p
     SUCCEED("Strategy did not crash on empty board");
 }
 
-// Regression for issue #20 (BL-3 + HIGH × 2):
-//   1. Kraken steps must NOT include free finned-fish eliminations
-//      (those are reported by FinnedXWing/Swordfish/Jellyfish strategies which
-//      run earlier; bundling them here misattributes their rating and lets
-//      `position` point at a non-Kraken cell).
-//   2. explanation_data.region_type must reflect the COVER axis (the axis
-//      eliminations sit on), not the base axis.
+// Regression for issue #20 (the HIGH finding from the 2026-05-25 audit):
+//   Kraken steps must NOT include free finned-fish eliminations — those are
+//   reported by FinnedXWing/Swordfish/Jellyfish strategies which run earlier;
+//   bundling them here misattributes their rating and lets `position` point at
+//   a non-Kraken cell.
 //
 // Scenario derived from tests/data/fixtures/Hard/fixtures.yaml (Hard_s4503_i7):
 //   Kraken Swordfish on value 2 in rows 5/7/9 (0-idx: 4/6/8) with fin at R9C6
@@ -85,7 +83,13 @@ TEST_CASE("KrakenFishStrategy - Returns nullopt for empty board with no finned p
 //   3-5), so any cell at (row, 3) or (row, 4) in row 7 (the only non-base row
 //   in the fin's box) would be a "free" finned elim; the true Kraken elims
 //   sit at (0, 3) and (2, 3).
-TEST_CASE("KrakenFishStrategy - omits in-fin-box free elims and reports cover-axis region",
+//
+// The region_type is asserted as Row (the base axis), matching the convention
+// used by the rest of the fish family (XWing/Swordfish/Jellyfish/Finned*/Sashimi*).
+// The audit's recommendation to flip it to the cover axis contradicted the
+// codebase's documented convention at [localized_explanations.h:204] and has been
+// rejected here — see PR #38 discussion and the follow-up convention issue.
+TEST_CASE("KrakenFishStrategy - omits in-fin-box free elims, reports Kraken cells only",
           "[kraken_fish][regression][issue20]") {
     constexpr std::string_view kBoardFlat =
         "050040000060005200370060008290000000005001090000030020507003004006070002000400010";
@@ -135,7 +139,21 @@ TEST_CASE("KrakenFishStrategy - omits in-fin-box free elims and reports cover-ax
     });
     REQUIRE(match != result->eliminations.end());
 
-    // Row-based fish: eliminations sit on the cover (column) axis, so the
-    // UI-highlight region_type must be Col.
-    REQUIRE(result->explanation_data.region_type == RegionType::Col);
+    // Tighter check: this fixture is known to produce exactly two Kraken
+    // eliminations at (0,3) and (2,3) for value 2. If the chain heuristic
+    // shifts and these numbers change, the test should flag it for review
+    // rather than silently passing on a different (possibly weaker) deduction.
+    REQUIRE(result->eliminations.size() == 2);
+    auto has_cell = [&](size_t r, size_t c) {
+        return std::ranges::any_of(result->eliminations, [&](const Elimination& e) {
+            return e.position.row == r && e.position.col == c && e.value == 2;
+        });
+    };
+    REQUIRE(has_cell(0, 3));
+    REQUIRE(has_cell(2, 3));
+
+    // Row-based fish: region_type encodes the base-axis orientation per the
+    // codebase convention (XWing/Swordfish/Jellyfish/Finned*/Sashimi* all do
+    // the same). Bases here are rows, so region_type must be Row.
+    REQUIRE(result->explanation_data.region_type == RegionType::Row);
 }
