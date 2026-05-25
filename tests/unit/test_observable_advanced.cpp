@@ -462,6 +462,209 @@ TEST_CASE("Observable - update() method", "[observable]") {
     }
 }
 
+// BL-12 (issue #16): notifyObservers() iterates observers_ directly. If an IObserver's
+// onNotify() reentrantly calls unsubscribe() (which uses std::erase_if on the same vector),
+// the iterator is invalidated -> UB. The callback path snapshots callbacks_; the interface
+// path did not. Snapshot the weak_ptr vector and gate each invocation on the live observers_
+// (mirrors the callbacks_.count(id) > 0 guard).
+TEST_CASE("Observable - interface observer iteration safety (BL-12)", "[observable][bl-12]") {
+    class RecordingObserver : public IObserver<int> {
+    public:
+        int count = 0;
+        int last_value = 0;
+        std::function<void()> on_notify_hook;
+        void onNotify(const int& value) override {
+            count++;
+            last_value = value;
+            if (on_notify_hook) {
+                on_notify_hook();
+            }
+        }
+    };
+
+    SECTION("Interface observer can unsubscribe itself in onNotify without UB") {
+        Observable<int> obs(0);
+        auto observer = std::make_shared<RecordingObserver>();
+        observer->on_notify_hook = [&] { obs.unsubscribe(observer); };
+
+        obs.subscribe(observer);
+        obs.set(7);  // pre-fix: erase_if invalidates `it` mid-iteration -> UB
+        CHECK(observer->count == 1);
+        CHECK(observer->last_value == 7);
+
+        // After self-unsubscribe, no further notifications.
+        obs.set(42);
+        CHECK(observer->count == 1);
+    }
+
+    SECTION("Interface observer can unsubscribe another observer in onNotify") {
+        Observable<int> obs(0);
+        auto first = std::make_shared<RecordingObserver>();
+        auto second = std::make_shared<RecordingObserver>();
+
+        // First observer drops `second`'s subscription mid-notification.
+        first->on_notify_hook = [&] { obs.unsubscribe(second); };
+
+        obs.subscribe(first);
+        obs.subscribe(second);
+
+        obs.set(11);
+
+        // first must have been notified exactly once.
+        CHECK(first->count == 1);
+        // second was unsubscribed before its slot ran in the current batch — should be
+        // skipped, matching the semantics of the (already-protected) callback path.
+        CHECK(second->count == 0);
+
+        // Confirm unsubscribe took: future notifications still skip `second`.
+        obs.set(22);
+        CHECK(first->count == 2);
+        CHECK(second->count == 0);
+    }
+
+    SECTION("clearSubscriptions inside an IObserver's onNotify is safe") {
+        Observable<int> obs(0);
+        auto a = std::make_shared<RecordingObserver>();
+        auto b = std::make_shared<RecordingObserver>();
+        a->on_notify_hook = [&] { obs.clearSubscriptions(); };
+
+        obs.subscribe(a);
+        obs.subscribe(b);
+
+        obs.set(5);  // pre-fix: erase via clearSubscriptions invalidates `it` -> UB
+
+        CHECK(a->count == 1);
+        CHECK(b->count == 0);  // dropped before its slot
+
+        obs.set(9);
+        CHECK(a->count == 1);
+        CHECK(b->count == 0);
+        CHECK(obs.getSubscriptionCount() == 0);
+    }
+}
+
+// BL-11 (issue #16): a callback that reentrantly calls set()/update() mutates value_ and
+// recursively notifies. Other callbacks in the outer batch then observe the newer value,
+// producing out-of-order notifications and (with [this]-capturing lambdas whose View was
+// destroyed during the reentry) UAF. Fix: snapshot value_ at the top of notifyObservers
+// and defer reentrant sets via a pending-value queue that drains after the outer
+// notification completes.
+TEST_CASE("Observable - reentrant set is deferred and drained (BL-11)", "[observable][bl-11]") {
+    SECTION("All subscribers in a batch see a consistent value snapshot") {
+        // Use IObservers so iteration order is the deterministic vector insertion order.
+        // The callback-path equivalent depends on std::unordered_map iteration order, which
+        // varies across libstdc++ versions and can accidentally mask the bug.
+        class Recorder : public IObserver<int> {
+        public:
+            std::vector<int>* out = nullptr;
+            std::function<void(int)> on_each;
+            void onNotify(const int& v) override {
+                out->push_back(v);
+                if (on_each) {
+                    on_each(v);
+                }
+            }
+        };
+
+        Observable<int> obs(0);
+        std::vector<int> a_values;
+        std::vector<int> b_values;
+
+        auto a = std::make_shared<Recorder>();
+        a->out = &a_values;
+        bool a_reentered = false;
+        a->on_each = [&](int v) {
+            if (v == 5 && !a_reentered) {
+                a_reentered = true;
+                obs.set(99);
+            }
+        };
+
+        auto b = std::make_shared<Recorder>();
+        b->out = &b_values;
+
+        obs.subscribe(a);  // observers_[0]
+        obs.subscribe(b);  // observers_[1]
+
+        obs.set(5);
+
+        // Outer batch: both subscribers see 5 (the snapshot taken before A reentered).
+        // Drain pass: both subscribers see 99.
+        CHECK(a_values == std::vector<int>{5, 99});
+        CHECK(b_values == std::vector<int>{5, 99});
+        CHECK(obs.get() == 99);
+    }
+
+    SECTION("Repeated reentrant sets coalesce to the latest value") {
+        Observable<int> obs(0);
+        std::vector<int> seen;
+
+        bool reentered = false;
+        obs.subscribe([&](int v) {
+            seen.push_back(v);
+            if (!reentered && v == 1) {
+                reentered = true;
+                obs.set(2);
+                obs.set(3);
+                obs.set(4);  // last write wins
+            }
+        });
+
+        obs.set(1);
+
+        CHECK(seen == std::vector<int>{1, 4});
+        CHECK(obs.get() == 4);
+    }
+
+    SECTION("Reentrant update() is deferred and applied after outer notification") {
+        Observable<int> obs(0);
+        std::vector<int> seen;
+
+        bool reentered = false;
+        obs.subscribe([&](int v) {
+            seen.push_back(v);
+            if (!reentered && v == 10) {
+                reentered = true;
+                obs.update([](int& x) { x += 1; });
+            }
+        });
+
+        obs.set(10);
+
+        // Outer batch sees 10; drain pass sees 11.
+        CHECK(seen == std::vector<int>{10, 11});
+        CHECK(obs.get() == 11);
+    }
+
+    SECTION("Reentrant set from an IObserver also defers and drains") {
+        class ReentrantObserver : public IObserver<int> {
+        public:
+            Observable<int>* obs;
+            std::vector<int> seen;
+            bool reentered = false;
+            int reentry_value = 0;
+            void onNotify(const int& v) override {
+                seen.push_back(v);
+                if (!reentered && v == reentry_value) {
+                    reentered = true;
+                    obs->set(reentry_value * 2);
+                }
+            }
+        };
+
+        Observable<int> obs(0);
+        auto observer = std::make_shared<ReentrantObserver>();
+        observer->obs = &obs;
+        observer->reentry_value = 4;
+        obs.subscribe(observer);
+
+        obs.set(4);
+
+        CHECK(observer->seen == std::vector<int>{4, 8});
+        CHECK(obs.get() == 8);
+    }
+}
+
 TEST_CASE("Observable - unsubscribe(ObserverPtr)", "[observable]") {
     class TestObserver : public IObserver<int> {
     public:
