@@ -128,13 +128,16 @@ public:
                                                                           const std::vector<size_t>& base_secondaries,
                                                                           size_t fin_box, bool by_row) {
         std::vector<Elimination> eliminations;
-        for (size_t secondary = 0; secondary < BOARD_SIZE; ++secondary) {
-            if (std::ranges::contains(base_primaries, secondary)) {
+        // `primary` iterates the candidate cell's base-axis index (row for by_row=true,
+        // col otherwise). Skipping base_primaries excludes cells in the fish's base lines;
+        // the inner loop sweeps the cover lines in `base_secondaries`.
+        for (size_t primary = 0; primary < BOARD_SIZE; ++primary) {
+            if (std::ranges::contains(base_primaries, primary)) {
                 continue;
             }
             for (size_t base_sec : base_secondaries) {
-                size_t row = by_row ? secondary : base_sec;
-                size_t col = by_row ? base_sec : secondary;
+                size_t row = by_row ? primary : base_sec;
+                size_t col = by_row ? base_sec : primary;
                 if (getBoxIndex(row, col) == fin_box && board[row][col] == EMPTY_CELL &&
                     candidates.isAllowed(row, col, value)) {
                     eliminations.push_back(Elimination{.position = Position{.row = row, .col = col}, .value = value});

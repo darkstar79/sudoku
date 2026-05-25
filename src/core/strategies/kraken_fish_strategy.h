@@ -173,21 +173,14 @@ private:
                                       : Position{.row = info->fin_secondary, .col = info->fin_primary};
             size_t fin_box = getBoxIndex(fin_pos.row, fin_pos.col);
 
-            // Compute standard finned eliminations (restricted to fin's box)
-            auto free_elims = FishHelpers::buildFinnedEliminations(board, candidates, value, base_primaries,
-                                                                   info->base_secondaries, fin_box, by_row);
-
-            // Compute extended eliminations (outside fin's box) verified by chain propagation
+            // Compute extended eliminations (outside fin's box) verified by chain propagation.
+            // In-fin-box finned-fish eliminations are intentionally omitted from this step: they
+            // are already discoverable by FinnedXWing/Swordfish/Jellyfish (registered earlier),
+            // so including them here would misattribute their difficulty rating to Kraken Fish
+            // and let the step's `position` point at a non-Kraken cell.
             auto kraken_elims = findKrakenEliminations(board, candidates, value, by_row, base_primaries,
                                                        info->base_secondaries, fin_pos, fin_box);
 
-            // Combine free + kraken eliminations
-            std::vector<Elimination> all_elims;
-            all_elims.reserve(free_elims.size() + kraken_elims.size());
-            all_elims.insert(all_elims.end(), free_elims.begin(), free_elims.end());
-            all_elims.insert(all_elims.end(), kraken_elims.begin(), kraken_elims.end());
-
-            // Only return if we found Kraken eliminations (otherwise a normal finned fish would have found it)
             if (kraken_elims.empty()) {
                 continue;
             }
@@ -217,14 +210,16 @@ private:
 
             return SolveStep{.type = SolveStepType::Elimination,
                              .technique = SolvingTechnique::KrakenFish,
-                             .position = all_elims[0].position,
+                             .position = kraken_elims[0].position,
                              .value = 0,
-                             .eliminations = all_elims,
+                             .eliminations = std::move(kraken_elims),
                              .explanation = explanation,
                              .rating = getTechniqueRating(SolvingTechnique::KrakenFish),
                              .explanation_data = {.positions = positions,
                                                   .values = std::move(explain_values),
-                                                  .region_type = by_row ? RegionType::Row : RegionType::Col,
+                                                  // Eliminations sit on the cover axis (perpendicular to the
+                                                  // base lines), so flag that axis for UI highlight.
+                                                  .region_type = by_row ? RegionType::Col : RegionType::Row,
                                                   .position_roles = std::move(roles)}};
         }
         return std::nullopt;
@@ -239,14 +234,18 @@ private:
         std::vector<Elimination> kraken_elims;
 
         // Collect candidate target cells: in cover lines (base_secondaries), NOT in base lines,
-        // that have value as candidate, but are OUTSIDE the fin's box
-        for (size_t secondary = 0; secondary < BOARD_SIZE; ++secondary) {
-            if (std::ranges::contains(base_primaries, secondary)) {
-                continue;  // Skip base lines
+        // that have value as candidate, but are OUTSIDE the fin's box.
+        //
+        // `primary` here iterates the base-axis index of the candidate cell (row index for
+        // by_row=true, col index for by_row=false). We skip when this index is one of the
+        // fish's base lines; the remaining iterations sweep cells in the cover lines.
+        for (size_t primary = 0; primary < BOARD_SIZE; ++primary) {
+            if (std::ranges::contains(base_primaries, primary)) {
+                continue;
             }
             for (size_t base_sec : base_secondaries) {
-                size_t row = by_row ? secondary : base_sec;
-                size_t col = by_row ? base_sec : secondary;
+                size_t row = by_row ? primary : base_sec;
+                size_t col = by_row ? base_sec : primary;
 
                 if (board[row][col] != EMPTY_CELL || !candidates.isAllowed(row, col, value)) {
                     continue;
