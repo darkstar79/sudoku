@@ -66,10 +66,8 @@ fi
 
 # Check 2: Code formatting (staged files only, ~instant)
 # Locate clang-format: PATH first, then common Homebrew locations (macOS)
-CLANG_FORMAT=$(command -v clang-format 2>/dev/null || \
-               echo "/opt/homebrew/opt/llvm/bin/clang-format" | grep -x -f - <(find /opt/homebrew/opt/llvm/bin /usr/local/opt/llvm/bin -name clang-format 2>/dev/null) | head -1 || true)
-# Simpler fallback probe
-if [ -z "$CLANG_FORMAT" ] || [ ! -x "$CLANG_FORMAT" ]; then
+CLANG_FORMAT=$(command -v clang-format 2>/dev/null || true)
+if [ -z "$CLANG_FORMAT" ]; then
     for candidate in /opt/homebrew/opt/llvm/bin/clang-format /usr/local/opt/llvm/bin/clang-format; do
         if [ -x "$candidate" ]; then
             CLANG_FORMAT="$candidate"
