@@ -617,6 +617,7 @@ void MainWindow::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewMod
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> settings_manager) {
     settings_manager_ = std::move(settings_manager);
 
