@@ -32,7 +32,7 @@
 #ifdef _WIN32
 #    include <lmcons.h>  // For UNLEN
 #    include <windows.h>
-#elif defined(__APPLE__)
+#elifdef __APPLE__
 #    include <pwd.h>
 #    include <sys/sysctl.h>
 #    include <sys/types.h>
@@ -251,7 +251,7 @@ std::expected<std::string, EncryptionError> EncryptionManager::getSystemIdentifi
         identifier += "|";
     }
 
-#elif defined(__APPLE__)
+#elifdef __APPLE__
     // macOS: hostname + username + hardware UUID (kern.uuid via sysctl, stable across reboots)
     std::array<char, 256> hostname{};
     if (gethostname(hostname.data(), hostname.size()) == 0) {
@@ -266,10 +266,10 @@ std::expected<std::string, EncryptionError> EncryptionManager::getSystemIdentifi
         identifier += "|";
     }
 
-    char hw_uuid[64] = {};
-    size_t hw_uuid_size = sizeof(hw_uuid);
-    if (sysctlbyname("kern.uuid", hw_uuid, &hw_uuid_size, nullptr, 0) == 0) {
-        identifier += hw_uuid;
+    std::array<char, 64> hw_uuid{};
+    size_t hw_uuid_size = hw_uuid.size();
+    if (sysctlbyname("kern.uuid", hw_uuid.data(), &hw_uuid_size, nullptr, 0) == 0) {
+        identifier += hw_uuid.data();
         identifier += "|";
     }
 #else

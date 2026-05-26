@@ -34,7 +34,7 @@ std::filesystem::path AppDirectoryManager::getPlatformBaseDirectory() {
         return std::filesystem::path(appdata) / "Sudoku";
     }
     return std::filesystem::current_path();
-#elif defined(__APPLE__)
+#elifdef __APPLE__
     // macOS: ~/Library/Application Support/Sudoku
     auto* home = std::getenv("HOME");
     if (home) {

@@ -22,9 +22,8 @@
 // so these paths are never actually reached at runtime — they exist solely
 // to satisfy the linker.
 
-#include "simd_constraint_state.h"
-
 #include "core/board.h"
+#include "simd_constraint_state.h"
 
 #include <bit>
 
@@ -143,180 +142,136 @@ int SIMDConstraintState::findNakedSingle(const Board& board) const {
 }
 
 template <typename BoardT>
-std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl(const BoardT& board) const {
-    // --- Rows ---
-    for (size_t row = 0; row < BOARD_SIZE; ++row) {
-        uint16_t at_least_once = 0;
-        uint16_t at_least_twice = 0;
-        for (size_t col = 0; col < BOARD_SIZE; ++col) {
-            size_t cell = cellIndex(row, col);
-            uint16_t cand = (board[row][col] == 0) ? candidates[cell] : uint16_t(0);
-            at_least_twice |= (at_least_once & cand);
-            at_least_once |= cand;
-        }
-        uint16_t exactly_once = at_least_once & ~at_least_twice & ~row_used_[row];
-        if (exactly_once != 0) {
-            int digit = std::countr_zero(exactly_once) + 1;
-            auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                size_t cell = cellIndex(row, col);
-                if (board[row][col] == 0 && (candidates[cell] & digit_mask) != 0) {
-                    return {static_cast<int>(cell), digit};
-                }
-            }
-        }
-    }
-
-    // --- Columns ---
+std::pair<int, int> SIMDConstraintState::scanRow(size_t row, const BoardT& board) const {
+    uint16_t at_least_once = 0;
+    uint16_t at_least_twice = 0;
     for (size_t col = 0; col < BOARD_SIZE; ++col) {
-        uint16_t at_least_once = 0;
-        uint16_t at_least_twice = 0;
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            size_t cell = cellIndex(row, col);
-            uint16_t cand = (board[row][col] == 0) ? candidates[cell] : uint16_t(0);
-            at_least_twice |= (at_least_once & cand);
-            at_least_once |= cand;
-        }
-        uint16_t exactly_once = at_least_once & ~at_least_twice & ~col_used_[col];
-        if (exactly_once != 0) {
-            int digit = std::countr_zero(exactly_once) + 1;
-            auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
-            for (size_t row = 0; row < BOARD_SIZE; ++row) {
-                size_t cell = cellIndex(row, col);
-                if (board[row][col] == 0 && (candidates[cell] & digit_mask) != 0) {
-                    return {static_cast<int>(cell), digit};
-                }
-            }
+        size_t cell = cellIndex(row, col);
+        uint16_t cand = (board[row][col] == 0) ? candidates[cell] : static_cast<uint16_t>(0);
+        at_least_twice |= (at_least_once & cand);
+        at_least_once |= cand;
+    }
+    uint16_t exactly_once = at_least_once & ~at_least_twice & ~row_used_[row];
+    if (exactly_once == 0) {
+        return {-1, 0};
+    }
+    int digit = std::countr_zero(exactly_once) + 1;
+    auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
+    for (size_t col = 0; col < BOARD_SIZE; ++col) {
+        size_t cell = cellIndex(row, col);
+        if (board[row][col] == 0 && (candidates[cell] & digit_mask) != 0) {
+            return {static_cast<int>(cell), digit};
         }
     }
-
-    // --- Boxes ---
-    for (size_t box = 0; box < BOARD_SIZE; ++box) {
-        size_t box_row = (box / BOX_SIZE) * BOX_SIZE;
-        size_t box_col = (box % BOX_SIZE) * BOX_SIZE;
-        uint16_t at_least_once = 0;
-        uint16_t at_least_twice = 0;
-        for (size_t br = 0; br < BOX_SIZE; ++br) {
-            for (size_t bc = 0; bc < BOX_SIZE; ++bc) {
-                size_t row = box_row + br;
-                size_t col = box_col + bc;
-                size_t cell = cellIndex(row, col);
-                uint16_t cand = (board[row][col] == 0) ? candidates[cell] : uint16_t(0);
-                at_least_twice |= (at_least_once & cand);
-                at_least_once |= cand;
-            }
-        }
-        uint16_t exactly_once = at_least_once & ~at_least_twice & ~box_used_[box];
-        if (exactly_once != 0) {
-            int digit = std::countr_zero(exactly_once) + 1;
-            auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
-            for (size_t br = 0; br < BOX_SIZE; ++br) {
-                for (size_t bc = 0; bc < BOX_SIZE; ++bc) {
-                    size_t row = box_row + br;
-                    size_t col = box_col + bc;
-                    size_t cell = cellIndex(row, col);
-                    if (board[row][col] == 0 && (candidates[cell] & digit_mask) != 0) {
-                        return {static_cast<int>(cell), digit};
-                    }
-                }
-            }
-        }
-    }
-
     return {-1, 0};
 }
 
 template <typename BoardT>
-std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl(const BoardT& board,
-                                                               uint32_t dirty_regions) const {
-    // --- Rows (bits 0-8) ---
+std::pair<int, int> SIMDConstraintState::scanCol(size_t col, const BoardT& board) const {
+    uint16_t at_least_once = 0;
+    uint16_t at_least_twice = 0;
+    for (size_t row = 0; row < BOARD_SIZE; ++row) {
+        size_t cell = cellIndex(row, col);
+        uint16_t cand = (board[row][col] == 0) ? candidates[cell] : static_cast<uint16_t>(0);
+        at_least_twice |= (at_least_once & cand);
+        at_least_once |= cand;
+    }
+    uint16_t exactly_once = at_least_once & ~at_least_twice & ~col_used_[col];
+    if (exactly_once == 0) {
+        return {-1, 0};
+    }
+    int digit = std::countr_zero(exactly_once) + 1;
+    auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
+    for (size_t row = 0; row < BOARD_SIZE; ++row) {
+        size_t cell = cellIndex(row, col);
+        if (board[row][col] == 0 && (candidates[cell] & digit_mask) != 0) {
+            return {static_cast<int>(cell), digit};
+        }
+    }
+    return {-1, 0};
+}
+
+template <typename BoardT>
+std::pair<int, int> SIMDConstraintState::scanBox(size_t box, const BoardT& board) const {
+    size_t box_row = (box / BOX_SIZE) * BOX_SIZE;
+    size_t box_col = (box % BOX_SIZE) * BOX_SIZE;
+    uint16_t at_least_once = 0;
+    uint16_t at_least_twice = 0;
+    for (size_t br = 0; br < BOX_SIZE; ++br) {
+        for (size_t bc = 0; bc < BOX_SIZE; ++bc) {
+            size_t row = box_row + br;
+            size_t col = box_col + bc;
+            size_t cell = cellIndex(row, col);
+            uint16_t cand = (board[row][col] == 0) ? candidates[cell] : static_cast<uint16_t>(0);
+            at_least_twice |= (at_least_once & cand);
+            at_least_once |= cand;
+        }
+    }
+    uint16_t exactly_once = at_least_once & ~at_least_twice & ~box_used_[box];
+    if (exactly_once == 0) {
+        return {-1, 0};
+    }
+    int digit = std::countr_zero(exactly_once) + 1;
+    auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
+    for (size_t br = 0; br < BOX_SIZE; ++br) {
+        for (size_t bc = 0; bc < BOX_SIZE; ++bc) {
+            size_t row = box_row + br;
+            size_t col = box_col + bc;
+            size_t cell = cellIndex(row, col);
+            if (board[row][col] == 0 && (candidates[cell] & digit_mask) != 0) {
+                return {static_cast<int>(cell), digit};
+            }
+        }
+    }
+    return {-1, 0};
+}
+
+template <typename BoardT>
+std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl(const BoardT& board) const {
+    for (size_t row = 0; row < BOARD_SIZE; ++row) {
+        if (auto r = scanRow(row, board); r.first != -1) {
+            return r;
+        }
+    }
+    for (size_t col = 0; col < BOARD_SIZE; ++col) {
+        if (auto r = scanCol(col, board); r.first != -1) {
+            return r;
+        }
+    }
+    for (size_t box = 0; box < BOARD_SIZE; ++box) {
+        if (auto r = scanBox(box, board); r.first != -1) {
+            return r;
+        }
+    }
+    return {-1, 0};
+}
+
+template <typename BoardT>
+std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl(const BoardT& board, uint32_t dirty_regions) const {
     for (size_t row = 0; row < BOARD_SIZE; ++row) {
         if (!(dirty_regions & (1U << row))) {
             continue;
         }
-        uint16_t at_least_once = 0;
-        uint16_t at_least_twice = 0;
-        for (size_t col = 0; col < BOARD_SIZE; ++col) {
-            size_t cell = cellIndex(row, col);
-            uint16_t cand = (board[row][col] == 0) ? candidates[cell] : uint16_t(0);
-            at_least_twice |= (at_least_once & cand);
-            at_least_once |= cand;
-        }
-        uint16_t exactly_once = at_least_once & ~at_least_twice & ~row_used_[row];
-        if (exactly_once != 0) {
-            int digit = std::countr_zero(exactly_once) + 1;
-            auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
-            for (size_t col = 0; col < BOARD_SIZE; ++col) {
-                size_t cell = cellIndex(row, col);
-                if (board[row][col] == 0 && (candidates[cell] & digit_mask) != 0) {
-                    return {static_cast<int>(cell), digit};
-                }
-            }
+        if (auto r = scanRow(row, board); r.first != -1) {
+            return r;
         }
     }
-
-    // --- Columns (bits 9-17) ---
     for (size_t col = 0; col < BOARD_SIZE; ++col) {
         if (!(dirty_regions & (1U << (9 + col)))) {
             continue;
         }
-        uint16_t at_least_once = 0;
-        uint16_t at_least_twice = 0;
-        for (size_t row = 0; row < BOARD_SIZE; ++row) {
-            size_t cell = cellIndex(row, col);
-            uint16_t cand = (board[row][col] == 0) ? candidates[cell] : uint16_t(0);
-            at_least_twice |= (at_least_once & cand);
-            at_least_once |= cand;
-        }
-        uint16_t exactly_once = at_least_once & ~at_least_twice & ~col_used_[col];
-        if (exactly_once != 0) {
-            int digit = std::countr_zero(exactly_once) + 1;
-            auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
-            for (size_t row = 0; row < BOARD_SIZE; ++row) {
-                size_t cell = cellIndex(row, col);
-                if (board[row][col] == 0 && (candidates[cell] & digit_mask) != 0) {
-                    return {static_cast<int>(cell), digit};
-                }
-            }
+        if (auto r = scanCol(col, board); r.first != -1) {
+            return r;
         }
     }
-
-    // --- Boxes (bits 18-26) ---
     for (size_t box = 0; box < BOARD_SIZE; ++box) {
         if (!(dirty_regions & (1U << (18 + box)))) {
             continue;
         }
-        size_t box_row = (box / BOX_SIZE) * BOX_SIZE;
-        size_t box_col = (box % BOX_SIZE) * BOX_SIZE;
-        uint16_t at_least_once = 0;
-        uint16_t at_least_twice = 0;
-        for (size_t br = 0; br < BOX_SIZE; ++br) {
-            for (size_t bc = 0; bc < BOX_SIZE; ++bc) {
-                size_t row = box_row + br;
-                size_t col = box_col + bc;
-                size_t cell = cellIndex(row, col);
-                uint16_t cand = (board[row][col] == 0) ? candidates[cell] : uint16_t(0);
-                at_least_twice |= (at_least_once & cand);
-                at_least_once |= cand;
-            }
-        }
-        uint16_t exactly_once = at_least_once & ~at_least_twice & ~box_used_[box];
-        if (exactly_once != 0) {
-            int digit = std::countr_zero(exactly_once) + 1;
-            auto digit_mask = static_cast<uint16_t>(1U << (digit - 1));
-            for (size_t br = 0; br < BOX_SIZE; ++br) {
-                for (size_t bc = 0; bc < BOX_SIZE; ++bc) {
-                    size_t row = box_row + br;
-                    size_t col = box_col + bc;
-                    size_t cell = cellIndex(row, col);
-                    if (board[row][col] == 0 && (candidates[cell] & digit_mask) != 0) {
-                        return {static_cast<int>(cell), digit};
-                    }
-                }
-            }
+        if (auto r = scanBox(box, board); r.first != -1) {
+            return r;
         }
     }
-
     return {-1, 0};
 }
 
@@ -328,14 +283,12 @@ std::pair<int, int> SIMDConstraintState::findHiddenSingle(const Board& board) co
     return findHiddenSingleImpl(board);
 }
 
-std::pair<int, int> SIMDConstraintState::findHiddenSingle(const Board& board,
-                                                           uint32_t dirty_regions) const {
+std::pair<int, int> SIMDConstraintState::findHiddenSingle(const Board& board, uint32_t dirty_regions) const {
     return findHiddenSingleImpl(board, dirty_regions);
 }
 
 template std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl<BoardData>(const BoardData&) const;
 template std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl<Board>(const Board&) const;
-template std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl<Board>(const Board&,
-                                                                               uint32_t) const;
+template std::pair<int, int> SIMDConstraintState::findHiddenSingleImpl<Board>(const Board&, uint32_t) const;
 
 }  // namespace sudoku::core

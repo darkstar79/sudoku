@@ -367,6 +367,14 @@ struct alignas(SIMD_ALIGNMENT) SIMDConstraintState {
     /// Template implementation for findHiddenSingle with dirty regions mask
     template <typename BoardT>
     [[nodiscard]] std::pair<int, int> findHiddenSingleImpl(const BoardT& board, uint32_t dirty_regions) const;
+
+private:
+    template <typename BoardT>
+    [[nodiscard]] std::pair<int, int> scanRow(size_t row, const BoardT& board) const;
+    template <typename BoardT>
+    [[nodiscard]] std::pair<int, int> scanCol(size_t col, const BoardT& board) const;
+    template <typename BoardT>
+    [[nodiscard]] std::pair<int, int> scanBox(size_t box, const BoardT& board) const;
 };
 #ifdef _MSC_VER
 #    pragma warning(pop)
