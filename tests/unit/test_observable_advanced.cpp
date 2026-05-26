@@ -845,7 +845,11 @@ TEST_CASE("Observable - unsubscribe(ObserverPtr)", "[observable]") {
         obs.subscribe(Observable<int>::ObserverPtr{});
         REQUIRE(obs.getSubscriptionCount() == 0);
 
+        // Notifying with no subscribers must not crash and must not resurrect
+        // the rejected null observer.
         obs.set(42);
+        REQUIRE(obs.get() == 42);
+        REQUIRE(obs.getSubscriptionCount() == 0);
     }
 
     SECTION("subscribe(CallbackFn) with empty std::function returns no-op unsubscriber") {

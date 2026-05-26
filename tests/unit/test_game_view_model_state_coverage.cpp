@@ -20,6 +20,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
+#include <limits>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -29,34 +30,59 @@ using namespace sudoku::core;
 
 using StateCoverageFixture = sudoku::test::GameViewModelFixture;
 
+// Out-of-band value used to exercise the `default:` arm in the GameCommand switches.
+// GameCommand's underlying type is uint8_t — its max never collides with a real
+// enumerator since the live enum has < 20 entries. If the enum ever grows past
+// ~250 entries, bump this and re-verify.
+constexpr GameCommand kBogusCommand = static_cast<GameCommand>(std::numeric_limits<std::uint8_t>::max());
+
 TEST_CASE("GameViewModel::executeCommand routes coaching/reset commands and warns on unknown",
           "[game_view_model][state][coverage]") {
     StateCoverageFixture fixture;
     fixture.view_model->startNewGame(Difficulty::Easy);
 
     SECTION("GetHint command dispatches through executeCommand") {
-        // The existing command-tests call getHint() directly; we route through
-        // executeCommand to cover the `case GameCommand::GetHint:` arm itself.
-        REQUIRE_NOTHROW(fixture.view_model->executeCommand(GameCommand::GetHint));
+        // Route through executeCommand to cover the `case GameCommand::GetHint:` arm.
+        // With no selection, getHint() publishes an error message — observing it
+        // proves the dispatch actually reached the handler.
+        fixture.view_model->clearErrorMessage();
+        fixture.view_model->executeCommand(GameCommand::GetHint);
+        REQUIRE(fixture.view_model->hasError());
     }
 
-    SECTION("Coaching commands route without crashing") {
-        // These dispatch into requestCoachingHint / checkCoachingAnswer / applyCoachingStep.
-        // We don't assert downstream effects (covered elsewhere) — we just want the switch
-        // arms in executeCommand exercised.
-        REQUIRE_NOTHROW(fixture.view_model->executeCommand(GameCommand::GetCoachingHint));
+    SECTION("Coaching commands route through to the coaching subsystem") {
+        // GetCoachingHint on a fresh game either activates a coaching session
+        // (active=true, level>=1) or publishes an error if no logical step is
+        // found / no hints remain — either outcome proves the dispatch reached
+        // requestCoachingHint().
+        fixture.view_model->clearErrorMessage();
+        REQUIRE_FALSE(fixture.view_model->coachingState.get().active);
+        fixture.view_model->executeCommand(GameCommand::GetCoachingHint);
+        const bool dispatched = fixture.view_model->hasError() || fixture.view_model->coachingState.get().active;
+        REQUIRE(dispatched);
+
+        // CheckCoachingAnswer / ApplyCoachingStep outside TryIt are no-ops — but the
+        // switch arms still need to be hit. Just verify they don't throw and leave
+        // the observable consistent.
         REQUIRE_NOTHROW(fixture.view_model->executeCommand(GameCommand::CheckCoachingAnswer));
         REQUIRE_NOTHROW(fixture.view_model->executeCommand(GameCommand::ApplyCoachingStep));
     }
 
-    SECTION("ResetGame command is dispatched") {
-        REQUIRE_NOTHROW(fixture.view_model->executeCommand(GameCommand::ResetGame));
+    SECTION("ResetGame command restores the puzzle to its initial state") {
+        auto empty = test::findEmptyCell(fixture.view_model->gameState.get());
+        REQUIRE(empty.has_value());
+        fixture.view_model->enterNumber(empty.value(), 5);
+        REQUIRE(fixture.view_model->gameState.get().getValue(empty.value()) == 5);
+
+        fixture.view_model->executeCommand(GameCommand::ResetGame);
+        REQUIRE(fixture.view_model->gameState.get().getValue(empty.value()) == 0);
     }
 
-    SECTION("Unknown command falls into default warn branch") {
-        // Cast a sentinel that isn't a real enumerator to drive the `default:` arm.
-        auto bogus = static_cast<GameCommand>(255);
-        REQUIRE_NOTHROW(fixture.view_model->executeCommand(bogus));
+    SECTION("Unknown command falls into default warn branch without side effects") {
+        fixture.view_model->clearErrorMessage();
+        const auto board_before = fixture.view_model->gameState.get().extractNumbers();
+        fixture.view_model->executeCommand(kBogusCommand);
+        REQUIRE(fixture.view_model->gameState.get().extractNumbers() == board_before);
     }
 }
 
@@ -78,8 +104,7 @@ TEST_CASE("GameViewModel::canExecuteCommand covers coaching, reset and default b
     }
 
     SECTION("Unknown command falls into default-true branch") {
-        auto bogus = static_cast<GameCommand>(255);
-        REQUIRE(fixture.view_model->canExecuteCommand(bogus));
+        REQUIRE(fixture.view_model->canExecuteCommand(kBogusCommand));
     }
 }
 
@@ -191,33 +216,44 @@ TEST_CASE("GameViewModel CSV/JSON export entry points", "[game_view_model][state
     };
     XdgOverride xdg(fixture.temp_dir.path().string());
 
-    SECTION("exportAggregateStatsCsv runs and returns expected") {
+    // The serializer does not auto-create parent directories — pre-create the
+    // path that AppDirectoryManager will resolve to under the redirected XDG_DATA_HOME.
+    std::filesystem::create_directories(fixture.temp_dir.path() / "sudoku" / "stats");
+
+    SECTION("exportAggregateStatsCsv writes a CSV under the redirected XDG path") {
         auto result = fixture.view_model->exportAggregateStatsCsv();
-        (void)result;
+        REQUIRE(result.has_value());
     }
 
-    SECTION("exportGameSessionsCsv runs and returns expected") {
+    SECTION("exportGameSessionsCsv writes a CSV under the redirected XDG path") {
         auto result = fixture.view_model->exportGameSessionsCsv();
-        (void)result;
+        REQUIRE(result.has_value());
     }
 
-    SECTION("exportStatistics writes to an explicit path") {
+    SECTION("exportStatistics writes a JSON file at the explicit path") {
         auto target = fixture.temp_dir.path() / "stats_export.json";
-        REQUIRE_NOTHROW(fixture.view_model->exportStatistics(target.string()));
+        fixture.view_model->exportStatistics(target.string());
+        REQUIRE(std::filesystem::exists(target));
     }
 }
 
-TEST_CASE("GameViewModel checkGameCompletion fires when board is solved", "[game_view_model][state][coverage]") {
+TEST_CASE("GameViewModel checkGameCompletion fires when last cell is filled with the solution",
+          "[game_view_model][state][coverage]") {
     StateCoverageFixture fixture;
     fixture.view_model->startNewGame(Difficulty::Easy);
 
-    // Force completion by writing the solution into game state, then drive
-    // checkGameCompletion via a state mutation that flips through the path
-    // — checkGameCompletion is called from setCellValue/enterNumber loops.
-    // Simplest route: mark complete directly on GameState and re-call.
-    fixture.view_model->gameState.update([](model::GameState& state) { state.setComplete(true); });
+    // Drive completion through the real path: enterNumber → checkGameCompletion.
+    // Fill every empty cell with its solution value; the call after the last
+    // placement should flip isGameComplete() to true.
+    const auto& solution = fixture.view_model->gameState.get().getSolutionBoard();
+    const auto initial = fixture.view_model->gameState.get().extractNumbers();
+    for (size_t row = 0; row < 9; ++row) {
+        for (size_t col = 0; col < 9; ++col) {
+            if (initial[row][col] == 0) {
+                fixture.view_model->enterNumber({.row = row, .col = col}, solution[row][col]);
+            }
+        }
+    }
 
-    // Completion already set — exercise the path explicitly via refreshStatistics
-    // which goes through code on the boundary.
     REQUIRE(fixture.view_model->isGameComplete());
 }

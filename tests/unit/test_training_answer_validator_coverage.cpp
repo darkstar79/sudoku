@@ -27,12 +27,10 @@ using namespace sudoku::core;
 
 TEST_CASE("TrainingAnswerValidator::createStrategy covers every logical technique",
           "[training_answer_validator][coverage]") {
-    using enum SolvingTechnique;
-
     // Drive the entire switch in createStrategy by iterating the contiguous
-    // logical-technique range (NakedSingle..kLastLogical). Mirrors the pattern
-    // used in test_technique_descriptions for full-enum exhaustiveness.
-    for (uint8_t v = 0; v <= static_cast<uint8_t>(kLastLogical); ++v) {
+    // logical-technique range (NakedSingle..kLastLogicalTechnique). Mirrors the
+    // pattern used in test_technique_descriptions for full-enum exhaustiveness.
+    for (uint8_t v = 0; v <= static_cast<uint8_t>(kLastLogicalTechnique); ++v) {
         auto technique = static_cast<SolvingTechnique>(v);
         CAPTURE(static_cast<int>(v));
         auto strategy = TrainingAnswerValidator::createStrategy(technique);
@@ -92,15 +90,12 @@ TEST_CASE("TrainingAnswerValidator::validatePlacement rejection branches", "[tra
     }
 }
 
-TEST_CASE("TrainingAnswerValidator hidden-single detection uses col and box units",
+TEST_CASE("TrainingAnswerValidator hidden-single detection accepts a column-only hidden single",
           "[training_answer_validator][coverage]") {
-    // Construct a board where value 4 in column 0 has exactly one empty cell that
-    // can accept it (a column-only hidden single — row 0 has many empties so the
-    // row check fails first, forcing the column-count branch to execute).
-    //
-    // Column 0:  rows 1-8 already contain a non-4 value, row 0 is the only empty cell.
-    // The rest of the board uses the standard solved layout (with the cell at (0,0)
-    // and (0,2) cleared).
+    // Standard solved layout with cells (0,0) and (0,2) cleared. Column 2 is now
+    // missing exactly one digit at (0,2) — the test confirms validatePlacement
+    // accepts a hidden single on that cell. (Row 0 has two empties, so the
+    // pure-row branch alone cannot identify the cell.)
     BoardData board = {
         {0, 3, 0, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
         {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
@@ -108,13 +103,6 @@ TEST_CASE("TrainingAnswerValidator hidden-single detection uses col and box unit
     };
     CandidateGrid candidates(board);
 
-    // (0,0) = 5 is a hidden single (only place in column 0 / box 0 that can take 5,
-    // and only place in row 0 since 5 is missing from row 0). HiddenSingle exercises
-    // row, then short-circuits — to force the column/box helpers to execute we use
-    // (0,2) where value 4 is the answer:
-    //   * row 0 also has cell (0,0) empty, so row count for 4 is > 1 → falls through to col check.
-    //   * column 2 has rows 1-8 already filled (some with non-4 digits); since (0,2) is
-    //     the only empty in col 2, column count for 4 == 1 → branch returns true.
     auto result = TrainingAnswerValidator::validatePlacement(board, candidates, SolvingTechnique::HiddenSingle,
                                                              Position{.row = 0, .col = 2}, 4);
     REQUIRE(result.has_value());

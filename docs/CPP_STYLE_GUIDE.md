@@ -487,23 +487,26 @@ uint16_t mask = static_cast<uint16_t>(1 << value);
 When a value already exists somewhere (an enum value, another constant, a sizeof,
 a `std::array` length), reuse it instead of repeating the literal. Restated
 literals drift silently when the original moves; derived ones are caught by the
-compiler. Prefer adding a sentinel inside the authoritative definition over
-maintaining a parallel constant somewhere else.
+compiler. Prefer a free `constexpr` sentinel sitting next to the authoritative
+definition over maintaining a parallel constant somewhere else.
 
 ```cpp
-// ✅ GOOD: Sentinel alias inside the enum is the single source of truth.
+// ✅ GOOD: Sentinel constexpr lives next to the enum, single source of truth.
 // Adding a new logical technique forces the author to bump the sentinel in
-// the same file — the test loop tracks it automatically.
+// the same file — the test loop tracks it automatically. Kept outside the
+// enum so it doesn't introduce an enumerator alias (which can perturb
+// `-Wswitch` exhaustiveness or duplicate-case diagnostics).
 enum class SolvingTechnique : uint8_t {
     NakedSingle = 0,
     // ...
     GroupedNiceLoop = 53,
-    kLastLogical = GroupedNiceLoop,   // ← sentinel, sits next to the value it tracks
     Backtracking = 255,
 };
 
+inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::GroupedNiceLoop;
+
 // In the test:
-constexpr int kMaxLogicalTechnique = static_cast<int>(SolvingTechnique::kLastLogical);
+constexpr int kMaxLogicalTechnique = static_cast<int>(kLastLogicalTechnique);
 for (int i = 0; i <= kMaxLogicalTechnique; ++i) { /* ... */ }
 ```
 
