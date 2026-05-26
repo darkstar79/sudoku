@@ -264,10 +264,17 @@ jobs:
 
       - name: Run clang-tidy on changed lines
         # `-p1` strips the leading `a/` from diff paths; `-path` points at the
-        # build dir holding compile_commands.json; `-warnings-as-errors='*'`
-        # matches the nightly full-tree run so PRs see the same gate.
+        # build dir holding compile_commands.json. clang-tidy-diff.py only
+        # forwards a fixed set of flags to clang-tidy and rejects an explicit
+        # `-warnings-as-errors`, so inject the flag via a binary shim. This
+        # matches the gate that nightly's `tidy.sh check` applies.
         run: |
           set -o pipefail
+          cat > /tmp/clang-tidy-werror.sh <<'SHIM'
+          #!/bin/sh
+          exec clang-tidy --warnings-as-errors='*' "$@"
+          SHIM
+          chmod +x /tmp/clang-tidy-werror.sh
           git diff -U0 "${{ steps.range.outputs.base }}" -- \
               'src/*.cpp' 'src/*.h' 'src/**/*.cpp' 'src/**/*.h' \
               'tests/*.cpp' 'tests/*.h' 'tests/**/*.cpp' 'tests/**/*.h' \
@@ -275,9 +282,8 @@ jobs:
             | clang-tidy-diff.py \
                 -p1 \
                 -path build/RelWithDebInfo \
-                -clang-tidy-binary clang-tidy \
+                -clang-tidy-binary /tmp/clang-tidy-werror.sh \
                 -config-file .clang-tidy \
-                -warnings-as-errors='*' \
                 -j "$(nproc)" \
                 -use-color
 
