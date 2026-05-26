@@ -22,10 +22,17 @@ list(FILTER LIB_SOURCES EXCLUDE REGEX ".*main_new\\.cpp$")
 # Exclude SIMD source (compiled separately in simd_avx2/simd_avx512 libraries with per-target flags)
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*simd_constraint_state\\.cpp$")
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*simd_avx512_ops\\.cpp$")
+# Scalar stub excluded from GLOB; added back conditionally below
+list(FILTER LIB_SOURCES EXCLUDE REGEX ".*simd_constraint_state_scalar\\.cpp$")
 
 # Remove view files that depend on Qt6 (not needed for unit tests)
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*/view/.*\\.(cpp|h)$")
 list(FILTER LIB_SOURCES EXCLUDE REGEX ".*log_manager\\.cpp$")
+
+# On non-x86 platforms the AVX2/AVX-512 libs are absent; add scalar stubs instead
+if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686")
+    list(APPEND LIB_SOURCES "${CMAKE_SOURCE_DIR}/src/core/simd_constraint_state_scalar.cpp")
+endif()
 
 # Create a library from source files for testing (links Qt6::Core for translations)
 add_library(sudoku_lib STATIC ${LIB_SOURCES})
@@ -40,18 +47,21 @@ target_include_directories(sudoku_lib PUBLIC
 
 # Link dependencies to library
 target_link_libraries(sudoku_lib PUBLIC
-    simd_avx2
-    simd_avx512
     spdlog::spdlog
     yaml-cpp::yaml-cpp
     ZLIB::ZLIB
     libsodium::libsodium
     Qt6::Core
 )
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686")
+    target_link_libraries(sudoku_lib PUBLIC simd_avx2 simd_avx512)
+endif()
 
 # Platform-specific library settings
 if(WIN32)
     # Windows-specific settings for library
+elseif(APPLE)
+    # macOS: pthreads included in libc
 elseif(UNIX AND NOT APPLE)
     # Linux-specific settings for library
     target_link_libraries(sudoku_lib PUBLIC pthread)

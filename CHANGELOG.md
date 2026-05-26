@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 First tagged release (in preparation). Adds the custom-puzzle feature suite on top of the generated-puzzle baseline.
 
+### Added — Platform support
+
+- **macOS build support** — the application now builds and runs on macOS 13+.
+  App bundle (`sudoku.app`), `Info.plist`, and a DMG packaging job are provided.
+  Application data is stored in `~/Library/Application Support/Sudoku/`.
+  Universal Binary (arm64 + x86_64) is the target for CI/packaging; ARM SIMD
+  optimisations are not included in this release (scalar fallback used on Apple
+  Silicon). Code signing and notarisation are deferred until distribution begins.
+  The `build-windows` CI job is now on-demand only (`workflow_dispatch`),
+  consistent with the new `build-macos` job.
+
 ### Added — UI
 
 - **Session timer (right of status bar)** — optional indicator showing total time since the app launched, intended as a reminder for long sessions. Toggle via Settings → Display → *Show session timer*. Off by default. Independent of the per-puzzle timer on the left; keeps ticking through menus and pauses. Persists as `display.show_session_timer` in `~/.local/share/sudoku/settings.yaml` (downstream packagers: new YAML key, default `false`, gracefully ignored by older binaries).
@@ -28,6 +39,7 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 - **Repository renamed** from `sudoku-cpp` to `sudoku` (GitHub URL is now `https://github.com/darkstar79/sudoku`; the old path redirects). Downstream packaging recipes that fetch source by URL should switch to the new path.
 - **Reverse-DNS app ID** changed from `org.sudoku_cpp.Sudoku` to `io.github.darkstar79.Sudoku` (follows Flathub naming convention for GitHub-hosted projects without a custom domain, derived from the new repo name). The `.desktop`, AppStream metainfo, and SVG icon files are renamed in lockstep; downstream `.spec` and packaging recipes that hardcode the old paths or `Icon=` value need to be updated.
 - **Bundled dependencies bumped** for the Flatpak module set and the Conan recipe used by the Windows build: libsodium `1.0.18` → `1.0.21`, yaml-cpp `0.8.0` → `0.9.0` (Conan recipe was already at parity-via-Flatpak for yaml-cpp; both now align).
+- **fmt bumped from `11.2.0` to `12.1.0`** in the Conan recipe (`conanfile.py`). On macOS, Qt6 from Homebrew adds `/opt/homebrew/include` as a system include path, which exposes `fmt/12.1.0` headers to the compiler; linking against a Conan-built `fmt/11.2.0` then produced `fmt::v12` unresolved symbols. The bump aligns the Conan dependency with what Homebrew ships, and is benign on Linux/Windows (spdlog 1.15.3 is API-compatible with fmt 12.x via `SPDLOG_FMT_EXTERNAL`). Downstream OBS/Flatpak packagers that provide their own `fmt` are unaffected.
 - **Save file format** bumped from 1.0 → 1.1. A new `PuzzleOrigin` field records whether a puzzle was generated, paste-imported, or entered in edit mode. Loading older 1.0 saves remains supported; missing field defaults to `Generated`.
 - **Solver gains budget-bearing overloads** — `solvePuzzle(board, std::chrono::milliseconds)` and a technique-targeted dispatch. The backtracking fallback now honors the deadline so adversarial inputs cannot hang the UI.
 - **Hint message clearing** — stale `hintMessage` is cleared on every `getHint` exit path so dismissed hints don't reappear after subsequent moves.

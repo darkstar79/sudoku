@@ -174,6 +174,52 @@ path only.
 
 ---
 
+## macOS
+
+macOS is a supported build target as of this development cycle. It uses a
+different distribution model from Linux/Windows — no OBS, no Flatpak/AppImage.
+
+### Install tree (macOS app bundle)
+
+`cmake --install` produces a self-contained `.app` bundle at the install prefix:
+
+| Path inside bundle | Content |
+|--------------------|---------|
+| `sudoku.app/Contents/MacOS/sudoku` | executable (arm64, x86_64, or Universal) |
+| `sudoku.app/Contents/Resources/translations/sudoku_*.qm` | compiled translation catalogs |
+| `sudoku.app/Contents/Info.plist` | generated from `resources/macos/Info.plist.in` |
+| `sudoku.app/Contents/Resources/AppIcon.icns` | app icon (when present) |
+| `sudoku.app/Contents/Frameworks/` | Qt frameworks (populated by `macdeployqt`) |
+
+Application data is stored in `~/Library/Application Support/Sudoku/`.
+
+### Distribution
+
+| Format | Status | Notes |
+|--------|--------|-------|
+| `.dmg` (DragNDrop) | Planned | CI `dmg` job produces `Sudoku-<version>-macOS.dmg` |
+| Homebrew cask | Deferred | Requires notarization before submission |
+| Mac App Store | Out of scope | Requires significant sandboxing rework |
+
+### CI
+
+The `dmg` job in [packaging.yml](../.github/workflows/packaging.yml) builds
+a Universal Binary (arm64 + x86_64) by compiling each architecture separately
+and merging with `lipo`, then runs `macdeployqt` to embed Qt frameworks.
+
+The `build-macos` job in [ci.yml](../.github/workflows/ci.yml) runs on-demand
+only (`workflow_dispatch`). See [docs/internal/MACOS_PORTING.md](internal/MACOS_PORTING.md)
+for the full macOS porting reference.
+
+### Code signing / notarization
+
+Not implemented in this phase. Unsigned builds run on the developer's own
+Mac without restriction. Notarization (required to pass Gatekeeper on other
+Macs) is deferred until distribution begins and requires an Apple Developer
+account ($99/yr).
+
+---
+
 ## Anticipated future changes
 
 Listed so distro recipes can plan, not because anything is scheduled.

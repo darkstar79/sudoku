@@ -16,13 +16,18 @@
 
 #include "core/cpu_features.h"
 
-#ifdef _MSC_VER
-#    include <intrin.h>
-#else
-#    include <cpuid.h>
-#endif
-
 #include <cstdint>
+
+// x86/x86_64 only: CPUID-based SIMD feature detection.
+// On non-x86 architectures (ARM64/Apple Silicon) there is no AVX, so
+// getCpuFeatures() returns an all-false struct and the scalar path is used.
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+
+#    ifdef _MSC_VER
+#        include <intrin.h>
+#    else
+#        include <cpuid.h>
+#    endif
 
 namespace sudoku::core {
 
@@ -32,15 +37,15 @@ namespace {
 /// This avoids requiring the -mxsave compiler flag.
 /// XCR0 bits indicate which SIMD state the OS saves/restores on context switches.
 [[nodiscard]] uint64_t readXcr0() {
-#ifdef _MSC_VER
+#    ifdef _MSC_VER
     return _xgetbv(0);
-#else
+#    else
     uint32_t eax = 0;
     uint32_t edx = 0;
     // XGETBV: ECX=0 selects XCR0
     __asm__ __volatile__("xgetbv" : "=a"(eax), "=d"(edx) : "c"(0));
     return (static_cast<uint64_t>(edx) << 32) | eax;
-#endif
+#    endif
 }
 
 /// Check if OS supports saving/restoring AVX state (XCR0 bits 1+2).
@@ -48,16 +53,16 @@ namespace {
 [[nodiscard]] bool osSupportsAvx() {
     // First check if OSXSAVE is enabled (CPUID.1:ECX bit 27)
     unsigned int ecx = 0;
-#ifdef _MSC_VER
+#    ifdef _MSC_VER
     int regs[4];
     __cpuid(regs, 1);
     ecx = static_cast<unsigned int>(regs[2]);
-#else
+#    else
     unsigned int eax = 0;
     unsigned int ebx = 0;
     unsigned int edx = 0;
     __get_cpuid(1, &eax, &ebx, &ecx, &edx);
-#endif
+#    endif
 
     // Bit 27: OSXSAVE — OS uses XSAVE/XRSTOR for extended state management
     if ((ecx & (1U << 27)) == 0) {
@@ -90,25 +95,25 @@ namespace {
     unsigned int edx = 0;
 
     // --- CPUID leaf 1: Basic feature flags ---
-#ifdef _MSC_VER
+#    ifdef _MSC_VER
     int regs[4];
     __cpuid(regs, 1);
     ecx = static_cast<unsigned int>(regs[2]);
-#else
+#    else
     __get_cpuid(1, &eax, &ebx, &ecx, &edx);
-#endif
+#    endif
 
     // ECX bit 23: POPCNT
     features.has_popcnt = (ecx & (1U << 23)) != 0;
 
     // --- CPUID leaf 7, sub-leaf 0: Extended feature flags ---
     eax = ebx = ecx = edx = 0;
-#ifdef _MSC_VER
+#    ifdef _MSC_VER
     __cpuidex(regs, 7, 0);
     ebx = static_cast<unsigned int>(regs[1]);
-#else
+#    else
     __get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
-#endif
+#    endif
 
     // EBX bit 5: AVX2 (requires OS AVX support)
     if (osSupportsAvx()) {
@@ -136,3 +141,16 @@ const CpuFeatures& getCpuFeatures() {
 }
 
 }  // namespace sudoku::core
+
+#else  // non-x86: no AVX, always return all-false (scalar path)
+
+namespace sudoku::core {
+
+const CpuFeatures& getCpuFeatures() {
+    static const CpuFeatures features{};  // all bool members default to false
+    return features;
+}
+
+}  // namespace sudoku::core
+
+#endif
