@@ -210,6 +210,7 @@ private:
         return excluded;
     }
 
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
     [[nodiscard]] static bool checkRowBasedCover(const BoardData& board, const CandidateGrid& candidates,
                                                  const Position& base1, const Position& base2, const Position& t1,
                                                  const Position& t2, uint16_t base_mask, size_t band_start_row) {
@@ -370,6 +371,7 @@ private:
         return excluded;
     }
 
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
     [[nodiscard]] static bool checkColBasedCover(const BoardData& board, const CandidateGrid& candidates,
                                                  const Position& base1, const Position& base2, const Position& t1,
                                                  const Position& t2, uint16_t base_mask, size_t stack_start_col) {
