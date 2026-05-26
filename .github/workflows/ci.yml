@@ -2,7 +2,19 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop, 'feature/**', 'ci/**' ]
+    # Branch-prefix allowlist for direct pushes. PRs into main/develop run via the
+    # pull_request trigger below regardless of head-branch name, so prefixes here
+    # only affect ad-hoc pushes (catching regressions before a PR is opened).
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'fix/**'
+      - 'bugfix/**'
+      - 'hotfix/**'
+      - 'refactor/**'
+      - 'chore/**'
+      - 'ci/**'
   pull_request:
     branches: [ main, develop ]
   workflow_dispatch:

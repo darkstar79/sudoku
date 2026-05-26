@@ -88,6 +88,14 @@ enum class SolvingTechnique : uint8_t {
     Backtracking = 255           ///< Not a logical technique - fallback solver (SE 12.0)
 };
 
+// Sentinel: highest logical-technique enum value (excludes Backtracking).
+// When adding a new logical technique above, bump this constant to match — it pins
+// the upper bound for code that iterates the contiguous logical-technique range
+// (e.g. exhaustiveness tests for description tables). Kept as a free constexpr
+// rather than an enumerator alias so it doesn't perturb `-Wswitch` exhaustiveness
+// or duplicate-case diagnostics in switches over SolvingTechnique.
+inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::GroupedNiceLoop;
+
 /// Returns human-readable name for technique
 /// @param technique The solving technique
 /// @return Technique name (e.g., "Naked Single")

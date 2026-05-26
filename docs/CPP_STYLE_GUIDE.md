@@ -482,6 +482,46 @@ uint16_t mask = valueToBit(value);  // Creates bitmask for Sudoku value 1-9
 uint16_t mask = static_cast<uint16_t>(1 << value);
 ```
 
+**Derive constants from authoritative definitions — don't restate literals.**
+
+When a value already exists somewhere (an enum value, another constant, a sizeof,
+a `std::array` length), reuse it instead of repeating the literal. Restated
+literals drift silently when the original moves; derived ones are caught by the
+compiler. Prefer a free `constexpr` sentinel sitting next to the authoritative
+definition over maintaining a parallel constant somewhere else.
+
+```cpp
+// ✅ GOOD: Sentinel constexpr lives next to the enum, single source of truth.
+// Adding a new logical technique forces the author to bump the sentinel in
+// the same file — the test loop tracks it automatically. Kept outside the
+// enum so it doesn't introduce an enumerator alias (which can perturb
+// `-Wswitch` exhaustiveness or duplicate-case diagnostics).
+enum class SolvingTechnique : uint8_t {
+    NakedSingle = 0,
+    // ...
+    GroupedNiceLoop = 53,
+    Backtracking = 255,
+};
+
+inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::GroupedNiceLoop;
+
+// In the test:
+constexpr int kMaxLogicalTechnique = static_cast<int>(kLastLogicalTechnique);
+for (int i = 0; i <= kMaxLogicalTechnique; ++i) { /* ... */ }
+```
+
+```cpp
+// ❌ BAD: A bare `constexpr int kMaxLogicalTechnique = 53;` in the test file.
+// Two sources of truth, no compiler link between them — a new enum value
+// added later silently leaves the loop short, and tests pass while
+// coverage of the new arms drops to zero.
+```
+
+The same applies to sizes derived from `std::array::size()`, lengths derived
+from `sizeof(...) / sizeof(...[0])`, and ranges derived from `enum::First`
+/ `enum::Last` aliases. If you find yourself typing a number that already has
+a name nearby, reach for that name.
+
 ---
 
 ### 2. Helper Functions

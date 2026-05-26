@@ -25,9 +25,12 @@ using namespace sudoku::core;
 
 namespace {}  // namespace
 
+// Loops iterate [0, kLastLogicalTechnique] — Backtracking = 255 sits outside the
+// contiguous logical range and is covered separately.
+
 TEST_CASE("TechniqueDescription - All techniques have descriptions", "[technique_descriptions]") {
-    SECTION("Every SolvingTechnique (0-32) has non-empty title") {
-        for (int i = 0; i <= 32; ++i) {
+    SECTION("Every logical SolvingTechnique has non-empty title") {
+        for (int i = 0; i <= static_cast<int>(kLastLogicalTechnique); ++i) {
             auto technique = static_cast<SolvingTechnique>(i);
             auto desc = getTechniqueDescription(technique);
 
@@ -36,8 +39,8 @@ TEST_CASE("TechniqueDescription - All techniques have descriptions", "[technique
         }
     }
 
-    SECTION("Every SolvingTechnique (0-32) has non-empty what_it_is") {
-        for (int i = 0; i <= 32; ++i) {
+    SECTION("Every logical SolvingTechnique has non-empty what_it_is") {
+        for (int i = 0; i <= static_cast<int>(kLastLogicalTechnique); ++i) {
             auto technique = static_cast<SolvingTechnique>(i);
             auto desc = getTechniqueDescription(technique);
 
@@ -46,8 +49,8 @@ TEST_CASE("TechniqueDescription - All techniques have descriptions", "[technique
         }
     }
 
-    SECTION("Every SolvingTechnique (0-32) has non-empty what_to_look_for") {
-        for (int i = 0; i <= 32; ++i) {
+    SECTION("Every logical SolvingTechnique has non-empty what_to_look_for") {
+        for (int i = 0; i <= static_cast<int>(kLastLogicalTechnique); ++i) {
             auto technique = static_cast<SolvingTechnique>(i);
             auto desc = getTechniqueDescription(technique);
 
@@ -65,16 +68,15 @@ TEST_CASE("TechniqueDescription - All techniques have descriptions", "[technique
 }
 
 TEST_CASE("TechniqueDescription - No duplicate titles", "[technique_descriptions]") {
-    SECTION("All 34 techniques have unique titles") {
+    SECTION("All logical techniques + Backtracking have unique titles") {
         std::set<std::string> titles;
-        // 0-32 + 255 (Backtracking)
-        for (int i = 0; i <= 32; ++i) {
+        for (int i = 0; i <= static_cast<int>(kLastLogicalTechnique); ++i) {
             auto desc = getTechniqueDescription(static_cast<SolvingTechnique>(i));
             titles.emplace(desc.title);
         }
         titles.emplace(getTechniqueDescription(SolvingTechnique::Backtracking).title);
 
-        REQUIRE(titles.size() == 34);
+        REQUIRE(titles.size() == static_cast<size_t>(kLastLogicalTechnique) + 2);
     }
 }
 
