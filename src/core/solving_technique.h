@@ -85,7 +85,12 @@ enum class SolvingTechnique : uint8_t {
     UniqueLoop = 51,             ///< Deadly pattern loop of 4-6 cells with shared candidate pair (SE 4.5)
     ContinuousNiceLoop = 52,     ///< Continuous AIC loop — every weak link produces elimination (SE 7.0)
     GroupedNiceLoop = 53,        ///< Nice Loop with grouped nodes (grouped AIC) (SE 8.0)
-    Backtracking = 255           ///< Not a logical technique - fallback solver (SE 12.0)
+    // Sentinel: highest logical-technique enum value (excludes Backtracking).
+    // When adding a new logical technique above, bump this alias to match — it pins
+    // the upper bound for code that iterates the contiguous logical-technique range
+    // (e.g. exhaustiveness tests for description tables).
+    kLastLogical = GroupedNiceLoop,
+    Backtracking = 255  ///< Not a logical technique - fallback solver (SE 12.0)
 };
 
 /// Returns human-readable name for technique
