@@ -65,23 +65,39 @@ else
 fi
 
 # Check 2: Code formatting (staged files only, ~instant)
-echo -e "${YELLOW}[pre-commit] Checking formatting on $FILE_COUNT staged file(s)...${NC}"
-FORMAT_FAILED=false
-while IFS= read -r file; do
-    if [ -f "$file" ]; then
-        if ! clang-format --dry-run --Werror "$file" 2>/dev/null; then
-            echo -e "  ${RED}Needs formatting:${NC} $file"
-            FORMAT_FAILED=true
+# Locate clang-format: PATH first, then common Homebrew locations (macOS)
+CLANG_FORMAT=$(command -v clang-format 2>/dev/null || true)
+if [ -z "$CLANG_FORMAT" ]; then
+    for candidate in /opt/homebrew/opt/llvm/bin/clang-format /usr/local/opt/llvm/bin/clang-format; do
+        if [ -x "$candidate" ]; then
+            CLANG_FORMAT="$candidate"
+            break
         fi
-    fi
-done <<< "$STAGED_CPP_FILES"
+    done
+fi
 
-if [ "$FORMAT_FAILED" = true ]; then
-    echo -e "${RED}Formatting check failed!${NC}"
-    echo -e "${YELLOW}Run './scripts/format.sh' to fix, then re-stage.${NC}"
-    CHECKS_PASSED=false
+if [ -z "$CLANG_FORMAT" ] || [ ! -x "$CLANG_FORMAT" ]; then
+    echo -e "${YELLOW}[pre-commit] clang-format not found — skipping formatting check.${NC}"
+    echo -e "${YELLOW}Install with: brew install llvm  (macOS) or: sudo dnf install clang-tools-extra  (Fedora)${NC}"
 else
-    echo -e "${GREEN}Formatting OK${NC}"
+    echo -e "${YELLOW}[pre-commit] Checking formatting on $FILE_COUNT staged file(s)...${NC}"
+    FORMAT_FAILED=false
+    while IFS= read -r file; do
+        if [ -f "$file" ]; then
+            if ! "$CLANG_FORMAT" --dry-run --Werror "$file" 2>/dev/null; then
+                echo -e "  ${RED}Needs formatting:${NC} $file"
+                FORMAT_FAILED=true
+            fi
+        fi
+    done <<< "$STAGED_CPP_FILES"
+
+    if [ "$FORMAT_FAILED" = true ]; then
+        echo -e "${RED}Formatting check failed!${NC}"
+        echo -e "${YELLOW}Run './scripts/format.sh' to fix, then re-stage.${NC}"
+        CHECKS_PASSED=false
+    else
+        echo -e "${GREEN}Formatting OK${NC}"
+    fi
 fi
 
 # Check 3: clang-tidy on changed lines only (opt-in, ~5-30s)

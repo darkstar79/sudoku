@@ -35,6 +35,11 @@ class SudokuConan(ConanFile):
         # Core dependencies
         # Note: Qt6 is provided by system packages (dnf install qt6-qtbase-devel)
         self.requires("spdlog/1.15.3")
+        # Force fmt/12.1.0 to match Homebrew Qt6's bundled fmt headers on macOS.
+        # Without this, Qt6's -isystem /opt/homebrew/include pulls in fmt/12.1.0
+        # headers at compile time while the linker sees the spdlog-transitive
+        # fmt/11.2.0 .a — resulting in unresolved fmt::v12 symbols on arm64.
+        self.requires("fmt/12.1.0", force=True)
         self.requires("yaml-cpp/0.9.0")
         self.requires("zlib/1.3.1")  # For save file compression
         self.requires("libsodium/1.0.21")  # For save file encryption

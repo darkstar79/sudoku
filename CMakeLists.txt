@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.28)
 
+# macOS: set Universal Binary default and deployment target before project() so
+# CMake's compiler detection honours these settings. Override for single-arch
+# local builds: cmake --preset debug -DCMAKE_OSX_ARCHITECTURES=arm64
+if(APPLE)
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "Build architectures for macOS")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "13.0" CACHE STRING "Minimum macOS deployment target")
+endif()
+
 project(
     sudoku
     VERSION 1.0.0
@@ -79,11 +87,16 @@ else()
     endif()
 endif()
 
-# SIMD Configuration: Runtime CPU dispatch
-# Build a single binary that auto-selects Scalar/AVX2/AVX512 at runtime.
-# SIMD source files are compiled in a separate STATIC library with per-target flags.
-# All other code compiles at baseline x86-64 (no AVX flags).
-message(STATUS "SIMD: Runtime CPU dispatch ENABLED (Scalar/AVX2/AVX-512 auto-detection)")
+# SIMD Configuration: Runtime CPU dispatch (x86_64 only)
+# Builds Scalar/AVX2/AVX-512 variants in separate STATIC libraries; the main
+# binary selects the fastest path at runtime via CPUID.
+# On ARM64 (Apple Silicon) the AVX libraries are omitted and the scalar path
+# in constraint_state.cpp is used exclusively.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686")
+    message(STATUS "SIMD: Runtime CPU dispatch ENABLED (Scalar/AVX2/AVX-512 auto-detection)")
+else()
+    message(STATUS "SIMD: x86 SIMD libraries skipped on ${CMAKE_SYSTEM_PROCESSOR} — scalar path used")
+endif()
 
 # Fallback find modules (used when Conan is not available, e.g. Flatpak builds)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -106,23 +119,28 @@ set(SOURCES_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # Include directories
-include_directories(${INCLUDE_DIR})
+# SOURCES_DIR is listed explicitly so headers in src/core/ (e.g. cpu_features.h)
+# are reachable on all platforms. Previously they were only transitively available
+# via the SIMD static libs' PUBLIC include dirs; those libs are skipped on ARM64.
+include_directories(${INCLUDE_DIR} ${SOURCES_DIR})
 
-# SIMD STATIC library: AVX2-specific code compiled with per-target flags
-add_library(simd_avx2 STATIC "${SOURCES_DIR}/core/simd_constraint_state.cpp")
-target_include_directories(simd_avx2 PUBLIC ${INCLUDE_DIR} ${SOURCES_DIR})
-if(MSVC)
-    target_compile_options(simd_avx2 PRIVATE /arch:AVX2)
-else()
-    target_compile_options(simd_avx2 PRIVATE -mavx2 -mfma)
-endif()
+# SIMD STATIC libraries (x86_64 only — not compiled on ARM64/Apple Silicon)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686")
+    # AVX2-specific code
+    add_library(simd_avx2 STATIC "${SOURCES_DIR}/core/simd_constraint_state.cpp")
+    target_include_directories(simd_avx2 PUBLIC ${INCLUDE_DIR} ${SOURCES_DIR})
+    if(MSVC)
+        target_compile_options(simd_avx2 PRIVATE /arch:AVX2)
+    else()
+        target_compile_options(simd_avx2 PRIVATE -mavx2 -mfma)
+    endif()
 
-# SIMD STATIC library: AVX-512 code compiled with per-target flags
-# Uses AVX-512 BITALG for native _mm512_popcnt_epi16 (Zen 5+)
-add_library(simd_avx512 STATIC "${SOURCES_DIR}/core/simd_avx512_ops.cpp")
-target_include_directories(simd_avx512 PUBLIC ${INCLUDE_DIR} ${SOURCES_DIR})
-if(NOT MSVC)
-    target_compile_options(simd_avx512 PRIVATE -mavx512f -mavx512bw -mavx512bitalg -mavx2 -mfma)
+    # AVX-512 code — uses BITALG for native _mm512_popcnt_epi16 (Zen 5+)
+    add_library(simd_avx512 STATIC "${SOURCES_DIR}/core/simd_avx512_ops.cpp")
+    target_include_directories(simd_avx512 PUBLIC ${INCLUDE_DIR} ${SOURCES_DIR})
+    if(NOT MSVC)
+        target_compile_options(simd_avx512 PRIVATE -mavx512f -mavx512bw -mavx512bitalg -mavx2 -mfma)
+    endif()
 endif()
 
 # Source files - separate project code from third-party code
@@ -144,9 +162,17 @@ file(GLOB_RECURSE PROJECT_SOURCES
 # Exclude SIMD source from main GLOB (compiled separately in simd_avx2/simd_avx512 libraries)
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*simd_constraint_state\\.cpp$")
 list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*simd_avx512_ops\\.cpp$")
+# Scalar stub for non-x86: excluded from GLOB, added back conditionally below
+list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*simd_constraint_state_scalar\\.cpp$")
 
 # All sources are project sources (no third-party backends needed with Qt6)
 set(SOURCES ${PROJECT_SOURCES})
+
+# On non-x86 platforms (ARM64/Apple Silicon) the AVX2/AVX-512 libs are not built.
+# Add scalar stubs that satisfy the linker without any SIMD intrinsics.
+if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686")
+    list(APPEND SOURCES "${SOURCES_DIR}/core/simd_constraint_state_scalar.cpp")
+endif()
 
 # Main executable
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -165,14 +191,15 @@ endif()
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PUBLIC
-    simd_avx2
-    simd_avx512
     Qt6::Widgets
     spdlog::spdlog
     yaml-cpp::yaml-cpp
     ZLIB::ZLIB
     libsodium::libsodium
 )
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|i686")
+    target_link_libraries(${PROJECT_NAME} PUBLIC simd_avx2 simd_avx512)
+endif()
 
 # Platform-specific settings
 if(WIN32)
@@ -186,6 +213,28 @@ if(WIN32)
     target_sources(${PROJECT_NAME} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.rc"
     )
+elseif(APPLE)
+    # macOS: build as an app bundle
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/Info.plist.in"
+        MACOSX_BUNDLE_BUNDLE_NAME "Sudoku"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.darkstar79.Sudoku"
+        MACOSX_BUNDLE_ICON_FILE "AppIcon"
+    )
+    # Ship AppIcon.icns inside the bundle when it exists (generated separately
+    # from the SVG via iconutil; see docs/internal/MACOS_PORTING.md).
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/AppIcon.icns")
+        set_source_files_properties(
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/AppIcon.icns"
+            PROPERTIES MACOSX_PACKAGE_LOCATION "Resources"
+        )
+        target_sources(${PROJECT_NAME} PRIVATE
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/AppIcon.icns"
+        )
+    endif()
 elseif(UNIX AND NOT APPLE)
     # Linux-specific settings
     target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
@@ -224,6 +273,18 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/translations/"
     COMMENT "Copying Qt translation .qm files to build directory"
 )
+# On macOS the executable lives inside the bundle (Contents/MacOS/); also copy
+# translations to Contents/Resources/translations/ for correct bundle layout.
+if(APPLE)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Resources/translations"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/translations"
+            "$<TARGET_BUNDLE_CONTENT_DIR:${PROJECT_NAME}>/Resources/translations"
+        COMMENT "Copying Qt translations into macOS bundle Resources"
+    )
+endif()
 
 # Testing
 enable_testing()
@@ -258,6 +319,27 @@ if(WIN32)
                 message(FATAL_ERROR \"windeployqt failed: \${_wdqt_result}\")
             endif()
         ")
+    endif()
+elseif(APPLE)
+    # macOS: install the whole app bundle, then run macdeployqt to embed Qt
+    install(TARGETS ${PROJECT_NAME} BUNDLE DESTINATION .)
+    find_program(MACDEPLOYQT_EXECUTABLE macdeployqt
+        HINTS "${Qt6_DIR}/../../../bin"
+    )
+    if(MACDEPLOYQT_EXECUTABLE)
+        install(CODE "
+            message(STATUS \"Running macdeployqt...\")
+            execute_process(
+                COMMAND \"${MACDEPLOYQT_EXECUTABLE}\"
+                        \"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app\"
+                RESULT_VARIABLE _mdqt_result
+            )
+            if(NOT _mdqt_result EQUAL 0)
+                message(FATAL_ERROR \"macdeployqt failed: \${_mdqt_result}\")
+            endif()
+        ")
+    else()
+        message(WARNING "macdeployqt not found — Qt frameworks will not be bundled")
     endif()
 else()
     # Linux: FHS-compliant layout
@@ -302,6 +384,12 @@ if(WIN32)
     # Output filename: Sudoku-<version>-win64.exe
     set(CPACK_SYSTEM_NAME                 "win64")
     set(CPACK_PACKAGE_FILE_NAME           "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}")
+elseif(APPLE)
+    # DragNDrop .dmg (macOS)
+    set(CPACK_GENERATOR               "DragNDrop")
+    set(CPACK_DMG_VOLUME_NAME         "Sudoku")
+    set(CPACK_DMG_FORMAT              "UDBZ")
+    set(CPACK_PACKAGE_FILE_NAME       "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-macOS")
 endif()
 
 include(CPack)

@@ -1,0 +1,21 @@
+# Conan reference profile for macOS local development.
+# Not used by CI (CI uses `conan profile detect --force`).
+# Adjust arch and compiler.version to match your machine:
+#   arch: armv8 for Apple Silicon, x86_64 for Intel Mac
+#   compiler.version: output of `conan profile detect --force | grep compiler.version`
+#
+# Usage:
+#   conan install . --profile:build=conan_profile_macos -s build_type=Debug --build=missing
+
+[settings]
+arch=armv8
+build_type=Debug
+compiler=apple-clang
+compiler.cppstd=23
+compiler.libcxx=libc++
+compiler.version=21
+os=Macos
+os.version=13.0
+
+[conf]
+tools.cmake.cmaketoolchain:generator=Ninja

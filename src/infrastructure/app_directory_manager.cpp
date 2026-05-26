@@ -28,15 +28,21 @@ std::filesystem::path AppDirectoryManager::getDefaultDirectory(DirectoryType typ
 
 std::filesystem::path AppDirectoryManager::getPlatformBaseDirectory() {
 #ifdef _WIN32
-    // Windows: Use %APPDATA%/Sudoku
+    // Windows: %APPDATA%/Sudoku
     auto appdata = std::getenv("APPDATA");
     if (appdata) {
         return std::filesystem::path(appdata) / "Sudoku";
     }
-    // Fallback to current directory if APPDATA not set
+    return std::filesystem::current_path();
+#elifdef __APPLE__
+    // macOS: ~/Library/Application Support/Sudoku
+    auto* home = std::getenv("HOME");
+    if (home) {
+        return std::filesystem::path(home) / "Library" / "Application Support" / "Sudoku";
+    }
     return std::filesystem::current_path();
 #else
-    // Linux/Unix: Use XDG_DATA_HOME/sudoku (Flatpak-compatible), fallback to ~/.local/share/sudoku
+    // Linux/Unix: XDG_DATA_HOME/sudoku (Flatpak-compatible), fallback to ~/.local/share/sudoku
     auto* xdg_data_home = std::getenv("XDG_DATA_HOME");
     if (xdg_data_home && xdg_data_home[0] != '\0') {
         return std::filesystem::path(xdg_data_home) / "sudoku";
@@ -45,7 +51,6 @@ std::filesystem::path AppDirectoryManager::getPlatformBaseDirectory() {
     if (home) {
         return std::filesystem::path(home) / ".local" / "share" / "sudoku";
     }
-    // Fallback to current directory if HOME not set
     return std::filesystem::current_path();
 #endif
 }
