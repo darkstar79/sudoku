@@ -594,6 +594,68 @@ TEST_CASE("StatisticsManager - archiveUnreadableSessions preserves bytes and all
     REQUIRE_FALSE(reopened.hasUnreadableSessionHistory());
 }
 
+TEST_CASE("StatisticsManager - archiveUnreadableSessions never overwrites a prior archive",
+          "[statistics_manager_branches][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();  // fixed clock → same-second timestamp on both archives
+    const fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    // First corrupt file, archived under .corrupt-<ts>.
+    std::vector<uint8_t> first;
+    writeUndecryptableSessions(sessions_file, first);
+    REQUIRE_FALSE(mgr.getAllSessions().has_value());
+    auto archive1 = mgr.archiveUnreadableSessions();
+    REQUIRE(archive1.has_value());
+
+    // A second corrupt file appears and is archived in the same wall-clock second.
+    std::vector<uint8_t> second;
+    writeUndecryptableSessions(sessions_file, second);
+    REQUIRE(second != first);  // distinct random nonce/ciphertext
+    REQUIRE_FALSE(mgr.getAllSessions().has_value());
+    auto archive2 = mgr.archiveUnreadableSessions();
+    REQUIRE(archive2.has_value());
+
+    // The second archive must land on a distinct path, and BOTH originals must
+    // survive intact — the "never deletes" guarantee holds across collisions.
+    REQUIRE(*archive1 != *archive2);
+    REQUIRE(fs::exists(*archive1));
+    REQUIRE(fs::exists(*archive2));
+    REQUIRE(readAllBytes(*archive1) == first);
+    REQUIRE(readAllBytes(*archive2) == second);
+}
+
+TEST_CASE("StatisticsManager - getAllSessions fails closed on corrupt plain-text YAML",
+          "[statistics_manager_branches][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+
+    // Plain (unencrypted) YAML that parses as a node but fails field conversion
+    // (difficulty as a non-integer). isEncrypted() is false → the plain-YAML branch.
+    const std::string bad_yaml = "- difficulty: not_a_number\n";
+    {
+        std::ofstream f(sessions_file, std::ios::binary);
+        f.write(bad_yaml.data(), static_cast<std::streamsize>(bad_yaml.size()));
+    }
+    REQUIRE_FALSE(EncryptionManager::isEncrypted(readAllBytes(sessions_file)));
+
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    auto result = mgr.getAllSessions();
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(mgr.hasUnreadableSessionHistory());
+    REQUIRE(fs::exists(sessions_file));  // preserved, not overwritten
+
+    // Recovery path is offered for plain-text corruption too.
+    auto archived = mgr.archiveUnreadableSessions();
+    REQUIRE(archived.has_value());
+    REQUIRE(fs::exists(*archived));
+    REQUIRE_FALSE(fs::exists(sessions_file));
+    REQUIRE_FALSE(mgr.hasUnreadableSessionHistory());
+}
+
 TEST_CASE("StatisticsManager - clean encrypted round-trip keeps history readable (regression)",
           "[statistics_manager_branches][issue26]") {
     TempTestDir tmp;

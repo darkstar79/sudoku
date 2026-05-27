@@ -256,9 +256,13 @@ std::expected<std::vector<GameStats>, StatisticsError> StatisticsManager::getAll
                 }
                 sessions = std::move(*parsed);
             } else {
-                // Plain YAML
+                // Plain YAML. Mirror the encrypted branch: a parse failure must fail
+                // closed and latch the flag, so flushSessions() can't overwrite a
+                // recoverable file and the user is offered the archive path (issue #26).
                 auto result = statistics_serializer::deserializeGameStatsFromYaml(sessions_file_);
                 if (!result) {
+                    spdlog::warn("Failed to parse plain sessions file; preserving it and reporting unreadable");
+                    sessions_unreadable_ = true;
                     return std::unexpected(result.error());
                 }
                 sessions = std::move(*result);
@@ -706,8 +710,17 @@ std::expected<std::filesystem::path, StatisticsError> StatisticsManager::archive
     }
 
     auto timestamp = std::chrono::system_clock::to_time_t(time_provider_->systemNow());
-    auto archive_path = sessions_file_;
-    archive_path += ".corrupt-" + std::to_string(timestamp);
+    auto base_path = sessions_file_;
+    base_path += ".corrupt-" + std::to_string(timestamp);
+
+    // Never overwrite an existing archive: rename() would silently clobber a prior
+    // .corrupt-<ts> on a same-second collision or retry, defeating the "never deletes"
+    // guarantee. Uniquify with a -N suffix until the path is free.
+    auto archive_path = base_path;
+    for (int suffix = 1; std::filesystem::exists(archive_path); ++suffix) {
+        archive_path = base_path;
+        archive_path += "-" + std::to_string(suffix);
+    }
 
     std::error_code ec;
     std::filesystem::rename(sessions_file_, archive_path, ec);
