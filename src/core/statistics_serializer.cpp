@@ -17,6 +17,7 @@
 #include "statistics_serializer.h"
 
 #include "core/constants.h"
+#include "core/file_utils.h"
 #include "core/i_puzzle_generator.h"
 #include "core/i_statistics_manager.h"
 
@@ -27,7 +28,10 @@
 #include <fstream>
 #include <iomanip>
 #include <limits>
+#include <sstream>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include <fmt/base.h>
 #include <fmt/format.h>
@@ -215,13 +219,17 @@ std::expected<void, StatisticsError> serializeGameStatsToYaml(const GameStats& s
 
         sessions.push_back(session);
 
-        std::ofstream file(file_path);
-        if (!file.is_open()) {
+        // Rewrite the whole sessions file atomically (tmp + fsync + rename, #25):
+        // an in-place rewrite that crashes mid-write would truncate accumulated
+        // history. Emit to a string first, then hand the bytes to the writer.
+        std::stringstream out;
+        out << sessions;
+        const std::string yaml_str = out.str();
+        const std::vector<uint8_t> bytes(yaml_str.begin(), yaml_str.end());
+
+        if (auto write_result = file_utils::atomicWriteFile(file_path, bytes); !write_result) {
             return std::unexpected(StatisticsError::FileAccessError);
         }
-
-        file << sessions;
-        file.close();
 
         return {};
 

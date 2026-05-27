@@ -17,6 +17,7 @@
 #include "statistics_manager.h"
 
 #include "core/constants.h"
+#include "core/file_utils.h"
 #include "core/i_statistics_manager.h"
 #include "core/i_time_provider.h"
 #include "infrastructure/app_directory_manager.h"
@@ -801,30 +802,11 @@ void StatisticsManager::flushSessions() {
 
 std::expected<void, StatisticsError> StatisticsManager::atomicWriteFile(const std::filesystem::path& target,
                                                                         const std::vector<uint8_t>& data) {
-    auto tmp_path = target;
-    tmp_path += ".tmp";
-
-    {
-        std::ofstream file(tmp_path, std::ios::binary);
-        if (!file.is_open()) {
-            spdlog::error("Failed to open temp file for writing: {}", tmp_path.string());
-            return std::unexpected(StatisticsError::FileAccessError);
-        }
-        file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-        if (!file.good()) {
-            spdlog::error("Failed to write temp file: {}", tmp_path.string());
-            return std::unexpected(StatisticsError::FileAccessError);
-        }
-    }
-
-    std::error_code ec;
-    std::filesystem::rename(tmp_path, target, ec);
-    if (ec) {
-        spdlog::error("Failed to rename {} -> {}: {}", tmp_path.string(), target.string(), ec.message());
-        std::filesystem::remove(tmp_path, ec);
+    // Delegates to the shared crash-safe writer (tmp + fsync + rename, #25);
+    // maps its neutral error_code onto this module's error domain.
+    if (auto result = file_utils::atomicWriteFile(target, data); !result) {
         return std::unexpected(StatisticsError::FileAccessError);
     }
-
     return {};
 }
 
