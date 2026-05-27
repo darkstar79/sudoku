@@ -498,6 +498,16 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Bewertung</translation>
     </message>
     <message>
+        <source>Your statistics history could not be read — it may have been encrypted on a different system or written incompletely. Archive the unreadable file and start a fresh history? The original file is kept and never deleted.</source>
+        <translation>Ihr Statistikverlauf konnte nicht gelesen werden — er wurde möglicherweise auf einem anderen System verschlüsselt oder unvollständig geschrieben. Die unlesbare Datei archivieren und einen neuen Verlauf beginnen? Die ursprüngliche Datei bleibt erhalten und wird nie gelöscht.</translation>
+    </message>
+    <message>
+        <source>Old history archived to:
+{0}</source>
+        <translation>Alter Verlauf archiviert nach:
+{0}</translation>
+    </message>
+    <message>
         <source>Games Played: {0}</source>
         <translation>Gespielte Spiele: {0}</translation>
     </message>
@@ -752,6 +762,10 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Failed to save game</source>
         <translation>Spiel konnte nicht gespeichert werden</translation>
+    </message>
+    <message>
+        <source>Could not archive the unreadable statistics file.</source>
+        <translation>Die unlesbare Statistikdatei konnte nicht archiviert werden.</translation>
     </message>
     <message>
         <source>Failed to export statistics</source>

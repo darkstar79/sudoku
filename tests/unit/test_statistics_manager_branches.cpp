@@ -25,13 +25,17 @@
 /// - importStats with non-existent file
 /// - updateAggregateStats with puzzle_rating > 0
 
+#include "../../src/core/encryption_manager.h"
 #include "../../src/core/i_time_provider.h"
 #include "../../src/core/statistics_manager.h"
 #include "../helpers/test_utils.h"
 
 #include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <random>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -457,4 +461,218 @@ TEST_CASE("StatisticsManager - getStatsForDifficulty returns data for specific d
         REQUIRE(result.has_value());
         REQUIRE(result->total_games == 0);
     }
+}
+
+// ============================================================================
+// Issue #26: a corrupt/undecryptable sessions file must never be overwritten
+// ============================================================================
+
+namespace {
+
+/// Writes an encrypted-but-undecryptable sessions file: a real encrypted blob
+/// with one ciphertext byte flipped so the MAC check fails (mirrors the
+/// approach in test_encryption_manager.cpp). isEncrypted() stays true, decrypt()
+/// fails — exactly the transient/re-keyed scenario from issue #26.
+void writeUndecryptableSessions(const fs::path& sessions_file, std::vector<uint8_t>& out_bytes) {
+    auto encrypted = EncryptionManager::encryptInteractive({'h', 'i'});
+    REQUIRE(encrypted.has_value());
+    auto bytes = *encrypted;
+    REQUIRE(bytes.size() > 70);
+    bytes[70] ^= 0xFF;  // corrupt ciphertext → MAC verification fails
+    REQUIRE(EncryptionManager::isEncrypted(bytes));
+
+    std::ofstream f(sessions_file, std::ios::binary);
+    f.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    f.close();
+    out_bytes = bytes;
+}
+
+std::vector<uint8_t> readAllBytes(const fs::path& p) {
+    std::ifstream f(p, std::ios::binary);
+    return {std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>()};
+}
+
+}  // namespace
+
+TEST_CASE("StatisticsManager - getAllSessions fails closed on undecryptable encrypted file",
+          "[statistics_manager_branches][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    std::vector<uint8_t> ignored;
+    writeUndecryptableSessions(tmp.path() / "game_sessions.yaml", ignored);
+
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    auto result = mgr.getAllSessions();
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error() == StatisticsError::FileAccessError);
+    REQUIRE(mgr.hasUnreadableSessionHistory());
+}
+
+TEST_CASE("StatisticsManager - getAllSessions fails closed on encrypted-but-unparseable YAML",
+          "[statistics_manager_branches][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+
+    // Encrypt YAML that loads but throws during field conversion (difficulty as
+    // a non-integer) → deserializeGameStatsFromNode returns an error → the
+    // encrypted parse-failure branch in getAllSessions.
+    const std::string bad_yaml = "- difficulty: not_a_number\n";
+    std::vector<uint8_t> plaintext(bad_yaml.begin(), bad_yaml.end());
+    auto encrypted = EncryptionManager::encryptInteractive(plaintext);
+    REQUIRE(encrypted.has_value());
+    {
+        std::ofstream f(tmp.path() / "game_sessions.yaml", std::ios::binary);
+        f.write(reinterpret_cast<const char*>(encrypted->data()), static_cast<std::streamsize>(encrypted->size()));
+    }
+
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    auto result = mgr.getAllSessions();
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error() == StatisticsError::FileAccessError);
+    REQUIRE(mgr.hasUnreadableSessionHistory());
+}
+
+TEST_CASE("StatisticsManager - flushSessions never overwrites an unreadable file",
+          "[statistics_manager_branches][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+    std::vector<uint8_t> original;
+    writeUndecryptableSessions(sessions_file, original);
+
+    StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);  // encryption on by default
+
+    // Buffer a pending session, then flush. The destruction bug would re-encrypt
+    // just this session over the file, wiping the original bytes.
+    auto id = mgr.startGame(Difficulty::Easy, 1, 0);
+    REQUIRE(id.has_value());
+    time->advanceSystemTime(std::chrono::milliseconds(1000));
+    REQUIRE(mgr.endGame(*id, true).has_value());
+
+    mgr.flushSessions();
+
+    REQUIRE(readAllBytes(sessions_file) == original);
+}
+
+TEST_CASE("StatisticsManager - archiveUnreadableSessions preserves bytes and allows a fresh start",
+          "[statistics_manager_branches][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+    std::vector<uint8_t> original;
+    writeUndecryptableSessions(sessions_file, original);
+
+    StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);
+
+    // Latch the unreadable flag via a read attempt.
+    REQUIRE_FALSE(mgr.getAllSessions().has_value());
+    REQUIRE(mgr.hasUnreadableSessionHistory());
+
+    // Archive: original bytes move to *.corrupt-<ts>, never deleted.
+    auto archived = mgr.archiveUnreadableSessions();
+    REQUIRE(archived.has_value());
+    REQUIRE(fs::exists(*archived));
+    REQUIRE(readAllBytes(*archived) == original);
+    REQUIRE_FALSE(fs::exists(sessions_file));
+    REQUIRE_FALSE(mgr.hasUnreadableSessionHistory());
+
+    // A fresh session now persists cleanly through the destructor flush.
+    auto id = mgr.startGame(Difficulty::Easy, 2, 0);
+    REQUIRE(id.has_value());
+    time->advanceSystemTime(std::chrono::milliseconds(2000));
+    REQUIRE(mgr.endGame(*id, true).has_value());
+    mgr.flushSessions();
+
+    StatisticsManager reopened(tmp.path().string(), time);
+    auto sessions = reopened.getAllSessions();
+    REQUIRE(sessions.has_value());
+    REQUIRE(sessions->size() == 1);
+    REQUIRE_FALSE(reopened.hasUnreadableSessionHistory());
+}
+
+TEST_CASE("StatisticsManager - archiveUnreadableSessions never overwrites a prior archive",
+          "[statistics_manager_branches][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();  // fixed clock → same-second timestamp on both archives
+    const fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    // First corrupt file, archived under .corrupt-<ts>.
+    std::vector<uint8_t> first;
+    writeUndecryptableSessions(sessions_file, first);
+    REQUIRE_FALSE(mgr.getAllSessions().has_value());
+    auto archive1 = mgr.archiveUnreadableSessions();
+    REQUIRE(archive1.has_value());
+
+    // A second corrupt file appears and is archived in the same wall-clock second.
+    std::vector<uint8_t> second;
+    writeUndecryptableSessions(sessions_file, second);
+    REQUIRE(second != first);  // distinct random nonce/ciphertext
+    REQUIRE_FALSE(mgr.getAllSessions().has_value());
+    auto archive2 = mgr.archiveUnreadableSessions();
+    REQUIRE(archive2.has_value());
+
+    // The second archive must land on a distinct path, and BOTH originals must
+    // survive intact — the "never deletes" guarantee holds across collisions.
+    REQUIRE(*archive1 != *archive2);
+    REQUIRE(fs::exists(*archive1));
+    REQUIRE(fs::exists(*archive2));
+    REQUIRE(readAllBytes(*archive1) == first);
+    REQUIRE(readAllBytes(*archive2) == second);
+}
+
+TEST_CASE("StatisticsManager - getAllSessions fails closed on corrupt plain-text YAML",
+          "[statistics_manager_branches][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+
+    // Plain (unencrypted) YAML that parses as a node but fails field conversion
+    // (difficulty as a non-integer). isEncrypted() is false → the plain-YAML branch.
+    const std::string bad_yaml = "- difficulty: not_a_number\n";
+    {
+        std::ofstream f(sessions_file, std::ios::binary);
+        f.write(bad_yaml.data(), static_cast<std::streamsize>(bad_yaml.size()));
+    }
+    REQUIRE_FALSE(EncryptionManager::isEncrypted(readAllBytes(sessions_file)));
+
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    auto result = mgr.getAllSessions();
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(mgr.hasUnreadableSessionHistory());
+    REQUIRE(fs::exists(sessions_file));  // preserved, not overwritten
+
+    // Recovery path is offered for plain-text corruption too.
+    auto archived = mgr.archiveUnreadableSessions();
+    REQUIRE(archived.has_value());
+    REQUIRE(fs::exists(*archived));
+    REQUIRE_FALSE(fs::exists(sessions_file));
+    REQUIRE_FALSE(mgr.hasUnreadableSessionHistory());
+}
+
+TEST_CASE("StatisticsManager - clean encrypted round-trip keeps history readable (regression)",
+          "[statistics_manager_branches][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+
+    {
+        StatisticsManager mgr(tmp.path().string(), time);
+        mgr.setCollectDetailedStats(true);  // encryption on by default
+        auto id = mgr.startGame(Difficulty::Medium, 7, 0);
+        REQUIRE(id.has_value());
+        time->advanceSystemTime(std::chrono::milliseconds(3000));
+        REQUIRE(mgr.endGame(*id, true).has_value());
+    }  // destructor flushes encrypted
+
+    StatisticsManager reopened(tmp.path().string(), time);
+    auto sessions = reopened.getAllSessions();
+    REQUIRE(sessions.has_value());
+    REQUIRE(sessions->size() == 1);
+    REQUIRE_FALSE(reopened.hasUnreadableSessionHistory());
 }

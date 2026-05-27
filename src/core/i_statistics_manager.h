@@ -23,6 +23,7 @@
 #include <chrono>
 #include <cstdint>
 #include <expected>
+#include <filesystem>
 #include <limits>
 #include <string>
 #include <vector>
@@ -188,6 +189,19 @@ public:
 
     /// Flush any buffered sessions to disk (called on app exit).
     virtual void flushSessions() = 0;
+
+    /// Whether the on-disk session history could not be read on the last attempt
+    /// (e.g. an encrypted file that no longer decrypts after a hostname/machine-id
+    /// change, or a partial read). While true, the manager refuses to overwrite the
+    /// file so the original bytes are never destroyed. The flag is updated on every
+    /// session read and cleared by a successful read or by archiveUnreadableSessions().
+    [[nodiscard]] virtual bool hasUnreadableSessionHistory() const = 0;
+
+    /// Move an unreadable session-history file aside to "<name>.corrupt-<unix_ts>" so a
+    /// fresh history can be started without destroying the original (recoverable) bytes.
+    /// Never deletes. No-op (returns the live path) when the history is readable or absent.
+    /// @return Path the file was archived to, or an error if the rename failed.
+    [[nodiscard]] virtual std::expected<std::filesystem::path, StatisticsError> archiveUnreadableSessions() = 0;
 
 protected:
     // Protected special member functions to prevent slicing while allowing derived classes

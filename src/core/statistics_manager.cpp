@@ -236,27 +236,42 @@ std::expected<std::vector<GameStats>, StatisticsError> StatisticsManager::getAll
             file.close();
 
             if (EncryptionManager::isEncrypted(file_data)) {
-                // Decrypt then parse YAML
+                // Decrypt then parse YAML. A failure here must NOT be swallowed:
+                // returning empty would let flushSessions() overwrite and destroy a
+                // corrupt-but-possibly-recoverable file (issue #26). Fail closed and
+                // latch the flag so the file is preserved until the user archives it.
                 auto dec_result = EncryptionManager::decrypt(file_data);
-                if (dec_result) {
-                    std::string yaml_str(dec_result->begin(), dec_result->end());
-                    YAML::Node root = YAML::Load(yaml_str);
-                    auto parsed = statistics_serializer::deserializeGameStatsFromNode(root);
-                    if (parsed) {
-                        sessions = std::move(*parsed);
-                    }
-                } else {
-                    spdlog::warn("Failed to decrypt sessions file, treating as empty");
+                if (!dec_result) {
+                    spdlog::warn("Failed to decrypt sessions file; preserving it and reporting unreadable");
+                    sessions_unreadable_ = true;
+                    return std::unexpected(StatisticsError::FileAccessError);
                 }
+                std::string yaml_str(dec_result->begin(), dec_result->end());
+                YAML::Node root = YAML::Load(yaml_str);
+                auto parsed = statistics_serializer::deserializeGameStatsFromNode(root);
+                if (!parsed) {
+                    spdlog::warn("Failed to parse decrypted sessions file; preserving it and reporting unreadable");
+                    sessions_unreadable_ = true;
+                    return std::unexpected(StatisticsError::FileAccessError);
+                }
+                sessions = std::move(*parsed);
             } else {
-                // Plain YAML
+                // Plain YAML. Mirror the encrypted branch: a parse failure must fail
+                // closed and latch the flag, so flushSessions() can't overwrite a
+                // recoverable file and the user is offered the archive path (issue #26).
                 auto result = statistics_serializer::deserializeGameStatsFromYaml(sessions_file_);
                 if (!result) {
+                    spdlog::warn("Failed to parse plain sessions file; preserving it and reporting unreadable");
+                    sessions_unreadable_ = true;
                     return std::unexpected(result.error());
                 }
                 sessions = std::move(*result);
             }
         }
+
+        // Reached here only on a clean read (file readable or absent): clear any
+        // previously latched unreadable state (e.g. a transient failure that resolved).
+        sessions_unreadable_ = false;
 
         // Merge pending (in-memory) sessions
         sessions.insert(sessions.end(), pending_sessions_.begin(), pending_sessions_.end());
@@ -679,7 +694,45 @@ std::expected<void, StatisticsError> StatisticsManager::deleteSessionHistory() {
         }
     }
 
+    sessions_unreadable_ = false;
     return {};
+}
+
+bool StatisticsManager::hasUnreadableSessionHistory() const {
+    return sessions_unreadable_;
+}
+
+std::expected<std::filesystem::path, StatisticsError> StatisticsManager::archiveUnreadableSessions() {
+    // Nothing to archive: history reads fine or there is no file.
+    if (!sessions_unreadable_ || !std::filesystem::exists(sessions_file_)) {
+        sessions_unreadable_ = false;
+        return sessions_file_;
+    }
+
+    auto timestamp = std::chrono::system_clock::to_time_t(time_provider_->systemNow());
+    auto base_path = sessions_file_;
+    base_path += ".corrupt-" + std::to_string(timestamp);
+
+    // Never overwrite an existing archive: rename() would silently clobber a prior
+    // .corrupt-<ts> on a same-second collision or retry, defeating the "never deletes"
+    // guarantee. Uniquify with a -N suffix until the path is free.
+    auto archive_path = base_path;
+    for (int suffix = 1; std::filesystem::exists(archive_path); ++suffix) {
+        archive_path = base_path;
+        archive_path += "-" + std::to_string(suffix);
+    }
+
+    std::error_code ec;
+    std::filesystem::rename(sessions_file_, archive_path, ec);
+    if (ec) {
+        spdlog::error("Failed to archive unreadable sessions {} -> {}: {}", sessions_file_.string(),
+                      archive_path.string(), ec.message());
+        return std::unexpected(StatisticsError::FileAccessError);
+    }
+
+    spdlog::info("Archived unreadable session history to {}", archive_path.string());
+    sessions_unreadable_ = false;
+    return archive_path;
 }
 
 void StatisticsManager::flushSessions() {
@@ -691,10 +744,15 @@ void StatisticsManager::flushSessions() {
         // Load existing sessions, merge with pending, write as encrypted blob.
         // getAllSessions() already merges pending_sessions_, so no extra append needed.
         auto all_result = getAllSessions();
-        std::vector<GameStats> all_sessions;
-        if (all_result) {
-            all_sessions = std::move(*all_result);
+        if (!all_result) {
+            // The on-disk history could not be read. Overwriting now would re-encrypt
+            // only the pending sessions over recoverable bytes and destroy history
+            // (issue #26). Keep pending in memory and leave the file untouched until
+            // the user archives it via archiveUnreadableSessions().
+            spdlog::warn("Session history unreadable — skipping flush to avoid overwriting recoverable data");
+            return;
         }
+        std::vector<GameStats> all_sessions = std::move(*all_result);
 
         // Serialize to YAML in memory
         YAML::Node sessions_node;

@@ -287,6 +287,15 @@ public:
     void deleteSessionHistory();
     void flushStatsSessions();
 
+    /// True when the stored session history could not be read (e.g. encrypted on a
+    /// different system, or partially written). The file is preserved, not overwritten.
+    [[nodiscard]] bool hasUnreadableSessionHistory() const;
+
+    /// Archive an unreadable session-history file aside ("*.corrupt-<timestamp>") so a
+    /// fresh history can be started without destroying the original bytes.
+    /// @return The archive path on success; std::nullopt on failure (errorMessage is set).
+    [[nodiscard]] std::optional<std::string> archiveUnreadableSessionHistory();
+
     // CSV Export
     [[nodiscard]] std::expected<void, std::string> exportAggregateStatsCsv() const;
     [[nodiscard]] std::expected<void, std::string> exportGameSessionsCsv() const;
