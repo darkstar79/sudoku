@@ -26,13 +26,37 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
 using namespace sudoku::core;
 
+TEST_CASE("PuzzleAnalyzer construction contract — all deps required", "[puzzle_analyzer][contract]") {
+    // BL-7 (code review 2026-05-25): every method except parseString/serializeToString
+    // dereferences validator_/solver_/counter_ unconditionally. A default- or partially-
+    // constructed analyzer therefore segfaults on first use of an unsupported method, even
+    // though the header used to advertise partial setups as safe. The fix makes that state
+    // unrepresentable: the sole constructor takes the full dependency set, so the type system
+    // — not a runtime precondition check nobody wrote — guarantees the object is fully formed.
+    STATIC_REQUIRE_FALSE(std::is_default_constructible_v<PuzzleAnalyzer>);
+    STATIC_REQUIRE_FALSE(std::is_constructible_v<PuzzleAnalyzer, std::shared_ptr<IGameValidator>>);
+    STATIC_REQUIRE_FALSE(
+        std::is_constructible_v<PuzzleAnalyzer, std::shared_ptr<IGameValidator>, std::shared_ptr<SolutionCounter>>);
+    STATIC_REQUIRE(std::is_constructible_v<PuzzleAnalyzer, std::shared_ptr<IGameValidator>,
+                                           std::shared_ptr<ISudokuSolver>, std::shared_ptr<SolutionCounter>>);
+}
+
 namespace {
+
+// Builds a fully-wired analyzer — the only valid construction path post-BL-7. Used by the
+// parse/serialize/validate/uniqueness tests, none of which exercise more than a subset of the
+// deps but all of which must construct a complete object.
+PuzzleAnalyzer makeFullAnalyzer() {
+    auto validator = std::make_shared<GameValidator>();
+    return PuzzleAnalyzer{validator, std::make_shared<SudokuSolver>(validator), std::make_shared<SolutionCounter>()};
+}
 
 // 81-char canonical "easy" puzzle (the same naked-single fixture from solver tests).
 constexpr std::string_view kEasyDigits = "034678912"
@@ -54,7 +78,7 @@ BoardData makeEasyBoard() {
 }  // namespace
 
 TEST_CASE("PuzzleAnalyzer::parseString — happy paths", "[puzzle_analyzer][parser]") {
-    PuzzleAnalyzer analyzer;
+    auto analyzer = makeFullAnalyzer();
 
     SECTION("81 chars, digits with 0 for empty") {
         auto result = analyzer.parseString(kEasyDigits);
@@ -128,7 +152,7 @@ TEST_CASE("PuzzleAnalyzer::parseString — happy paths", "[puzzle_analyzer][pars
 }
 
 TEST_CASE("PuzzleAnalyzer::parseString — rejection paths", "[puzzle_analyzer][parser]") {
-    PuzzleAnalyzer analyzer;
+    auto analyzer = makeFullAnalyzer();
 
     SECTION("80 chars → WrongLength{actual=80}") {
         std::string input{kEasyDigits.substr(0, 80)};
@@ -194,7 +218,7 @@ TEST_CASE("PuzzleAnalyzer::parseString — rejection paths", "[puzzle_analyzer][
 }
 
 TEST_CASE("PuzzleAnalyzer::serializeToString round-trip", "[puzzle_analyzer][parser][roundtrip]") {
-    PuzzleAnalyzer analyzer;
+    auto analyzer = makeFullAnalyzer();
 
     SECTION("Serialize uses '.' for empty and produces exactly 81 chars") {
         BoardData board = makeEasyBoard();
@@ -230,8 +254,7 @@ namespace {
 }  // namespace
 
 TEST_CASE("PuzzleAnalyzer::validate — happy paths", "[puzzle_analyzer][validate]") {
-    auto validator = std::make_shared<GameValidator>();
-    PuzzleAnalyzer analyzer(validator);
+    auto analyzer = makeFullAnalyzer();
 
     SECTION("Empty board is trivially valid") {
         BoardData empty;
@@ -247,8 +270,7 @@ TEST_CASE("PuzzleAnalyzer::validate — happy paths", "[puzzle_analyzer][validat
 }
 
 TEST_CASE("PuzzleAnalyzer::validate — conflict reporting", "[puzzle_analyzer][validate]") {
-    auto validator = std::make_shared<GameValidator>();
-    PuzzleAnalyzer analyzer(validator);
+    auto analyzer = makeFullAnalyzer();
 
     SECTION("Row conflict: two 5s in row 0 → both cells flagged") {
         BoardData board;
@@ -283,9 +305,7 @@ TEST_CASE("PuzzleAnalyzer::validate — conflict reporting", "[puzzle_analyzer][
 }
 
 TEST_CASE("PuzzleAnalyzer::checkUniqueness", "[puzzle_analyzer][uniqueness]") {
-    auto validator = std::make_shared<GameValidator>();
-    auto counter = std::make_shared<SolutionCounter>();
-    PuzzleAnalyzer analyzer(validator, counter);
+    auto analyzer = makeFullAnalyzer();
 
     SECTION("Generated puzzle has unique solution") {
         PuzzleGenerator generator;

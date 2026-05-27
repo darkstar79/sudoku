@@ -20,6 +20,7 @@
 #include "i_game_validator.h"
 #include "i_sudoku_solver.h"
 
+#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -123,29 +124,27 @@ protected:
 };
 
 /// Concrete puzzle analyzer. Wraps an IGameValidator (rule conflicts), an ISudokuSolver
-/// (scoring via solve path), and a SolutionCounter (uniqueness). Each dependency is optional
-/// for partial setups — parsing/serializing only require no deps.
+/// (scoring via solve path), and a SolutionCounter (uniqueness). All three dependencies are
+/// REQUIRED and non-null: every method except parseString/serializeToString dereferences them
+/// unconditionally, so there is a single constructor and the analyzer is never partially
+/// initialized. Previously a default ctor plus partial-dep ctors advertised "optional for
+/// partial setups," but the methods had no precondition checks — calling, say, validate() on a
+/// default-constructed instance segfaulted (BL-7, code review 2026-05-25). That state is now
+/// unrepresentable; if tiered construction is ever genuinely needed, split the interface rather
+/// than reintroducing nullable members.
 class PuzzleAnalyzer : public IPuzzleAnalyzer {
 public:
     /// Max input size accepted by parseString. Larger inputs short-circuit with InputTooLarge.
     static constexpr std::size_t kMaxInputBytes = 4096;
 
-    /// Default constructor — supports parseString/serializeToString without any deps.
-    PuzzleAnalyzer() = default;
-
-    /// Constructor with validator for the validate() method.
-    explicit PuzzleAnalyzer(std::shared_ptr<IGameValidator> validator) : validator_(std::move(validator)) {
-    }
-
-    /// Constructor with validator and solution counter for validate() + checkUniqueness().
-    PuzzleAnalyzer(std::shared_ptr<IGameValidator> validator, std::shared_ptr<SolutionCounter> counter)
-        : validator_(std::move(validator)), counter_(std::move(counter)) {
-    }
-
-    /// Full constructor — required for scoreDifficulty().
+    /// Sole constructor — all three dependencies are required and must be non-null. In practice
+    /// they are process-wide DI singletons (see main.cpp), so the full set is always available at
+    /// every call site at zero extra cost. The assert documents the invariant and fails fast in
+    /// debug builds if a caller wires up a null dependency (e.g. a misconfigured DI registration).
     PuzzleAnalyzer(std::shared_ptr<IGameValidator> validator, std::shared_ptr<ISudokuSolver> solver,
                    std::shared_ptr<SolutionCounter> counter)
         : validator_(std::move(validator)), solver_(std::move(solver)), counter_(std::move(counter)) {
+        assert(validator_ && solver_ && counter_ && "PuzzleAnalyzer requires non-null validator, solver, and counter");
     }
 
     /// Parses a paste-string into a BoardData. See ParseError for the full ruleset.
