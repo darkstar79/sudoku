@@ -497,6 +497,15 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Your statistics history could not be read — it may have been encrypted on a different system or written incompletely. Archive the unreadable file and start a fresh history? The original file is kept and never deleted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Old history archived to:
+{0}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Games Played: {0}</source>
         <translation type="unfinished"></translation>
     </message>
@@ -750,6 +759,10 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Failed to save game</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Could not archive the unreadable statistics file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
