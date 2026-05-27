@@ -32,6 +32,7 @@
 #include <expected>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -189,6 +190,20 @@ void GameViewModel::deleteSessionHistory() {
 
 void GameViewModel::flushStatsSessions() {
     stats_manager_->flushSessions();
+}
+
+bool GameViewModel::hasUnreadableSessionHistory() const {
+    return stats_manager_->hasUnreadableSessionHistory();
+}
+
+std::optional<std::string> GameViewModel::archiveUnreadableSessionHistory() {
+    auto result = stats_manager_->archiveUnreadableSessions();
+    if (!result) {
+        spdlog::warn("Failed to archive unreadable session history");
+        errorMessage.set(std::string(core::loc("Sudoku", "Could not archive the unreadable statistics file.")));
+        return std::nullopt;
+    }
+    return result->string();
 }
 
 void GameViewModel::clearErrorMessage() {

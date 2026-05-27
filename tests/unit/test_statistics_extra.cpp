@@ -391,26 +391,32 @@ TEST_CASE("StatisticsManager - deleteSessionHistory removes file and pending ses
 }
 
 // ============================================================================
-// getAllSessions with corrupt encrypted file: covers line 249 (decrypt warn)
+// getAllSessions with corrupt encrypted file: must FAIL CLOSED (issue #26).
+// Returning empty here is the original data-loss bug — flushSessions would then
+// overwrite the file. The read must error and the file must be left intact.
 // ============================================================================
 
-TEST_CASE("StatisticsManager - getAllSessions handles corrupt encrypted file gracefully", "[statistics_extra]") {
+TEST_CASE("StatisticsManager - getAllSessions fails closed on corrupt encrypted file", "[statistics_extra]") {
     TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
+    const fs::path sessions_file = tmp.path() / "game_sessions.yaml";
     // Write data that looks encrypted (starts with magic bytes) but is corrupt
     {
-        std::ofstream f(tmp.path() / "game_sessions.yaml", std::ios::binary);
+        std::ofstream f(sessions_file, std::ios::binary);
         // EncryptionManager magic: "SDKENC" + version byte + flags byte + garbage
         std::array<char, 15> data = {'S', 'D', 'K', 'E', 'N', 'C', 0x01, 0x00, 'g', 'a', 'r', 'b', 'a', 'g', 'e'};
         f.write(data.data(), data.size());
     }
 
-    // getAllSessions should handle the decrypt failure gracefully (warn, return empty)
+    // getAllSessions must report the failure instead of silently dropping history,
+    // and flag the history as unreadable so the file is preserved.
     auto sessions = mgr.getAllSessions();
-    REQUIRE(sessions.has_value());
-    REQUIRE(sessions->empty());
+    REQUIRE_FALSE(sessions.has_value());
+    REQUIRE(sessions.error() == StatisticsError::FileAccessError);
+    REQUIRE(mgr.hasUnreadableSessionHistory());
+    REQUIRE(fs::exists(sessions_file));
 }
 
 // ============================================================================

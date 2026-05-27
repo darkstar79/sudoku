@@ -1144,6 +1144,31 @@ void MainWindow::showStatisticsDialog() {
         return;
     }
 
+    // Probe the session history (a read latches an "unreadable" flag if the file
+    // can't be decrypted/parsed). Only relevant when detailed stats are collected;
+    // otherwise the file is neither read for display nor overwritten on exit.
+    const bool show_detailed = settings_manager_ && settings_manager_->getSettings().collect_detailed_stats;
+    std::vector<core::GameStats> recent;
+    if (show_detailed) {
+        recent = view_model_->getRecentGames(20);
+        if (view_model_->hasUnreadableSessionHistory()) {
+            auto answer = QMessageBox::question(
+                this, qstr(core::loc("Sudoku", "Statistics")),
+                qstr(core::loc("Sudoku",
+                               "Your statistics history could not be read — it may have been encrypted on a "
+                               "different system or written incompletely. Archive the unreadable file and start "
+                               "a fresh history? The original file is kept and never deleted.")));
+            if (answer == QMessageBox::Yes) {
+                if (auto archived = view_model_->archiveUnreadableSessionHistory()) {
+                    QMessageBox::information(
+                        this, qstr(core::loc("Sudoku", "Statistics")),
+                        qstr(core::locFormat(core::loc("Sudoku", "Old history archived to:\n{0}"), *archived)));
+                }
+                recent = view_model_->getRecentGames(20);  // refresh after archiving
+            }
+        }
+    }
+
     auto maybe_stats = view_model_->getAggregateStats();
     const auto& display = view_model_->statistics.get();
 
@@ -1237,9 +1262,8 @@ void MainWindow::showStatisticsDialog() {
     }
 
     // === Recent Games tab (conditional on collect_detailed_stats) ===
-    bool show_detailed = settings_manager_ && settings_manager_->getSettings().collect_detailed_stats;
+    // show_detailed and recent were resolved above (with corrupt-history recovery).
     if (show_detailed) {
-        auto recent = view_model_->getRecentGames(20);
         if (!recent.empty()) {
             static constexpr int NUM_COLS = 6;
             auto* recent_page = new QWidget();

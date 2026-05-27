@@ -85,6 +85,8 @@ public:
     void setEncryptSessions(bool enabled) override;
     [[nodiscard]] std::expected<void, StatisticsError> deleteSessionHistory() override;
     void flushSessions() override;
+    [[nodiscard]] bool hasUnreadableSessionHistory() const override;
+    [[nodiscard]] std::expected<std::filesystem::path, StatisticsError> archiveUnreadableSessions() override;
 
 private:
     // Dependencies
@@ -103,6 +105,10 @@ private:
     bool collect_detailed_stats_{false};
     bool encrypt_sessions_{true};
     std::vector<GameStats> pending_sessions_;
+
+    // Latched true when getAllSessions() cannot read the on-disk history (decrypt or
+    // parse failure). Guards flushSessions() against overwriting recoverable bytes.
+    mutable bool sessions_unreadable_{false};
 
     // Cached aggregate statistics
     mutable AggregateStats cached_stats_;
