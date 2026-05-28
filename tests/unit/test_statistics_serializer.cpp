@@ -308,3 +308,38 @@ TEST_CASE("StatisticsSerializer - serializeGameStatsToYaml is atomic", "[statist
         REQUIRE(read_result->size() == 2);
     }
 }
+
+TEST_CASE("StatisticsSerializer - serializeStatsToYaml is atomic", "[statistics_serializer]") {
+    sudoku::test::TempTestDir tmp_dir;
+    auto file_path = tmp_dir.path() / "aggregate_stats.yaml";
+    const auto now = std::chrono::system_clock::now();
+
+    SECTION("Successful write leaves no .tmp scratch file") {
+        AggregateStats stats;
+        REQUIRE(serializeStatsToYaml(stats, file_path, now).has_value());
+
+        REQUIRE(std::filesystem::exists(file_path));
+        REQUIRE_FALSE(std::filesystem::exists(std::filesystem::path(file_path) += ".tmp"));
+    }
+
+    SECTION("A stray .tmp from a crashed prior write is cleared, target round-trips") {
+        // Simulate a crash during a previous save that left a partial .tmp behind.
+        {
+            std::ofstream partial(std::filesystem::path(file_path) += ".tmp", std::ios::binary | std::ios::trunc);
+            partial << "garbage from a crash";
+        }
+
+        AggregateStats stats;
+        stats.total_games = 42;
+        REQUIRE(serializeStatsToYaml(stats, file_path, now).has_value());
+
+        // The atomic writer reuses <file>.tmp as its scratch file and renames it
+        // into place, so no stray .tmp may survive a successful write.
+        REQUIRE(std::filesystem::exists(file_path));
+        REQUIRE_FALSE(std::filesystem::exists(std::filesystem::path(file_path) += ".tmp"));
+
+        auto loaded = deserializeStatsFromYaml(file_path);
+        REQUIRE(loaded.has_value());
+        REQUIRE(loaded->total_games == 42);
+    }
+}

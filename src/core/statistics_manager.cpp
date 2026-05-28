@@ -519,24 +519,13 @@ std::expected<void, StatisticsError> StatisticsManager::saveStatistics() const {
             return std::unexpected(StatisticsError::InvalidGameData);
         }
 
-        // Write to temp file, then atomically rename
-        auto tmp_path = stats_file_;
-        tmp_path += ".tmp";
-
+        // serializeStatsToYaml now writes atomically (tmp + fsync + rename, #25),
+        // so the previous hand-rolled tmp/rename here — which never fsync'd — is
+        // no longer needed and would only duplicate the work.
         auto serialize_result =
-            statistics_serializer::serializeStatsToYaml(cached_stats_, tmp_path, time_provider_->systemNow());
+            statistics_serializer::serializeStatsToYaml(cached_stats_, stats_file_, time_provider_->systemNow());
         if (!serialize_result) {
-            std::error_code ec;
-            std::filesystem::remove(tmp_path, ec);
             return std::unexpected(serialize_result.error());
-        }
-
-        std::error_code ec;
-        std::filesystem::rename(tmp_path, stats_file_, ec);
-        if (ec) {
-            spdlog::error("Failed to rename aggregate stats: {}", ec.message());
-            std::filesystem::remove(tmp_path, ec);
-            return std::unexpected(StatisticsError::FileAccessError);
         }
 
         spdlog::debug("Saved aggregate statistics to file");

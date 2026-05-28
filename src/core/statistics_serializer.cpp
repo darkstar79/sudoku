@@ -80,13 +80,17 @@ std::expected<void, StatisticsError> serializeStatsToYaml(const AggregateStats& 
         overall["best_win_streak"] = stats.best_win_streak;
         root["overall"] = overall;
 
-        std::ofstream file(file_path);
-        if (!file.is_open()) {
+        // Write the whole file atomically (tmp + fsync + rename, #25): an in-place
+        // rewrite that crashes mid-write would truncate the aggregate stats. Emit
+        // to a string first, then hand the bytes to the shared crash-safe writer.
+        std::stringstream out;
+        out << root;
+        const std::string yaml_str = out.str();
+        const std::vector<uint8_t> bytes(yaml_str.begin(), yaml_str.end());
+
+        if (auto write_result = file_utils::atomicWriteFile(file_path, bytes); !write_result) {
             return std::unexpected(StatisticsError::FileAccessError);
         }
-
-        file << root;
-        file.close();
 
         return {};
 
