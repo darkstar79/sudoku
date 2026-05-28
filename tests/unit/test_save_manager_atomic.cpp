@@ -67,7 +67,7 @@ TEST_CASE("SaveManager - stray truncated .tmp does not shadow a valid save", "[s
 
     auto save_result = mgr.saveGame(makeMinimalGame(), SaveSettings{});
     REQUIRE(save_result.has_value());
-    const auto save_id = *save_result;
+    const auto& save_id = *save_result;
     const auto save_path = tmp.path() / (save_id + ".yaml");
 
     // Simulate a crash during the *next* save: a partially written .tmp is left
