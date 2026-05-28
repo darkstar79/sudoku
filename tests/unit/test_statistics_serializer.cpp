@@ -271,3 +271,75 @@ TEST_CASE("StatisticsSerializer - CSV export", "[statistics_serializer]") {
         REQUIRE_FALSE(std::getline(file, line));  // No data rows
     }
 }
+
+// ============================================================================
+// Atomic write guarantee (issue #25): the sessions file is rewritten via a
+// .tmp + rename so a crash cannot truncate accumulated history.
+// ============================================================================
+
+TEST_CASE("StatisticsSerializer - serializeGameStatsToYaml is atomic", "[statistics_serializer]") {
+    sudoku::test::TempTestDir tmp_dir;
+    auto file_path = tmp_dir.path() / "sessions.yaml";
+
+    SECTION("Successful write leaves no .tmp scratch file") {
+        auto stats = sudoku::test::createTestGameStats(Difficulty::Medium, true);
+        auto result = serializeGameStatsToYaml(stats, file_path, false);
+        REQUIRE(result.has_value());
+
+        REQUIRE(std::filesystem::exists(file_path));
+        REQUIRE_FALSE(std::filesystem::exists(std::filesystem::path(file_path) += ".tmp"));
+    }
+
+    SECTION("Stray truncated .tmp does not corrupt accumulated history") {
+        auto stats1 = sudoku::test::createTestGameStats(Difficulty::Easy, true);
+        auto stats2 = sudoku::test::createTestGameStats(Difficulty::Hard, false);
+        REQUIRE(serializeGameStatsToYaml(stats1, file_path, false).has_value());
+        REQUIRE(serializeGameStatsToYaml(stats2, file_path, true).has_value());
+
+        // Simulate a crash during the next append: a partial .tmp is left behind
+        // but never renamed into place, so the real file keeps both sessions.
+        {
+            std::ofstream partial(std::filesystem::path(file_path) += ".tmp", std::ios::binary | std::ios::trunc);
+            partial << "- difficulty: 0\n  cor";  // truncated mid-record
+        }
+
+        auto read_result = deserializeGameStatsFromYaml(file_path);
+        REQUIRE(read_result.has_value());
+        REQUIRE(read_result->size() == 2);
+    }
+}
+
+TEST_CASE("StatisticsSerializer - serializeStatsToYaml is atomic", "[statistics_serializer]") {
+    sudoku::test::TempTestDir tmp_dir;
+    auto file_path = tmp_dir.path() / "aggregate_stats.yaml";
+    const auto now = std::chrono::system_clock::now();
+
+    SECTION("Successful write leaves no .tmp scratch file") {
+        AggregateStats stats;
+        REQUIRE(serializeStatsToYaml(stats, file_path, now).has_value());
+
+        REQUIRE(std::filesystem::exists(file_path));
+        REQUIRE_FALSE(std::filesystem::exists(std::filesystem::path(file_path) += ".tmp"));
+    }
+
+    SECTION("A stray .tmp from a crashed prior write is cleared, target round-trips") {
+        // Simulate a crash during a previous save that left a partial .tmp behind.
+        {
+            std::ofstream partial(std::filesystem::path(file_path) += ".tmp", std::ios::binary | std::ios::trunc);
+            partial << "garbage from a crash";
+        }
+
+        AggregateStats stats;
+        stats.total_games = 42;
+        REQUIRE(serializeStatsToYaml(stats, file_path, now).has_value());
+
+        // The atomic writer reuses <file>.tmp as its scratch file and renames it
+        // into place, so no stray .tmp may survive a successful write.
+        REQUIRE(std::filesystem::exists(file_path));
+        REQUIRE_FALSE(std::filesystem::exists(std::filesystem::path(file_path) += ".tmp"));
+
+        auto loaded = deserializeStatsFromYaml(file_path);
+        REQUIRE(loaded.has_value());
+        REQUIRE(loaded->total_games == 42);
+    }
+}

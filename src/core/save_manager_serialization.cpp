@@ -16,6 +16,7 @@
 
 #include "core/board_serializer.h"
 #include "core/constants.h"
+#include "core/file_utils.h"
 #include "core/i_game_validator.h"
 #include "core/i_puzzle_generator.h"
 #include "core/i_save_manager.h"
@@ -178,13 +179,13 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
             data = std::move(*encrypted);
         }
 
-        // 5. Write to file (binary mode for compressed/encrypted data)
-        std::ofstream file(file_path, std::ios::binary);
-        if (!file.is_open()) {
+        // 5. Write to file atomically (tmp + fsync + rename) so a crash or power
+        //    loss mid-write can never truncate the save — auto-save is the
+        //    recovery path, so an in-place write would defeat its purpose (#25).
+        if (auto write_result = file_utils::atomicWriteFile(file_path, data); !write_result) {
+            spdlog::error("Failed to write save file {}: {}", file_path.string(), write_result.error().message());
             return std::unexpected(SaveError::FileAccessError);
         }
-        file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
-        file.close();
 
         return {};
 
