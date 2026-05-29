@@ -32,7 +32,8 @@ enum class EncryptionError : std::uint8_t {
     DecryptionFailed,       // Decryption operation failed (wrong key or corrupted data)
     SystemInfoUnavailable,  // Cannot retrieve system identifiers
     KeyDerivationFailed,    // Key derivation (Argon2id) failed
-    InvalidFileFormat       // File doesn't have valid encryption header
+    InvalidFileFormat,      // File doesn't have valid encryption header
+    InitializationFailed    // libsodium could not be initialized (e.g. no RNG in sandbox)
 };
 
 /// Manages encryption/decryption of save files using libsodium
@@ -48,12 +49,17 @@ enum class EncryptionError : std::uint8_t {
 /// - Salt: 32 bytes
 /// - Nonce: 24 bytes
 /// - Ciphertext + MAC: variable length
+///
+/// This is a stateless static utility — it holds no key material between calls
+/// (keys are derived per-operation and zeroed immediately). libsodium is
+/// initialized lazily on first use; an init failure is reported as
+/// EncryptionError::InitializationFailed rather than thrown, so callers can
+/// degrade gracefully (e.g. disable save/load) instead of crashing (#28).
 class EncryptionManager {
 public:
-    EncryptionManager();
+    // Pure static utility: not instantiable and not copy/movable.
+    EncryptionManager() = delete;
     ~EncryptionManager() = default;
-
-    // Delete copy/move constructors (contains sensitive key material)
     EncryptionManager(const EncryptionManager&) = delete;
     EncryptionManager& operator=(const EncryptionManager&) = delete;
     EncryptionManager(EncryptionManager&&) = delete;
@@ -99,6 +105,10 @@ private:
 
     /// KDF cost level flags (stored in file header flags byte)
     static constexpr uint8_t FLAG_INTERACTIVE_KDF = 0x01;
+
+    /// Lazily initializes libsodium (idempotent; safe to call on every operation).
+    /// @return empty on success, EncryptionError::InitializationFailed if sodium_init() fails
+    [[nodiscard]] static std::expected<void, EncryptionError> ensureInitialized();
 
     /// Internal encrypt implementation with configurable KDF cost
     [[nodiscard]] static std::expected<std::vector<uint8_t>, EncryptionError>

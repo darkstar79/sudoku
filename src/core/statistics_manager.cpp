@@ -20,6 +20,7 @@
 #include "core/file_utils.h"
 #include "core/i_statistics_manager.h"
 #include "core/i_time_provider.h"
+#include "encryption_manager.h"
 #include "infrastructure/app_directory_manager.h"
 #include "statistics_serializer.h"
 
@@ -43,7 +44,7 @@ namespace sudoku::core {
 
 StatisticsManager::StatisticsManager(std::filesystem::path stats_directory,
                                      std::shared_ptr<ITimeProvider> time_provider)
-    : time_provider_(std::move(time_provider)), encryption_manager_(std::make_unique<EncryptionManager>()) {
+    : time_provider_(std::move(time_provider)) {
     if (stats_directory.empty()) {
         // Use platform-appropriate default directory
         stats_directory_ =

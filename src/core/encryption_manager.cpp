@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <fstream>
-#include <stdexcept>
 
 #include <fmt/base.h>
 #include <fmt/format.h>
@@ -45,13 +44,15 @@
 
 namespace sudoku::core {
 
-EncryptionManager::EncryptionManager() {
-    // Initialize libsodium
+std::expected<void, EncryptionError> EncryptionManager::ensureInitialized() {
+    // sodium_init() is idempotent: returns 0 on first success, 1 if already
+    // initialized, and -1 on failure. The project is single-threaded, so calling
+    // it lazily at the top of each operation is safe and cheap after the first call.
     if (sodium_init() < 0) {
         spdlog::error("Failed to initialize libsodium");
-        throw std::runtime_error("libsodium initialization failed");
+        return std::unexpected(EncryptionError::InitializationFailed);
     }
-    spdlog::debug("EncryptionManager initialized with libsodium");
+    return {};
 }
 
 std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::encrypt(const std::vector<uint8_t>& plaintext) {
@@ -65,6 +66,10 @@ EncryptionManager::encryptInteractive(const std::vector<uint8_t>& plaintext) {
 
 std::expected<std::vector<uint8_t>, EncryptionError>
 EncryptionManager::encryptWithFlags(const std::vector<uint8_t>& plaintext, uint8_t flags) {
+    if (auto init = ensureInitialized(); !init) {
+        return std::unexpected(init.error());
+    }
+
     if (plaintext.empty()) {
         spdlog::error("Cannot encrypt empty data");
         return std::unexpected(EncryptionError::InvalidInput);
@@ -121,6 +126,10 @@ EncryptionManager::encryptWithFlags(const std::vector<uint8_t>& plaintext, uint8
 
 std::expected<std::vector<uint8_t>, EncryptionError>
 EncryptionManager::decrypt(const std::vector<uint8_t>& encrypted_data) {
+    if (auto init = ensureInitialized(); !init) {
+        return std::unexpected(init.error());
+    }
+
     // Validate minimum size: header + salt + nonce + at least MAC
     const size_t min_size = HEADER_SIZE + SALT_SIZE + NONCE_SIZE + MAC_SIZE;
     if (encrypted_data.size() < min_size) {
@@ -211,8 +220,8 @@ std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::deriveKe
     int result = crypto_pwhash(key.data(), key.size(), system_id.c_str(), system_id.length(), salt.data(), opslimit,
                                memlimit, crypto_pwhash_ALG_ARGON2ID13);
 
-    // Securely zero out password material
-    sodium_memzero(const_cast<char*>(system_id.data()), system_id.size());
+    // Securely zero out password material (std::string::data() is non-const since C++17)
+    sodium_memzero(system_id.data(), system_id.size());
 
     if (result != 0) {
         spdlog::error("Key derivation failed (out of memory?)");

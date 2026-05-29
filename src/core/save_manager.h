@@ -22,21 +22,18 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
-#include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace sudoku::core {
-
-// Forward declaration
-class EncryptionManager;
 
 /// YAML-based implementation of ISaveManager
 /// Handles game persistence with optional compression and encryption
 class SaveManager : public ISaveManager {
 public:
     explicit SaveManager(std::filesystem::path save_directory = {});
-    ~SaveManager() override;  // Destructor in .cpp due to unique_ptr<EncryptionManager>
+    ~SaveManager() override = default;
     SaveManager(const SaveManager&) = delete;
     SaveManager& operator=(const SaveManager&) = delete;
     SaveManager(SaveManager&&) = delete;
@@ -78,7 +75,6 @@ public:
 private:
     std::filesystem::path save_directory_;
     std::filesystem::path auto_save_path_;
-    std::unique_ptr<EncryptionManager> encryption_manager_;
 
     // Helper methods
     [[nodiscard]] static std::string generateSaveId();

@@ -17,20 +17,40 @@
 #include "../../src/core/encryption_manager.h"
 
 #include <algorithm>
+#include <type_traits>
 
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
 
-TEST_CASE("EncryptionManager basic encrypt/decrypt", "[encryption_manager]") {
-    EncryptionManager manager;
+// EncryptionManager is a stateless static utility: it must NOT be instantiable
+// (the old throwing constructor crashed the app on libsodium init failure, #28).
+// libsodium is now initialized lazily inside the static methods and any init
+// failure surfaces as EncryptionError::InitializationFailed via std::expected.
+// Note: the InitializationFailed runtime branch cannot be exercised by unit
+// tests (no fault injection for sodium_init()); it is verified by inspection.
+TEST_CASE("EncryptionManager is a non-instantiable static utility", "[encryption_manager]") {
+    STATIC_REQUIRE_FALSE(std::is_default_constructible_v<EncryptionManager>);
+    STATIC_REQUIRE_FALSE(std::is_copy_constructible_v<EncryptionManager>);
+    STATIC_REQUIRE_FALSE(std::is_move_constructible_v<EncryptionManager>);
 
+    SECTION("Static methods work without constructing an instance") {
+        std::vector<uint8_t> plaintext{'n', 'o', ' ', 'i', 'n', 's', 't', 'a', 'n', 'c', 'e'};
+        auto encrypted = EncryptionManager::encrypt(plaintext);
+        REQUIRE(encrypted.has_value());
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
+        REQUIRE(decrypted.has_value());
+        REQUIRE(*decrypted == plaintext);
+    }
+}
+
+TEST_CASE("EncryptionManager basic encrypt/decrypt", "[encryption_manager]") {
     SECTION("Encrypt and decrypt simple data") {
         std::string plaintext_str = "Hello, Sudoku! This is a test message.";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
         // Encrypt
-        auto encrypted_result = manager.encrypt(plaintext);
+        auto encrypted_result = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted_result.has_value());
         auto encrypted = *encrypted_result;
 
@@ -39,7 +59,7 @@ TEST_CASE("EncryptionManager basic encrypt/decrypt", "[encryption_manager]") {
         REQUIRE_FALSE(std::equal(plaintext.begin(), plaintext.end(), encrypted.begin()));
 
         // Decrypt
-        auto decrypted_result = manager.decrypt(encrypted);
+        auto decrypted_result = EncryptionManager::decrypt(encrypted);
         REQUIRE(decrypted_result.has_value());
         auto decrypted = *decrypted_result;
 
@@ -56,30 +76,28 @@ TEST_CASE("EncryptionManager basic encrypt/decrypt", "[encryption_manager]") {
             large_data[i] = static_cast<uint8_t>(i % 256);
         }
 
-        auto encrypted = manager.encrypt(large_data);
+        auto encrypted = EncryptionManager::encrypt(large_data);
         REQUIRE(encrypted.has_value());
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == large_data);
     }
 
     SECTION("Empty data returns error") {
         std::vector<uint8_t> empty_data;
-        auto result = manager.encrypt(empty_data);
+        auto result = EncryptionManager::encrypt(empty_data);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == EncryptionError::InvalidInput);
     }
 }
 
 TEST_CASE("EncryptionManager file format validation", "[encryption_manager]") {
-    EncryptionManager manager;
-
     SECTION("Encrypted data has correct magic bytes") {
         std::string plaintext_str = "Test data";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Check magic bytes "SDKE"
@@ -94,7 +112,7 @@ TEST_CASE("EncryptionManager file format validation", "[encryption_manager]") {
         std::string plaintext_str = "Test";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         REQUIRE(EncryptionManager::isEncrypted(*encrypted));
@@ -117,13 +135,11 @@ TEST_CASE("EncryptionManager file format validation", "[encryption_manager]") {
 }
 
 TEST_CASE("EncryptionManager error handling", "[encryption_manager]") {
-    EncryptionManager manager;
-
     SECTION("Decrypt fails on corrupted data") {
         std::string plaintext_str = "Original message";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Corrupt the ciphertext (not the header)
@@ -132,7 +148,7 @@ TEST_CASE("EncryptionManager error handling", "[encryption_manager]") {
             corrupted[70] ^= 0xFF;  // Flip bits
         }
 
-        auto result = manager.decrypt(corrupted);
+        auto result = EncryptionManager::decrypt(corrupted);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == EncryptionError::DecryptionFailed);
     }
@@ -141,14 +157,14 @@ TEST_CASE("EncryptionManager error handling", "[encryption_manager]") {
         std::string plaintext_str = "Test";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Truncate
         auto truncated = *encrypted;
         truncated.resize(20);
 
-        auto result = manager.decrypt(truncated);
+        auto result = EncryptionManager::decrypt(truncated);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == EncryptionError::InvalidFileFormat);
     }
@@ -161,7 +177,7 @@ TEST_CASE("EncryptionManager error handling", "[encryption_manager]") {
         };
         invalid_data.resize(100, 0);
 
-        auto result = manager.decrypt(invalid_data);
+        auto result = EncryptionManager::decrypt(invalid_data);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == EncryptionError::InvalidFileFormat);
     }
@@ -170,36 +186,33 @@ TEST_CASE("EncryptionManager error handling", "[encryption_manager]") {
         std::string plaintext_str = "Test";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Change version byte
         auto wrong_version = *encrypted;
         wrong_version[4] = 99;  // Invalid version
 
-        auto result = manager.decrypt(wrong_version);
+        auto result = EncryptionManager::decrypt(wrong_version);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == EncryptionError::InvalidFileFormat);
     }
 
     SECTION("Decrypt fails on too-small data") {
         std::vector<uint8_t> tiny_data = {'S', 'D', 'K', 'E', 1};
-        auto result = manager.decrypt(tiny_data);
+        auto result = EncryptionManager::decrypt(tiny_data);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == EncryptionError::InvalidFileFormat);
     }
 }
 
 TEST_CASE("EncryptionManager system-based key derivation", "[encryption_manager]") {
-    EncryptionManager manager1;
-    EncryptionManager manager2;
-
     SECTION("Same plaintext produces different ciphertext (random salt/nonce)") {
         std::string plaintext_str = "Same message";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted1 = manager1.encrypt(plaintext);
-        auto encrypted2 = manager2.encrypt(plaintext);
+        auto encrypted1 = EncryptionManager::encrypt(plaintext);
+        auto encrypted2 = EncryptionManager::encrypt(plaintext);
 
         REQUIRE(encrypted1.has_value());
         REQUIRE(encrypted2.has_value());
@@ -208,8 +221,8 @@ TEST_CASE("EncryptionManager system-based key derivation", "[encryption_manager]
         REQUIRE_FALSE(*encrypted1 == *encrypted2);
 
         // But both decrypt correctly
-        auto decrypted1 = manager1.decrypt(*encrypted1);
-        auto decrypted2 = manager2.decrypt(*encrypted2);
+        auto decrypted1 = EncryptionManager::decrypt(*encrypted1);
+        auto decrypted2 = EncryptionManager::decrypt(*encrypted2);
 
         REQUIRE(decrypted1.has_value());
         REQUIRE(decrypted2.has_value());
@@ -222,24 +235,22 @@ TEST_CASE("EncryptionManager system-based key derivation", "[encryption_manager]
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
         // Encrypt with manager1
-        auto encrypted = manager1.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Decrypt with manager2 (should work - same system)
-        auto decrypted = manager2.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == plaintext);
     }
 }
 
 TEST_CASE("EncryptionManager performance characteristics", "[encryption_manager]") {
-    EncryptionManager manager;
-
     SECTION("Encrypted size overhead") {
         std::string plaintext_str = "Test message";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Overhead: header (6) + salt (32) + nonce (24) + MAC (16) = 78 bytes
@@ -251,10 +262,10 @@ TEST_CASE("EncryptionManager performance characteristics", "[encryption_manager]
         std::vector<uint8_t> binary_data = {0x00, 0xFF, 0xAA, 0x55, 0x01, 0x02, 0x03, 0x04,
                                             0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE};
 
-        auto encrypted = manager.encrypt(binary_data);
+        auto encrypted = EncryptionManager::encrypt(binary_data);
         REQUIRE(encrypted.has_value());
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == binary_data);
     }
@@ -262,23 +273,21 @@ TEST_CASE("EncryptionManager performance characteristics", "[encryption_manager]
     SECTION("Handle data with null bytes") {
         std::vector<uint8_t> data_with_nulls = {0x48, 0x00, 0x65, 0x00, 0x6C, 0x00, 0x6C, 0x00, 0x6F, 0x00};
 
-        auto encrypted = manager.encrypt(data_with_nulls);
+        auto encrypted = EncryptionManager::encrypt(data_with_nulls);
         REQUIRE(encrypted.has_value());
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == data_with_nulls);
     }
 }
 
 TEST_CASE("EncryptionManager data integrity", "[encryption_manager]") {
-    EncryptionManager manager;
-
     SECTION("Tampering with header detected") {
         std::string plaintext_str = "Integrity test";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Tamper with flags byte
@@ -286,7 +295,7 @@ TEST_CASE("EncryptionManager data integrity", "[encryption_manager]") {
         tampered[5] ^= 0x01;
 
         // Flipping FLAG_INTERACTIVE_KDF changes the KDF cost, producing a different key
-        auto result = manager.decrypt(tampered);
+        auto result = EncryptionManager::decrypt(tampered);
         REQUIRE_FALSE(result.has_value());  // Wrong KDF → wrong key → MAC mismatch
     }
 
@@ -294,7 +303,7 @@ TEST_CASE("EncryptionManager data integrity", "[encryption_manager]") {
         std::string plaintext_str = "Salt tamper test";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Tamper with salt (affects key derivation)
@@ -302,7 +311,7 @@ TEST_CASE("EncryptionManager data integrity", "[encryption_manager]") {
         tampered[10] ^= 0xFF;
 
         // Decryption should fail (wrong key derived)
-        auto result = manager.decrypt(tampered);
+        auto result = EncryptionManager::decrypt(tampered);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == EncryptionError::DecryptionFailed);
     }
@@ -311,7 +320,7 @@ TEST_CASE("EncryptionManager data integrity", "[encryption_manager]") {
         std::string plaintext_str = "Nonce tamper test";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Tamper with nonce (byte 6 + 32 = 38)
@@ -319,7 +328,7 @@ TEST_CASE("EncryptionManager data integrity", "[encryption_manager]") {
         tampered[38] ^= 0xFF;
 
         // Decryption should fail (wrong nonce)
-        auto result = manager.decrypt(tampered);
+        auto result = EncryptionManager::decrypt(tampered);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == EncryptionError::DecryptionFailed);
     }
@@ -328,7 +337,7 @@ TEST_CASE("EncryptionManager data integrity", "[encryption_manager]") {
         std::string plaintext_str = "Ciphertext tamper test";
         std::vector<uint8_t> plaintext(plaintext_str.begin(), plaintext_str.end());
 
-        auto encrypted = manager.encrypt(plaintext);
+        auto encrypted = EncryptionManager::encrypt(plaintext);
         REQUIRE(encrypted.has_value());
 
         // Tamper with ciphertext (after header + salt + nonce)
@@ -339,23 +348,21 @@ TEST_CASE("EncryptionManager data integrity", "[encryption_manager]") {
         }
 
         // Decryption should fail (MAC verification fails)
-        auto result = manager.decrypt(tampered);
+        auto result = EncryptionManager::decrypt(tampered);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == EncryptionError::DecryptionFailed);
     }
 }
 
 TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
-    EncryptionManager manager;
-
     SECTION("Single byte data") {
         // Minimum valid data size
         std::vector<uint8_t> single_byte = {0x42};
 
-        auto encrypted = manager.encrypt(single_byte);
+        auto encrypted = EncryptionManager::encrypt(single_byte);
         REQUIRE(encrypted.has_value());
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == single_byte);
     }
@@ -367,14 +374,14 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
             large_data[i] = static_cast<uint8_t>((i * 7) % 256);  // Pseudo-random pattern
         }
 
-        auto encrypted = manager.encrypt(large_data);
+        auto encrypted = EncryptionManager::encrypt(large_data);
         REQUIRE(encrypted.has_value());
 
         // Verify size overhead is reasonable (should be ~78 bytes + data size)
         REQUIRE(encrypted->size() > large_data.size());
         REQUIRE(encrypted->size() < large_data.size() + 100);
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(decrypted->size() == 1'000'000);
         REQUIRE(*decrypted == large_data);
@@ -384,7 +391,7 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         // Edge case: Data with low entropy
         std::vector<uint8_t> zeros(1000, 0x00);
 
-        auto encrypted = manager.encrypt(zeros);
+        auto encrypted = EncryptionManager::encrypt(zeros);
         REQUIRE(encrypted.has_value());
 
         // Encrypted data should NOT be all zeros (randomized by salt/nonce)
@@ -397,7 +404,7 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         }
         REQUIRE(has_non_zero);
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == zeros);
     }
@@ -406,10 +413,10 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         // Edge case: Data with all bits set
         std::vector<uint8_t> ones(1000, 0xFF);
 
-        auto encrypted = manager.encrypt(ones);
+        auto encrypted = EncryptionManager::encrypt(ones);
         REQUIRE(encrypted.has_value());
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == ones);
     }
@@ -418,10 +425,10 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         // Edge case: Repeating pattern 0xAA (10101010)
         std::vector<uint8_t> pattern(500, 0xAA);
 
-        auto encrypted = manager.encrypt(pattern);
+        auto encrypted = EncryptionManager::encrypt(pattern);
         REQUIRE(encrypted.has_value());
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == pattern);
     }
@@ -433,10 +440,10 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
             pseudo_random[i] = static_cast<uint8_t>((i * i * 13 + i * 7 + 42) % 256);
         }
 
-        auto encrypted = manager.encrypt(pseudo_random);
+        auto encrypted = EncryptionManager::encrypt(pseudo_random);
         REQUIRE(encrypted.has_value());
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == pseudo_random);
     }
@@ -445,13 +452,13 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         // Edge case: Plaintext that starts with "SDKE" magic bytes
         std::vector<uint8_t> fake_header = {'S', 'D', 'K', 'E', 'H', 'e', 'l', 'l', 'o'};
 
-        auto encrypted = manager.encrypt(fake_header);
+        auto encrypted = EncryptionManager::encrypt(fake_header);
         REQUIRE(encrypted.has_value());
 
         // Encrypted form should also have magic bytes (nested)
         REQUIRE(EncryptionManager::isEncrypted(*encrypted));
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == fake_header);
 
@@ -460,7 +467,7 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         REQUIRE(EncryptionManager::isEncrypted(*decrypted));
 
         // But trying to decrypt it as encrypted data should fail
-        auto double_decrypt = manager.decrypt(*decrypted);
+        auto double_decrypt = EncryptionManager::decrypt(*decrypted);
         REQUIRE_FALSE(double_decrypt.has_value());
     }
 
@@ -469,10 +476,10 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         size_t header_size = 6 + 32 + 24 + 16;  // header + salt + nonce + MAC
         std::vector<uint8_t> exact_size(header_size, 0x42);
 
-        auto encrypted = manager.encrypt(exact_size);
+        auto encrypted = EncryptionManager::encrypt(exact_size);
         REQUIRE(encrypted.has_value());
 
-        auto decrypted = manager.decrypt(*encrypted);
+        auto decrypted = EncryptionManager::decrypt(*encrypted);
         REQUIRE(decrypted.has_value());
         REQUIRE(*decrypted == exact_size);
     }
@@ -481,9 +488,9 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         // Edge case: Same plaintext encrypted multiple times
         std::vector<uint8_t> plaintext = {1, 2, 3, 4, 5};
 
-        auto encrypted1 = manager.encrypt(plaintext);
-        auto encrypted2 = manager.encrypt(plaintext);
-        auto encrypted3 = manager.encrypt(plaintext);
+        auto encrypted1 = EncryptionManager::encrypt(plaintext);
+        auto encrypted2 = EncryptionManager::encrypt(plaintext);
+        auto encrypted3 = EncryptionManager::encrypt(plaintext);
 
         REQUIRE(encrypted1.has_value());
         REQUIRE(encrypted2.has_value());
@@ -495,9 +502,9 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         REQUIRE(*encrypted1 != *encrypted3);
 
         // But all decrypt to same plaintext
-        auto decrypted1 = manager.decrypt(*encrypted1);
-        auto decrypted2 = manager.decrypt(*encrypted2);
-        auto decrypted3 = manager.decrypt(*encrypted3);
+        auto decrypted1 = EncryptionManager::decrypt(*encrypted1);
+        auto decrypted2 = EncryptionManager::decrypt(*encrypted2);
+        auto decrypted3 = EncryptionManager::decrypt(*encrypted3);
 
         REQUIRE(*decrypted1 == plaintext);
         REQUIRE(*decrypted2 == plaintext);

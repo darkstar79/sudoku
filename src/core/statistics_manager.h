@@ -18,7 +18,6 @@
 
 #include "core/constants.h"
 #include "core/i_puzzle_generator.h"
-#include "encryption_manager.h"
 #include "i_statistics_manager.h"
 #include "i_time_provider.h"
 
@@ -95,7 +94,6 @@ private:
 
     // Dependencies
     std::shared_ptr<ITimeProvider> time_provider_;
-    std::unique_ptr<EncryptionManager> encryption_manager_;
 
     std::filesystem::path stats_directory_;
     std::filesystem::path stats_file_;
