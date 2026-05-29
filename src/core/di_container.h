@@ -19,12 +19,42 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <typeindex>
+#include <typeinfo>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace sudoku::core {
+
+/// Base class for all DIContainer wiring errors.
+///
+/// These represent programmer errors in the dependency graph (a missing
+/// registration or a cyclic factory), not recoverable runtime conditions —
+/// hence an exception rather than std::expected. They fail loudly at the
+/// resolution site instead of returning a silent nullptr that segfaults later.
+class DIContainerError : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
+
+/// Thrown by resolve<T>() when no registration exists for the requested type.
+class DIResolutionError : public DIContainerError {
+public:
+    using DIContainerError::DIContainerError;
+};
+
+/// Thrown by resolve<T>() / tryResolve<T>() when a factory transitively
+/// resolves its own type (a dependency cycle). For a singleton this is detected
+/// before the duplicate instance can be cached; for a transient it stops the
+/// otherwise-unbounded recursion before it overflows the stack.
+class DICycleError : public DIContainerError {
+public:
+    using DIContainerError::DIContainerError;
+};
 
 /// Simple dependency injection container for managing object lifetimes
 class DIContainer {
@@ -60,32 +90,30 @@ public:
         };
     }
 
-    /// Resolve a dependency of type T
+    /// Resolve a dependency of type T.
+    ///
+    /// Contract: T must have been registered (singleton, transient, or
+    /// instance) before resolution. A missing registration is a wiring bug, so
+    /// this throws DIResolutionError rather than returning a silent nullptr
+    /// that would segfault far from the omission site. A singleton factory that
+    /// transitively resolves its own type throws DICycleError before the
+    /// duplicate instance can be cached. Use tryResolve<T>() for genuinely
+    /// optional dependencies where absence is expected.
     template <typename T>
-    std::shared_ptr<T> resolve() {
-        auto type_id = std::type_index(typeid(T));
-
-        // Check for existing singleton instance
-        auto instance_it = instances_.find(type_id);
-        if (instance_it != instances_.end()) {
-            return std::static_pointer_cast<T>(instance_it->second);
+    [[nodiscard]] std::shared_ptr<T> resolve() {
+        auto resolution = resolveErased(std::type_index(typeid(T)));
+        if (!resolution.registered) {
+            throw DIResolutionError(std::string("DIContainer: no registration for type ") + typeid(T).name());
         }
+        return std::static_pointer_cast<T>(std::move(resolution.instance));
+    }
 
-        // Check for transient factory
-        auto transient_it = transient_factories_.find(type_id);
-        if (transient_it != transient_factories_.end()) {
-            return std::static_pointer_cast<T>(transient_it->second());
-        }
-
-        // Check for singleton factory
-        auto factory_it = factories_.find(type_id);
-        if (factory_it != factories_.end()) {
-            auto instance = factory_it->second();
-            instances_[type_id] = instance;  // Cache for future use
-            return std::static_pointer_cast<T>(instance);
-        }
-
-        return nullptr;
+    /// Resolve a dependency of type T, or return nullptr if it was never
+    /// registered. Unlike resolve<T>(), an absent registration is not an error.
+    /// Cyclic factories still throw DICycleError.
+    template <typename T>
+    [[nodiscard]] std::shared_ptr<T> tryResolve() {
+        return std::static_pointer_cast<T>(resolveErased(std::type_index(typeid(T))).instance);
     }
 
     /// Check if a type is registered
@@ -108,19 +136,109 @@ public:
     }
 
 private:
+    /// Outcome of a type-erased lookup. `registered` distinguishes "no
+    /// registration" (resolve throws, tryResolve returns null) from a
+    /// registered factory that legitimately produced a null instance.
+    struct ResolveResult {
+        bool registered;
+        std::shared_ptr<void> instance;
+    };
+
+    /// RAII marker that records a type as "resolution in progress". It inserts
+    /// on construction and exposes whether the insert was fresh via inserted();
+    /// a false result means the type was already being resolved — i.e. a cycle.
+    /// The marker is cleared on scope exit (including during exception
+    /// unwinding), but only by the guard that actually inserted it, so a thrown
+    /// cycle never erases the outer in-progress entry it shares.
+    class ResolvingGuard {
+    public:
+        ResolvingGuard(std::unordered_set<std::type_index>& set, std::type_index id)
+            : set_(set), id_(id), inserted_(set.insert(id).second) {
+        }
+        ResolvingGuard(const ResolvingGuard&) = delete;
+        ResolvingGuard& operator=(const ResolvingGuard&) = delete;
+        ResolvingGuard(ResolvingGuard&&) = delete;
+        ResolvingGuard& operator=(ResolvingGuard&&) = delete;
+        ~ResolvingGuard() {
+            if (inserted_) {
+                set_.erase(id_);
+            }
+        }
+
+        [[nodiscard]] bool inserted() const {
+            return inserted_;
+        }
+
+    private:
+        std::unordered_set<std::type_index>& set_;
+        std::type_index id_;
+        bool inserted_;
+    };
+
+    /// Shared resolution logic for resolve<T>() and tryResolve<T>(), operating
+    /// on the erased type_index. Throws DICycleError on re-entrant factory
+    /// resolution (singleton or transient).
+    ResolveResult resolveErased(std::type_index type_id) {
+        // Check for existing singleton instance
+        auto instance_it = instances_.find(type_id);
+        if (instance_it != instances_.end()) {
+            return {.registered = true, .instance = instance_it->second};
+        }
+
+        // Check for transient factory
+        auto transient_it = transient_factories_.find(type_id);
+        if (transient_it != transient_factories_.end()) {
+            // A transient factory that re-enters its own type would recurse
+            // until the stack overflows; the in-progress marker turns that into
+            // a clear throw instead.
+            ResolvingGuard guard(resolving_, type_id);
+            if (!guard.inserted()) {
+                throw DICycleError(std::string("DIContainer: cyclic transient resolution for type ") + type_id.name());
+            }
+            return {.registered = true, .instance = transient_it->second()};
+        }
+
+        // Check for singleton factory
+        auto factory_it = factories_.find(type_id);
+        if (factory_it != factories_.end()) {
+            // Mark in-progress before invoking the factory. A re-entrant resolve
+            // of the same type (a cycle) would otherwise re-run the factory and
+            // overwrite the cached instance, yielding two divergent "singletons".
+            ResolvingGuard guard(resolving_, type_id);
+            if (!guard.inserted()) {
+                throw DICycleError(std::string("DIContainer: cyclic singleton resolution for type ") + type_id.name());
+            }
+
+            auto instance = factory_it->second();
+            instances_[type_id] = instance;  // Cache for future use
+            return {.registered = true, .instance = instance};
+        }
+
+        return {.registered = false, .instance = nullptr};
+    }
+
     std::unordered_map<std::type_index, std::shared_ptr<void>> instances_;
     std::unordered_map<std::type_index, std::function<std::shared_ptr<void>()>> factories_;
     std::unordered_map<std::type_index, std::function<std::shared_ptr<void>()>> transient_factories_;
+    std::unordered_set<std::type_index> resolving_;
 };
 
 /// Global container instance for easy access
 /// In a real application, consider using a different pattern for DI
 extern DIContainer& getContainer();
 
-/// Convenience function to resolve dependencies
+/// Convenience function to resolve dependencies. Throws DIResolutionError if
+/// the type was never registered (see DIContainer::resolve).
 template <typename T>
-std::shared_ptr<T> resolve() {
+[[nodiscard]] std::shared_ptr<T> resolve() {
     return getContainer().resolve<T>();
+}
+
+/// Convenience function for optional dependencies: returns nullptr if the type
+/// was never registered instead of throwing (see DIContainer::tryResolve).
+template <typename T>
+[[nodiscard]] std::shared_ptr<T> tryResolve() {
+    return getContainer().tryResolve<T>();
 }
 
 }  // namespace sudoku::core
