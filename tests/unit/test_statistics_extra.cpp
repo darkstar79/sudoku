@@ -230,6 +230,116 @@ TEST_CASE("StatisticsManager - exportStats then importStats merges data", "[stat
 }
 
 // ============================================================================
+// importStats average-time correctness (issue #27): the weighted average must
+// be computed from the PRE-merge completion counts. Importing identical data
+// must leave the average unchanged; merging different data must weight properly.
+// ============================================================================
+
+TEST_CASE("StatisticsManager - importStats preserves average time on identical merge", "[statistics_extra]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    // One completed Easy game: 40s
+    auto id = mgr.startGame(Difficulty::Easy, 1, 0);
+    REQUIRE(id.has_value());
+    time->advanceSystemTime(std::chrono::milliseconds(40000));
+    REQUIRE(mgr.endGame(*id, true).has_value());
+
+    const int easy = static_cast<int>(Difficulty::Easy);
+    auto avg_before = mgr.getAggregateStats()->average_times[easy];
+    REQUIRE(avg_before == std::chrono::milliseconds(40000));
+
+    fs::path exp = tmp.path() / "exported.yaml";
+    REQUIRE(mgr.exportStats(exp.string()).has_value());
+
+    // Merging an identical 40s dataset must keep the average at 40s.
+    REQUIRE(mgr.importStats(exp.string()).has_value());
+    REQUIRE(mgr.getAggregateStats()->average_times[easy] == std::chrono::milliseconds(40000));
+}
+
+TEST_CASE("StatisticsManager - importStats computes weighted average across differing data", "[statistics_extra]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+
+    // Build an export with a single 60s Hard game in a separate manager/dir.
+    fs::path exp;
+    {
+        TempTestDir tmp2;
+        StatisticsManager src(tmp2.path().string(), time);
+        auto id = src.startGame(Difficulty::Hard, 1, 0);
+        REQUIRE(id.has_value());
+        time->advanceSystemTime(std::chrono::milliseconds(60000));
+        REQUIRE(src.endGame(*id, true).has_value());
+        // Export into the outer temp dir so the file survives tmp2's destruction.
+        exp = tmp.path() / "src.yaml";
+        REQUIRE(src.exportStats(exp.string()).has_value());
+    }
+
+    // Local manager has two 30s Hard games.
+    StatisticsManager mgr(tmp.path().string(), time);
+    for (int i = 0; i < 2; ++i) {
+        auto id = mgr.startGame(Difficulty::Hard, static_cast<uint32_t>(i + 1), 0);
+        REQUIRE(id.has_value());
+        time->advanceSystemTime(std::chrono::milliseconds(30000));
+        REQUIRE(mgr.endGame(*id, true).has_value());
+    }
+
+    const int hard = static_cast<int>(Difficulty::Hard);
+    REQUIRE(mgr.getAggregateStats()->average_times[hard] == std::chrono::milliseconds(30000));
+
+    // Weighted avg = (30000*2 + 60000*1) / 3 = 40000 ms.
+    REQUIRE(mgr.importStats(exp.string()).has_value());
+    REQUIRE(mgr.getAggregateStats()->average_times[hard] == std::chrono::milliseconds(40000));
+}
+
+// ============================================================================
+// Regression (issue #27): recalculateAggregateStats() must count each session
+// exactly once over the full disk + in-memory pending set — never double-count
+// (the reported HIGH bug) and never drop unflushed pending sessions.
+// recalc is private and only reachable via a friend test-peer when pending is
+// non-empty, so we drive it directly through StatisticsManagerTestPeer.
+// ============================================================================
+
+namespace sudoku::core {
+struct StatisticsManagerTestPeer {
+    static std::expected<void, StatisticsError> recalc(const StatisticsManager& mgr) {
+        return mgr.recalculateAggregateStats();
+    }
+};
+}  // namespace sudoku::core
+
+TEST_CASE("StatisticsManager - recalc counts disk and pending sessions exactly once", "[statistics_extra]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+    mgr.setCollectDetailedStats(true);
+
+    // Game 1: end then flush → lives on disk, pending cleared.
+    auto id1 = mgr.startGame(Difficulty::Easy, 1, 0);
+    REQUIRE(id1.has_value());
+    time->advanceSystemTime(std::chrono::milliseconds(30000));
+    REQUIRE(mgr.endGame(*id1, true).has_value());
+    mgr.flushSessions();
+
+    // Game 2: end but do NOT flush → stays in pending_sessions_ only.
+    auto id2 = mgr.startGame(Difficulty::Easy, 2, 0);
+    REQUIRE(id2.has_value());
+    time->advanceSystemTime(std::chrono::milliseconds(30000));
+    REQUIRE(mgr.endGame(*id2, true).has_value());
+
+    // Force a full rebuild while disk has S1 and pending has S2.
+    REQUIRE(StatisticsManagerTestPeer::recalc(mgr).has_value());
+
+    auto agg = mgr.getAggregateStats();
+    REQUIRE(agg.has_value());
+    // 2 ⇒ each session counted once. A double-count would give 4; dropping the
+    // unflushed pending session would give 1.
+    REQUIRE(agg->total_games == 2);
+    REQUIRE(agg->total_completed == 2);
+}
+
+// ============================================================================
 // getRecentGames with corrupted sessions YAML file (covers line 203)
 // ============================================================================
 

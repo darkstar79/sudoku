@@ -46,9 +46,9 @@ struct GameStats {
 
 /// Aggregate statistics across multiple games
 struct AggregateStats {
-    // Per difficulty level
-    std::array<int, DIFFICULTY_COUNT> games_played{0, 0, 0, 0, 0};  // Easy, Medium, Hard, Expert, Master
-    std::array<int, DIFFICULTY_COUNT> games_completed{0, 0, 0, 0, 0};
+    // Per difficulty level. 64-bit so lifetime cumulative counts can't wrap (issue #27).
+    std::array<int64_t, DIFFICULTY_COUNT> games_played{0, 0, 0, 0, 0};  // Easy, Medium, Hard, Expert, Master
+    std::array<int64_t, DIFFICULTY_COUNT> games_completed{0, 0, 0, 0, 0};
     std::array<std::chrono::milliseconds, DIFFICULTY_COUNT> best_times{
         std::chrono::milliseconds::max(), std::chrono::milliseconds::max(), std::chrono::milliseconds::max(),
         std::chrono::milliseconds::max(), std::chrono::milliseconds::max()};
@@ -63,17 +63,17 @@ struct AggregateStats {
         std::numeric_limits<double>::max(), std::numeric_limits<double>::max()};
     std::array<double, DIFFICULTY_COUNT> max_ratings{0.0, 0.0, 0.0, 0.0, 0.0};
 
-    // Overall stats
-    int total_games{0};
-    int total_completed{0};
-    int total_moves{0};
-    int total_hints{0};
-    int total_mistakes{0};
+    // Overall stats. 64-bit to avoid 2^31 overflow for long-lived players (issue #27).
+    int64_t total_games{0};
+    int64_t total_completed{0};
+    int64_t total_moves{0};
+    int64_t total_hints{0};
+    int64_t total_mistakes{0};
     std::chrono::milliseconds total_time_played{0};
 
     // Streaks
-    int current_win_streak{0};
-    int best_win_streak{0};
+    int64_t current_win_streak{0};
+    int64_t best_win_streak{0};
 
     // First played
     std::chrono::system_clock::time_point first_game_date;

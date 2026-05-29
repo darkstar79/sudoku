@@ -17,9 +17,10 @@
 #include "../../src/core/statistics_serializer.h"
 #include "../helpers/test_utils.h"
 
-#include <climits>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -76,6 +77,34 @@ TEST_CASE("StatisticsSerializer - AggregateStats YAML round-trip", "[statistics_
         REQUIRE(loaded.total_time_played == original.total_time_played);
         REQUIRE(loaded.current_win_streak == original.current_win_streak);
         REQUIRE(loaded.best_win_streak == original.best_win_streak);
+    }
+
+    SECTION("Cumulative counters above INT32_MAX survive round-trip (issue #27)") {
+        AggregateStats original;
+        // Values a long-lived player could plausibly reach over a lifetime; these
+        // exceed the 2^31 range of the former int counters and must not truncate.
+        const int64_t big = static_cast<int64_t>(std::numeric_limits<int32_t>::max()) + 1000;  // 2,147,484,647
+        original.total_games = big;
+        original.total_completed = big;
+        original.total_moves = big * 3;
+        original.total_hints = big;
+        original.total_mistakes = big;
+        original.games_played[0] = big;
+        original.games_completed[0] = big;
+
+        auto file_path = tmp_dir.path() / "big_stats.yaml";
+        REQUIRE(serializeStatsToYaml(original, file_path, std::chrono::system_clock::now()).has_value());
+
+        auto read_result = deserializeStatsFromYaml(file_path);
+        REQUIRE(read_result.has_value());
+        const auto& loaded = read_result.value();
+        REQUIRE(loaded.total_games == big);
+        REQUIRE(loaded.total_completed == big);
+        REQUIRE(loaded.total_moves == big * 3);
+        REQUIRE(loaded.total_hints == big);
+        REQUIRE(loaded.total_mistakes == big);
+        REQUIRE(loaded.games_played[0] == big);
+        REQUIRE(loaded.games_completed[0] == big);
     }
 
     SECTION("Empty stats round-trip") {

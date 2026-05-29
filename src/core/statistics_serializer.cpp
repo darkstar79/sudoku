@@ -124,10 +124,10 @@ deserializeStatsFromYaml(const std::filesystem::path& file_path) {
                     const auto& diff_node = difficulties[difficulty_names[i]];
 
                     if (diff_node["games_played"]) {
-                        stats.games_played[i] = diff_node["games_played"].as<int>();
+                        stats.games_played[i] = diff_node["games_played"].as<int64_t>();
                     }
                     if (diff_node["games_completed"]) {
-                        stats.games_completed[i] = diff_node["games_completed"].as<int>();
+                        stats.games_completed[i] = diff_node["games_completed"].as<int64_t>();
                     }
                     if (diff_node["best_time"]) {
                         stats.best_times[i] = std::chrono::milliseconds(diff_node["best_time"].as<long long>());
@@ -153,28 +153,28 @@ deserializeStatsFromYaml(const std::filesystem::path& file_path) {
             const auto& overall = root["overall"];
 
             if (overall["total_games"]) {
-                stats.total_games = overall["total_games"].as<int>();
+                stats.total_games = overall["total_games"].as<int64_t>();
             }
             if (overall["total_completed"]) {
-                stats.total_completed = overall["total_completed"].as<int>();
+                stats.total_completed = overall["total_completed"].as<int64_t>();
             }
             if (overall["total_moves"]) {
-                stats.total_moves = overall["total_moves"].as<int>();
+                stats.total_moves = overall["total_moves"].as<int64_t>();
             }
             if (overall["total_hints"]) {
-                stats.total_hints = overall["total_hints"].as<int>();
+                stats.total_hints = overall["total_hints"].as<int64_t>();
             }
             if (overall["total_mistakes"]) {
-                stats.total_mistakes = overall["total_mistakes"].as<int>();
+                stats.total_mistakes = overall["total_mistakes"].as<int64_t>();
             }
             if (overall["total_time_played"]) {
                 stats.total_time_played = std::chrono::milliseconds(overall["total_time_played"].as<long long>());
             }
             if (overall["current_win_streak"]) {
-                stats.current_win_streak = overall["current_win_streak"].as<int>();
+                stats.current_win_streak = overall["current_win_streak"].as<int64_t>();
             }
             if (overall["best_win_streak"]) {
-                stats.best_win_streak = overall["best_win_streak"].as<int>();
+                stats.best_win_streak = overall["best_win_streak"].as<int64_t>();
             }
         }
 

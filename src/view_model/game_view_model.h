@@ -97,13 +97,13 @@ struct UIState {
 
 /// Statistics display data
 struct StatsDisplay {
-    int games_played{0};
-    int games_completed{0};
+    int64_t games_played{0};
+    int64_t games_completed{0};
     double completion_rate{0.0};
     std::string best_time;
     std::string average_time;
-    int current_streak{0};
-    int best_streak{0};
+    int64_t current_streak{0};
+    int64_t best_streak{0};
 
     bool operator==(const StatsDisplay& other) const = default;
 };
