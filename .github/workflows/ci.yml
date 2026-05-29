@@ -22,12 +22,18 @@ on:
 permissions:
   contents: read
 
-# Avoid running the same workflow twice on the same commit when a branch
-# is both pushed and has an open PR. Group by PR number when available,
-# otherwise by ref, so the push-triggered run is cancelled as soon as the
-# pull_request-triggered run starts on the same head.
+# Avoid running the same workflow twice on the same commit when a branch is
+# both pushed and has an open PR (GitHub fires `push` and `pull_request` for
+# the same head). Key the concurrency group on the head *branch name*, which
+# both events can resolve to the same string: `github.head_ref` is the PR
+# source branch (empty on push), `github.ref_name` is the pushed branch. With
+# a shared key, `cancel-in-progress` cancels whichever run started first.
+#
+# Note: the clang-tidy-diff job picks its diff base per event (PR base sha vs
+# merge-base on push). For a normal PR these are the same commit, so it does
+# not matter which event's run survives the cancellation.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
