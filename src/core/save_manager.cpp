@@ -18,7 +18,6 @@
 
 #include "core/constants.h"
 #include "core/i_save_manager.h"
-#include "encryption_manager.h"
 #include "infrastructure/app_directory_manager.h"
 
 #include <algorithm>
@@ -47,8 +46,7 @@ inline constexpr int HOURS_PER_DAY = 24;
 
 namespace sudoku::core {
 
-SaveManager::SaveManager(std::filesystem::path save_directory)
-    : encryption_manager_(std::make_unique<EncryptionManager>()) {
+SaveManager::SaveManager(std::filesystem::path save_directory) {
     if (save_directory.empty()) {
         // Use platform-appropriate default directory
         save_directory_ =
@@ -64,8 +62,6 @@ SaveManager::SaveManager(std::filesystem::path save_directory)
         spdlog::warn("Failed to create save directory: {}", save_directory_.string());
     }
 }
-
-SaveManager::~SaveManager() = default;
 
 std::expected<std::string, SaveError> SaveManager::saveGame(const SavedGame& game, const SaveSettings& settings) {
     try {
