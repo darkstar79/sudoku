@@ -258,6 +258,7 @@ TEST_CASE("StatisticsManager - importStats preserves average time on identical m
     REQUIRE(mgr.getAggregateStats()->average_times[easy] == std::chrono::milliseconds(40000));
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with multiple REQUIRE/loop checks; complexity is inherent to test coverage
 TEST_CASE("StatisticsManager - importStats computes weighted average across differing data", "[statistics_extra]") {
     TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
