@@ -47,9 +47,10 @@ public:
     using DIContainerError::DIContainerError;
 };
 
-/// Thrown by resolve<T>() / tryResolve<T>() when a singleton factory
-/// transitively resolves its own type (a dependency cycle). Detected before
-/// the duplicate instance can be cached.
+/// Thrown by resolve<T>() / tryResolve<T>() when a factory transitively
+/// resolves its own type (a dependency cycle). For a singleton this is detected
+/// before the duplicate instance can be cached; for a transient it stops the
+/// otherwise-unbounded recursion before it overflows the stack.
 class DICycleError : public DIContainerError {
 public:
     using DIContainerError::DIContainerError;
@@ -109,7 +110,7 @@ public:
 
     /// Resolve a dependency of type T, or return nullptr if it was never
     /// registered. Unlike resolve<T>(), an absent registration is not an error.
-    /// Cyclic singleton factories still throw DICycleError.
+    /// Cyclic factories still throw DICycleError.
     template <typename T>
     [[nodiscard]] std::shared_ptr<T> tryResolve() {
         return std::static_pointer_cast<T>(resolveErased(std::type_index(typeid(T))).instance);
@@ -143,29 +144,40 @@ private:
         std::shared_ptr<void> instance;
     };
 
-    /// RAII marker that records a singleton type as "resolution in progress"
-    /// and clears it on scope exit — including during exception unwinding — so
-    /// a detected cycle never leaves a type stuck in the in-progress set.
+    /// RAII marker that records a type as "resolution in progress". It inserts
+    /// on construction and exposes whether the insert was fresh via inserted();
+    /// a false result means the type was already being resolved — i.e. a cycle.
+    /// The marker is cleared on scope exit (including during exception
+    /// unwinding), but only by the guard that actually inserted it, so a thrown
+    /// cycle never erases the outer in-progress entry it shares.
     class ResolvingGuard {
     public:
-        ResolvingGuard(std::unordered_set<std::type_index>& set, std::type_index id) : set_(set), id_(id) {
+        ResolvingGuard(std::unordered_set<std::type_index>& set, std::type_index id)
+            : set_(set), id_(id), inserted_(set.insert(id).second) {
         }
         ResolvingGuard(const ResolvingGuard&) = delete;
         ResolvingGuard& operator=(const ResolvingGuard&) = delete;
         ResolvingGuard(ResolvingGuard&&) = delete;
         ResolvingGuard& operator=(ResolvingGuard&&) = delete;
         ~ResolvingGuard() {
-            set_.erase(id_);
+            if (inserted_) {
+                set_.erase(id_);
+            }
+        }
+
+        [[nodiscard]] bool inserted() const {
+            return inserted_;
         }
 
     private:
         std::unordered_set<std::type_index>& set_;
         std::type_index id_;
+        bool inserted_;
     };
 
     /// Shared resolution logic for resolve<T>() and tryResolve<T>(), operating
-    /// on the erased type_index. Throws DICycleError on re-entrant singleton
-    /// factory resolution.
+    /// on the erased type_index. Throws DICycleError on re-entrant factory
+    /// resolution (singleton or transient).
     ResolveResult resolveErased(std::type_index type_id) {
         // Check for existing singleton instance
         auto instance_it = instances_.find(type_id);
@@ -176,6 +188,13 @@ private:
         // Check for transient factory
         auto transient_it = transient_factories_.find(type_id);
         if (transient_it != transient_factories_.end()) {
+            // A transient factory that re-enters its own type would recurse
+            // until the stack overflows; the in-progress marker turns that into
+            // a clear throw instead.
+            ResolvingGuard guard(resolving_, type_id);
+            if (!guard.inserted()) {
+                throw DICycleError(std::string("DIContainer: cyclic transient resolution for type ") + type_id.name());
+            }
             return {.registered = true, .instance = transient_it->second()};
         }
 
@@ -185,10 +204,10 @@ private:
             // Mark in-progress before invoking the factory. A re-entrant resolve
             // of the same type (a cycle) would otherwise re-run the factory and
             // overwrite the cached instance, yielding two divergent "singletons".
-            if (!resolving_.insert(type_id).second) {
+            ResolvingGuard guard(resolving_, type_id);
+            if (!guard.inserted()) {
                 throw DICycleError(std::string("DIContainer: cyclic singleton resolution for type ") + type_id.name());
             }
-            ResolvingGuard guard(resolving_, type_id);
 
             auto instance = factory_it->second();
             instances_[type_id] = instance;  // Cache for future use
@@ -213,6 +232,13 @@ extern DIContainer& getContainer();
 template <typename T>
 [[nodiscard]] std::shared_ptr<T> resolve() {
     return getContainer().resolve<T>();
+}
+
+/// Convenience function for optional dependencies: returns nullptr if the type
+/// was never registered instead of throwing (see DIContainer::tryResolve).
+template <typename T>
+[[nodiscard]] std::shared_ptr<T> tryResolve() {
+    return getContainer().tryResolve<T>();
 }
 
 }  // namespace sudoku::core

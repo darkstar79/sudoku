@@ -216,6 +216,51 @@ TEST_CASE("DIContainer - Cyclic singleton resolution", "[DIContainer]") {
         REQUIRE(dep != nullptr);
         REQUIRE(dep->getName() == "ok");
     }
+
+    SECTION("Transient self-cycle is detected and throws") {
+        // A transient factory that re-enters its own type would otherwise
+        // recurse until the stack overflows; the guard must turn it into a
+        // clear throw, just like the singleton path.
+        container.registerTransient<ITestService>([&container]() {
+            auto self = container.resolve<ITestService>();  // re-entry
+            return std::make_unique<TestService>(self ? self->getValue() : -1);
+        });
+
+        REQUIRE_THROWS_AS(container.resolve<ITestService>(), DICycleError);
+    }
+
+    SECTION("In-progress marker is cleared after a transient cycle throws") {
+        container.registerTransient<ITestService>([&container]() {
+            auto self = container.resolve<ITestService>();
+            return std::make_unique<TestService>(1);
+        });
+        container.registerSingleton<IDependency>([]() { return std::make_unique<Dependency>("ok"); });
+
+        REQUIRE_THROWS_AS(container.resolve<ITestService>(), DICycleError);
+
+        auto dep = container.resolve<IDependency>();
+        REQUIRE(dep != nullptr);
+        REQUIRE(dep->getName() == "ok");
+    }
+}
+
+TEST_CASE("DIContainer - Free-function resolve helpers", "[DIContainer]") {
+    auto& container = getContainer();
+    container.clear();
+
+    SECTION("Free tryResolve returns nullptr for unregistered service") {
+        REQUIRE(tryResolve<ITestService>() == nullptr);
+    }
+
+    SECTION("Free tryResolve returns the instance for a registered service") {
+        container.registerSingleton<ITestService>([]() { return std::make_unique<TestService>(7); });
+
+        auto service = tryResolve<ITestService>();
+        REQUIRE(service != nullptr);
+        REQUIRE(service->getValue() == 7);
+    }
+
+    container.clear();
 }
 
 TEST_CASE("DIContainer - Clear Services", "[DIContainer]") {
