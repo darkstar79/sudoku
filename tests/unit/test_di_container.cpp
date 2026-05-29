@@ -17,6 +17,7 @@
 #include "core/di_container.h"
 
 #include <memory>
+#include <string>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -131,9 +132,36 @@ TEST_CASE("DIContainer - Service Dependencies", "[DIContainer]") {
 TEST_CASE("DIContainer - Error Handling", "[DIContainer]") {
     DIContainer container;
 
-    SECTION("Resolve unregistered service returns nullptr") {
-        auto service = container.resolve<ITestService>();
+    SECTION("Resolve unregistered service throws DIResolutionError") {
+        REQUIRE_THROWS_AS(container.resolve<ITestService>(), DIResolutionError);
+    }
+
+    SECTION("Resolution error names the missing type") {
+        try {
+            static_cast<void>(container.resolve<ITestService>());
+            FAIL("expected DIResolutionError");
+        } catch (const DIResolutionError& ex) {
+            // Diagnostic must reference the unresolved type so wiring omissions
+            // are debuggable at the omission site, not at a far-away segfault.
+            const std::string message = ex.what();
+            REQUIRE(message.find(typeid(ITestService).name()) != std::string::npos);
+        }
+    }
+
+    SECTION("tryResolve returns nullptr for unregistered service") {
+        auto service = container.tryResolve<ITestService>();
         REQUIRE(service == nullptr);
+    }
+
+    SECTION("tryResolve returns the instance for a registered service") {
+        container.registerSingleton<ITestService>([]() { return std::make_unique<TestService>(7); });
+
+        auto via_try = container.tryResolve<ITestService>();
+        auto via_resolve = container.resolve<ITestService>();
+
+        REQUIRE(via_try != nullptr);
+        REQUIRE(via_try.get() == via_resolve.get());
+        REQUIRE(via_try->getValue() == 7);
     }
 
     SECTION("Check if service is registered") {
@@ -142,6 +170,51 @@ TEST_CASE("DIContainer - Error Handling", "[DIContainer]") {
         container.registerSingleton<ITestService>([]() { return std::make_unique<TestService>(1); });
 
         REQUIRE(container.isRegistered<ITestService>());
+    }
+}
+
+TEST_CASE("DIContainer - Cyclic singleton resolution", "[DIContainer]") {
+    DIContainer container;
+
+    SECTION("Direct self-cycle is detected and throws") {
+        // Factory for ITestService transitively resolves its own type before
+        // returning. Without re-entry detection this re-runs the factory and
+        // caches a duplicate instance; the guard must turn it into a clear throw.
+        container.registerSingleton<ITestService>([&container]() {
+            auto self = container.resolve<ITestService>();  // re-entry
+            return std::make_unique<TestService>(self ? self->getValue() : -1);
+        });
+
+        REQUIRE_THROWS_AS(container.resolve<ITestService>(), DICycleError);
+    }
+
+    SECTION("Mutual two-type cycle is detected and throws") {
+        container.registerSingleton<ITestService>([&container]() {
+            auto dep = container.resolve<IDependency>();
+            return std::make_unique<ServiceWithDependency>(dep);
+        });
+        container.registerSingleton<IDependency>([&container]() {
+            auto svc = container.resolve<ITestService>();
+            return std::make_unique<Dependency>(svc ? "x" : "y");
+        });
+
+        REQUIRE_THROWS_AS(container.resolve<ITestService>(), DICycleError);
+    }
+
+    SECTION("In-progress marker is cleared after a cycle throws") {
+        container.registerSingleton<ITestService>([&container]() {
+            auto self = container.resolve<ITestService>();
+            return std::make_unique<TestService>(1);
+        });
+        container.registerSingleton<IDependency>([]() { return std::make_unique<Dependency>("ok"); });
+
+        REQUIRE_THROWS_AS(container.resolve<ITestService>(), DICycleError);
+
+        // A subsequent well-formed resolution of a different type must still
+        // succeed: the failed type must not be left stuck in the in-progress set.
+        auto dep = container.resolve<IDependency>();
+        REQUIRE(dep != nullptr);
+        REQUIRE(dep->getName() == "ok");
     }
 }
 
@@ -156,8 +229,7 @@ TEST_CASE("DIContainer - Clear Services", "[DIContainer]") {
         container.clear();
 
         REQUIRE_FALSE(container.isRegistered<ITestService>());
-        auto service = container.resolve<ITestService>();
-        REQUIRE(service == nullptr);
+        REQUIRE_THROWS_AS(container.resolve<ITestService>(), DIResolutionError);
     }
 }
 
