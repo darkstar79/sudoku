@@ -393,6 +393,11 @@ std::expected<void, StatisticsError> StatisticsManager::importStats(const std::s
         const auto& imported_stats = *import_result;
 
         for (size_t i = 0; i < DIFFICULTY_COUNT; ++i) {
+            // Weighted average must use the PRE-merge completion counts; capture them
+            // before games_completed[i] is incremented below (issue #27).
+            const auto local_completed = cached_stats_.games_completed[i];
+            const auto imported_completed = imported_stats.games_completed[i];
+
             cached_stats_.games_played[i] += imported_stats.games_played[i];
             cached_stats_.games_completed[i] += imported_stats.games_completed[i];
 
@@ -401,11 +406,12 @@ std::expected<void, StatisticsError> StatisticsManager::importStats(const std::s
                 cached_stats_.best_times[i] = imported_stats.best_times[i];
             }
 
-            // Recalculate average times (simplified approach)
-            if (cached_stats_.games_completed[i] > 0) {
-                auto total_time = cached_stats_.average_times[i] * cached_stats_.games_completed[i] +
-                                  imported_stats.average_times[i] * imported_stats.games_completed[i];
-                cached_stats_.average_times[i] = total_time / cached_stats_.games_completed[i];
+            // Recalculate average time as a weighted mean of the two pre-merge datasets.
+            const auto combined_completed = local_completed + imported_completed;
+            if (combined_completed > 0) {
+                auto total_time = cached_stats_.average_times[i] * local_completed +
+                                  imported_stats.average_times[i] * imported_completed;
+                cached_stats_.average_times[i] = total_time / combined_completed;
             }
         }
 
@@ -624,7 +630,11 @@ std::expected<void, StatisticsError> StatisticsManager::recalculateAggregateStat
             return {};
         }
 
-        // Read sessions (handles both encrypted and plain YAML)
+        // getAllSessions() returns disk history PLUS in-memory pending sessions. Folding
+        // pending in here is intentional and NOT a double-count (issue #27): the cache is
+        // reset to empty just below before any updateAggregateStats() call, so each session
+        // — disk or pending — is counted exactly once. Reading disk only would instead
+        // *drop* unflushed pending sessions, undercounting games that really happened.
         auto sessions_result = getAllSessions();
         if (!sessions_result) {
             return std::unexpected(sessions_result.error());
@@ -632,10 +642,9 @@ std::expected<void, StatisticsError> StatisticsManager::recalculateAggregateStat
 
         const auto& sessions = *sessions_result;
 
-        // Reset stats
+        // Reset stats, then rebuild from scratch over the full disk+pending session set.
         cached_stats_ = AggregateStats{};
 
-        // Recalculate from all sessions
         for (const auto& session : sessions) {
             updateAggregateStats(session);
         }

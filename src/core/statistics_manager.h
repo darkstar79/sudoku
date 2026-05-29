@@ -89,6 +89,10 @@ public:
     [[nodiscard]] std::expected<std::filesystem::path, StatisticsError> archiveUnreadableSessions() override;
 
 private:
+    // White-box test access for invariants that aren't reachable through the public
+    // API (e.g. driving recalculateAggregateStats() while pending sessions exist).
+    friend struct StatisticsManagerTestPeer;
+
     // Dependencies
     std::shared_ptr<ITimeProvider> time_provider_;
     std::unique_ptr<EncryptionManager> encryption_manager_;
