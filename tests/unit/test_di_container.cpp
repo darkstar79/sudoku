@@ -129,6 +129,7 @@ TEST_CASE("DIContainer - Service Dependencies", "[DIContainer]") {
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with multiple REQUIRE/SECTION checks; complexity is inherent to test coverage
 TEST_CASE("DIContainer - Error Handling", "[DIContainer]") {
     DIContainer container;
 
@@ -173,6 +174,7 @@ TEST_CASE("DIContainer - Error Handling", "[DIContainer]") {
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with multiple REQUIRE/SECTION checks; complexity is inherent to test coverage
 TEST_CASE("DIContainer - Cyclic singleton resolution", "[DIContainer]") {
     DIContainer container;
 
