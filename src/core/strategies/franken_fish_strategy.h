@@ -272,8 +272,10 @@ private:
                           const std::vector<struct UnitCells>& cover_units, const std::vector<size_t>& chosen_bases,
                           const std::vector<size_t>& base_cells, size_t target_size) {
         // For each base cell, compute which cover units contain it (as bitmask).
-        // Cover units here are only the complementary line type (at most BOARD_SIZE = 9 of them),
-        // so every bit index fits comfortably in uint16_t. (Issue #21 MED)
+        // Bitmask width = number of cover units. Franken covers are the complementary LINE type
+        // only (at most BOARD_SIZE = 9 of them), so one bit each fits a uint16_t. (Cf.
+        // mutant_fish_strategy.h, where covers may be any of the 27 units and a uint32_t is
+        // needed.) (Issue #21 MED)
         static_assert(BOARD_SIZE <= 16, "cover bitmask (uint16_t) must hold one bit per cover line");
         std::vector<uint16_t> cell_cover_masks(base_cells.size(), 0);
         for (size_t ci = 0; ci < base_cells.size(); ++ci) {

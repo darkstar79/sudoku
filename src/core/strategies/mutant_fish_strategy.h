@@ -305,8 +305,10 @@ private:
         }
 
         // For each base cell, compute which cover units (indexed into cover_indices) contain it.
-        // Use a 32-bit bitmask: at most 27 distinct units exist (9 rows + 9 cols + 9 boxes), so
-        // cover_indices never exceeds 27 entries and every bit index fits in uint32_t. (Issue #21 MED)
+        // Bitmask width = number of cover-eligible units. Mutant covers may be ANY of the 3 unit
+        // types (rows + cols + boxes), so up to BOARD_SIZE*3 = 27 units → one bit each fits a
+        // uint32_t. (Cf. franken_fish_strategy.h, where covers are complementary lines only and a
+        // uint16_t suffices.) (Issue #21 MED)
         static_assert(BOARD_SIZE * 3 <= 32, "cover bitmask (uint32_t) must hold one bit per unit");
         std::vector<uint32_t> cell_cover_masks(base_cells.size(), 0);
         for (size_t ci_idx = 0; ci_idx < cover_indices.size(); ++ci_idx) {
@@ -335,11 +337,16 @@ private:
         if (chosen_cover_idx_positions.size() == target_size) {
             // Soundness note (Issue #21): overlapping cover sets are SOUND and are deliberately
             // allowed (rejecting them would discard valid Mutant fish and weaken the solver).
-            // The base cells are cell-disjoint (checked in enumerateBaseCombinations), so the N base
-            // houses contribute N *distinct* true positions of the digit, all inside the cover region.
-            // Suppose an eliminated cell Z (in cover, not in base) were the digit: Z occupies one
-            // cover house Cj, saturating it. The N distinct base-trues must then fall in the other
-            // N-1 cover houses (each holding at most one digit) — N pigeons, N-1 holes → contradiction.
+            // Rigorous counting argument (handles shared cover cells without hand-waving):
+            //   * In ANY full solution, each of the N cover houses contains the digit exactly once.
+            //     A cell lying in two cover houses is one true serving both, so the cover region
+            //     holds AT MOST N distinct true cells of the digit.
+            //   * The base cells are cell-disjoint (checked in enumerateBaseCombinations) and every
+            //     base cell lies in the cover region, so the N base houses supply AT LEAST N distinct
+            //     true cells, all inside the cover region.
+            //   * Squeezing both bounds: the cover region holds EXACTLY N distinct trues, and they
+            //     are precisely the N base-trues. Therefore no cover cell outside the base set can be
+            //     the digit — every such cell is eliminable.
             // This holds regardless of whether the cover houses share cells. The load-bearing
             // invariant is base-cell disjointness, not cover disjointness.
             //
