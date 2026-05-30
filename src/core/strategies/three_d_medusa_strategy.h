@@ -211,15 +211,18 @@ private:
                 continue;
             }
 
+            // Skip non-bipartite components entirely — the 2-coloring is an arbitrary
+            // BFS artifact, so neither the contradiction rules (1-2) nor the elimination
+            // rules (3-6) are sound. Applying the contradiction rules here would eliminate
+            // a "false color" that is meaningless for an odd cycle (issue #22).
+            if (!is_bipartite) {
+                continue;
+            }
+
             // Try contradiction rules (1 & 2) — if a color is self-contradicting, eliminate it
             auto contradiction = checkContradiction(candidates, color_a_nodes, color_b_nodes);
             if (contradiction.has_value()) {
                 return contradiction;
-            }
-
-            // Skip elimination rules for non-bipartite components — the 2-coloring is invalid
-            if (!is_bipartite) {
-                continue;
             }
 
             // Try elimination rules (3-6) — remove uncolored candidates

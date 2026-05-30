@@ -260,3 +260,60 @@ TEST_CASE("ThreeDMedusaStrategy - Explanation contains technique name", "[three_
     REQUIRE(result.has_value());
     REQUIRE(result->explanation.find("3D Medusa") != std::string::npos);
 }
+
+TEST_CASE("ThreeDMedusaStrategy - No contradiction on non-bipartite (odd-cycle) component", "[three_d_medusa]") {
+    // Regression for #22: when BFS detects an odd cycle (is_bipartite=false), the
+    // 2-coloring is an arbitrary BFS artifact, so neither the contradiction rules
+    // (1-2) nor the elimination rules (3-6) are sound. The strategy must produce
+    // nothing for such a component (it must NOT eliminate a "false color").
+    //
+    // Construct a genuine 5-node odd cycle over (cell,digit) nodes:
+    //   P=(0,1) bivalue {1,2}, Q=(1,0) bivalue {1,2}, R=(1,1) = {1} only.
+    // Edges (a 5-cycle, hence non-bipartite):
+    //   (0,1,1)-(0,1,2)  P bivalue
+    //   (0,1,2)-(1,0,2)  digit 2 conjugate in box 0
+    //   (1,0,2)-(1,0,1)  Q bivalue
+    //   (1,0,1)-(1,1,1)  digit 1 conjugate in row 1
+    //   (1,1,1)-(0,1,1)  digit 1 conjugate in col 1
+    //
+    // The buggy code colored the odd cycle arbitrarily, found two same-colored
+    // nodes in cell (1,0), and returned a bogus Rule-1 contradiction elimination.
+    // The fix skips non-bipartite components, so findStep returns nullopt.
+    auto board = createEmptyBoard();
+    CandidateGrid state(board);
+
+    // P=(0,1) and Q=(1,0) are bivalue {1,2}; R=(1,1) is {1} only.
+    keepOnly(state, 0, 1, {1, 2});
+    keepOnly(state, 1, 0, {1, 2});
+    keepOnly(state, 1, 1, {1});
+
+    // digit 2 conjugate in box 0: only P=(0,1) and Q=(1,0) keep candidate 2.
+    for (size_t r = 0; r < 3; ++r) {
+        for (size_t c = 0; c < 3; ++c) {
+            const bool is_p = (r == 0 && c == 1);
+            const bool is_q = (r == 1 && c == 0);
+            if (!is_p && !is_q) {
+                state.eliminateCandidate(r, c, 2);
+            }
+        }
+    }
+
+    // digit 1 conjugate in row 1: only Q=(1,0) and R=(1,1) keep candidate 1.
+    for (size_t c = 0; c < 9; ++c) {
+        if (c != 0 && c != 1) {
+            state.eliminateCandidate(1, c, 1);
+        }
+    }
+
+    // digit 1 conjugate in col 1: only P=(0,1) and R=(1,1) keep candidate 1.
+    for (size_t r = 0; r < 9; ++r) {
+        if (r != 0 && r != 1) {
+            state.eliminateCandidate(r, 1, 1);
+        }
+    }
+
+    ThreeDMedusaStrategy strategy;
+    auto result = strategy.findStep(board, state);
+
+    REQUIRE_FALSE(result.has_value());
+}
