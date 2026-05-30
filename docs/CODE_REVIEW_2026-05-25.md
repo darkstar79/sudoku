@@ -1061,6 +1061,13 @@ Verbatim per-chunk findings, notes, and coverage from each subagent. Use these f
 - Why it matters: Allows pseudo-JE patterns where a base candidate has no S-cell anywhere — invariant violated, eliminations unsound.
 - Fix: After collecting T1/T2 candidates, require `(t1_mask | t2_mask) & base_mask == base_mask` (each base candidate appears in at least one of T1/T2).
 
+> **UPDATE 2026-05-30 (issue #21) — both HIGH fish findings VERIFIED SOUND; resolved as hardening.**
+> On close analysis the two HIGH items below are **not live correctness bugs**:
+> - **Franken Fish:** cover units are only ever the complementary line type (cols when base = rows+boxes, rows when base = cols+boxes); boxes are never cover-eligible. So a cover unit can never *equal* a base unit (different `UnitType`), and covers are mutually parallel lines that can never share a cell. Both degeneracies are impossible by construction.
+> - **Mutant Fish:** overlapping cover sets are **sound** (cover-set pigeonhole theorem). With base cells cell-disjoint (the real load-bearing check, already present), the N base houses give N *distinct* true positions; an eliminated cover-not-base cell Z would saturate one cover house, forcing those N trues into N−1 remaining cover houses — a contradiction, regardless of cover overlap. The suggested "reject cover overlap" fix would *discard valid Mutant fish and weaken the solver*, so it was deliberately **not** applied.
+>
+> Resolution: proof comments + `static_assert` on the cover bitmask width added to both strategies; deterministic overlapping-cover regression tests added (`test_mutant_fish_strategy.cpp`, `test_franken_fish_strategy.cpp`) plus a 1000-puzzle generative soundness sweep (`test_strategy_correctness.cpp`) — all green, zero wrong deductions. The two MEDs below are micro-optimizations with no soundness impact (the bit-width has margin: 27 units ≤ 32 bits).
+
 **[HIGH] Franken Fish: cover units may overlap base units (degenerate fish)**
 - File: `src/core/strategies/franken_fish_strategy.h:178-203, 282-316`
 - Issue: Bestiary calls out base-cell overlap (correctly checked at 228-234). But the symmetric danger — a cover unit equal to a base unit, or a cover unit whose cells fully overlap a base unit — is not rejected. Per Franken Fish definition, a chosen cover should not be one of the chosen bases.

@@ -18,6 +18,9 @@
 #include "../../src/core/strategies/mutant_fish_strategy.h"
 #include "../helpers/candidate_test_utils.h"
 
+#include <array>
+#include <utility>
+
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
@@ -31,10 +34,10 @@ namespace {
 /// Eliminate all candidates except `digit` from all empty cells.
 /// Reduces combinatorial explosion in MutantFish search from 9 digits to 1.
 void keepOnlyDigit(CandidateGrid& state, const BoardData& board, int digit) {
-    for (size_t r = 0; r < 9; ++r) {
-        for (size_t c = 0; c < 9; ++c) {
-            if (board[r][c] == 0) {
-                for (int d = 1; d <= 9; ++d) {
+    for (size_t r = 0; r < BOARD_SIZE; ++r) {
+        for (size_t c = 0; c < BOARD_SIZE; ++c) {
+            if (board[r][c] == EMPTY_CELL) {
+                for (int d = MIN_VALUE; d <= MAX_VALUE; ++d) {
                     if (d != digit) {
                         state.eliminateCandidate(r, c, d);
                     }
@@ -276,4 +279,77 @@ TEST_CASE("MutantFishStrategy - Explanation contains technique name", "[mutant_f
             REQUIRE(elim.value == 3);
         }
     }
+}
+
+namespace {
+
+/// True if two cells share a row, a column, or a box (i.e. they "see" each other).
+[[nodiscard]] bool seesEachOther(size_t r1, size_t c1, size_t r2, size_t c2) {
+    if (r1 == r2 && c1 == c2) {
+        return false;
+    }
+    bool same_box = (r1 / BOX_SIZE == r2 / BOX_SIZE) && (c1 / BOX_SIZE == c2 / BOX_SIZE);
+    return r1 == r2 || c1 == c2 || same_box;
+}
+
+}  // namespace
+
+// Issue #21 regression: a Mutant Fish whose two cover sets OVERLAP in cells must still be
+// found and must produce only sound eliminations. The construction below is fully determined:
+//   digit 3, base = {Row 0, Box 6}, cover = {Col 0, Box 0}.
+// Col 0 and Box 0 share cells (0,0),(1,0),(2,0) — overlapping covers. The only valid base is
+// {Row 0, Box 6} (every other 2-unit combo overlaps in cells or is single-type), and the only
+// cover that covers all base cells with two mixed-type units is {Col 0, Box 0}. The single
+// resulting elimination is digit 3 at (1,0).
+TEST_CASE("MutantFishStrategy - Overlapping covers are accepted and sound (issue #21)", "[mutant_fish]") {
+    auto board = createEmptyBoard();
+    CandidateGrid state(board);
+    keepOnlyDigit(state, board, 3);  // only search digit 3
+
+    // Keep digit 3 only at the pattern cells:
+    //   Base Row 0:  (0,0), (0,1)
+    //   Base Box 6:  (6,0), (7,0)
+    //   Elim target: (1,0)  (in Col 0 and Box 0, not a base cell)
+    for (size_t r = 0; r < BOARD_SIZE; ++r) {
+        for (size_t c = 0; c < BOARD_SIZE; ++c) {
+            bool is_base = (r == 0 && c == 0) || (r == 0 && c == 1) || (r == 6 && c == 0) || (r == 7 && c == 0);
+            bool is_target = (r == 1 && c == 0);
+            if (!is_base && !is_target) {
+                state.eliminateCandidate(r, c, 3);
+            }
+        }
+    }
+
+    MutantFishStrategy strategy;
+    auto result = strategy.findStep(board, state);
+
+    // The overlapping-cover Mutant Fish must be found (not silently rejected).
+    REQUIRE(result.has_value());
+    REQUIRE(result->technique == SolvingTechnique::MutantFish);
+    REQUIRE(result->eliminations.size() == 1);
+    REQUIRE(result->eliminations[0].position.row == 1);
+    REQUIRE(result->eliminations[0].position.col == 0);
+    REQUIRE(result->eliminations[0].value == 3);
+
+    // Independent soundness check: brute-force every conflict-free assignment of the digit to the
+    // two base houses and confirm the eliminated cell sees a base-true in EVERY case (so it can
+    // never itself be the digit). This verifies the fish logic without trusting the strategy.
+    const std::array<std::pair<size_t, size_t>, 2> row0_cells = {{{0, 0}, {0, 1}}};
+    const std::array<std::pair<size_t, size_t>, 2> box6_cells = {{{6, 0}, {7, 0}}};
+    const auto elim = result->eliminations[0].position;
+
+    int valid_assignments = 0;
+    for (const auto& [r_a, c_a] : row0_cells) {
+        for (const auto& [r_b, c_b] : box6_cells) {
+            if (seesEachOther(r_a, c_a, r_b, c_b)) {
+                continue;  // two trues of the same digit cannot share a house
+            }
+            ++valid_assignments;
+            bool elim_is_refuted =
+                seesEachOther(elim.row, elim.col, r_a, c_a) || seesEachOther(elim.row, elim.col, r_b, c_b);
+            INFO("base-true assignment (" << r_a << "," << c_a << ") + (" << r_b << "," << c_b << ")");
+            REQUIRE(elim_is_refuted);
+        }
+    }
+    REQUIRE(valid_assignments > 0);  // the configuration is satisfiable, so the check is meaningful
 }
