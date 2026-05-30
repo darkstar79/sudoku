@@ -42,8 +42,13 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.conan2
-          key: conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}
+          # sha-suffixed (see ci.yml): save a per-commit conan cache including the
+          # from-source Catch2 build so the next nightly restores it instead of
+          # rebuilding — keeps the p/b/catch<hash>/ include path stable across runs
+          # so the test-executable TUs hit ccache.
+          key: conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}-${{ github.sha }}
           restore-keys: |
+            conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}-
             conan-${{ runner.os }}-relwithdebinfo-
 
       - name: Cache ccache
@@ -125,8 +130,13 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.conan2
-          key: conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}
+          # sha-suffixed (see ci.yml): save a per-commit conan cache including the
+          # from-source Catch2 build so the next nightly restores it instead of
+          # rebuilding — keeps the p/b/catch<hash>/ include path stable across runs
+          # so the test-executable TUs hit ccache.
+          key: conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}-${{ github.sha }}
           restore-keys: |
+            conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}-
             conan-${{ runner.os }}-release-
 
       - name: Cache ccache
@@ -234,8 +244,13 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.conan2
-          key: conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}
+          # sha-suffixed (see ci.yml): save a per-commit conan cache including the
+          # from-source Catch2 build so the next nightly restores it instead of
+          # rebuilding — keeps the p/b/catch<hash>/ include path stable across runs
+          # so the test-executable TUs hit ccache.
+          key: conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}-${{ github.sha }}
           restore-keys: |
+            conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}-
             conan-${{ runner.os }}-relwithdebinfo-
 
       - name: Cache ccache
@@ -311,8 +326,13 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.conan2
-          key: conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}
+          # sha-suffixed (see ci.yml): save a per-commit conan cache including the
+          # from-source Catch2 build so the next nightly restores it instead of
+          # rebuilding — keeps the p/b/catch<hash>/ include path stable across runs
+          # so the test-executable TUs hit ccache.
+          key: conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}-${{ github.sha }}
           restore-keys: |
+            conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}-
             conan-${{ runner.os }}-release-
 
       - name: Cache ccache
