@@ -280,8 +280,14 @@ jobs:
         # Full build is required so generated headers (moc_*, qrc_*, version.h,
         # translation outputs) exist and compile_commands.json is populated.
         # ccache makes incremental runs cheap.
+        #
+        # Match test-and-coverage's configure exactly (-DSUDOKU_ENABLE_UI_TESTS=ON,
+        # via coverage.sh): UI tests ON changes the AUTOMOC/generated-header set, so
+        # without it ~60% of shared TUs hash differently and miss the restored
+        # rwdi-cov cache. With it, the generated-header set matches and the extra
+        # UI-test TUs are themselves cache hits — pushing reuse toward ~100%.
         run: |
-          cmake --preset relwithdebinfo
+          cmake --preset relwithdebinfo -DSUDOKU_ENABLE_UI_TESTS=ON
           cmake --build --preset relwithdebinfo
 
       - name: Show ccache stats
