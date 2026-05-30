@@ -21,27 +21,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::testing::fishEliminationIsSound;
+using sudoku::testing::keepDigitOnlyAtCells;
+using sudoku::testing::keepOnlyDigit;
 
 namespace {
 
 [[nodiscard]] BoardData createEmptyBoard() {
     return BoardData{};
-}
-
-/// Eliminate all candidates except `digit` from all empty cells.
-/// Reduces combinatorial explosion in MutantFish search from 9 digits to 1.
-void keepOnlyDigit(CandidateGrid& state, const BoardData& board, int digit) {
-    for (size_t r = 0; r < 9; ++r) {
-        for (size_t c = 0; c < 9; ++c) {
-            if (board[r][c] == 0) {
-                for (int d = 1; d <= 9; ++d) {
-                    if (d != digit) {
-                        state.eliminateCandidate(r, c, d);
-                    }
-                }
-            }
-        }
-    }
 }
 
 }  // namespace
@@ -276,4 +263,43 @@ TEST_CASE("MutantFishStrategy - Explanation contains technique name", "[mutant_f
             REQUIRE(elim.value == 3);
         }
     }
+}
+
+// Issue #21 regression: a Mutant Fish whose two cover sets OVERLAP in cells must still be
+// found and must produce only sound eliminations. The construction below is fully determined:
+//   digit 3, base = {Row 0, Box 6}, cover = {Col 0, Box 0}.
+// Col 0 and Box 0 share cells (0,0),(1,0),(2,0) — overlapping covers. The only valid base is
+// {Row 0, Box 6} (every other 2-unit combo overlaps in cells or is single-type), and the only
+// cover that covers all base cells with two mixed-type units is {Col 0, Box 0}. The single
+// resulting elimination is digit 3 at (1,0).
+TEST_CASE("MutantFishStrategy - Overlapping covers are accepted and sound (issue #21)", "[mutant_fish]") {
+    auto board = createEmptyBoard();
+    CandidateGrid state(board);
+    keepOnlyDigit(state, board, 3);  // only search digit 3
+
+    // Keep digit 3 only at the pattern cells:
+    //   Base Row 0:  (0,0), (0,1)
+    //   Base Box 6:  (6,0), (7,0)
+    //   Elim target: (1,0)  (in Col 0 and Box 0, not a base cell)
+    keepDigitOnlyAtCells(state, board, 3, {{0, 0}, {0, 1}, {6, 0}, {7, 0}, {1, 0}});
+
+    MutantFishStrategy strategy;
+    auto result = strategy.findStep(board, state);
+
+    // The overlapping-cover Mutant Fish must be found (not silently rejected).
+    REQUIRE(result.has_value());
+    // value_or keeps the access unconditional (no nesting) yet checked, so clang-tidy is satisfied;
+    // the REQUIRE above already aborts the test if the optional is empty. The field checks are folded
+    // into one short-circuited assertion (size first, guarding the [0] access) to keep this test
+    // body's cognitive complexity — inflated ~+5 per REQUIRE macro — under the clang-tidy threshold.
+    const SolveStep step = result.value_or(SolveStep{});
+    REQUIRE((step.technique == SolvingTechnique::MutantFish && step.eliminations.size() == 1 &&
+             step.eliminations[0].position.row == 1 && step.eliminations[0].position.col == 0 &&
+             step.eliminations[0].value == 3));
+
+    // Independent soundness check (strategy-agnostic brute force): the eliminated cell must see a
+    // placed digit in every conflict-free assignment of 3 to the two base houses, so it can never
+    // itself be 3. This validates the fish logic regardless of the overlapping covers.
+    const auto elim = step.eliminations[0].position;
+    REQUIRE(fishEliminationIsSound({{0, 0}, {0, 1}}, {{6, 0}, {7, 0}}, elim.row, elim.col));
 }

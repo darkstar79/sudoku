@@ -280,7 +280,11 @@ private:
                           const std::vector<UnitCells>& base_units, const std::vector<UnitCells>& cover_eligible,
                           const std::vector<size_t>& chosen_bases, const std::vector<size_t>& base_cells,
                           size_t target_size) {
-        // Filter cover_eligible to exclude units used as base
+        // Filter cover_eligible to exclude units used as base.
+        // (Issue #21) A cover unit equal to a chosen base unit would be degenerate ("covers itself"),
+        // so it is rejected here. NOTE: cover units that merely *overlap* in cells (e.g. a row and a
+        // box that intersect) are intentionally NOT rejected — overlapping covers remain SOUND. See
+        // the soundness note in enumerateCoverCombinations below.
         std::vector<size_t> cover_indices;
         cover_indices.reserve(cover_eligible.size());
         for (size_t ci = 0; ci < cover_eligible.size(); ++ci) {
@@ -300,8 +304,12 @@ private:
             return std::nullopt;
         }
 
-        // For each base cell, compute which cover units (indexed into cover_indices) contain it
-        // Use a 32-bit bitmask (cover_indices.size() <= 27, fits in uint32_t)
+        // For each base cell, compute which cover units (indexed into cover_indices) contain it.
+        // Bitmask width = number of cover-eligible units. Mutant covers may be ANY of the 3 unit
+        // types (rows + cols + boxes), so up to BOARD_SIZE*3 = 27 units → one bit each fits a
+        // uint32_t. (Cf. franken_fish_strategy.h, where covers are complementary lines only and a
+        // uint16_t suffices.) (Issue #21 MED)
+        static_assert(BOARD_SIZE * 3 <= 32, "cover bitmask (uint32_t) must hold one bit per unit");
         std::vector<uint32_t> cell_cover_masks(base_cells.size(), 0);
         for (size_t ci_idx = 0; ci_idx < cover_indices.size(); ++ci_idx) {
             size_t ci = cover_indices[ci_idx];
@@ -327,6 +335,21 @@ private:
                                size_t target_size, size_t start_idx, uint32_t cover_mask,
                                std::vector<size_t> chosen_cover_idx_positions) {
         if (chosen_cover_idx_positions.size() == target_size) {
+            // Soundness note (Issue #21): overlapping cover sets are SOUND and are deliberately
+            // allowed (rejecting them would discard valid Mutant fish and weaken the solver).
+            // Rigorous counting argument (handles shared cover cells without hand-waving):
+            //   * In ANY full solution, each of the N cover houses contains the digit exactly once.
+            //     A cell lying in two cover houses is one true serving both, so the cover region
+            //     holds AT MOST N distinct true cells of the digit.
+            //   * The base cells are cell-disjoint (checked in enumerateBaseCombinations) and every
+            //     base cell lies in the cover region, so the N base houses supply AT LEAST N distinct
+            //     true cells, all inside the cover region.
+            //   * Squeezing both bounds: the cover region holds EXACTLY N distinct trues, and they
+            //     are precisely the N base-trues. Therefore no cover cell outside the base set can be
+            //     the digit — every such cell is eliminable.
+            // This holds regardless of whether the cover houses share cells. The load-bearing
+            // invariant is base-cell disjointness, not cover disjointness.
+            //
             // Check all base cells are covered
             for (size_t ci = 0; ci < base_cells.size(); ++ci) {
                 if ((cell_cover_masks[ci] & cover_mask) == 0) {

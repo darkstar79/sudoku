@@ -232,3 +232,17 @@ TEST_CASE("Strategy correctness: no wrong deductions on Master puzzles", "[.][st
     INFO("Generated " << generated << " Master puzzles, " << wrong << " wrong, " << unsolvable << " unsolvable");
     REQUIRE(wrong == 0);
 }
+
+// Issue #21: broad soundness net for the Franken/Mutant fish cover-overlap concern. The full strategy
+// chain (which includes Franken and Mutant fish) is replayed against ground truth; any wrong
+// elimination — from any strategy, including an unsound fish — is reported with its technique name.
+// Opt-in (tagged [.]) like the Master sweep above; the deterministic overlapping-cover regressions
+// live in test_mutant_fish_strategy.cpp / test_franken_fish_strategy.cpp and run by default.
+TEST_CASE("Strategy correctness: Franken/Mutant fish cover-overlap soundness (issue #21)",
+          "[.][strategy][correctness][franken_fish][mutant_fish]") {
+    constexpr int NUM_PUZZLES = 1000;
+    auto [wrong, generated, unsolvable] = runCorrectnessCheck(Difficulty::Expert, NUM_PUZZLES);
+
+    INFO("Generated " << generated << " Expert puzzles, " << wrong << " wrong, " << unsolvable << " unsolvable");
+    REQUIRE(wrong == 0);
+}

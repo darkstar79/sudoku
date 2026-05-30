@@ -21,6 +21,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::testing::fishEliminationIsSound;
+using sudoku::testing::keepDigitOnlyAtCells;
+using sudoku::testing::keepOnlyDigit;
 
 namespace {
 
@@ -206,4 +209,39 @@ TEST_CASE("FrankenFishStrategy - Explanation contains technique name", "[franken
         REQUIRE(result->explanation.find("Franken Fish") != std::string::npos);
         REQUIRE(result->explanation.find("eliminates") != std::string::npos);
     }
+}
+
+// Issue #21 regression: confirm Franken eliminations are sound, and document (via a deterministic
+// construction) that Franken cover units can never equal or overlap a base unit — they are always
+// the complementary line type. Construction: digit 5, base = {Row 0, Box 6}, cover = {Col 0, Col 3}.
+// The only valid base is {Row 0, Box 6}; the only cover is {Col 0, Col 3}; the single elimination is
+// digit 5 at (1,0).
+TEST_CASE("FrankenFishStrategy - Eliminations are sound (issue #21)", "[franken_fish]") {
+    auto board = createEmptyBoard();
+    CandidateGrid state(board);
+    keepOnlyDigit(state, board, 5);  // only search digit 5
+
+    // Keep digit 5 only at the pattern cells:
+    //   Base Row 0:  (0,0), (0,3)
+    //   Base Box 6:  (6,0), (7,0)
+    //   Elim target: (1,0)  (in Col 0, not a base cell)
+    keepDigitOnlyAtCells(state, board, 5, {{0, 0}, {0, 3}, {6, 0}, {7, 0}, {1, 0}});
+
+    FrankenFishStrategy strategy;
+    auto result = strategy.findStep(board, state);
+
+    REQUIRE(result.has_value());
+    // value_or keeps the access unconditional (no nesting) yet checked, so clang-tidy is satisfied;
+    // the REQUIRE above already aborts the test if the optional is empty. The field checks are folded
+    // into one short-circuited assertion (size first, guarding the [0] access) to keep this test
+    // body's cognitive complexity — inflated ~+5 per REQUIRE macro — under the clang-tidy threshold.
+    const SolveStep step = result.value_or(SolveStep{});
+    REQUIRE((step.technique == SolvingTechnique::FrankenFish && step.eliminations.size() == 1 &&
+             step.eliminations[0].position.row == 1 && step.eliminations[0].position.col == 0 &&
+             step.eliminations[0].value == 5));
+
+    // Independent soundness check (strategy-agnostic brute force): the eliminated cell must see a
+    // placed digit in every conflict-free assignment of 5 to the two base houses.
+    const auto elim = step.eliminations[0].position;
+    REQUIRE(fishEliminationIsSound({{0, 0}, {0, 3}}, {{6, 0}, {7, 0}}, elim.row, elim.col));
 }

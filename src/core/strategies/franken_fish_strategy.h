@@ -158,6 +158,15 @@ private:
     // NOLINTNEXTLINE(readability-function-cognitive-complexity,readability-function-size) — base/cover enumeration; nesting is inherent
     [[nodiscard]] static std::optional<SolveStep>
     tryFrankenFishOrientation(const BoardData& board, const CandidateGrid& candidates, int digit, bool row_base) {
+        // Cover/base disjointness invariant (Issue #21): in this orientation the cover units are
+        // ALWAYS the complementary line type only (cols when base = rows+boxes, rows when base =
+        // cols+boxes) — boxes are never cover-eligible. Hence:
+        //   * a cover unit can never EQUAL a chosen base unit (different UnitType), and
+        //   * cover units are mutually parallel lines, so two covers can never share a cell.
+        // Both Franken degeneracies the review worried about are therefore impossible by
+        // construction; no explicit rejection is needed (the symmetric Mutant guard lives in
+        // mutant_fish_strategy.h::findCoverAndEliminate).
+        //
         // Base candidates: lines + boxes
         std::vector<UnitCells> base_units;
         for (size_t i = 0; i < BOARD_SIZE; ++i) {
@@ -262,7 +271,12 @@ private:
                           const std::vector<struct UnitCells>& base_units,
                           const std::vector<struct UnitCells>& cover_units, const std::vector<size_t>& chosen_bases,
                           const std::vector<size_t>& base_cells, size_t target_size) {
-        // For each base cell, compute which cover units contain it (as bitmask)
+        // For each base cell, compute which cover units contain it (as bitmask).
+        // Bitmask width = number of cover units. Franken covers are the complementary LINE type
+        // only (at most BOARD_SIZE = 9 of them), so one bit each fits a uint16_t. (Cf.
+        // mutant_fish_strategy.h, where covers may be any of the 27 units and a uint32_t is
+        // needed.) (Issue #21 MED)
+        static_assert(BOARD_SIZE <= 16, "cover bitmask (uint16_t) must hold one bit per cover line");
         std::vector<uint16_t> cell_cover_masks(base_cells.size(), 0);
         for (size_t ci = 0; ci < base_cells.size(); ++ci) {
             for (size_t ui = 0; ui < cover_units.size(); ++ui) {
