@@ -381,6 +381,7 @@ TEST_CASE("Observable - makeObservable Helper", "[Observable]") {
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with multiple REQUIRE/SECTION checks; complexity is inherent to test coverage
 TEST_CASE("CompositeObserver - per-callback unsubscribe", "[Observable][CompositeObserver]") {
     SECTION("Destroying one observer does not unsubscribe a sibling on the same observable") {
         Observable<int> observable{0};
