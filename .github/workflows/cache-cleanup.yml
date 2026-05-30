@@ -1,0 +1,56 @@
+name: Cache Cleanup
+
+# Reclaim Actions cache budget when a PR closes. Caches created during a PR's
+# runs are scoped either to refs/pull/<n>/merge (pull_request runs) or to the
+# head branch refs/heads/<branch> (push runs before/while the PR is open). Once
+# the PR is closed both are dead weight against the repo's shared 10 GB budget.
+# Deleting them on close is what keeps per-branch ccache saves affordable
+# (see _bmad-output/planning-artifacts/ci-cache-strategy-2026-05-30.md).
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    name: Delete closed-PR caches
+    runs-on: ubuntu-24.04
+    # Fork PRs run with a read-only GITHUB_TOKEN (cache DELETE would 403). This
+    # repo does not accept external PRs, but guard anyway so a fork-PR close never
+    # turns the job red.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Delete caches scoped to the closed PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PR_NUMBER}" ]; then
+            echo "No PR number on the event payload — nothing to do."
+            exit 0
+          fi
+          total=0
+          # Both the merge ref (pull_request runs) and the head branch (push runs).
+          for ref in "refs/pull/${PR_NUMBER}/merge" "refs/heads/${HEAD_REF}"; do
+            echo "Listing caches for $ref"
+            ids="$(gh api --paginate \
+              "repos/$REPO/actions/caches?ref=$ref&per_page=100" \
+              --jq '.actions_caches[].id')"
+            if [ -z "$ids" ]; then
+              echo "  none."
+              continue
+            fi
+            for id in $ids; do
+              echo "  deleting cache id $id"
+              gh api --method DELETE "repos/$REPO/actions/caches/$id"
+              total=$((total + 1))
+            done
+          done
+          echo "Deleted $total cache entr(y/ies) for PR #${PR_NUMBER}."

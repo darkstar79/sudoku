@@ -168,7 +168,7 @@ find_program(LCOV_PATH lcov)
 find_program(GENHTML_PATH genhtml)
 find_program(GCOVR_PATH gcovr)
 
-if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo") AND NOT ENABLE_SANITIZERS)
+if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo") AND NOT ENABLE_SANITIZERS AND SUDOKU_ENABLE_COVERAGE)
     # Add coverage flags to the library
     target_compile_options(sudoku_lib PRIVATE --coverage -fprofile-arcs -ftest-coverage)
     target_link_libraries(sudoku_lib PRIVATE --coverage)

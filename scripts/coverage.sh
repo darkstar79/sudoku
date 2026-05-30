@@ -48,7 +48,7 @@ function ensure_debug_build() {
 
     cd "$PROJECT_ROOT"
 
-    conan install . --build=missing -s build_type=RelWithDebInfo || {
+    conan install . --build=missing -s build_type=RelWithDebInfo -s compiler.cppstd=gnu23 || {
         echo -e "${RED}Failed to install Conan dependencies${NC}"
         exit 1
     }
