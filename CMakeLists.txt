@@ -31,6 +31,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Sanitizer configuration (ASan + UBSan)
 option(ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(SUDOKU_ENABLE_UI_TESTS "Build Qt6 UI tests (requires Qt6::Test)" OFF)
+option(SUDOKU_ENABLE_COVERAGE "Add gcov coverage instrumentation to Debug/RelWithDebInfo builds" ON)
 
 # Disable C++23 modules for compatibility with clang-tidy
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)

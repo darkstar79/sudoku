@@ -51,9 +51,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ccache
-          key: ccache-${{ runner.os }}-strategy-${{ github.sha }}
+          key: ccache-${{ runner.os }}-rwdi-nocov-${{ github.sha }}
           restore-keys: |
-            ccache-${{ runner.os }}-strategy-
+            ccache-${{ runner.os }}-rwdi-nocov-
 
       - name: Configure ccache
         if: steps.check.outputs.skip != 'true'
@@ -67,8 +67,11 @@ jobs:
 
       - name: Build
         if: steps.check.outputs.skip != 'true'
+        # Coverage off: this job only runs the [strategy] suite, never gcovr.
+        # Instrumentation would slow the 150-min replay and bloat the cache for
+        # no benefit. Distinct rwdi-nocov flavor (different objects than rwdi-cov).
         run: |
-          cmake --preset relwithdebinfo
+          cmake --preset relwithdebinfo -DSUDOKU_ENABLE_COVERAGE=OFF
           cmake --build --preset relwithdebinfo
 
       - name: Show ccache stats
@@ -131,9 +134,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ccache
-          key: ccache-${{ runner.os }}-sanitizer-${{ github.sha }}
+          key: ccache-${{ runner.os }}-rel-san-${{ github.sha }}
           restore-keys: |
-            ccache-${{ runner.os }}-sanitizer-
+            ccache-${{ runner.os }}-rel-san-
 
       - name: Configure ccache
         if: steps.check.outputs.skip != 'true'
@@ -240,9 +243,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ccache
-          key: ccache-${{ runner.os }}-relwithdebinfo-${{ github.sha }}
+          key: ccache-${{ runner.os }}-rwdi-cov-${{ github.sha }}
           restore-keys: |
-            ccache-${{ runner.os }}-relwithdebinfo-
+            ccache-${{ runner.os }}-rwdi-cov-
 
       - name: Configure ccache
         if: steps.check.outputs.skip != 'true'
@@ -317,9 +320,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.cache/ccache
-          key: ccache-${{ runner.os }}-cppcheck-${{ github.sha }}
+          key: ccache-${{ runner.os }}-rel-plain-${{ github.sha }}
           restore-keys: |
-            ccache-${{ runner.os }}-cppcheck-
+            ccache-${{ runner.os }}-rel-plain-
 
       - name: Configure ccache
         if: steps.check.outputs.skip != 'true'

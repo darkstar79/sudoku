@@ -63,6 +63,7 @@ jobs:
   i18n-check:
     name: Translation Completeness
     runs-on: ubuntu-24.04
+    needs: format-check
 
     steps:
       - name: Checkout code
@@ -76,8 +77,16 @@ jobs:
           pip3 install conan
           conan profile detect --force
 
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}
+          restore-keys: |
+            conan-${{ runner.os }}-release-
+
       - name: Install dependencies
-        run: conan install . --build=missing -s build_type=Release
+        run: conan install . --build=missing -s build_type=Release -s compiler.cppstd=gnu23
 
       - name: Configure CMake
         run: cmake --preset release
@@ -141,15 +150,24 @@ jobs:
             conan-${{ runner.os }}-relwithdebinfo-
 
       - name: Install dependencies
-        run: conan install . --build=missing -s build_type=RelWithDebInfo
+        run: conan install . --build=missing -s build_type=RelWithDebInfo -s compiler.cppstd=gnu23
 
+      # ccache keys are named by build *flavor* (build_type + sanitizers + cppstd +
+      # coverage), not by job, so same-flag jobs share one cache and different-flag
+      # jobs stay isolated. Flavors: rwdi-cov (RelWithDebInfo + coverage, this job +
+      # clang-tidy-diff + nightly clang-tidy), rwdi-nocov (nightly strategy),
+      # rel-san (nightly sanitizer), rel-plain (nightly cppcheck). All RelWithDebInfo jobs
+      # pin compiler.cppstd=gnu23 so the shared flavor is genuinely one flavor.
+      # The ${github.sha} suffix saves a fresh entry per commit; closed-PR caches are
+      # reclaimed by cache-cleanup.yml. test-and-coverage is the single rwdi-cov
+      # writer (clang-tidy-diff is restore-only) to avoid duplicate-save collisions.
       - name: Cache ccache
         uses: actions/cache@v5
         with:
           path: ~/.cache/ccache
-          key: ccache-${{ runner.os }}-relwithdebinfo-${{ github.sha }}
+          key: ccache-${{ runner.os }}-rwdi-cov-${{ github.sha }}
           restore-keys: |
-            ccache-${{ runner.os }}-relwithdebinfo-
+            ccache-${{ runner.os }}-rwdi-cov-
 
       - name: Configure ccache
         run: |
@@ -182,10 +200,20 @@ jobs:
   clang-tidy-diff:
     name: clang-tidy (diff)
     runs-on: ubuntu-24.04
-    needs: format-check
+    # Depends on test-and-coverage so it restores the exact-SHA rwdi-cov ccache that
+    # job just wrote (identical coverage-instrumented RelWithDebInfo objects) — the
+    # build collapses to a cache-warm relink and clang-tidy runs on the diff.
+    needs: [format-check, test-and-coverage]
+    # always() + the explicit format-check guard: depend on test-and-coverage for a
+    # warm exact-SHA cache on the happy path, but still run lint when tests FAIL
+    # (a broken-test PR is exactly when lint feedback matters). format-check must
+    # still gate it (a formatting violation skips this job). On a test-failure the
+    # cache is restored via the restore-keys prefix instead of the exact SHA.
     # Skip on pushes to main: there's no meaningful diff base (already merged).
     # Nightly's full clang-tidy is the safety net for the trunk.
-    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
+    if: |
+      always() && needs.format-check.result == 'success' &&
+      (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main'))
     timeout-minutes: 25
 
     steps:
@@ -229,13 +257,16 @@ jobs:
           restore-keys: |
             conan-${{ runner.os }}-relwithdebinfo-
 
-      - name: Cache ccache
-        uses: actions/cache@v5
+      # Restore-only: test-and-coverage (a dependency) is the single rwdi-cov writer.
+      # Restoring its exact-SHA entry gives a ~100% hit; saving here would only
+      # collide on the same key and waste budget.
+      - name: Restore ccache
+        uses: actions/cache/restore@v5
         with:
           path: ~/.cache/ccache
-          key: ccache-${{ runner.os }}-relwithdebinfo-${{ github.sha }}
+          key: ccache-${{ runner.os }}-rwdi-cov-${{ github.sha }}
           restore-keys: |
-            ccache-${{ runner.os }}-relwithdebinfo-
+            ccache-${{ runner.os }}-rwdi-cov-
 
       - name: Configure ccache
         run: |
