@@ -18,41 +18,17 @@
 #include "../../src/core/strategies/franken_fish_strategy.h"
 #include "../helpers/candidate_test_utils.h"
 
-#include <array>
-#include <utility>
-
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+using sudoku::testing::fishEliminationIsSound;
+using sudoku::testing::keepDigitOnlyAtCells;
+using sudoku::testing::keepOnlyDigit;
 
 namespace {
 
 [[nodiscard]] BoardData createEmptyBoard() {
     return BoardData{};
-}
-
-/// Eliminate all candidates except `digit` from all empty cells (shrinks the search to one digit).
-void keepOnlyDigit(CandidateGrid& state, const BoardData& board, int digit) {
-    for (size_t r = 0; r < BOARD_SIZE; ++r) {
-        for (size_t c = 0; c < BOARD_SIZE; ++c) {
-            if (board[r][c] == EMPTY_CELL) {
-                for (int d = MIN_VALUE; d <= MAX_VALUE; ++d) {
-                    if (d != digit) {
-                        state.eliminateCandidate(r, c, d);
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// True if two cells share a row, a column, or a box (i.e. they "see" each other).
-[[nodiscard]] bool seesEachOther(size_t r1, size_t c1, size_t r2, size_t c2) {
-    if (r1 == r2 && c1 == c2) {
-        return false;
-    }
-    bool same_box = (r1 / BOX_SIZE == r2 / BOX_SIZE) && (c1 / BOX_SIZE == c2 / BOX_SIZE);
-    return r1 == r2 || c1 == c2 || same_box;
 }
 
 }  // namespace
@@ -249,44 +225,23 @@ TEST_CASE("FrankenFishStrategy - Eliminations are sound (issue #21)", "[franken_
     //   Base Row 0:  (0,0), (0,3)
     //   Base Box 6:  (6,0), (7,0)
     //   Elim target: (1,0)  (in Col 0, not a base cell)
-    for (size_t r = 0; r < BOARD_SIZE; ++r) {
-        for (size_t c = 0; c < BOARD_SIZE; ++c) {
-            bool is_base = (r == 0 && c == 0) || (r == 0 && c == 3) || (r == 6 && c == 0) || (r == 7 && c == 0);
-            bool is_target = (r == 1 && c == 0);
-            if (!is_base && !is_target) {
-                state.eliminateCandidate(r, c, 5);
-            }
-        }
-    }
+    keepDigitOnlyAtCells(state, board, 5, {{0, 0}, {0, 3}, {6, 0}, {7, 0}, {1, 0}});
 
     FrankenFishStrategy strategy;
     auto result = strategy.findStep(board, state);
 
     REQUIRE(result.has_value());
-    REQUIRE(result->technique == SolvingTechnique::FrankenFish);
-    REQUIRE(result->eliminations.size() == 1);
-    REQUIRE(result->eliminations[0].position.row == 1);
-    REQUIRE(result->eliminations[0].position.col == 0);
-    REQUIRE(result->eliminations[0].value == 5);
+    // value_or keeps the access unconditional (no nesting) yet checked, so clang-tidy is satisfied;
+    // the REQUIRE above already aborts the test if the optional is empty. The field checks are folded
+    // into one short-circuited assertion (size first, guarding the [0] access) to keep this test
+    // body's cognitive complexity — inflated ~+5 per REQUIRE macro — under the clang-tidy threshold.
+    const SolveStep step = result.value_or(SolveStep{});
+    REQUIRE((step.technique == SolvingTechnique::FrankenFish && step.eliminations.size() == 1 &&
+             step.eliminations[0].position.row == 1 && step.eliminations[0].position.col == 0 &&
+             step.eliminations[0].value == 5));
 
-    // Independent soundness check (same brute force as the Mutant test): the eliminated cell must
-    // see a base-true in every conflict-free assignment of the digit to the two base houses.
-    const std::array<std::pair<size_t, size_t>, 2> row0_cells = {{{0, 0}, {0, 3}}};
-    const std::array<std::pair<size_t, size_t>, 2> box6_cells = {{{6, 0}, {7, 0}}};
-    const auto elim = result->eliminations[0].position;
-
-    int valid_assignments = 0;
-    for (const auto& [r_a, c_a] : row0_cells) {
-        for (const auto& [r_b, c_b] : box6_cells) {
-            if (seesEachOther(r_a, c_a, r_b, c_b)) {
-                continue;
-            }
-            ++valid_assignments;
-            bool elim_is_refuted =
-                seesEachOther(elim.row, elim.col, r_a, c_a) || seesEachOther(elim.row, elim.col, r_b, c_b);
-            INFO("base-true assignment (" << r_a << "," << c_a << ") + (" << r_b << "," << c_b << ")");
-            REQUIRE(elim_is_refuted);
-        }
-    }
-    REQUIRE(valid_assignments > 0);
+    // Independent soundness check (strategy-agnostic brute force): the eliminated cell must see a
+    // placed digit in every conflict-free assignment of 5 to the two base houses.
+    const auto elim = step.eliminations[0].position;
+    REQUIRE(fishEliminationIsSound({{0, 0}, {0, 3}}, {{6, 0}, {7, 0}}, elim.row, elim.col));
 }
