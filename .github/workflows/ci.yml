@@ -175,12 +175,23 @@ jobs:
           ccache --zero-stats
 
       - name: Build, test, and generate coverage report
+        env:
+          CCACHE_DEBUG: "1"
+          CCACHE_DEBUGDIR: ${{ github.workspace }}/ccdbg
         run: |
           ./scripts/coverage.sh xml
           echo "✅ Build, tests, and coverage report complete"
 
       - name: Show ccache stats
         run: ccache --show-stats
+
+      - name: Upload ccache debug logs (DIAGNOSTIC — temporary)
+        uses: actions/upload-artifact@v7
+        with:
+          name: ccdbg-producer
+          path: ccdbg/**/*.ccache-log
+          retention-days: 5
+          if-no-files-found: warn
 
       - name: Enforce coverage threshold
         run: |
@@ -286,12 +297,23 @@ jobs:
         # without it ~60% of shared TUs hash differently and miss the restored
         # rwdi-cov cache. With it, the generated-header set matches and the extra
         # UI-test TUs are themselves cache hits — pushing reuse toward ~100%.
+        env:
+          CCACHE_DEBUG: "1"
+          CCACHE_DEBUGDIR: ${{ github.workspace }}/ccdbg
         run: |
           cmake --preset relwithdebinfo -DSUDOKU_ENABLE_UI_TESTS=ON
           cmake --build --preset relwithdebinfo
 
       - name: Show ccache stats
         run: ccache --show-stats
+
+      - name: Upload ccache debug logs (DIAGNOSTIC — temporary)
+        uses: actions/upload-artifact@v7
+        with:
+          name: ccdbg-consumer
+          path: ccdbg/**/*.ccache-log
+          retention-days: 5
+          if-no-files-found: warn
 
       - name: Determine diff base
         id: range
