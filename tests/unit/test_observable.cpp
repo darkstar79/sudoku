@@ -380,3 +380,73 @@ TEST_CASE("Observable - makeObservable Helper", "[Observable]") {
         REQUIRE(obs.get().y == 10);
     }
 }
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with multiple REQUIRE/SECTION checks; complexity is inherent to test coverage
+TEST_CASE("CompositeObserver - per-callback unsubscribe", "[Observable][CompositeObserver]") {
+    SECTION("Destroying one observer does not unsubscribe a sibling on the same observable") {
+        Observable<int> observable{0};
+
+        int sibling_calls = 0;
+        CompositeObserver persistent;
+        persistent.observe(observable, [&sibling_calls](const int&) { ++sibling_calls; });
+
+        {
+            int scoped_calls = 0;
+            CompositeObserver scoped;
+            scoped.observe(observable, [&scoped_calls](const int&) { ++scoped_calls; });
+
+            REQUIRE(observable.getSubscriptionCount() == 2);
+            observable.set(1);
+            REQUIRE(sibling_calls == 1);
+            REQUIRE(scoped_calls == 1);
+        }  // scoped destroyed here; must only remove its own subscription
+
+        REQUIRE(observable.getSubscriptionCount() == 1);
+        observable.set(2);
+        REQUIRE(sibling_calls == 2);  // sibling still alive and notified
+    }
+
+    SECTION("unsubscribeAll removes only this observer's subscriptions") {
+        Observable<int> observable{0};
+
+        int a_calls = 0;
+        int b_calls = 0;
+        CompositeObserver observer_a;
+        CompositeObserver observer_b;
+        observer_a.observe(observable, [&a_calls](const int&) { ++a_calls; });
+        observer_b.observe(observable, [&b_calls](const int&) { ++b_calls; });
+
+        observer_a.unsubscribeAll();
+
+        REQUIRE(observable.getSubscriptionCount() == 1);
+        observable.set(1);
+        REQUIRE(a_calls == 0);
+        REQUIRE(b_calls == 1);
+    }
+
+    SECTION("Observing multiple observables and tearing down releases each independently") {
+        Observable<int> first{0};
+        Observable<int> second{0};
+
+        int other_first = 0;
+        int other_second = 0;
+        CompositeObserver others;
+        others.observe(first, [&other_first](const int&) { ++other_first; });
+        others.observe(second, [&other_second](const int&) { ++other_second; });
+
+        {
+            CompositeObserver scoped;
+            scoped.observe(first, [](const int&) {});
+            scoped.observe(second, [](const int&) {});
+            REQUIRE(first.getSubscriptionCount() == 2);
+            REQUIRE(second.getSubscriptionCount() == 2);
+        }
+
+        REQUIRE(first.getSubscriptionCount() == 1);
+        REQUIRE(second.getSubscriptionCount() == 1);
+        first.set(1);
+        second.set(1);
+        REQUIRE(other_first == 1);
+        REQUIRE(other_second == 1);
+    }
+}

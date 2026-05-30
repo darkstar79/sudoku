@@ -43,8 +43,18 @@
 
 namespace sudoku::viewmodel {
 
-void GameViewModel::executeCommand(GameCommand command) {
+void GameViewModel::executeCommand(GameCommand command, const GameCommandArgs& args) {
     switch (command) {
+        case GameCommand::NewGame:
+            startNewGame(args.difficulty.value_or(gameState.get().getDifficulty()));
+            break;
+        case GameCommand::SaveGame:
+            // Fire-and-forget through the pipeline; the View observes errorMessage for failures.
+            static_cast<void>(saveCurrentGame(args.name));
+            break;
+        case GameCommand::LoadGame:
+            loadGame(args.save_id);
+            break;
         case GameCommand::Undo:
             undo();
             break;
@@ -53,6 +63,27 @@ void GameViewModel::executeCommand(GameCommand command) {
             break;
         case GameCommand::GetHint:
             getHint(std::nullopt);
+            break;
+        case GameCommand::ValidateBoard:
+            validateBoard();
+            break;
+        case GameCommand::PauseGame:
+            pauseGame();
+            break;
+        case GameCommand::ResumeGame:
+            resumeGame();
+            break;
+        case GameCommand::ResetGame:
+            resetGame();
+            break;
+        case GameCommand::ShowStatistics:
+            refreshStatistics();
+            break;
+        case GameCommand::ToggleInputMode:
+            cycleInputMode();
+            break;
+        case GameCommand::ClearNotes:
+            clearNotes();
             break;
         case GameCommand::GetCoachingHint:
             requestCoachingHint();
@@ -63,23 +94,21 @@ void GameViewModel::executeCommand(GameCommand command) {
         case GameCommand::ApplyCoachingStep:
             applyCoachingStep();
             break;
-        case GameCommand::ResetGame:
-            resetGame();
-            break;
-        case GameCommand::ToggleInputMode:
-            cycleInputMode();
-            break;
-        case GameCommand::ShowStatistics:
-            refreshStatistics();
-            break;
-        default:
-            spdlog::warn("Unhandled command: {}", static_cast<int>(command));
-            break;
     }
+    // No default arm: every enumerator is handled above, so -Wswitch flags any future verb
+    // at compile time rather than letting it silently no-op at runtime.
 }
 
 bool GameViewModel::canExecuteCommand(GameCommand command) const {
+    const auto& state = gameState.get();
+    const bool game_exists = state.hasSolution();
     switch (command) {
+        case GameCommand::NewGame:
+        case GameCommand::LoadGame:
+            // Always available — starting fresh or loading a save needs no current game.
+            return true;
+        case GameCommand::SaveGame:
+            return game_exists && !isGameComplete();
         case GameCommand::Undo:
             return canUndo();
         case GameCommand::Redo:
@@ -87,13 +116,58 @@ bool GameViewModel::canExecuteCommand(GameCommand command) const {
         case GameCommand::GetHint:
         case GameCommand::GetCoachingHint:
             return isGameActive() && getHintCount() > 0;
+        case GameCommand::ValidateBoard:
+            return game_exists && !isGameComplete();
+        case GameCommand::PauseGame:
+            return isGameActive();
+        case GameCommand::ResumeGame:
+            return game_exists && isGamePaused() && !isGameComplete();
+        case GameCommand::ResetGame:
+        case GameCommand::ClearNotes:
+            return isGameActive();
+        case GameCommand::ShowStatistics:
+        case GameCommand::ToggleInputMode:
+            // Stateless UI actions — always permitted.
+            return true;
         case GameCommand::CheckCoachingAnswer:
         case GameCommand::ApplyCoachingStep:
             return coachingState.get().phase == CoachingPhase::TryIt;
-        case GameCommand::ResetGame:
-            return isGameActive();
-        default:
-            return true;
+    }
+    return false;  // Unreachable for valid enumerators; fail-closed for out-of-range casts.
+}
+
+void GameViewModel::pauseGame() {
+    if (!isGameActive()) {
+        return;
+    }
+    gameState.update([](model::GameState& state) { state.pauseTimer(); });
+    updateUIState();
+}
+
+void GameViewModel::resumeGame() {
+    const auto& state = gameState.get();
+    if (!state.hasSolution() || state.isComplete() || state.isTimerRunning()) {
+        return;
+    }
+    gameState.update([](model::GameState& s) { s.resumeTimer(); });
+    updateUIState();
+}
+
+void GameViewModel::clearNotes() {
+    clearAllNotes();
+    updateUIState();
+}
+
+void GameViewModel::validateBoard() {
+    if (!gameState.get().hasSolution()) {
+        return;
+    }
+    updateConflictHighlighting();
+    if (hasBoardErrors()) {
+        errorMessage.set(std::string(core::loc("Sudoku", "The board contains mistakes.")));
+    } else {
+        clearErrorMessage();
+        uiState.update([](UIState& ui) { ui.status_message = core::loc("Sudoku", "No mistakes so far."); });
     }
 }
 

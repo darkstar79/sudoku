@@ -30,7 +30,8 @@ using namespace sudoku::core;
 
 using StateCoverageFixture = sudoku::test::GameViewModelFixture;
 
-// Out-of-band value used to exercise the `default:` arm in the GameCommand switches.
+// Out-of-band value used to exercise out-of-range handling in the GameCommand switches:
+// executeCommand falls through to a no-op, canExecuteCommand fails closed (false).
 // GameCommand's underlying type is uint8_t — its max never collides with a real
 // enumerator since the live enum has < 20 entries. If the enum ever grows past
 // ~250 entries, bump this and re-verify.
@@ -78,7 +79,7 @@ TEST_CASE("GameViewModel::executeCommand routes coaching/reset commands and warn
         REQUIRE(fixture.view_model->gameState.get().getValue(empty.value()) == 0);
     }
 
-    SECTION("Unknown command falls into default warn branch without side effects") {
+    SECTION("Out-of-range command is a no-op (no matching switch arm, no side effects)") {
         fixture.view_model->clearErrorMessage();
         const auto board_before = fixture.view_model->gameState.get().extractNumbers();
         fixture.view_model->executeCommand(kBogusCommand);
@@ -103,8 +104,8 @@ TEST_CASE("GameViewModel::canExecuteCommand covers coaching, reset and default b
         REQUIRE_FALSE(fixture.view_model->canExecuteCommand(GameCommand::ApplyCoachingStep));
     }
 
-    SECTION("Unknown command falls into default-true branch") {
-        REQUIRE(fixture.view_model->canExecuteCommand(kBogusCommand));
+    SECTION("Out-of-range command is fail-closed (canExecuteCommand returns false)") {
+        REQUIRE_FALSE(fixture.view_model->canExecuteCommand(kBogusCommand));
     }
 }
 
