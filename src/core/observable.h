@@ -279,12 +279,12 @@ class CompositeObserver {
 public:
     template <typename T, typename Callable>
     void observe(Observable<T>& observable, Callable&& callback) {
-        observable.subscribe(std::function<void(const T&)>(std::forward<Callable>(callback)));
-        // Intentional: in single-view MVVM, MainWindow is the sole subscriber per
-        // observable, so clearSubscriptions() is equivalent to per-callback unsubscribe.
-        // If multiple views ever subscribe to the same observable, replace with the
-        // per-callback unsubscribe token returned by subscribe().
-        observables_.push_back([&observable]() { observable.clearSubscriptions(); });
+        // Capture the per-callback unsubscribe token so teardown removes only THIS
+        // subscription. Using clearSubscriptions() here would nuke every subscriber on the
+        // observable, silently breaking any other CompositeObserver (e.g. training mode,
+        // dialogs) sharing it.
+        auto unsubscribe = observable.subscribe(std::function<void(const T&)>(std::forward<Callable>(callback)));
+        observables_.push_back(std::move(unsubscribe));
     }
 
     /// Unsubscribe from all observables

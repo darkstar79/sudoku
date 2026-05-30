@@ -182,6 +182,126 @@ TEST_CASE("GameViewModel - Can Execute Commands", "[game_view_model][commands]")
     }
 }
 
+TEST_CASE("GameViewModel - Pause and Resume lifecycle", "[game_view_model][commands]") {
+    CommandTestFixture fixture;
+
+    SECTION("PauseGame stops the timer; ResumeGame restarts it") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        REQUIRE(fixture.view_model->isGameActive());
+
+        fixture.view_model->executeCommand(GameCommand::PauseGame);
+        REQUIRE_FALSE(fixture.view_model->isGameActive());
+
+        fixture.view_model->executeCommand(GameCommand::ResumeGame);
+        REQUIRE(fixture.view_model->isGameActive());
+    }
+
+    SECTION("PauseGame with no active game is a no-op") {
+        REQUIRE_FALSE(fixture.view_model->isGameActive());
+        REQUIRE_NOTHROW(fixture.view_model->executeCommand(GameCommand::PauseGame));
+        REQUIRE_FALSE(fixture.view_model->isGameActive());
+    }
+
+    SECTION("ResumeGame with no game never activates a timer") {
+        REQUIRE_FALSE(fixture.view_model->isGameActive());
+        fixture.view_model->executeCommand(GameCommand::ResumeGame);
+        REQUIRE_FALSE(fixture.view_model->isGameActive());
+    }
+}
+
+TEST_CASE("GameViewModel - Parameterized command dispatch", "[game_view_model][commands]") {
+    CommandTestFixture fixture;
+
+    SECTION("NewGame command honors the difficulty argument") {
+        fixture.view_model->executeCommand(GameCommand::NewGame, {.difficulty = Difficulty::Hard});
+        REQUIRE(fixture.view_model->isGameActive());
+        REQUIRE(fixture.view_model->gameState.get().getDifficulty() == Difficulty::Hard);
+    }
+
+    SECTION("NewGame command without a difficulty falls back to the current difficulty") {
+        fixture.view_model->startNewGame(Difficulty::Medium);
+        fixture.view_model->executeCommand(GameCommand::NewGame);
+        REQUIRE(fixture.view_model->gameState.get().getDifficulty() == Difficulty::Medium);
+    }
+
+    SECTION("SaveGame command persists the current game") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        REQUIRE(fixture.view_model->getSaveList().empty());
+
+        fixture.view_model->executeCommand(GameCommand::SaveGame, {.name = "pipeline-save"});
+        REQUIRE_FALSE(fixture.view_model->getSaveList().empty());
+    }
+
+    SECTION("LoadGame command restores a previously saved game") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->executeCommand(GameCommand::SaveGame, {.name = "roundtrip"});
+
+        auto saves = fixture.view_model->getSaveList();
+        REQUIRE(saves.size() == 1);
+
+        // Start a different game, then load the save back.
+        fixture.view_model->startNewGame(Difficulty::Hard);
+        fixture.view_model->executeCommand(GameCommand::LoadGame, {.save_id = saves.front().save_id});
+        REQUIRE(fixture.view_model->gameState.get().getDifficulty() == Difficulty::Easy);
+    }
+
+    SECTION("ClearNotes command clears all pencil marks") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        auto empty = test::findEmptyCell(fixture.view_model->gameState.get());
+        REQUIRE(empty.has_value());
+
+        fixture.view_model->enterNote(empty.value(), 3);
+        REQUIRE_FALSE(fixture.view_model->gameState.get().getCell(empty.value()).notes.empty());
+
+        fixture.view_model->executeCommand(GameCommand::ClearNotes);
+        REQUIRE(fixture.view_model->gameState.get().getCell(empty.value()).notes.empty());
+    }
+
+    SECTION("ValidateBoard reports a clean board with no error") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->clearErrorMessage();
+        fixture.view_model->executeCommand(GameCommand::ValidateBoard);
+        REQUIRE_FALSE(fixture.view_model->hasError());
+    }
+}
+
+TEST_CASE("GameViewModel - Command preconditions", "[game_view_model][commands]") {
+    CommandTestFixture fixture;
+
+    SECTION("NewGame and LoadGame are always available") {
+        REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::NewGame));
+        REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::LoadGame));
+    }
+
+    SECTION("SaveGame requires an in-progress game") {
+        REQUIRE_FALSE(fixture.view_model->canExecuteCommand(GameCommand::SaveGame));
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::SaveGame));
+    }
+
+    SECTION("PauseGame needs an active game; ResumeGame needs a paused one") {
+        REQUIRE_FALSE(fixture.view_model->canExecuteCommand(GameCommand::PauseGame));
+        REQUIRE_FALSE(fixture.view_model->canExecuteCommand(GameCommand::ResumeGame));
+
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::PauseGame));
+        REQUIRE_FALSE(fixture.view_model->canExecuteCommand(GameCommand::ResumeGame));
+
+        fixture.view_model->pauseGame();
+        REQUIRE_FALSE(fixture.view_model->canExecuteCommand(GameCommand::PauseGame));
+        REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::ResumeGame));
+    }
+
+    SECTION("ValidateBoard and ClearNotes require a game") {
+        REQUIRE_FALSE(fixture.view_model->canExecuteCommand(GameCommand::ValidateBoard));
+        REQUIRE_FALSE(fixture.view_model->canExecuteCommand(GameCommand::ClearNotes));
+
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::ValidateBoard));
+        REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::ClearNotes));
+    }
+}
+
 TEST_CASE("GameViewModel - Cycle Input Mode", "[game_view_model][input_mode]") {
     CommandTestFixture fixture;
 

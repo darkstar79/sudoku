@@ -214,14 +214,16 @@ void MainWindow::setupButtonPanel(QVBoxLayout* game_layout) {
 
     connect(undo_btn_, &QPushButton::clicked, this, [this]() {
         if (view_model_) {
-            view_model_->undo();
+            view_model_->executeCommand(viewmodel::GameCommand::Undo);
         }
     });
     connect(redo_btn_, &QPushButton::clicked, this, [this]() {
         if (view_model_) {
-            view_model_->redo();
+            view_model_->executeCommand(viewmodel::GameCommand::Redo);
         }
     });
+    // undoToLastValid and fillNotes are not modeled as GameCommand verbs (they take no
+    // parameters but have no canExecuteCommand precondition story yet); call them directly.
     connect(undo_valid_btn_, &QPushButton::clicked, this, [this]() {
         if (view_model_) {
             view_model_->undoToLastValid();
@@ -234,7 +236,7 @@ void MainWindow::setupButtonPanel(QVBoxLayout* game_layout) {
     });
     connect(mode_btn_, &QPushButton::clicked, this, [this]() {
         if (view_model_) {
-            view_model_->cycleInputMode();
+            view_model_->executeCommand(viewmodel::GameCommand::ToggleInputMode);
             updateButtonPanel();
         }
     });
@@ -362,13 +364,13 @@ void MainWindow::setupEditMenu() {
     auto* edit_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Edit"))));
     edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Undo"))), QKeySequence("Ctrl+Z"), this, [this]() {
         if (view_model_) {
-            view_model_->undo();
+            view_model_->executeCommand(viewmodel::GameCommand::Undo);
         }
     });
 
     edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Redo"))), QKeySequence("Ctrl+Y"), this, [this]() {
         if (view_model_) {
-            view_model_->redo();
+            view_model_->executeCommand(viewmodel::GameCommand::Redo);
         }
     });
 
@@ -451,7 +453,8 @@ void MainWindow::setupToolBar() {
                                       core::loc("Sudoku", "Start a new {0} game?\nCurrent progress will be lost."),
                                       difficulty_combo_->currentText().toStdString())));
         if (result == QMessageBox::Yes) {
-            view_model_->startNewGame(static_cast<core::Difficulty>(index));
+            view_model_->executeCommand(viewmodel::GameCommand::NewGame,
+                                        {.difficulty = static_cast<core::Difficulty>(index)});
             board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
         } else {
             // Revert combo without triggering signal again
@@ -865,8 +868,10 @@ void MainWindow::updateButtonPanel() {
         return;
     }
 
-    undo_btn_->setEnabled(view_model_->canUndo());
-    redo_btn_->setEnabled(view_model_->canRedo());
+    // Gate through the command pipeline so the enabled state matches what executeCommand
+    // will actually honor.
+    undo_btn_->setEnabled(view_model_->canExecuteCommand(viewmodel::GameCommand::Undo));
+    redo_btn_->setEnabled(view_model_->canExecuteCommand(viewmodel::GameCommand::Redo));
 
     // Update input mode indicator
     switch (view_model_->getInputMode()) {
@@ -993,7 +998,8 @@ void MainWindow::showNewGameDialog() {
             core::loc("Sudoku", "Start a new {0} game?\nCurrent progress will be lost."), diff_name.toStdString())));
 
     if (result == QMessageBox::Yes) {
-        view_model_->startNewGame(static_cast<core::Difficulty>(selected));
+        view_model_->executeCommand(viewmodel::GameCommand::NewGame,
+                                    {.difficulty = static_cast<core::Difficulty>(selected)});
         board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
     }
 }
@@ -1069,8 +1075,11 @@ void MainWindow::showSaveDialog() {
 
     if (dialog.exec() == QDialog::Accepted) {
         QString name = name_edit->text().trimmed();
-        bool success = view_model_->saveCurrentGame(name.toStdString());
-        if (success && toast_widget_) {
+        // Dispatch through the command pipeline; saveCurrentGame publishes errorMessage on
+        // failure, so a clean error channel after the call signals success for the toast.
+        view_model_->clearErrorMessage();
+        view_model_->executeCommand(viewmodel::GameCommand::SaveGame, {.name = name.toStdString()});
+        if (!view_model_->hasError() && toast_widget_) {
             toast_widget_->show(qstr(core::loc("Sudoku", "Game saved successfully")));
         }
     }
@@ -1133,7 +1142,7 @@ void MainWindow::showLoadDialog() {
         auto selected = table->selectedItems();
         if (!selected.isEmpty()) {
             auto save_id = table->item(selected.first()->row(), 0)->data(Qt::UserRole).toString().toStdString();
-            view_model_->loadGame(save_id);
+            view_model_->executeCommand(viewmodel::GameCommand::LoadGame, {.save_id = save_id});
         }
     }
 }
