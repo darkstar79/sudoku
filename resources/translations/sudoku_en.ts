@@ -762,6 +762,14 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>The board contains mistakes.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No mistakes so far.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Could not archive the unreadable statistics file.</source>
         <translation type="unfinished"></translation>
     </message>

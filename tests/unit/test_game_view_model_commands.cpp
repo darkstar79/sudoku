@@ -213,7 +213,7 @@ TEST_CASE("GameViewModel - Parameterized command dispatch", "[game_view_model][c
     CommandTestFixture fixture;
 
     SECTION("NewGame command honors the difficulty argument") {
-        fixture.view_model->executeCommand(GameCommand::NewGame, {.difficulty = Difficulty::Hard});
+        fixture.view_model->executeCommand(GameCommand::NewGame, GameCommandArgs::newGame(Difficulty::Hard));
         REQUIRE(fixture.view_model->isGameActive());
         REQUIRE(fixture.view_model->gameState.get().getDifficulty() == Difficulty::Hard);
     }
@@ -228,20 +228,20 @@ TEST_CASE("GameViewModel - Parameterized command dispatch", "[game_view_model][c
         fixture.view_model->startNewGame(Difficulty::Easy);
         REQUIRE(fixture.view_model->getSaveList().empty());
 
-        fixture.view_model->executeCommand(GameCommand::SaveGame, {.name = "pipeline-save"});
+        fixture.view_model->executeCommand(GameCommand::SaveGame, GameCommandArgs::save("pipeline-save"));
         REQUIRE_FALSE(fixture.view_model->getSaveList().empty());
     }
 
     SECTION("LoadGame command restores a previously saved game") {
         fixture.view_model->startNewGame(Difficulty::Easy);
-        fixture.view_model->executeCommand(GameCommand::SaveGame, {.name = "roundtrip"});
+        fixture.view_model->executeCommand(GameCommand::SaveGame, GameCommandArgs::save("roundtrip"));
 
         auto saves = fixture.view_model->getSaveList();
         REQUIRE(saves.size() == 1);
 
         // Start a different game, then load the save back.
         fixture.view_model->startNewGame(Difficulty::Hard);
-        fixture.view_model->executeCommand(GameCommand::LoadGame, {.save_id = saves.front().save_id});
+        fixture.view_model->executeCommand(GameCommand::LoadGame, GameCommandArgs::load(saves.front().save_id));
         REQUIRE(fixture.view_model->gameState.get().getDifficulty() == Difficulty::Easy);
     }
 
@@ -249,12 +249,13 @@ TEST_CASE("GameViewModel - Parameterized command dispatch", "[game_view_model][c
         fixture.view_model->startNewGame(Difficulty::Easy);
         auto empty = test::findEmptyCell(fixture.view_model->gameState.get());
         REQUIRE(empty.has_value());
+        const core::Position pos = empty.value_or(core::Position{});
 
-        fixture.view_model->enterNote(empty.value(), 3);
-        REQUIRE_FALSE(fixture.view_model->gameState.get().getCell(empty.value()).notes.empty());
+        fixture.view_model->enterNote(pos, 3);
+        REQUIRE_FALSE(fixture.view_model->gameState.get().getCell(pos).notes.empty());
 
         fixture.view_model->executeCommand(GameCommand::ClearNotes);
-        REQUIRE(fixture.view_model->gameState.get().getCell(empty.value()).notes.empty());
+        REQUIRE(fixture.view_model->gameState.get().getCell(pos).notes.empty());
     }
 
     SECTION("ValidateBoard reports a clean board with no error") {

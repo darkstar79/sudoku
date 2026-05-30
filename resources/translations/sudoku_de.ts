@@ -764,6 +764,14 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Spiel konnte nicht gespeichert werden</translation>
     </message>
     <message>
+        <source>The board contains mistakes.</source>
+        <translation>Das Spielfeld enthält Fehler.</translation>
+    </message>
+    <message>
+        <source>No mistakes so far.</source>
+        <translation>Bisher keine Fehler.</translation>
+    </message>
+    <message>
         <source>Could not archive the unreadable statistics file.</source>
         <translation>Die unlesbare Statistikdatei konnte nicht archiviert werden.</translation>
     </message>

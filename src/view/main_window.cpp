@@ -454,7 +454,7 @@ void MainWindow::setupToolBar() {
                                       difficulty_combo_->currentText().toStdString())));
         if (result == QMessageBox::Yes) {
             view_model_->executeCommand(viewmodel::GameCommand::NewGame,
-                                        {.difficulty = static_cast<core::Difficulty>(index)});
+                                        viewmodel::GameCommandArgs::newGame(static_cast<core::Difficulty>(index)));
             board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
         } else {
             // Revert combo without triggering signal again
@@ -999,7 +999,7 @@ void MainWindow::showNewGameDialog() {
 
     if (result == QMessageBox::Yes) {
         view_model_->executeCommand(viewmodel::GameCommand::NewGame,
-                                    {.difficulty = static_cast<core::Difficulty>(selected)});
+                                    viewmodel::GameCommandArgs::newGame(static_cast<core::Difficulty>(selected)));
         board_widget_->setSelectedCell(core::Position{.row = 0, .col = 0});
     }
 }
@@ -1078,7 +1078,8 @@ void MainWindow::showSaveDialog() {
         // Dispatch through the command pipeline; saveCurrentGame publishes errorMessage on
         // failure, so a clean error channel after the call signals success for the toast.
         view_model_->clearErrorMessage();
-        view_model_->executeCommand(viewmodel::GameCommand::SaveGame, {.name = name.toStdString()});
+        view_model_->executeCommand(viewmodel::GameCommand::SaveGame,
+                                    viewmodel::GameCommandArgs::save(name.toStdString()));
         if (!view_model_->hasError() && toast_widget_) {
             toast_widget_->show(qstr(core::loc("Sudoku", "Game saved successfully")));
         }
@@ -1142,7 +1143,7 @@ void MainWindow::showLoadDialog() {
         auto selected = table->selectedItems();
         if (!selected.isEmpty()) {
             auto save_id = table->item(selected.first()->row(), 0)->data(Qt::UserRole).toString().toStdString();
-            view_model_->executeCommand(viewmodel::GameCommand::LoadGame, {.save_id = save_id});
+            view_model_->executeCommand(viewmodel::GameCommand::LoadGame, viewmodel::GameCommandArgs::load(save_id));
         }
     }
 }
