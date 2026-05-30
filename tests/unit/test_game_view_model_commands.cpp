@@ -264,6 +264,25 @@ TEST_CASE("GameViewModel - Parameterized command dispatch", "[game_view_model][c
         fixture.view_model->executeCommand(GameCommand::ValidateBoard);
         REQUIRE_FALSE(fixture.view_model->hasError());
     }
+
+    SECTION("ValidateBoard surfaces an error when a placement contradicts the solution") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+
+        const auto& state = fixture.view_model->gameState.get();
+        auto empty = test::findEmptyCell(state);
+        REQUIRE(empty.has_value());
+        const core::Position pos = empty.value_or(core::Position{});
+
+        // Place a value that disagrees with the solution so hasBoardErrors() trips.
+        const auto& solution = state.getSolutionBoard();
+        const int correct = solution[pos.row][pos.col];
+        const int wrong = (correct % core::MAX_VALUE) + core::MIN_VALUE;  // stays in 1..9, != correct
+        fixture.view_model->enterNumber(pos, wrong);
+
+        fixture.view_model->clearErrorMessage();
+        fixture.view_model->executeCommand(GameCommand::ValidateBoard);
+        REQUIRE(fixture.view_model->hasError());
+    }
 }
 
 TEST_CASE("GameViewModel - Command preconditions", "[game_view_model][commands]") {

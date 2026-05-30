@@ -261,7 +261,7 @@ TEST_CASE("GameViewModel - Undo/Redo Edge Cases", "[game_view_model][undo]") {
         fixture.view_model->undo();
 
         const int correct = solution[p_wrong.row][p_wrong.col];
-        const int wrong = (correct % 9) + 1;  // always 1..9 and != correct
+        const int wrong = (correct % MAX_VALUE) + MIN_VALUE;  // always 1..9 and != correct
         REQUIRE(wrong != correct);
         fixture.view_model->enterNumber(p_wrong, wrong);
 
@@ -302,7 +302,7 @@ TEST_CASE("GameViewModel - Undo/Redo Edge Cases", "[game_view_model][undo]") {
         fixture.view_model->undo();  // move_history_index_ now points at p0
 
         const int correct = solution[p_wrong.row][p_wrong.col];
-        const int wrong = (correct % 9) + 1;
+        const int wrong = (correct % MAX_VALUE) + MIN_VALUE;
         REQUIRE(wrong != correct);
         fixture.view_model->enterNumber(p_wrong, wrong);
 

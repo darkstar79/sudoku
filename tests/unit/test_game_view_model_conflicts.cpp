@@ -180,7 +180,7 @@ TEST_CASE("GameViewModel - Mistake Counter", "[game_view_model][mistakes]") {
                     for (size_t r2 = 0; r2 < BOARD_SIZE; ++r2) {
                         for (size_t c2 = 0; c2 < BOARD_SIZE; ++c2) {
                             if (state2.getCell(r2, c2).value == 0) {
-                                int wrong = (solution[r2][c2] % 9) + 1;
+                                int wrong = (solution[r2][c2] % MAX_VALUE) + MIN_VALUE;
                                 Position pos2{.row = r2, .col = c2};
                                 fixture.view_model->enterNumber(pos2, wrong);
                                 REQUIRE(fixture.view_model->getMistakeCount() == 1);
@@ -222,7 +222,7 @@ TEST_CASE("GameViewModel - Mistake Counter", "[game_view_model][mistakes]") {
             for (size_t col = 0; col < BOARD_SIZE; ++col) {
                 if (state.getCell(row, col).value == 0) {
                     int correct = solution[row][col];
-                    int wrong = (correct % 9) + 1;  // Different from correct
+                    int wrong = (correct % MAX_VALUE) + MIN_VALUE;  // Different from correct
                     Position pos{.row = row, .col = col};
                     fixture.view_model->enterNumber(pos, wrong);
                     REQUIRE(fixture.view_model->getMistakeCount() == 1);
