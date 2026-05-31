@@ -135,6 +135,39 @@ TIDY=1 git commit -m "my message"   # runs tidy-diff automatically
 `compile_commands.json` (uncommon). For header-only changes, follow up with
 `./scripts/tidy.sh check` or use the cached output approach above.
 
+### Gotcha: optional access in Catch2 tests
+
+`bugprone-unchecked-optional-access` (enforced as an **error** in CI's
+`clang-tidy (diff)` job) does **not** treat `REQUIRE(opt.has_value())` as a
+guard. Every `opt.value()`, `opt->field`, or `*opt` that follows such a
+`REQUIRE` is flagged — and binding `const auto& x = opt.value();` does not help,
+because `.value()` itself is flagged.
+
+Access the optional only through a short-circuit `&&` where `has_value()`
+directly guards each `->` in the same boolean expression, typically wrapped in a
+small anonymous-namespace helper. clang-tidy does **not** analyse across the
+helper boundary, so each helper must short-circuit on `has_value()` itself
+(a helper that delegates its guard to another helper is still flagged):
+
+```cpp
+namespace {
+[[nodiscard]] bool placesAt(const std::optional<SolveStep>& s, size_t r, size_t c) {
+    return s.has_value() && s->type == SolveStepType::Placement &&
+           s->position.row == r && s->position.col == c;
+}
+}  // namespace
+
+REQUIRE(result.has_value());
+REQUIRE(placesAt(result, 6, 3));   // NOT: REQUIRE(result->position.row == 6)
+```
+
+The `if (opt.has_value()) { REQUIRE(opt->...); }` form is also accepted, but
+conflicts with the "no `if` in test bodies" rule — prefer the helper.
+
+> **Version skew:** a dev box's clang-tidy may be newer and more lenient than
+> CI's — `tidy-diff` can pass locally while CI fails on `.value()`. Do not rely
+> on a local pass alone; prefer the short-circuit-helper form by default.
+
 ### CMake Integration
 
 ```bash
