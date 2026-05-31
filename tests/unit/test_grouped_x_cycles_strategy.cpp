@@ -20,6 +20,7 @@
 #include "../helpers/candidate_test_utils.h"
 
 #include <array>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -51,6 +52,13 @@ namespace {
         }
     }
     return state;
+}
+
+/// True iff `step` is a Placement at (row, col). Short-circuits on `has_value()`
+/// so the optional access is checked.
+[[nodiscard]] bool placesAt(const std::optional<SolveStep>& step, size_t row, size_t col) {
+    return step.has_value() && step->type == SolveStepType::Placement && step->position.row == row &&
+           step->position.col == col;
 }
 
 }  // namespace
@@ -138,12 +146,13 @@ TEST_CASE("GroupedXCyclesStrategy - Finds grouped cycle with box group", "[group
     // =strong(row6)= (6,0) =weak= G has a strong-strong discontinuity at the single
     // cell (2,2): 4 is forced there (Type 2 placement).
     REQUIRE(result.has_value());
-    REQUIRE(result->technique == SolvingTechnique::GroupedXCycles);
-    REQUIRE(result->rating == 6.8);
-    REQUIRE(result->type == SolveStepType::Placement);
-    REQUIRE(result->position.row == 2);
-    REQUIRE(result->position.col == 2);
-    REQUIRE(result->value == 4);
+    const auto& step = result.value();
+    REQUIRE(step.technique == SolvingTechnique::GroupedXCycles);
+    REQUIRE(step.rating == 6.8);
+    REQUIRE(step.type == SolveStepType::Placement);
+    REQUIRE(step.position.row == 2);
+    REQUIRE(step.position.col == 2);
+    REQUIRE(step.value == 4);
 }
 
 TEST_CASE("GroupedXCyclesStrategy - No cycle when too few candidates", "[grouped_x_cycles]") {
@@ -212,20 +221,28 @@ TEST_CASE("GroupedXCyclesStrategy - emits Type 2 strong-strong placement",
     auto result = strategy.findStep(board, state);
 
     REQUIRE(result.has_value());
-    REQUIRE(result->type == SolveStepType::Placement);
-    REQUIRE(result->technique == SolvingTechnique::GroupedXCycles);
-    REQUIRE(result->position.row == 6);
-    REQUIRE(result->position.col == 3);
-    REQUIRE(result->value == 1);
-    REQUIRE(result->explanation.find("strong-strong") != std::string::npos);
+    const auto& step = result.value();
+    REQUIRE(step.type == SolveStepType::Placement);
+    REQUIRE(step.technique == SolvingTechnique::GroupedXCycles);
+    REQUIRE(step.position.row == 6);
+    REQUIRE(step.position.col == 3);
+    REQUIRE(step.value == 1);
+    REQUIRE(step.explanation.contains("strong-strong"));
+}
 
-    // The chain genuinely depends on a group node: the non-grouped X-Cycles
-    // strategy does not produce this placement.
+// The chain genuinely depends on a group node: the same pattern that yields a
+// grouped Type 2 placement at (6,3) is invisible to the non-grouped X-Cycles
+// strategy — which is what makes this a *grouped* Type 2.
+TEST_CASE("GroupedXCyclesStrategy - Type 2 placement requires a group node",
+          "[grouped_x_cycles][regression][bug-grouped-xcycles-type2]") {
+    BoardData board = createEmptyBoard();
+    CandidateGrid state = singleDigitGrid(1, {{1, 4}, {1, 7}, {5, 6}, {6, 3}, {6, 5}, {7, 5}, {8, 0}, {8, 3}});
+
+    GroupedXCyclesStrategy grouped;
     XCyclesStrategy plain;
-    auto plain_result = plain.findStep(board, state);
-    bool plain_places_here = plain_result.has_value() && plain_result->type == SolveStepType::Placement &&
-                             plain_result->position.row == 6 && plain_result->position.col == 3;
-    REQUIRE_FALSE(plain_places_here);
+
+    REQUIRE(placesAt(grouped.findStep(board, state), 6, 3));
+    REQUIRE_FALSE(placesAt(plain.findStep(board, state), 6, 3));
 }
 
 // A strong-strong discontinuity whose discontinuity node is a GROUP must not
