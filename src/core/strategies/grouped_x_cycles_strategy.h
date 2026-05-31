@@ -333,6 +333,11 @@ private:
                     if (result.has_value()) {
                         return result;
                     }
+                } else if (first_link_strong) {
+                    auto result = buildType2Step(candidates, digit, nodes, chain);
+                    if (result.has_value()) {
+                        return result;
+                    }
                 }
             }
         }
@@ -419,6 +424,39 @@ private:
             .explanation_data = {.positions = positions,
                                  .values = {digit},
                                  .technique_subtype = 0,
+                                 .position_roles = std::vector<CellRole>(positions.size(), CellRole::ChainA)}};
+    }
+
+    /// Type 2: Strong-strong discontinuity — place digit at the start node cell.
+    [[nodiscard]] static std::optional<SolveStep> buildType2Step(const CandidateGrid& candidates, int digit,
+                                                                 const std::vector<GNode>& nodes,
+                                                                 const std::vector<size_t>& chain) {
+        const auto& start_node = nodes[chain[0]];
+        if (!start_node.isSingle()) {
+            return std::nullopt;  // A group cannot be placed
+        }
+
+        size_t cell = start_node.cells[0];
+        Position target = indexToPos(cell);
+        if (!candidates.isAllowed(target.row, target.col, digit)) {
+            return std::nullopt;
+        }
+
+        auto positions = collectPositions(nodes, chain);
+        auto explanation = fmt::format("Grouped X-Cycles on {}: strong-strong discontinuity at {} — places {}", digit,
+                                       formatPosition(target), digit);
+
+        return SolveStep{
+            .type = SolveStepType::Placement,
+            .technique = SolvingTechnique::GroupedXCycles,
+            .position = target,
+            .value = digit,
+            .eliminations = {},
+            .explanation = explanation,
+            .rating = getTechniqueRating(SolvingTechnique::GroupedXCycles),
+            .explanation_data = {.positions = positions,
+                                 .values = {digit},
+                                 .technique_subtype = 1,
                                  .position_roles = std::vector<CellRole>(positions.size(), CellRole::ChainA)}};
     }
 
