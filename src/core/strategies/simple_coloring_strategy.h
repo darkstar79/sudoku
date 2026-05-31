@@ -120,8 +120,9 @@ private:
                 }
             }
 
-            // Need at least one conjugate pair (2 cells); a lone pair still yields
-            // a valid Rule 2 (exclusion) elimination — Rule 1 is inert below 4 cells.
+            // Need at least one conjugate pair (2 cells). A lone pair can only trigger
+            // Rule 2 (exclusion); Rule 1 (contradiction) needs two same-color cells,
+            // which requires a chain of 3+ cells.
             if (color_a_cells.size() + color_b_cells.size() < 2) {
                 continue;
             }
