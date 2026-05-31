@@ -249,14 +249,14 @@ TEST_CASE("SimpleColoringStrategy - Rule 2 exclusion fires on a single 2-cell co
     auto result = strategy.findStep(board, state);
 
     REQUIRE(result.has_value());
-    const SolveStep& step = result.value();
-    REQUIRE(step.type == SolveStepType::Elimination);
-    REQUIRE(step.technique == SolvingTechnique::SimpleColoring);
-    REQUIRE(step.explanation_data.technique_subtype == 1);  // 1 = Rule 2 exclusion
+    REQUIRE((result.has_value() && result->type == SolveStepType::Elimination));
+    REQUIRE((result.has_value() && result->technique == SolvingTechnique::SimpleColoring));
+    REQUIRE((result.has_value() && result->explanation_data.technique_subtype == 1));  // 1 = Rule 2 exclusion
 
-    bool eliminates_5_at_1_1 = std::ranges::any_of(step.eliminations, [](const Elimination& elim) {
-        return elim.position.row == 1 && elim.position.col == 1 && elim.value == 5;
-    });
+    bool eliminates_5_at_1_1 =
+        result.has_value() && std::ranges::any_of(result->eliminations, [](const Elimination& elim) {
+            return elim.position.row == 1 && elim.position.col == 1 && elim.value == 5;
+        });
     REQUIRE(eliminates_5_at_1_1);
 }
 
