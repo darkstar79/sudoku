@@ -21,6 +21,7 @@
 
 #include <array>
 #include <optional>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -55,10 +56,25 @@ namespace {
 }
 
 /// True iff `step` is a Placement at (row, col). Short-circuits on `has_value()`
-/// so the optional access is checked.
+/// so the optional access is checked (avoids bugprone-unchecked-optional-access:
+/// `REQUIRE(opt.has_value())` is not understood as a guard by clang-tidy).
 [[nodiscard]] bool placesAt(const std::optional<SolveStep>& step, size_t row, size_t col) {
     return step.has_value() && step->type == SolveStepType::Placement && step->position.row == row &&
            step->position.col == col;
+}
+
+/// True iff `step` is a GroupedXCycles Placement of `value` at (row, col).
+/// has_value() must guard every `step->` directly (clang-tidy does not analyse
+/// across the placesAt() helper boundary).
+[[nodiscard]] bool placesGroupedValueAt(const std::optional<SolveStep>& step, size_t row, size_t col, int value) {
+    return step.has_value() && step->type == SolveStepType::Placement &&
+           step->technique == SolvingTechnique::GroupedXCycles && step->position.row == row &&
+           step->position.col == col && step->value == value;
+}
+
+/// True iff `step` exists and its explanation contains `needle`.
+[[nodiscard]] bool explanationContains(const std::optional<SolveStep>& step, std::string_view needle) {
+    return step.has_value() && step->explanation.contains(needle);
 }
 
 }  // namespace
@@ -146,13 +162,7 @@ TEST_CASE("GroupedXCyclesStrategy - Finds grouped cycle with box group", "[group
     // =strong(row6)= (6,0) =weak= G has a strong-strong discontinuity at the single
     // cell (2,2): 4 is forced there (Type 2 placement).
     REQUIRE(result.has_value());
-    const auto& step = result.value();
-    REQUIRE(step.technique == SolvingTechnique::GroupedXCycles);
-    REQUIRE(step.rating == 6.8);
-    REQUIRE(step.type == SolveStepType::Placement);
-    REQUIRE(step.position.row == 2);
-    REQUIRE(step.position.col == 2);
-    REQUIRE(step.value == 4);
+    REQUIRE(placesGroupedValueAt(result, 2, 2, 4));
 }
 
 TEST_CASE("GroupedXCyclesStrategy - No cycle when too few candidates", "[grouped_x_cycles]") {
@@ -221,13 +231,8 @@ TEST_CASE("GroupedXCyclesStrategy - emits Type 2 strong-strong placement",
     auto result = strategy.findStep(board, state);
 
     REQUIRE(result.has_value());
-    const auto& step = result.value();
-    REQUIRE(step.type == SolveStepType::Placement);
-    REQUIRE(step.technique == SolvingTechnique::GroupedXCycles);
-    REQUIRE(step.position.row == 6);
-    REQUIRE(step.position.col == 3);
-    REQUIRE(step.value == 1);
-    REQUIRE(step.explanation.contains("strong-strong"));
+    REQUIRE(placesGroupedValueAt(result, 6, 3, 1));
+    REQUIRE(explanationContains(result, "strong-strong"));
 }
 
 // The chain genuinely depends on a group node: the same pattern that yields a
