@@ -69,6 +69,11 @@ public:
     }
 
 private:
+    // Grants the unit-test peer access to the private static analysis helpers
+    // (findKrakenOutcome / KrakenOutcome) so the cover-sweep logic can be exercised
+    // deterministically without mining a full puzzle. See test_kraken_fish_strategy.cpp.
+    friend struct KrakenFishTestPeer;
+
     /// Fish order names for explanation strings
     [[nodiscard]] static std::string_view fishOrderName(size_t order) {
         switch (order) {
@@ -271,6 +276,19 @@ private:
                                               .position_roles = std::move(roles)}};
     }
 
+    /// A swept cover target (originally empty with `value` allowed) loses `value` after the fin
+    /// placement propagation iff it was filled with a DIFFERENT value, or `value` was struck from
+    /// its still-open candidates. #59: a cell the chain FILLED with `value` (board == value, mask
+    /// zeroed by placeInState) is a placement, not an elimination — the mask clause is therefore
+    /// gated to cells that are still empty.
+    [[nodiscard]] static bool coverTargetLosesValue(const ForcingChainHelpers::PropagationState& state,
+                                                    size_t target_idx, int value) {
+        if (state.board[target_idx] != EMPTY_CELL) {
+            return state.board[target_idx] != value;
+        }
+        return (state.masks[target_idx] & valueToBit(value)) == 0;
+    }
+
     /// Analyse a finned pattern by placing `value` at the fin and propagating ONCE.
     ///
     /// - If the fin placement self-contradicts, the fin cannot hold `value`: return a single
@@ -299,7 +317,6 @@ private:
                                  .eliminations = {Elimination{.position = fin_pos, .value = value}}};
         }
 
-        auto bit = valueToBit(value);
         std::vector<Elimination> kraken_elims;
         for (size_t primary = 0; primary < BOARD_SIZE; ++primary) {
             if (std::ranges::contains(base_primaries, primary)) {
@@ -317,12 +334,8 @@ private:
                     continue;
                 }
 
-                // Target loses `value` if it got filled with another value, or `value` was
-                // eliminated from its candidates by the (already propagated) fin-chain.
                 size_t target_idx = (row * BOARD_SIZE) + col;
-                bool eliminated = (state.board[target_idx] != EMPTY_CELL && state.board[target_idx] != value) ||
-                                  (state.masks[target_idx] & bit) == 0;
-                if (eliminated) {
+                if (coverTargetLosesValue(state, target_idx, value)) {
                     kraken_elims.push_back(Elimination{.position = Position{.row = row, .col = col}, .value = value});
                 }
             }
