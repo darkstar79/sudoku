@@ -227,6 +227,7 @@ TEST_CASE("SimpleColoringStrategy - Rule 2 exclusion with outside cell", "[simpl
     REQUIRE(result->explanation.find("Simple Coloring") != std::string::npos);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with setup loop + multiple REQUIRE checks; complexity is inherent to test coverage
 TEST_CASE("SimpleColoringStrategy - Rule 2 exclusion fires on a single 2-cell conjugate pair",
           "[simple_coloring][regression][bug-simple-coloring-2cell]") {
     // GH #23 finding 1: a lone conjugate pair (a 2-cell component) was skipped by the
@@ -248,14 +249,14 @@ TEST_CASE("SimpleColoringStrategy - Rule 2 exclusion fires on a single 2-cell co
     auto result = strategy.findStep(board, state);
 
     REQUIRE(result.has_value());
-    REQUIRE((result.has_value() && result->type == SolveStepType::Elimination));
-    REQUIRE((result.has_value() && result->technique == SolvingTechnique::SimpleColoring));
-    REQUIRE((result.has_value() && result->explanation_data.technique_subtype == 1));  // 1 = Rule 2 exclusion
+    const SolveStep& step = result.value();
+    REQUIRE(step.type == SolveStepType::Elimination);
+    REQUIRE(step.technique == SolvingTechnique::SimpleColoring);
+    REQUIRE(step.explanation_data.technique_subtype == 1);  // 1 = Rule 2 exclusion
 
-    bool eliminates_5_at_1_1 =
-        result.has_value() && std::ranges::any_of(result->eliminations, [](const Elimination& elim) {
-            return elim.position.row == 1 && elim.position.col == 1 && elim.value == 5;
-        });
+    bool eliminates_5_at_1_1 = std::ranges::any_of(step.eliminations, [](const Elimination& elim) {
+        return elim.position.row == 1 && elim.position.col == 1 && elim.value == 5;
+    });
     REQUIRE(eliminates_5_at_1_1);
 }
 
