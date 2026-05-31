@@ -15,16 +15,37 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/candidate_grid.h"
+#include "../../src/core/puzzle_generator.h"
+#include "../../src/core/strategies/forcing_chain_helpers.h"
 #include "../../src/core/strategies/kraken_fish_strategy.h"
 #include "../helpers/candidate_test_utils.h"
 #include "../helpers/strategy_test_utils.h"
 
 #include <algorithm>
+#include <iostream>
+#include <memory>
 #include <optional>
+#include <span>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
+
+namespace sudoku::core {
+// Friend peer: reaches the private cover-sweep so issue #59 can be exercised deterministically.
+// `KrakenOutcome` is private, so the peer returns only the public `eliminations` vector.
+struct KrakenFishTestPeer {
+    [[nodiscard]] static std::vector<Elimination>
+    coverSweepEliminations(const BoardData& board, const CandidateGrid& candidates, int value, bool by_row,
+                           std::span<const size_t> base_primaries, const std::vector<size_t>& base_secondaries,
+                           const Position& fin_pos, size_t fin_box) {
+        return KrakenFishStrategy::findKrakenOutcome(board, candidates, value, by_row, base_primaries, base_secondaries,
+                                                     fin_pos, fin_box)
+            .eliminations;
+    }
+};
+}  // namespace sudoku::core
 
 namespace {
 
@@ -239,4 +260,199 @@ TEST_CASE("KrakenFishStrategy - vacuous fin contradiction reports fin-exclusion"
 
     // Base-axis orientation preserved (issue #39 scope untouched).
     REQUIRE((result.has_value() && result->explanation_data.region_type == RegionType::Row));
+}
+
+// Regression for issue #59 (the HIGH finding from the bmad-code-review pass on PR #58):
+//   The cover-sweep "did this target lose `value`?" test reads `(masks[t] & bit) == 0`, which is
+//   ALSO true when the fin-chain *placed* `value` into the target (placeInState zeroes a filled
+//   cell's mask). The cell where `value` was placed was then emitted as an *elimination* of
+//   `value` — an inverted, unsound deduction. The guard restricts the mask clause to EMPTY cells.
+//
+// Deterministic white-box scenario via KrakenFishTestPeer (no mined puzzle needed): column 5
+// (index 4) admits value 5 only at R1C5 and R5C5 — every other row of the column carries a given
+// non-5 digit. Placing 5 at the fin R1C1 strips 5 from R1C5 (same row), collapsing R1C5 to its
+// last candidate and cascading until R5C5 is the lone 5 left in the column, so the fin-chain
+// PLACES 5 at R5C5. Pre-#59 the sweep reported "eliminate 5 from R5C5"; it must not.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with multiple REQUIRE checks
+TEST_CASE("KrakenFishStrategy - cover target filled with value is not a false elimination",
+          "[kraken_fish][regression][issue59]") {
+    constexpr std::string_view kBoardFlat =
+        "000000000000010000000020000000030000000000000000060000000070000000080000000090000";
+    BoardData board = sudoku::testing::flatStringToBoard(std::string(kBoardFlat));
+    CandidateGrid candidates(board);
+
+    // Premise guard: confirm the fin-chain really forces 5 into R5C5 (else the test is vacuous).
+    auto state = ForcingChainHelpers::initState(board, candidates);
+    ForcingChainHelpers::placeInState(state, (0 * BOARD_SIZE) + 0, 5);
+    REQUIRE_FALSE(state.contradiction);
+    ForcingChainHelpers::propagate(state);
+    REQUIRE_FALSE(state.contradiction);
+    REQUIRE(state.board[(4 * BOARD_SIZE) + 4] == 5);
+
+    const std::vector<size_t> base_primaries{1, 2};  // base rows skipped by the sweep
+    const std::vector<size_t> base_secondaries{4};   // cover column (index 4 = column 5)
+    auto elims =
+        KrakenFishTestPeer::coverSweepEliminations(board, candidates, /*value=*/5, /*by_row=*/true, base_primaries,
+                                                   base_secondaries, Position{.row = 0, .col = 0}, /*fin_box=*/0);
+
+    // The placed-with-value cell R5C5 must NOT be reported as an elimination of 5.
+    const bool reports_r5c5 = std::ranges::any_of(
+        elims, [](const Elimination& e) { return e.position.row == 4 && e.position.col == 4 && e.value == 5; });
+    REQUIRE_FALSE(reports_r5c5);
+
+    // The genuine elimination of 5 from R1C5 (5 gone, cell took a different value) is unaffected.
+    const bool reports_r1c5 = std::ranges::any_of(
+        elims, [](const Elimination& e) { return e.position.row == 0 && e.position.col == 4 && e.value == 5; });
+    REQUIRE(reports_r1c5);
+}
+
+namespace {
+
+struct KrakenMiningResult {
+    int generated{0};
+    int kraken_steps{0};
+    int inverted{0};
+};
+
+// Ground-truth sweep for issue #59. Generate puzzles and walk each one through the full strategy
+// chain with a persistent CandidateGrid. KrakenFish is registered ~50th, so it is virtually never
+// the chain's first-applicable step — scanning only the chosen step never reaches it (an earlier
+// version reported kraken_steps=0). Instead, at EVERY intermediate candidate state we probe a
+// standalone KrakenFishStrategy directly and ground-truth each elimination it would make. On a hit
+// the original puzzle and the working board at the firing state are printed for capture as a
+// fixture. (Probing every state is costly, hence the modest corpus.)
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — diagnostic harness; nesting is inherent
+KrakenMiningResult mineKrakenInversions(Difficulty difficulty, int num_puzzles, int start_seed) {
+    PuzzleGenerator generator;
+    auto strategies = sudoku::testing::createStrategyChain();
+    KrakenFishStrategy kraken;
+    KrakenMiningResult r;
+
+    for (int seed = start_seed; seed < start_seed + num_puzzles; ++seed) {
+        GenerationSettings settings{
+            .difficulty = difficulty, .seed = static_cast<uint32_t>(seed), .ensure_unique = true, .max_attempts = 500};
+        auto puzzle = generator.generatePuzzle(settings);
+        if (!puzzle.has_value()) {
+            continue;
+        }
+        r.generated++;
+        const auto& truth = puzzle->solution;
+        auto working = puzzle->board;
+        CandidateGrid candidates(working);
+
+        constexpr int kMaxIterations = 300;
+        for (int iter = 0; iter < kMaxIterations && !sudoku::testing::isBoardComplete(working); ++iter) {
+            // Probe KrakenFish INDEPENDENTLY at this candidate state. Kraken is registered ~50th in
+            // the chain, so the first-applicable step is almost never Kraken — scanning only the
+            // chosen step never reaches it. We instead ask Kraken directly what it would deduce at
+            // every state the puzzle passes through, and ground-truth each elimination. (We do not
+            // apply Kraken's step; the chain's choice advances the replay.)
+            if (auto kstep = kraken.findStep(working, candidates); kstep.has_value()) {
+                r.kraken_steps++;
+                for (const auto& e : kstep->eliminations) {
+                    if (truth[e.position.row][e.position.col] == e.value) {
+                        r.inverted++;
+                        std::cerr << "\n=== ISSUE #59 REPRODUCER (Kraken inverted elimination) ===\n"
+                                  << "Seed " << seed << " (difficulty " << static_cast<int>(difficulty)
+                                  << "): eliminated " << e.value << " from R" << (e.position.row + 1) << "C"
+                                  << (e.position.col + 1) << " but the solution has that value there.\n"
+                                  << "Explanation: " << kstep->explanation << "\n"
+                                  << "Original puzzle (flat): " << sudoku::testing::boardToFlatString(puzzle->board)
+                                  << "\nWorking board at step (flat): " << sudoku::testing::boardToFlatString(working)
+                                  << "\n";
+                    }
+                }
+            }
+
+            // Advance the replay using the chain's first-applicable step.
+            std::optional<SolveStep> step;
+            for (const auto& strategy : strategies) {
+                step = strategy->findStep(working, candidates);
+                if (step.has_value()) {
+                    break;
+                }
+            }
+            if (!step.has_value()) {
+                break;  // would fall back to backtracking
+            }
+            if (step->type == SolveStepType::Placement) {
+                working[step->position.row][step->position.col] = step->value;
+                candidates.placeValue(step->position.row, step->position.col, step->value);
+            } else {
+                for (const auto& e : step->eliminations) {
+                    candidates.eliminateCandidate(e.position.row, e.position.col, e.value);
+                }
+            }
+        }
+    }
+    return r;
+}
+
+}  // namespace
+
+// Regression for issue #59 on a REAL mined puzzle (raw givens — no chain setup needed). Mined from
+// the corpus sweep below; at the initial candidate state KrakenFishStrategy finds a Kraken X-Wing
+// on value 1 in rows 4/5 with the fin at R5C7. Placing 1 at the fin propagates to *place* 1 at the
+// cover-line target R2C9. Pre-#59 the sweep reported "eliminate 1 from R2C9" — but the puzzle's
+// unique solution has R2C9 = 1, so that was an inverted, unsound deduction. The guard suppresses
+// R2C9 while still emitting the genuine elimination of 1 from R1C9 (solution R1C9 = 4 → sound).
+//
+// This is the user-reachable face of the bug: although the production solve loop almost never
+// reaches Kraken (it is the ~50th strategy), the "Find step by technique" feature calls
+// KrakenFishStrategy::findStep directly, so a user picking Kraken Fish here would be told to remove
+// the one correct candidate from R2C9.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with multiple REQUIRE checks
+TEST_CASE("KrakenFishStrategy - mined real puzzle: fin-chain placement is not eliminated",
+          "[kraken_fish][regression][issue59]") {
+    constexpr std::string_view kBoardFlat =
+        "060000520000040000140302800000900350000000098000130200000000010003809400001067000";
+    BoardData board = sudoku::testing::flatStringToBoard(std::string(kBoardFlat));
+    CandidateGrid candidates(board);
+
+    // Premise: the fin (R5C7) placement really forces 1 into R2C9 (else the regression is vacuous).
+    auto state = ForcingChainHelpers::initState(board, candidates);
+    ForcingChainHelpers::placeInState(state, (4 * BOARD_SIZE) + 6, 1);  // fin R5C7
+    REQUIRE_FALSE(state.contradiction);
+    ForcingChainHelpers::propagate(state);
+    REQUIRE_FALSE(state.contradiction);
+    REQUIRE(state.board[(1 * BOARD_SIZE) + 8] == 1);  // R2C9 filled with 1 by the fin-chain
+
+    KrakenFishStrategy kraken;
+    auto step = kraken.findStep(board, candidates);
+    REQUIRE(step.has_value());
+    REQUIRE((step.has_value() && step->technique == SolvingTechnique::KrakenFish));
+
+    // The placed-with-value cell R2C9 (solution = 1) must NOT be eliminated.
+    // (`step.has_value() &&` short-circuits before any `->`, so CI's bugprone-unchecked-optional-
+    // access — which does not model REQUIRE as a guard — stays happy.)
+    const bool eliminates_r2c9 = step.has_value() && std::ranges::any_of(step->eliminations, [](const Elimination& e) {
+                                     return e.position.row == 1 && e.position.col == 8 && e.value == 1;
+                                 });
+    REQUIRE_FALSE(eliminates_r2c9);
+
+    // The genuine elimination of 1 from R1C9 (solution = 4) is still produced.
+    const bool eliminates_r1c9 = step.has_value() && std::ranges::any_of(step->eliminations, [](const Elimination& e) {
+                                     return e.position.row == 0 && e.position.col == 8 && e.value == 1;
+                                 });
+    REQUIRE(eliminates_r1c9);
+}
+
+// Hidden hard-mining harness ([.] = excluded from the default run). Pre-fix it is expected to
+// surface a reproducer (captured into the [issue59] regression above); post-fix it must stay 0.
+// Run explicitly: unit_tests "[kraken][mining]".
+TEST_CASE("KrakenFishStrategy - mining sweep finds no inverted cover eliminations", "[.][kraken][mining]") {
+    int total_gen = 0;
+    int total_kraken = 0;
+    int total_inverted = 0;
+    const std::vector<std::pair<Difficulty, int>> corpus{
+        {Difficulty::Hard, 600}, {Difficulty::Expert, 600}, {Difficulty::Master, 400}};
+    for (const auto& [difficulty, count] : corpus) {
+        auto r = mineKrakenInversions(difficulty, count, 1);
+        total_gen += r.generated;
+        total_kraken += r.kraken_steps;
+        total_inverted += r.inverted;
+    }
+    std::cerr << "\n[#59 mining] generated=" << total_gen << " kraken_steps=" << total_kraken
+              << " inverted_elims=" << total_inverted << "\n";
+    CHECK(total_inverted == 0);
 }
