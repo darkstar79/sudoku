@@ -20,6 +20,7 @@
 #include "../helpers/strategy_test_utils.h"
 
 #include <algorithm>
+#include <string>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -71,33 +72,95 @@ TEST_CASE("KrakenFishStrategy - Returns nullopt for empty board with no finned p
 }
 
 // Regression for issue #20 (the HIGH finding from the 2026-05-25 audit):
-//   Kraken steps must NOT include free finned-fish eliminations — those are
-//   reported by FinnedXWing/Swordfish/Jellyfish strategies which run earlier;
-//   bundling them here misattributes their rating and lets `position` point at
-//   a non-Kraken cell.
+//   A *non-vacuous* Kraken step must NOT include free finned-fish eliminations — those
+//   are reported by FinnedXWing/Swordfish/Jellyfish strategies which run earlier;
+//   bundling them here misattributes their rating and lets `position` point at a
+//   non-Kraken cell.
 //
-// Scenario derived from tests/data/fixtures/Hard/fixtures.yaml (Hard_s4503_i7):
-//   Kraken Swordfish on value 2 in rows 5/7/9 (0-idx: 4/6/8) with fin at R9C6
-//   (0-idx: row=8, col=5). Bases are rows; cover cols are {1, 3, 4, 5}
-//   (col 5 is the fin's cover line). The fin's box is box 7 (rows 6-8, cols
-//   3-5), so any cell at (row, 3) or (row, 4) in row 7 (the only non-base row
-//   in the fin's box) would be a "free" finned elim; the true Kraken elims
-//   sit at (0, 3) and (2, 3).
+// Fixture: Hard_s1_i0 raw givens (tests/data/fixtures/Hard/fixtures.yaml). At the
+// initial candidate state KrakenFishStrategy finds a Kraken X-Wing on value 1 in
+// rows 5/7 with the fin at R7C1 whose fin-placement chain is *consistent* (no
+// contradiction), eliminating 1 from R3C4 — a genuine extended Kraken elimination
+// (rating 8.5). Sound: the puzzle's solution has R3C4 = 7.
 //
-// The region_type is asserted as Row (the base axis), matching the convention
-// used by the rest of the fish family (XWing/Swordfish/Jellyfish/Finned*/Sashimi*).
-// The audit's recommendation to flip it to the cover axis contradicted the
-// codebase's documented convention at [localized_explanations.h:204] and has been
-// rejected here — see PR #38 discussion and the follow-up convention issue.
-TEST_CASE("KrakenFishStrategy - omits in-fin-box free elims, reports Kraken cells only",
+// region_type is asserted as Row (the base axis), matching the fish-family convention
+// (XWing/Swordfish/Jellyfish/Finned*/Sashimi* all do the same). The 2026-05-25 audit's
+// recommendation to flip it to the cover axis contradicted the documented convention at
+// [localized_explanations.h:204] and was rejected — see PR #38 and issue #39.
+TEST_CASE("KrakenFishStrategy - non-vacuous Kraken omits in-fin-box elims, full Kraken rating",
           "[kraken_fish][regression][issue20]") {
+    constexpr std::string_view kBoardFlat =
+        "040500010003080002000020008000000000002067009317000050004000025030009700000010800";
+    BoardData board = sudoku::testing::flatStringToBoard(std::string(kBoardFlat));
+    CandidateGrid state(board);
+
+    KrakenFishStrategy strategy;
+    auto result = strategy.findStep(board, state);
+    REQUIRE(result.has_value());
+    REQUIRE(result->technique == SolvingTechnique::KrakenFish);
+
+    // A consistent fin chain → full Kraken rating (NOT the fin-exclusion rating).
+    REQUIRE(result->rating == getTechniqueRating(SolvingTechnique::KrakenFish));
+
+    // Determine fin's box from the explanation positions (the role==Fin entry).
+    REQUIRE(result->explanation_data.position_roles.size() == result->explanation_data.positions.size());
+    auto fin_it = std::ranges::find(result->explanation_data.position_roles, CellRole::Fin);
+    REQUIRE(fin_it != result->explanation_data.position_roles.end());
+    auto fin_idx = std::distance(result->explanation_data.position_roles.begin(), fin_it);
+    Position fin_pos = result->explanation_data.positions[fin_idx];
+    size_t fin_box_row = fin_pos.row / BOX_SIZE;
+    size_t fin_box_col = fin_pos.col / BOX_SIZE;
+
+    // Every elimination must sit OUTSIDE the fin's box — in-box elims belong to the
+    // standard finned-fish technique and must not be attributed here.
+    REQUIRE_FALSE(result->eliminations.empty());
+    for (const auto& elim : result->eliminations) {
+        bool in_fin_box =
+            (elim.position.row / BOX_SIZE == fin_box_row) && (elim.position.col / BOX_SIZE == fin_box_col);
+        INFO("Elimination at (" << elim.position.row << "," << elim.position.col << ") must not be in fin box "
+                                << "(" << fin_box_row << "," << fin_box_col << ")");
+        REQUIRE_FALSE(in_fin_box);
+    }
+
+    // `position` must point at a real Kraken cell (one of the eliminations).
+    auto match = std::ranges::find_if(result->eliminations, [&](const Elimination& e) {
+        return e.position.row == result->position.row && e.position.col == result->position.col;
+    });
+    REQUIRE(match != result->eliminations.end());
+
+    // This fixture is known to eliminate exactly 1 from R3C4. If the chain heuristic
+    // shifts and this changes, flag it for review rather than silently passing on a
+    // different (possibly weaker) deduction.
+    REQUIRE(result->eliminations.size() == 1);
+    REQUIRE(result->eliminations[0].position.row == 2);
+    REQUIRE(result->eliminations[0].position.col == 3);
+    REQUIRE(result->eliminations[0].value == 1);
+
+    // Row-based fish: region_type encodes the base-axis orientation.
+    REQUIRE(result->explanation_data.region_type == RegionType::Row);
+}
+
+// Regression for issue #40 (the 2026-05-25 audit observation at CODE_REVIEW:1114):
+//   When placing `value` at the fin self-contradicts, the fin placement is impossible,
+//   so the old verifyKrakenElimination returned `true` *vacuously* for every candidate
+//   target — surfacing a batch of cover eliminations "chain-verified" by a chain that
+//   had actually self-destructed, rated as a full Kraken (8.5). The strictly simpler,
+//   honest conclusion is that the fin cannot hold `value`: a single elimination on the
+//   fin cell, rated at the underlying finned-fish level.
+//
+// Fixture: Hard_s4503_i7 (originally added for issue #20). On inspection it is in fact a
+// vacuous-fin case: placing 2 at the fin R9C6 propagates to a contradiction. The puzzle's
+// solution has R9C6 = 6, so eliminating 2 from R9C6 is sound. The base set is an order-3
+// Swordfish, so the fin-exclusion is rated at the FinnedSwordfish level (SE 4.0), not 8.5.
+TEST_CASE("KrakenFishStrategy - vacuous fin contradiction reports fin-exclusion",
+          "[kraken_fish][regression][issue40]") {
     constexpr std::string_view kBoardFlat =
         "050040000060005200370060008290000000005001090000030020507003004006070002000400010";
     BoardData board = sudoku::testing::flatStringToBoard(std::string(kBoardFlat));
     CandidateGrid state(board);
 
-    // Prior eliminations recorded in the fixture — applied to bring the candidate
-    // grid into the same state the solver would reach by step 7.
+    // Prior eliminations recorded in the fixture — bring the candidate grid into the
+    // same state the solver would reach by step 7.
     state.eliminateCandidate(4, 0, 4);
     state.eliminateCandidate(4, 0, 8);
     state.eliminateCandidate(5, 0, 1);
@@ -115,45 +178,31 @@ TEST_CASE("KrakenFishStrategy - omits in-fin-box free elims, reports Kraken cell
     REQUIRE(result.has_value());
     REQUIRE(result->technique == SolvingTechnique::KrakenFish);
 
-    // Determine fin's box from the explanation positions (the last role==Fin).
-    REQUIRE(result->explanation_data.position_roles.size() == result->explanation_data.positions.size());
+    // Single fin-exclusion, NOT a batch of vacuously-validated cover eliminations.
+    REQUIRE(result->eliminations.size() == 1);
+    const auto& elim = result->eliminations[0];
+    REQUIRE(elim.position.row == 8);  // R9C6 — the fin cell
+    REQUIRE(elim.position.col == 5);
+    REQUIRE(elim.value == 2);
+
+    // `position` points at the eliminated fin cell, and the fin role marks the same cell.
+    REQUIRE(result->position.row == 8);
+    REQUIRE(result->position.col == 5);
     auto fin_it = std::ranges::find(result->explanation_data.position_roles, CellRole::Fin);
     REQUIRE(fin_it != result->explanation_data.position_roles.end());
     auto fin_idx = std::distance(result->explanation_data.position_roles.begin(), fin_it);
-    Position fin_pos = result->explanation_data.positions[fin_idx];
-    size_t fin_box_row = fin_pos.row / 3;
-    size_t fin_box_col = fin_pos.col / 3;
+    REQUIRE(result->explanation_data.positions[fin_idx].row == 8);
+    REQUIRE(result->explanation_data.positions[fin_idx].col == 5);
 
-    // Every elimination must sit OUTSIDE the fin's box — in-box elims belong
-    // to the standard finned-fish technique and must not be attributed here.
-    for (const auto& elim : result->eliminations) {
-        bool in_fin_box = (elim.position.row / 3 == fin_box_row) && (elim.position.col / 3 == fin_box_col);
-        INFO("Elimination at (" << elim.position.row << "," << elim.position.col << ") must not be in fin box "
-                                << "(" << fin_box_row << "," << fin_box_col << ")");
-        REQUIRE_FALSE(in_fin_box);
-    }
+    // Rated at the underlying finned-fish level (order-3 Swordfish = SE 4.0), NOT the
+    // full Kraken rating — this is the rating-drift fix.
+    REQUIRE(result->rating == getTechniqueRating(SolvingTechnique::FinnedSwordfish));
+    REQUIRE(result->rating != getTechniqueRating(SolvingTechnique::KrakenFish));
 
-    // `position` must point at a real Kraken cell (one of the eliminations).
-    auto match = std::ranges::find_if(result->eliminations, [&](const Elimination& e) {
-        return e.position.row == result->position.row && e.position.col == result->position.col;
-    });
-    REQUIRE(match != result->eliminations.end());
+    // Honest explanation: the fin placement is impossible (no "via chain verification").
+    REQUIRE(result->explanation.find("impossible") != std::string::npos);
+    REQUIRE(result->explanation.find("fin") != std::string::npos);
 
-    // Tighter check: this fixture is known to produce exactly two Kraken
-    // eliminations at (0,3) and (2,3) for value 2. If the chain heuristic
-    // shifts and these numbers change, the test should flag it for review
-    // rather than silently passing on a different (possibly weaker) deduction.
-    REQUIRE(result->eliminations.size() == 2);
-    auto has_cell = [&](size_t r, size_t c) {
-        return std::ranges::any_of(result->eliminations, [&](const Elimination& e) {
-            return e.position.row == r && e.position.col == c && e.value == 2;
-        });
-    };
-    REQUIRE(has_cell(0, 3));
-    REQUIRE(has_cell(2, 3));
-
-    // Row-based fish: region_type encodes the base-axis orientation per the
-    // codebase convention (XWing/Swordfish/Jellyfish/Finned*/Sashimi* all do
-    // the same). Bases here are rows, so region_type must be Row.
+    // Base-axis orientation preserved (issue #39 scope untouched).
     REQUIRE(result->explanation_data.region_type == RegionType::Row);
 }

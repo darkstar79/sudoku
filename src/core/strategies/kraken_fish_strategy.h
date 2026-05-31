@@ -83,6 +83,21 @@ private:
         }
     }
 
+    /// Rating for a fin-exclusion deduction (vacuous Kraken case): the difficulty of the
+    /// underlying finned fish of the same order, NOT the full Kraken rating. When the fin
+    /// placement self-contradicts the pattern is just "a finned fish whose fin is dead", so
+    /// rating it as a Kraken (8.5) would let the puzzle rater double-count (issue #40).
+    [[nodiscard]] static double finnedFishRatingForOrder(size_t order) {
+        switch (order) {
+            case 3:
+                return getTechniqueRating(SolvingTechnique::FinnedSwordfish);
+            case 4:
+                return getTechniqueRating(SolvingTechnique::FinnedJellyfish);
+            default:
+                return getTechniqueRating(SolvingTechnique::FinnedXWing);
+        }
+    }
+
     /// Try all fish orders (2, 3, 4) for a given orientation
     [[nodiscard]] static std::optional<SolveStep>
     findOrientation(const BoardData& board, const CandidateGrid& candidates, int value, bool by_row) {
@@ -178,10 +193,10 @@ private:
             // are already discoverable by FinnedXWing/Swordfish/Jellyfish (registered earlier),
             // so including them here would misattribute their difficulty rating to Kraken Fish
             // and let the step's `position` point at a non-Kraken cell.
-            auto kraken_elims = findKrakenEliminations(board, candidates, value, by_row, base_primaries,
-                                                       info->base_secondaries, fin_pos, fin_box);
+            auto outcome = findKrakenOutcome(board, candidates, value, by_row, base_primaries, info->base_secondaries,
+                                             fin_pos, fin_box);
 
-            if (kraken_elims.empty()) {
+            if (outcome.eliminations.empty()) {
                 continue;
             }
 
@@ -197,9 +212,23 @@ private:
                 base_list += std::to_string(base_primaries[i] + 1);
             }
 
-            auto explanation =
-                fmt::format("Kraken {} on value {} in {} {} with fin at {} — eliminates {} via chain verification",
-                            fishOrderName(order), value, orientation, base_list, formatPosition(fin_pos), value);
+            // Vacuous fin contradiction: placing `value` at the fin is itself impossible, so the
+            // chain proved nothing about the cover cells — but it proved the strictly simpler fact
+            // that the fin cannot hold `value`. Report that single, honest deduction (rated at the
+            // underlying finned-fish level) instead of a batch of vacuously "verified" cover
+            // eliminations rated as a full Kraken. See issue #40.
+            std::string explanation =
+                outcome.fin_excluded
+                    ? fmt::format("Kraken {} on value {} in {} {} with fin at {} — placing {} at the fin is "
+                                  "impossible, so {} is eliminated from the fin cell",
+                                  fishOrderName(order), value, orientation, base_list, formatPosition(fin_pos), value,
+                                  value)
+                    : fmt::format("Kraken {} on value {} in {} {} with fin at {} — eliminates {} via chain "
+                                  "verification",
+                                  fishOrderName(order), value, orientation, base_list, formatPosition(fin_pos), value);
+
+            double rating = outcome.fin_excluded ? finnedFishRatingForOrder(order)
+                                                 : getTechniqueRating(SolvingTechnique::KrakenFish);
 
             // Build values for explanation_data: [value, base_line1, base_line2, ...]
             std::vector<int> explain_values;
@@ -210,11 +239,11 @@ private:
 
             return SolveStep{.type = SolveStepType::Elimination,
                              .technique = SolvingTechnique::KrakenFish,
-                             .position = kraken_elims[0].position,
+                             .position = outcome.eliminations[0].position,
                              .value = 0,
-                             .eliminations = std::move(kraken_elims),
+                             .eliminations = std::move(outcome.eliminations),
                              .explanation = explanation,
-                             .rating = getTechniqueRating(SolvingTechnique::KrakenFish),
+                             .rating = rating,
                              .explanation_data = {.positions = positions,
                                                   .values = std::move(explain_values),
                                                   // Convention across the fish family ([localized_explanations.h:204]
@@ -229,20 +258,45 @@ private:
         return std::nullopt;
     }
 
-    /// Find Kraken eliminations: cells in cover lines, outside base lines and outside fin's box,
-    /// where chain propagation from the fin cell confirms the elimination.
-    [[nodiscard]] static std::vector<Elimination>
-    findKrakenEliminations(const BoardData& board, const CandidateGrid& candidates, int value, bool by_row,
-                           std::span<const size_t> base_primaries, const std::vector<size_t>& base_secondaries,
-                           const Position& fin_pos, size_t fin_box) {
-        std::vector<Elimination> kraken_elims;
+    /// Outcome of analysing a finned pattern's fin placement.
+    struct KrakenOutcome {
+        /// True when placing `value` at the fin self-contradicts: the fin cannot hold `value`.
+        /// `eliminations` then holds the single fin-cell exclusion. Otherwise `eliminations`
+        /// holds the chain-verified cover-line eliminations (possibly empty).
+        bool fin_excluded{false};
+        std::vector<Elimination> eliminations;
+    };
 
-        // Collect candidate target cells: in cover lines (base_secondaries), NOT in base lines,
-        // that have value as candidate, but are OUTSIDE the fin's box.
-        //
-        // `primary` here iterates the base-axis index of the candidate cell (row index for
-        // by_row=true, col index for by_row=false). We skip when this index is one of the
-        // fish's base lines; the remaining iterations sweep cells in the cover lines.
+    /// Analyse a finned pattern by placing `value` at the fin and propagating ONCE.
+    ///
+    /// - If the fin placement self-contradicts, the fin cannot hold `value`: return a single
+    ///   fin-cell exclusion (`fin_excluded = true`). This is the strictly simpler, honest
+    ///   deduction that the old vacuous-truth path concealed by confirming every cover
+    ///   elimination instead (issue #40).
+    /// - Otherwise sweep the cover-line target cells (in cover lines, NOT in base lines,
+    ///   OUTSIDE the fin's box) and keep those the propagated chain eliminates `value` from.
+    ///
+    /// Propagation is target-independent, so it is hoisted out of the per-target loop (the old
+    /// code re-ran it once per target). `primary` iterates the base-axis index of the candidate
+    /// cell (row for by_row, col otherwise); base-line indices are skipped so the inner sweep
+    /// covers the cover lines.
+    [[nodiscard]] static KrakenOutcome findKrakenOutcome(const BoardData& board, const CandidateGrid& candidates,
+                                                         int value, bool by_row, std::span<const size_t> base_primaries,
+                                                         const std::vector<size_t>& base_secondaries,
+                                                         const Position& fin_pos, size_t fin_box) {
+        auto state = ForcingChainHelpers::initState(board, candidates);
+        size_t fin_idx = (fin_pos.row * BOARD_SIZE) + fin_pos.col;
+        ForcingChainHelpers::placeInState(state, fin_idx, value);
+        if (!state.contradiction) {
+            ForcingChainHelpers::propagate(state);
+        }
+        if (state.contradiction) {
+            return KrakenOutcome{.fin_excluded = true,
+                                 .eliminations = {Elimination{.position = fin_pos, .value = value}}};
+        }
+
+        auto bit = valueToBit(value);
+        std::vector<Elimination> kraken_elims;
         for (size_t primary = 0; primary < BOARD_SIZE; ++primary) {
             if (std::ranges::contains(base_primaries, primary)) {
                 continue;
@@ -254,54 +308,22 @@ private:
                 if (board[row][col] != EMPTY_CELL || !candidates.isAllowed(row, col, value)) {
                     continue;
                 }
-
                 // Skip cells in fin's box (those are handled by standard finned eliminations)
                 if (getBoxIndex(row, col) == fin_box) {
                     continue;
                 }
 
-                // Chain verification: place value at fin cell and propagate
-                if (verifyKrakenElimination(board, candidates, value, fin_pos, row, col)) {
+                // Target loses `value` if it got filled with another value, or `value` was
+                // eliminated from its candidates by the (already propagated) fin-chain.
+                size_t target_idx = (row * BOARD_SIZE) + col;
+                bool eliminated = (state.board[target_idx] != EMPTY_CELL && state.board[target_idx] != value) ||
+                                  (state.masks[target_idx] & bit) == 0;
+                if (eliminated) {
                     kraken_elims.push_back(Elimination{.position = Position{.row = row, .col = col}, .value = value});
                 }
             }
         }
-        return kraken_elims;
-    }
-
-    /// Verify a Kraken elimination via chain propagation.
-    /// Place value at fin_pos and propagate. If target cell loses value as candidate
-    /// (either filled with another value, or value removed from candidates), return true.
-    [[nodiscard]] static bool verifyKrakenElimination(const BoardData& board, const CandidateGrid& candidates,
-                                                      int value, const Position& fin_pos, size_t target_row,
-                                                      size_t target_col) {
-        auto state = ForcingChainHelpers::initState(board, candidates);
-
-        size_t fin_idx = (fin_pos.row * BOARD_SIZE) + fin_pos.col;
-        ForcingChainHelpers::placeInState(state, fin_idx, value);
-        if (state.contradiction) {
-            // Contradiction means fin can't be true, so the elimination trivially holds
-            // (but this shouldn't normally happen in a valid puzzle state)
-            return true;
-        }
-
-        ForcingChainHelpers::propagate(state);
-        if (state.contradiction) {
-            // Propagation led to contradiction — fin assumption is impossible,
-            // so the elimination holds vacuously
-            return true;
-        }
-
-        size_t target_idx = (target_row * BOARD_SIZE) + target_col;
-
-        // Check if target cell got filled with a different value
-        if (state.board[target_idx] != EMPTY_CELL && state.board[target_idx] != value) {
-            return true;
-        }
-
-        // Check if value was eliminated from target cell's candidates
-        auto bit = valueToBit(value);
-        return (state.masks[target_idx] & bit) == 0;
+        return KrakenOutcome{.fin_excluded = false, .eliminations = std::move(kraken_elims)};
     }
 };
 
