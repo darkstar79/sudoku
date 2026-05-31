@@ -120,8 +120,9 @@ private:
                 }
             }
 
-            // Need at least 2 cells in the chain for meaningful coloring
-            if (color_a_cells.size() + color_b_cells.size() < 4) {
+            // Need at least one conjugate pair (2 cells); a lone pair still yields
+            // a valid Rule 2 (exclusion) elimination — Rule 1 is inert below 4 cells.
+            if (color_a_cells.size() + color_b_cells.size() < 2) {
                 continue;
             }
 

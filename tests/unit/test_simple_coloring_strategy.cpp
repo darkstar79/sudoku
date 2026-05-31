@@ -18,6 +18,8 @@
 #include "../../src/core/strategies/simple_coloring_strategy.h"
 #include "../helpers/candidate_test_utils.h"
 
+#include <algorithm>
+
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
@@ -223,6 +225,37 @@ TEST_CASE("SimpleColoringStrategy - Rule 2 exclusion with outside cell", "[simpl
         REQUIRE(elim.value == 5);
     }
     REQUIRE(result->explanation.find("Simple Coloring") != std::string::npos);
+}
+
+TEST_CASE("SimpleColoringStrategy - Rule 2 exclusion fires on a single 2-cell conjugate pair",
+          "[simple_coloring][regression][bug-simple-coloring-2cell]") {
+    // GH #23 finding 1: a lone conjugate pair (a 2-cell component) was skipped by the
+    // `< 4` size guard, so the Rule 2 "Colour Trap" elimination was never produced.
+    // Failing input on pre-fix HEAD: findStep returns nullopt.
+    // Digit 5 conjugate pair in row 0 at (0,0)-(0,1) — both in box 0 — so every other
+    // box-0 cell sees both colours and must lose candidate 5.
+    auto board = createEmptyBoard();
+    CandidateGrid state(board);
+
+    // Row 0: value 5 only at cols 0 and 1 — the sole conjugate pair for 5 on the board.
+    for (size_t col = 2; col < BOARD_SIZE; ++col) {
+        if (state.isAllowed(0, col, 5)) {
+            state.eliminateCandidate(0, col, 5);
+        }
+    }
+
+    SimpleColoringStrategy strategy;
+    auto result = strategy.findStep(board, state);
+
+    REQUIRE(result.has_value());
+    REQUIRE(result->type == SolveStepType::Elimination);
+    REQUIRE(result->technique == SolvingTechnique::SimpleColoring);
+    REQUIRE(result->explanation_data.technique_subtype == 1);  // 1 = Rule 2 exclusion
+
+    bool eliminates_5_at_1_1 = std::ranges::any_of(result->eliminations, [](const Elimination& elim) {
+        return elim.position.row == 1 && elim.position.col == 1 && elim.value == 5;
+    });
+    REQUIRE(eliminates_5_at_1_1);
 }
 
 TEST_CASE("SimpleColoringStrategy - Can be used through ISolvingStrategy interface", "[simple_coloring]") {
