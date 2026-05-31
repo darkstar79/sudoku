@@ -83,6 +83,15 @@ private:
         }
     }
 
+    /// Outcome of analysing a finned pattern's fin placement.
+    struct KrakenOutcome {
+        /// True when placing `value` at the fin self-contradicts: the fin cannot hold `value`.
+        /// `eliminations` then holds the single fin-cell exclusion. Otherwise `eliminations`
+        /// holds the chain-verified cover-line eliminations (possibly empty).
+        bool fin_excluded{false};
+        std::vector<Elimination> eliminations;
+    };
+
     /// Rating for a fin-exclusion deduction (vacuous Kraken case): the difficulty of the
     /// underlying finned fish of the same order, NOT the full Kraken rating. When the fin
     /// placement self-contradicts the pattern is just "a finned fish whose fin is dead", so
@@ -200,72 +209,67 @@ private:
                 continue;
             }
 
-            auto [positions, roles] =
-                FishHelpers::buildFinnedPositionsAndRoles(positions_map, base_primaries, fin_pos, by_row);
-
-            std::string orientation = by_row ? "Rows" : "Columns";
-            std::string base_list;
-            for (size_t i = 0; i < base_primaries.size(); ++i) {
-                if (i > 0) {
-                    base_list += ", ";
-                }
-                base_list += std::to_string(base_primaries[i] + 1);
-            }
-
-            // Vacuous fin contradiction: placing `value` at the fin is itself impossible, so the
-            // chain proved nothing about the cover cells — but it proved the strictly simpler fact
-            // that the fin cannot hold `value`. Report that single, honest deduction (rated at the
-            // underlying finned-fish level) instead of a batch of vacuously "verified" cover
-            // eliminations rated as a full Kraken. See issue #40.
-            std::string explanation =
-                outcome.fin_excluded
-                    ? fmt::format("Kraken {} on value {} in {} {} with fin at {} — placing {} at the fin is "
-                                  "impossible, so {} is eliminated from the fin cell",
-                                  fishOrderName(order), value, orientation, base_list, formatPosition(fin_pos), value,
-                                  value)
-                    : fmt::format("Kraken {} on value {} in {} {} with fin at {} — eliminates {} via chain "
-                                  "verification",
-                                  fishOrderName(order), value, orientation, base_list, formatPosition(fin_pos), value);
-
-            double rating = outcome.fin_excluded ? finnedFishRatingForOrder(order)
-                                                 : getTechniqueRating(SolvingTechnique::KrakenFish);
-
-            // Build values for explanation_data: [value, base_line1, base_line2, ...]
-            std::vector<int> explain_values;
-            explain_values.push_back(value);
-            for (size_t bp : base_primaries) {
-                explain_values.push_back(static_cast<int>(bp + 1));
-            }
-
-            return SolveStep{.type = SolveStepType::Elimination,
-                             .technique = SolvingTechnique::KrakenFish,
-                             .position = outcome.eliminations[0].position,
-                             .value = 0,
-                             .eliminations = std::move(outcome.eliminations),
-                             .explanation = explanation,
-                             .rating = rating,
-                             .explanation_data = {.positions = positions,
-                                                  .values = std::move(explain_values),
-                                                  // Convention across the fish family ([localized_explanations.h:204]
-                                                  // for XWing, mirrored by Swordfish/Jellyfish/Finned*/Sashimi*):
-                                                  // `region_type` encodes the *base-axis orientation* of the pattern
-                                                  // (Row when bases are rows, Col when bases are columns) — it is not
-                                                  // the axis where eliminations land. See gh#39 for the open question
-                                                  // of unifying this semantic across all techniques.
-                                                  .region_type = by_row ? RegionType::Row : RegionType::Col,
-                                                  .position_roles = std::move(roles)}};
+            return buildKrakenStep(positions_map, base_primaries, fin_pos, by_row, value, order, std::move(outcome));
         }
         return std::nullopt;
     }
 
-    /// Outcome of analysing a finned pattern's fin placement.
-    struct KrakenOutcome {
-        /// True when placing `value` at the fin self-contradicts: the fin cannot hold `value`.
-        /// `eliminations` then holds the single fin-cell exclusion. Otherwise `eliminations`
-        /// holds the chain-verified cover-line eliminations (possibly empty).
-        bool fin_excluded{false};
-        std::vector<Elimination> eliminations;
-    };
+    /// Build the SolveStep for a finned pattern that yielded eliminations. A vacuous fin
+    /// contradiction (`outcome.fin_excluded`) reports the single fin-cell exclusion rated at
+    /// the underlying finned-fish level; otherwise the chain-verified Kraken eliminations rated
+    /// as a full Kraken Fish. See issue #40.
+    [[nodiscard]] static SolveStep buildKrakenStep(const std::vector<std::vector<size_t>>& positions_map,
+                                                   const std::vector<size_t>& base_primaries, const Position& fin_pos,
+                                                   bool by_row, int value, size_t order, KrakenOutcome outcome) {
+        auto [positions, roles] =
+            FishHelpers::buildFinnedPositionsAndRoles(positions_map, base_primaries, fin_pos, by_row);
+
+        std::string orientation = by_row ? "Rows" : "Columns";
+        std::string base_list;
+        for (size_t i = 0; i < base_primaries.size(); ++i) {
+            if (i > 0) {
+                base_list += ", ";
+            }
+            base_list += std::to_string(base_primaries[i] + 1);
+        }
+
+        std::string explanation =
+            outcome.fin_excluded
+                ? fmt::format("Kraken {} on value {} in {} {} with fin at {} — placing {} at the fin is "
+                              "impossible, so {} is eliminated from the fin cell",
+                              fishOrderName(order), value, orientation, base_list, formatPosition(fin_pos), value,
+                              value)
+                : fmt::format("Kraken {} on value {} in {} {} with fin at {} — eliminates {} via chain verification",
+                              fishOrderName(order), value, orientation, base_list, formatPosition(fin_pos), value);
+
+        double rating =
+            outcome.fin_excluded ? finnedFishRatingForOrder(order) : getTechniqueRating(SolvingTechnique::KrakenFish);
+
+        // Build values for explanation_data: [value, base_line1, base_line2, ...]
+        std::vector<int> explain_values;
+        explain_values.push_back(value);
+        for (size_t bp : base_primaries) {
+            explain_values.push_back(static_cast<int>(bp + 1));
+        }
+
+        return SolveStep{.type = SolveStepType::Elimination,
+                         .technique = SolvingTechnique::KrakenFish,
+                         .position = outcome.eliminations[0].position,
+                         .value = 0,
+                         .eliminations = std::move(outcome.eliminations),
+                         .explanation = explanation,
+                         .rating = rating,
+                         .explanation_data = {.positions = positions,
+                                              .values = std::move(explain_values),
+                                              // Convention across the fish family ([localized_explanations.h:204]
+                                              // for XWing, mirrored by Swordfish/Jellyfish/Finned*/Sashimi*):
+                                              // `region_type` encodes the *base-axis orientation* of the pattern
+                                              // (Row when bases are rows, Col when bases are columns) — it is not
+                                              // the axis where eliminations land. See gh#39 for the open question
+                                              // of unifying this semantic across all techniques.
+                                              .region_type = by_row ? RegionType::Row : RegionType::Col,
+                                              .position_roles = std::move(roles)}};
+    }
 
     /// Analyse a finned pattern by placing `value` at the fin and propagating ONCE.
     ///
