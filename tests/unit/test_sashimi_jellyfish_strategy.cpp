@@ -195,8 +195,8 @@ TEST_CASE("SashimiJellyfishStrategy - Col-based sashimi Jellyfish detection", "[
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::SashimiJellyfish);
-    REQUIRE(result->explanation_data.pattern_axis == RegionType::Col);
-    REQUIRE(result->explanation_data.elimination_axis == RegionType::Box);
+    REQUIRE((result.has_value() && result->explanation_data.pattern_axis == RegionType::Col));
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::Box));
     REQUIRE_FALSE(result->eliminations.empty());
 
     for (const auto& elim : result->eliminations) {

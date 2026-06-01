@@ -143,7 +143,7 @@ TEST_CASE("FinnedJellyfishStrategy - Col-based finned Jellyfish detection", "[fi
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::FinnedJellyfish);
     // Finned fish eliminate inside the fin's box. (gh#39)
-    REQUIRE(result->explanation_data.elimination_axis == RegionType::Box);
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::Box));
     REQUIRE_FALSE(result->eliminations.empty());
 
     for (const auto& elim : result->eliminations) {

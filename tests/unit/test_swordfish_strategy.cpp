@@ -219,8 +219,8 @@ TEST_CASE("SwordfishStrategy - Col-based Swordfish detection", "[swordfish]") {
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::Swordfish);
-    REQUIRE(result->explanation_data.pattern_axis == RegionType::Col);
-    REQUIRE(result->explanation_data.elimination_axis == RegionType::Row);
+    REQUIRE((result.has_value() && result->explanation_data.pattern_axis == RegionType::Col));
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::Row));
     REQUIRE_FALSE(result->eliminations.empty());
 
     for (const auto& elim : result->eliminations) {
