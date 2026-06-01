@@ -323,7 +323,7 @@ std::array<double, DIFFICULTY_COUNT> StatisticsManager::getCompletionRates() con
 
     for (size_t i = 0; i < DIFFICULTY_COUNT; ++i) {
         if (stats.games_played[i] > 0) {
-            rates[i] = static_cast<double>(stats.games_completed[i]) / stats.games_played[i];
+            rates[i] = static_cast<double>(stats.games_completed[i]) / static_cast<double>(stats.games_played[i]);
         } else {
             rates[i] = 0.0;
         }
@@ -580,7 +580,8 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
         // Update average rating
         auto current_rating_average = cached_stats_.average_ratings[diff_index];
         cached_stats_.average_ratings[diff_index] =
-            (current_rating_average * games_count_before + completed_game.puzzle_rating) / (games_count_before + 1);
+            (current_rating_average * static_cast<double>(games_count_before) + completed_game.puzzle_rating) /
+            static_cast<double>(games_count_before + 1);
     }
 
     // Update per-difficulty stats

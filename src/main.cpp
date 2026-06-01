@@ -44,6 +44,7 @@
 #include "view_model/game_view_model.h"
 #include "view_model/training_view_model.h"
 
+#include <cstdlib>
 #include <expected>
 #include <filesystem>
 #include <memory>
@@ -139,84 +140,92 @@ std::shared_ptr<sudoku::viewmodel::GameViewModel> createViewModel() {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-    QApplication qt_app(argc, argv);
-    QApplication::setApplicationName("Sudoku");
-    QApplication::setApplicationVersion(sudoku::kAppVersion);
+    try {
+        QApplication qt_app(argc, argv);
+        QApplication::setApplicationName("Sudoku");
+        QApplication::setApplicationVersion(sudoku::kAppVersion);
 
-    // Setup multi-sink logger: console + debug log file (truncated each launch)
-    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
-    auto log_path = exe_dir / "sudoku_debug.log";
-    // In sandboxed environments (Flatpak), exe_dir is read-only; use data directory instead.
-    // We detect by absence of writable bundled translations next to the executable.
-    if (!std::filesystem::exists(exe_dir / "translations")) {
-        auto log_dir = sudoku::infrastructure::AppDirectoryManager::getDefaultDirectory(
-            sudoku::infrastructure::DirectoryType::Logs);
-        std::filesystem::create_directories(log_dir);
-        log_path = log_dir / "sudoku_debug.log";
-    }
-    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path.string(), true);  // truncate=true
-    auto logger = std::make_shared<spdlog::logger>("sudoku", spdlog::sinks_init_list{console_sink, file_sink});
-    logger->set_level(spdlog::level::debug);
-    logger->flush_on(spdlog::level::debug);
-    spdlog::set_default_logger(logger);
+        // Setup multi-sink logger: console + debug log file (truncated each launch)
+        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
+        auto log_path = exe_dir / "sudoku_debug.log";
+        // In sandboxed environments (Flatpak), exe_dir is read-only; use data directory instead.
+        // We detect by absence of writable bundled translations next to the executable.
+        if (!std::filesystem::exists(exe_dir / "translations")) {
+            auto log_dir = sudoku::infrastructure::AppDirectoryManager::getDefaultDirectory(
+                sudoku::infrastructure::DirectoryType::Logs);
+            std::filesystem::create_directories(log_dir);
+            log_path = log_dir / "sudoku_debug.log";
+        }
+        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path.string(), true);  // truncate=true
+        auto logger = std::make_shared<spdlog::logger>("sudoku", spdlog::sinks_init_list{console_sink, file_sink});
+        logger->set_level(spdlog::level::debug);
+        logger->flush_on(spdlog::level::debug);
+        spdlog::set_default_logger(logger);
 
-    spdlog::info("Starting Sudoku application with Qt6 + MVVM architecture...");
-    spdlog::info("Debug log: {}", log_path.string());
+        spdlog::info("Starting Sudoku application with Qt6 + MVVM architecture...");
+        spdlog::info("Debug log: {}", log_path.string());
 
-    setupDependencies();
+        setupDependencies();
 
-    // The Qt translator is owned by MainWindow and installed when
-    // setSettingsManager() is called below. This lets the user switch
-    // language at runtime via the Settings dialog.
-    auto& container = sudoku::core::getContainer();
-    auto view_model = createViewModel();
-    auto exercise_gen = container.resolve<sudoku::core::ITrainingExerciseGenerator>();
-    auto training_stats = container.resolve<sudoku::core::ITrainingStatisticsManager>();
-    auto training_vm = std::make_shared<sudoku::viewmodel::TrainingViewModel>(exercise_gen, training_stats);
+        // The Qt translator is owned by MainWindow and installed when
+        // setSettingsManager() is called below. This lets the user switch
+        // language at runtime via the Settings dialog.
+        auto& container = sudoku::core::getContainer();
+        auto view_model = createViewModel();
+        auto exercise_gen = container.resolve<sudoku::core::ITrainingExerciseGenerator>();
+        auto training_stats = container.resolve<sudoku::core::ITrainingStatisticsManager>();
+        auto training_vm = std::make_shared<sudoku::viewmodel::TrainingViewModel>(exercise_gen, training_stats);
 
-    auto settings_manager = container.resolve<sudoku::core::ISettingsManager>();
+        auto settings_manager = container.resolve<sudoku::core::ISettingsManager>();
 
-    sudoku::view::MainWindow main_window;
-    main_window.setViewModel(view_model);
-    main_window.setSettingsManager(settings_manager);
-    main_window.setTrainingViewModel(training_vm);
+        sudoku::view::MainWindow main_window;
+        main_window.setViewModel(view_model);
+        main_window.setSettingsManager(settings_manager);
+        main_window.setTrainingViewModel(training_vm);
 
-    // Try to load auto-save, otherwise start new game
-    auto save_manager = container.resolve<sudoku::core::ISaveManager>();
-    auto default_difficulty =
-        settings_manager ? settings_manager->getSettings().default_difficulty : sudoku::core::Difficulty::Medium;
-    if (save_manager->hasAutoSave()) {
-        spdlog::info("Auto-save detected, attempting to load...");
-        auto result = save_manager->loadAutoSave();
-        if (result.has_value()) {
-            if (result->is_complete) {
-                spdlog::info("Auto-save contains completed game, starting fresh");
-                view_model->startNewGame(default_difficulty);
+        // Try to load auto-save, otherwise start new game
+        auto save_manager = container.resolve<sudoku::core::ISaveManager>();
+        auto default_difficulty =
+            settings_manager ? settings_manager->getSettings().default_difficulty : sudoku::core::Difficulty::Medium;
+        if (save_manager->hasAutoSave()) {
+            spdlog::info("Auto-save detected, attempting to load...");
+            auto result = save_manager->loadAutoSave();
+            if (result.has_value()) {
+                if (result->is_complete) {
+                    spdlog::info("Auto-save contains completed game, starting fresh");
+                    view_model->startNewGame(default_difficulty);
+                } else {
+                    view_model->restoreGameState(*result);
+                }
             } else {
-                view_model->restoreGameState(*result);
+                spdlog::warn("Auto-save load failed: {}, starting new game", static_cast<int>(result.error()));
+                view_model->startNewGame(default_difficulty);
             }
         } else {
-            spdlog::warn("Auto-save load failed: {}, starting new game", static_cast<int>(result.error()));
+            spdlog::info("No auto-save found, starting new game");
             view_model->startNewGame(default_difficulty);
         }
-    } else {
-        spdlog::info("No auto-save found, starting new game");
-        view_model->startNewGame(default_difficulty);
+
+        main_window.show();
+
+        spdlog::info("Application initialized successfully, entering Qt event loop");
+        int result = QApplication::exec();
+
+        // Auto-save on exit
+        if (view_model->isGameStateDirty()) {
+            view_model->autoSave();
+            spdlog::info("Game state saved on exit");
+        }
+
+        sudoku::core::getContainer().clear();
+        spdlog::info("Sudoku application terminated successfully");
+        return result;
+    } catch (const std::exception& e) {
+        spdlog::critical("Fatal: unhandled exception: {}", e.what());
+        return EXIT_FAILURE;
+    } catch (...) {
+        spdlog::critical("Fatal: unknown unhandled exception");
+        return EXIT_FAILURE;
     }
-
-    main_window.show();
-
-    spdlog::info("Application initialized successfully, entering Qt event loop");
-    int result = QApplication::exec();
-
-    // Auto-save on exit
-    if (view_model->isGameStateDirty()) {
-        view_model->autoSave();
-        spdlog::info("Game state saved on exit");
-    }
-
-    sudoku::core::getContainer().clear();
-    spdlog::info("Sudoku application terminated successfully");
-    return result;
 }
