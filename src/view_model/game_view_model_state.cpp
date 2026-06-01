@@ -29,6 +29,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <memory>
@@ -399,14 +400,15 @@ StatsDisplay GameViewModel::createStatsDisplay(const core::AggregateStats& stats
     StatsDisplay display;
     display.games_played = stats.total_games;
     display.games_completed = stats.total_completed;
-    display.completion_rate =
-        stats.total_games > 0 ? static_cast<double>(stats.total_completed) / stats.total_games * 100.0 : 0.0;
+    display.completion_rate = stats.total_games > 0 ? static_cast<double>(stats.total_completed) /
+                                                          static_cast<double>(stats.total_games) * 100.0
+                                                    : 0.0;
     display.current_streak = stats.current_win_streak;
     display.best_streak = stats.best_win_streak;
 
     // Calculate overall average from all difficulty levels (including Master at index 4)
     std::chrono::milliseconds total_average_time{0};
-    int total_completed_games = 0;
+    int64_t total_completed_games = 0;
     for (size_t i = 0; i < core::DIFFICULTY_COUNT; ++i) {
         if (stats.games_completed[i] > 0 && stats.average_times[i].count() > 0) {
             total_average_time += stats.average_times[i] * stats.games_completed[i];

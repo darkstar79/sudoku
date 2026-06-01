@@ -339,7 +339,9 @@ std::expected<void, StatisticsError> exportAggregateStatsCsv(const AggregateStat
             // Calculate completion rate
             double completion_rate = 0.0;
             if (stats.games_played[i] > 0) {
-                completion_rate = (stats.games_completed[i] / static_cast<double>(stats.games_played[i])) * 100.0;
+                completion_rate =
+                    (static_cast<double>(stats.games_completed[i]) / static_cast<double>(stats.games_played[i])) *
+                    100.0;
             }
             file << completion_rate << ",";
 
@@ -361,7 +363,8 @@ std::expected<void, StatisticsError> exportAggregateStatsCsv(const AggregateStat
         file << stats.total_completed << ",";
         double overall_completion_rate = 0.0;
         if (stats.total_games > 0) {
-            overall_completion_rate = (stats.total_completed / static_cast<double>(stats.total_games)) * 100.0;
+            overall_completion_rate =
+                (static_cast<double>(stats.total_completed) / static_cast<double>(stats.total_games)) * 100.0;
         }
         file << overall_completion_rate << ",";
         file << "N/A,N/A,N/A,N/A,N/A\n";  // N/A for time and rating columns
