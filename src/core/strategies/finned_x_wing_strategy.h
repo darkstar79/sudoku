@@ -154,7 +154,8 @@ private:
                                                Position{.row = row2, .col = base_col2}, fin_pos},
                                  .values = {value, static_cast<int>(row1 + 1), static_cast<int>(row2 + 1),
                                             static_cast<int>(base_col1 + 1), static_cast<int>(base_col2 + 1)},
-                                 .region_type = RegionType::Row,
+                                 .pattern_axis = RegionType::Row,
+                                 .elimination_axis = RegionType::Box,
                                  .position_roles = {CellRole::Pattern, CellRole::Pattern, CellRole::Pattern,
                                                     CellRole::Pattern, CellRole::Fin}}};
     }
@@ -246,7 +247,8 @@ private:
                                                Position{.row = base_row2, .col = col2}, fin_pos},
                                  .values = {value, static_cast<int>(col1 + 1), static_cast<int>(col2 + 1),
                                             static_cast<int>(base_row1 + 1), static_cast<int>(base_row2 + 1)},
-                                 .region_type = RegionType::Col,
+                                 .pattern_axis = RegionType::Col,
+                                 .elimination_axis = RegionType::Box,
                                  .position_roles = {CellRole::Pattern, CellRole::Pattern, CellRole::Pattern,
                                                     CellRole::Pattern, CellRole::Fin}}};
     }

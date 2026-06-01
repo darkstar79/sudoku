@@ -199,8 +199,10 @@ TEST_CASE("KrakenFishStrategy - non-vacuous Kraken omits in-fin-box elims, full 
     // and this changes, flag it for review rather than silently passing on a weaker deduction.
     REQUIRE(eliminatesOnly(result, 2, 3, 1));
 
-    // Row-based fish: region_type encodes the base-axis orientation.
-    REQUIRE((result.has_value() && result->explanation_data.region_type == RegionType::Row));
+    // Row-based fish: pattern_axis encodes the base-axis orientation; Kraken chain
+    // eliminations are not a single axis, so elimination_axis stays None. (gh#39)
+    REQUIRE((result.has_value() && result->explanation_data.pattern_axis == RegionType::Row));
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::None));
 }
 
 // Regression for issue #40 (the 2026-05-25 audit observation at CODE_REVIEW:1114):
@@ -258,8 +260,9 @@ TEST_CASE("KrakenFishStrategy - vacuous fin contradiction reports fin-exclusion"
     REQUIRE((result.has_value() && result->explanation.contains("impossible")));
     REQUIRE((result.has_value() && result->explanation.contains("fin")));
 
-    // Base-axis orientation preserved (issue #39 scope untouched).
-    REQUIRE((result.has_value() && result->explanation_data.region_type == RegionType::Row));
+    // Base-axis orientation preserved on pattern_axis; elimination_axis None for chain elims. (gh#39)
+    REQUIRE((result.has_value() && result->explanation_data.pattern_axis == RegionType::Row));
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::None));
 }
 
 // Regression for issue #59 (the HIGH finding from the bmad-code-review pass on PR #58):

@@ -132,6 +132,7 @@ TEST_CASE("SashimiSwordfishStrategy - Explanation contains relevant info", "[sas
     REQUIRE(result->explanation.find("fin") != std::string::npos);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("SashimiSwordfishStrategy - Col-based sashimi Swordfish detection", "[sashimi_swordfish]") {
     // Col 0 (sashimi): value 5 at row 0 only (exactly 1 — sashimi condition)
     // Col 3:           value 5 at rows 0, 3, 6
@@ -167,7 +168,8 @@ TEST_CASE("SashimiSwordfishStrategy - Col-based sashimi Swordfish detection", "[
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::SashimiSwordfish);
-    REQUIRE(result->explanation_data.region_type == RegionType::Col);
+    REQUIRE((result.has_value() && result->explanation_data.pattern_axis == RegionType::Col));
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::Box));
     REQUIRE_FALSE(result->eliminations.empty());
 
     for (const auto& elim : result->eliminations) {

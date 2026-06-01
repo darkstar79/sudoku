@@ -116,10 +116,8 @@ private:
                                                                                 Position{.row = row2, .col = col1},
                                                                                 Position{.row = row2, .col = col2}},
                                                                   .values = {value},
-                                                                  .region_type = RegionType::Row,
-                                                                  .region_index = row1,
-                                                                  .secondary_region_type = RegionType::Row,
-                                                                  .secondary_region_index = row2}};
+                                                                  .pattern_axis = RegionType::Row,
+                                                                  .elimination_axis = RegionType::Col}};
                         }
                     }
                 }
@@ -183,10 +181,8 @@ private:
                                                                                 Position{.row = row2, .col = col1},
                                                                                 Position{.row = row2, .col = col2}},
                                                                   .values = {value},
-                                                                  .region_type = RegionType::Col,
-                                                                  .region_index = col1,
-                                                                  .secondary_region_type = RegionType::Col,
-                                                                  .secondary_region_index = col2}};
+                                                                  .pattern_axis = RegionType::Col,
+                                                                  .elimination_axis = RegionType::Row}};
                         }
                     }
                 }

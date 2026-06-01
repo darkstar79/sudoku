@@ -87,6 +87,8 @@ YAML::Node serializeSnapshot(const FixtureSnapshot& s) {
     }
     training["region_type"] = s.region_type;
     training["region_index"] = s.region_index;
+    training["pattern_axis"] = s.pattern_axis;
+    training["elimination_axis"] = s.elimination_axis;
     if (s.technique_subtype >= 0) {
         training["technique_subtype"] = s.technique_subtype;
     }
@@ -149,6 +151,8 @@ FixtureSnapshot deserializeSnapshot(const YAML::Node& node) {
     }
     s.region_type = training["region_type"].as<std::string>("");
     s.region_index = training["region_index"].as<size_t>(0);
+    s.pattern_axis = training["pattern_axis"].as<std::string>("");
+    s.elimination_axis = training["elimination_axis"].as<std::string>("");
     s.technique_subtype = training["technique_subtype"].as<int>(-1);
 
     return s;

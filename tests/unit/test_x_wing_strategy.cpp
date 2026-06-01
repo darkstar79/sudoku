@@ -100,6 +100,7 @@ TEST_CASE("XWingStrategy - Finds row-based X-Wing with manual setup", "[x_wing]"
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("XWingStrategy - Col-based X-Wing detection", "[x_wing]") {
     // Confine value 5 to fish rows {0,3} in fish cols {1,4}.
     // Row-based sees same pattern but has no elimination targets
@@ -122,7 +123,8 @@ TEST_CASE("XWingStrategy - Col-based X-Wing detection", "[x_wing]") {
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::XWing);
-    REQUIRE(result->explanation_data.region_type == RegionType::Col);
+    REQUIRE((result.has_value() && result->explanation_data.pattern_axis == RegionType::Col));
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::Row));
     REQUIRE_FALSE(result->eliminations.empty());
 
     for (const auto& elim : result->eliminations) {

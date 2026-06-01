@@ -257,23 +257,24 @@ private:
             explain_values.push_back(static_cast<int>(bp + 1));
         }
 
-        return SolveStep{.type = SolveStepType::Elimination,
-                         .technique = SolvingTechnique::KrakenFish,
-                         .position = outcome.eliminations[0].position,
-                         .value = 0,
-                         .eliminations = std::move(outcome.eliminations),
-                         .explanation = explanation,
-                         .rating = rating,
-                         .explanation_data = {.positions = positions,
-                                              .values = std::move(explain_values),
-                                              // Convention across the fish family ([localized_explanations.h:204]
-                                              // for XWing, mirrored by Swordfish/Jellyfish/Finned*/Sashimi*):
-                                              // `region_type` encodes the *base-axis orientation* of the pattern
-                                              // (Row when bases are rows, Col when bases are columns) — it is not
-                                              // the axis where eliminations land. See gh#39 for the open question
-                                              // of unifying this semantic across all techniques.
-                                              .region_type = by_row ? RegionType::Row : RegionType::Col,
-                                              .position_roles = std::move(roles)}};
+        return SolveStep{
+            .type = SolveStepType::Elimination,
+            .technique = SolvingTechnique::KrakenFish,
+            .position = outcome.eliminations[0].position,
+            .value = 0,
+            .eliminations = std::move(outcome.eliminations),
+            .explanation = explanation,
+            .rating = rating,
+            .explanation_data = {.positions = positions,
+                                 .values = std::move(explain_values),
+                                 // Convention across the fish family ([localized_explanations.h:204]
+                                 // for XWing, mirrored by Swordfish/Jellyfish/Finned*/Sashimi*):
+                                 // `pattern_axis` encodes the *base-axis orientation* of the pattern
+                                 // (Row when bases are rows, Col when bases are columns). Kraken's
+                                 // chain-verified eliminations are not confined to one axis, so
+                                 // `elimination_axis` is left None rather than guessing a cover line. (gh#39)
+                                 .pattern_axis = by_row ? RegionType::Row : RegionType::Col,
+                                 .position_roles = std::move(roles)}};
     }
 
     /// A swept cover target (originally empty with `value` allowed) loses `value` after the fin

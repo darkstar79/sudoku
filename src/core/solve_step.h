@@ -81,11 +81,23 @@ struct ExplanationData {
     std::vector<Position>
         positions{};            // NOLINT(readability-redundant-member-init) - Suppresses -Wmissing-field-initializers
     std::vector<int> values{};  // NOLINT(readability-redundant-member-init) - Suppresses -Wmissing-field-initializers
-    RegionType region_type{RegionType::None};            ///< Region involved (Row/Col/Box)
-    size_t region_index{0};                              ///< Region index (0-indexed)
+    RegionType region_type{RegionType::None};  ///< A single *named* region (paired with region_index), used by
+                                               ///< non-fish techniques (Naked/Hidden Pair/Triple/Quad, PointingPair,
+                                               ///< BoxLineReduction, EmptyRectangle) for "Row 3"/"Box 7" rendering.
+                                               ///< NOT a fish base axis — see pattern_axis. (gh#39)
+    size_t region_index{0};                    ///< Region index (0-indexed); only meaningful alongside region_type.
     RegionType secondary_region_type{RegionType::None};  ///< For techniques spanning two regions
     size_t secondary_region_index{0};                    ///< Secondary region index
-    int technique_subtype{-1};                           ///< Technique-specific variant (UR type, coloring mode, etc.)
+    RegionType pattern_axis{
+        RegionType::None};  ///< Base-axis orientation of a fish pattern (Row when bases are rows,
+                            ///< Col when bases are columns). Drives fish localized-template
+                            ///< selection; replaces the former overloaded use of region_type. (gh#39)
+    RegionType elimination_axis{RegionType::None};  ///< Axis/region where this technique's eliminations land: the
+                                                    ///< perpendicular line for basic fish, Box for finned/sashimi,
+                                                    ///< None when not a single axis (e.g. Kraken chain eliminations).
+    // TODO(gh#39): elimination_axis is the load-bearing hook for a future fish-line / elimination-region highlight
+    // in src/view/; owner = maintainer until that feature is scheduled. No consumer reads it yet.
+    int technique_subtype{-1};  ///< Technique-specific variant (UR type, coloring mode, etc.)
     std::vector<CellRole>
         position_roles{};  // NOLINT(readability-redundant-member-init) - Suppresses -Wmissing-field-initializers
 

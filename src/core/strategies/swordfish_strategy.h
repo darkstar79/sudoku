@@ -131,8 +131,8 @@ private:
                                                                 static_cast<int>(union_cols[0] + 1),
                                                                 static_cast<int>(union_cols[1] + 1),
                                                                 static_cast<int>(union_cols[2] + 1)},
-                                                     .region_type = RegionType::Row,
-                                                     .region_index = r1}};
+                                                     .pattern_axis = RegionType::Row,
+                                                     .elimination_axis = RegionType::Col}};
                         }
                     }
                 }
@@ -214,8 +214,8 @@ private:
                                                                 static_cast<int>(union_rows[0] + 1),
                                                                 static_cast<int>(union_rows[1] + 1),
                                                                 static_cast<int>(union_rows[2] + 1)},
-                                                     .region_type = RegionType::Col,
-                                                     .region_index = c1}};
+                                                     .pattern_axis = RegionType::Col,
+                                                     .elimination_axis = RegionType::Row}};
                         }
                     }
                 }

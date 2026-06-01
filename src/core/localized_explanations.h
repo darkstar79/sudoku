@@ -198,11 +198,11 @@ namespace sudoku::core {
                 localizedRegion(data.region_type, data.region_index));
         }
         case SolvingTechnique::XWing: {
-            if (data.values.empty() || data.region_type == RegionType::None) {
+            if (data.values.empty() || data.pattern_axis == RegionType::None) {
                 return step.explanation;
             }
-            // Row-based: region_type=Row, Col-based: region_type=Col
-            if (data.region_type == RegionType::Row) {
+            // Row-based: pattern_axis=Row, Col-based: pattern_axis=Col (gh#39)
+            if (data.pattern_axis == RegionType::Row) {
                 // Rows {1} and {2}, Columns {3} and {4}
                 // Positions: [r1c1, r1c2, r2c1, r2c2]
                 if (data.positions.size() < 4) {
@@ -238,10 +238,10 @@ namespace sudoku::core {
         }
         case SolvingTechnique::Swordfish: {
             // values = {candidate, r1, r2, r3, c1, c2, c3} (1-indexed from strategy)
-            if (data.values.size() < 7 || data.region_type == RegionType::None) {
+            if (data.values.size() < 7 || data.pattern_axis == RegionType::None) {
                 return step.explanation;
             }
-            if (data.region_type == RegionType::Row) {
+            if (data.pattern_axis == RegionType::Row) {
                 // Row-based: rows then cols
                 return fmt::format(
                     fmt::runtime(core::loc("Sudoku",
@@ -376,7 +376,7 @@ namespace sudoku::core {
                 data.values[0], localizedPosition(data.positions[0]));
         }
         case SolvingTechnique::FinnedXWing: {
-            if (data.values.empty() || data.region_type == RegionType::None) {
+            if (data.values.empty() || data.pattern_axis == RegionType::None) {
                 return step.explanation;
             }
             // values = {candidate, row/col1, row/col2, col/row1, col/row2}, positions includes fin
@@ -384,7 +384,7 @@ namespace sudoku::core {
                 return step.explanation;
             }
             auto fin_pos = localizedPosition(data.positions.back());
-            if (data.region_type == RegionType::Row) {
+            if (data.pattern_axis == RegionType::Row) {
                 return fmt::format(
                     fmt::runtime(core::loc("Sudoku",
                                            "Finned X-Wing on value {0} in Rows {1} and {2}, Columns {3} and {4} with "
@@ -418,10 +418,10 @@ namespace sudoku::core {
         }
         case SolvingTechnique::Jellyfish: {
             // values = {candidate, r1, r2, r3, r4, c1, c2, c3, c4} (1-indexed)
-            if (data.values.size() < 9 || data.region_type == RegionType::None) {
+            if (data.values.size() < 9 || data.pattern_axis == RegionType::None) {
                 return step.explanation;
             }
-            if (data.region_type == RegionType::Row) {
+            if (data.pattern_axis == RegionType::Row) {
                 return fmt::format(
                     fmt::runtime(core::loc("Sudoku",
                                            "Jellyfish on value {0} in Rows {1}, {2}, {3}, {4} and Columns {5}, {6}, "
@@ -438,11 +438,11 @@ namespace sudoku::core {
         }
         case SolvingTechnique::FinnedSwordfish: {
             // values = {candidate, row/col1, row/col2, row/col3}, positions includes fin at back
-            if (data.positions.empty() || data.values.size() < 4 || data.region_type == RegionType::None) {
+            if (data.positions.empty() || data.values.size() < 4 || data.pattern_axis == RegionType::None) {
                 return step.explanation;
             }
             auto fin_pos = localizedPosition(data.positions.back());
-            if (data.region_type == RegionType::Row) {
+            if (data.pattern_axis == RegionType::Row) {
                 return fmt::format(
                     fmt::runtime(core::loc("Sudoku", "Finned Swordfish on value {0} in Rows {1}, {2}, {3} with "
                                                      "fin at {4} — eliminates {0} from cells in fin's box")),
@@ -478,11 +478,11 @@ namespace sudoku::core {
         }
         case SolvingTechnique::FinnedJellyfish: {
             // values = {candidate, row/col1..4}, positions includes fin at back
-            if (data.positions.empty() || data.values.size() < 5 || data.region_type == RegionType::None) {
+            if (data.positions.empty() || data.values.size() < 5 || data.pattern_axis == RegionType::None) {
                 return step.explanation;
             }
             auto fin_pos = localizedPosition(data.positions.back());
-            if (data.region_type == RegionType::Row) {
+            if (data.pattern_axis == RegionType::Row) {
                 return fmt::format(
                     fmt::runtime(core::loc("Sudoku", "Finned Jellyfish on value {0} in Rows {1}, {2}, {3}, {4} "
                                                      "with fin at {5} — eliminates {0} from cells in fin's box")),
@@ -697,7 +697,7 @@ namespace sudoku::core {
                 data.values[0], data.values.size() >= 2 ? std::to_string(data.values[1]) : "");
         }
         case SolvingTechnique::SashimiXWing: {
-            if (data.values.empty() || data.positions.empty() || data.region_type == RegionType::None) {
+            if (data.values.empty() || data.positions.empty() || data.pattern_axis == RegionType::None) {
                 return step.explanation;
             }
             // values = {candidate, row/col1, row/col2}, fin is last position
@@ -705,7 +705,7 @@ namespace sudoku::core {
                 return step.explanation;
             }
             auto fin_pos = localizedPosition(data.positions.back());
-            if (data.region_type == RegionType::Row) {
+            if (data.pattern_axis == RegionType::Row) {
                 return fmt::format(
                     fmt::runtime(core::loc("Sudoku",
                                            "Sashimi X-Wing on value {0} in Rows {1} and {2}, Columns {3} and {4} with "
@@ -719,11 +719,11 @@ namespace sudoku::core {
                 data.values[0], data.values[1], data.values[2], fin_pos);
         }
         case SolvingTechnique::SashimiSwordfish: {
-            if (data.positions.empty() || data.values.size() < 4 || data.region_type == RegionType::None) {
+            if (data.positions.empty() || data.values.size() < 4 || data.pattern_axis == RegionType::None) {
                 return step.explanation;
             }
             auto fin_pos = localizedPosition(data.positions.back());
-            if (data.region_type == RegionType::Row) {
+            if (data.pattern_axis == RegionType::Row) {
                 return fmt::format(
                     fmt::runtime(core::loc("Sudoku", "Sashimi Swordfish on value {0} in Rows {1}, {2}, {3} with "
                                                      "fin at {4} — eliminates {0} from cells in fin's box")),
@@ -735,11 +735,11 @@ namespace sudoku::core {
                 data.values[0], data.values[1], data.values[2], data.values[3], fin_pos);
         }
         case SolvingTechnique::SashimiJellyfish: {
-            if (data.positions.empty() || data.values.size() < 5 || data.region_type == RegionType::None) {
+            if (data.positions.empty() || data.values.size() < 5 || data.pattern_axis == RegionType::None) {
                 return step.explanation;
             }
             auto fin_pos = localizedPosition(data.positions.back());
-            if (data.region_type == RegionType::Row) {
+            if (data.pattern_axis == RegionType::Row) {
                 return fmt::format(
                     fmt::runtime(core::loc("Sudoku", "Sashimi Jellyfish on value {0} in Rows {1}, {2}, {3}, {4} "
                                                      "with fin at {5} — eliminates {0} from cells in fin's box")),

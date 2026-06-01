@@ -111,6 +111,7 @@ TEST_CASE("FinnedJellyfishStrategy - Detects row-based finned jellyfish", "[finn
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("FinnedJellyfishStrategy - Col-based finned Jellyfish detection", "[finned_jellyfish]") {
     // Fish cols {0,3,6,7}. Cols 0,3: rows {0,3,6}. Col 6: rows {0,3,7}. Col 7: rows {0,3,7,8} (fin=8).
     // Union = {0,3,6,7,8} = 5 rows. fin_row=8, fin_col=7, fin_box=8 (rows 6-8, cols 6-8).
@@ -142,6 +143,8 @@ TEST_CASE("FinnedJellyfishStrategy - Col-based finned Jellyfish detection", "[fi
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::FinnedJellyfish);
+    // Finned fish eliminate inside the fin's box. (gh#39)
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::Box));
     REQUIRE_FALSE(result->eliminations.empty());
 
     for (const auto& elim : result->eliminations) {

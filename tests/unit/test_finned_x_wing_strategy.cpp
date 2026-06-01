@@ -159,6 +159,7 @@ TEST_CASE("FinnedXWingStrategy - Explanation contains relevant info", "[finned_x
     REQUIRE(result->explanation.find("fin") != std::string::npos);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("FinnedXWingStrategy - Col-based finned X-Wing detection", "[finned_x_wing]") {
     // base_col=0: value 5 at rows {3,6} (exactly 2)
     // fin_col=6: value 5 at rows {3,6,8} (exactly 3, base rows match, fin_row=8)
@@ -185,7 +186,8 @@ TEST_CASE("FinnedXWingStrategy - Col-based finned X-Wing detection", "[finned_x_
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::FinnedXWing);
-    REQUIRE(result->explanation_data.region_type == RegionType::Col);
+    REQUIRE((result.has_value() && result->explanation_data.pattern_axis == RegionType::Col));
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::Box));
     REQUIRE_FALSE(result->eliminations.empty());
 
     for (const auto& elim : result->eliminations) {

@@ -197,6 +197,7 @@ TEST_CASE("SwordfishStrategy - Explanation contains relevant info", "[swordfish]
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("SwordfishStrategy - Col-based Swordfish detection", "[swordfish]") {
     // Confine value 5 to fish rows {0,3,6} in fish cols {1,4,7}.
     // Row-based scanner sees the same pattern but has no elimination targets
@@ -219,7 +220,8 @@ TEST_CASE("SwordfishStrategy - Col-based Swordfish detection", "[swordfish]") {
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::Swordfish);
-    REQUIRE(result->explanation_data.region_type == RegionType::Col);
+    REQUIRE((result.has_value() && result->explanation_data.pattern_axis == RegionType::Col));
+    REQUIRE((result.has_value() && result->explanation_data.elimination_axis == RegionType::Row));
     REQUIRE_FALSE(result->eliminations.empty());
 
     for (const auto& elim : result->eliminations) {
