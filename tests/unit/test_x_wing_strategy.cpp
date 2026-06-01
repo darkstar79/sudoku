@@ -100,6 +100,7 @@ TEST_CASE("XWingStrategy - Finds row-based X-Wing with manual setup", "[x_wing]"
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("XWingStrategy - Col-based X-Wing detection", "[x_wing]") {
     // Confine value 5 to fish rows {0,3} in fish cols {1,4}.
     // Row-based sees same pattern but has no elimination targets

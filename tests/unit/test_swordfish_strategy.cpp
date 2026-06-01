@@ -197,6 +197,7 @@ TEST_CASE("SwordfishStrategy - Explanation contains relevant info", "[swordfish]
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("SwordfishStrategy - Col-based Swordfish detection", "[swordfish]") {
     // Confine value 5 to fish rows {0,3,6} in fish cols {1,4,7}.
     // Row-based scanner sees the same pattern but has no elimination targets

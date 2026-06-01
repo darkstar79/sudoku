@@ -154,6 +154,7 @@ TEST_CASE("SashimiJellyfishStrategy - Explanation contains relevant info", "[sas
     REQUIRE(result->explanation.find("fin") != std::string::npos);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("SashimiJellyfishStrategy - Col-based sashimi Jellyfish detection", "[sashimi_jellyfish]") {
     // Col 0 (sashimi): value 5 at row 0 only (exactly 1 — sashimi condition)
     // Col 2:           value 5 at rows 0, 3, 6

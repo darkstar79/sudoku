@@ -109,6 +109,7 @@ TEST_CASE("JellyfishStrategy - Explanation contains relevant info", "[jellyfish]
     REQUIRE(result->explanation.find("eliminates") != std::string::npos);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("JellyfishStrategy - Col-based Jellyfish detection", "[jellyfish]") {
     // Confine value 5 to fish rows {0,2,4,6} in fish cols {0,2,5,7}.
     // Row-based: pattern exists but elimination targets (non-fish rows in those cols)

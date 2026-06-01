@@ -110,6 +110,7 @@ TEST_CASE("FinnedSwordfishStrategy - Row-based finned Swordfish detection", "[fi
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("FinnedSwordfishStrategy - Col-based finned Swordfish detection", "[finned_swordfish]") {
     // Fish cols {0,3,6}. Cols 0,3: rows {0,3,6}. Col 6: rows {0,3,6,7} (fin at row 7).
     // Union = {0,3,6,7} = 4 rows. fin_row=7, fin_col=6, fin_box=8 (rows 6-8, cols 6-8).

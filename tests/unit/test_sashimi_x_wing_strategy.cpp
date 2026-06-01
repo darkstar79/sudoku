@@ -152,6 +152,7 @@ TEST_CASE("SashimiXWingStrategy - Explanation contains relevant info", "[sashimi
     REQUIRE(result->explanation.find("fin") != std::string::npos);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with candidate-setup loops; complexity is inherent to test coverage (gh#39)
 TEST_CASE("SashimiXWingStrategy - Col-based sashimi X-Wing detection", "[sashimi_x_wing]") {
     // Col 0 (sashimi): value 5 at row 3 only (exactly 1 — sashimi condition)
     // Col 6: value 5 at rows 3, 6, and 8 (fin at row 8)
