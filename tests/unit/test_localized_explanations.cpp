@@ -241,7 +241,7 @@ TEST_CASE("getLocalizedExplanation - XWing row-based", "[localized_explanations]
         makeStep(SolvingTechnique::XWing,
                  {.positions = {{.row = 1, .col = 2}, {.row = 1, .col = 7}, {.row = 5, .col = 2}, {.row = 5, .col = 7}},
                   .values = {6},
-                  .region_type = RegionType::Row});
+                  .pattern_axis = RegionType::Row});
 
     auto result = getLocalizedExplanation(step);
     REQUIRE(result ==
@@ -253,7 +253,7 @@ TEST_CASE("getLocalizedExplanation - XWing col-based", "[localized_explanations]
         makeStep(SolvingTechnique::XWing,
                  {.positions = {{.row = 0, .col = 3}, {.row = 4, .col = 3}, {.row = 0, .col = 7}, {.row = 4, .col = 7}},
                   .values = {2},
-                  .region_type = RegionType::Col});
+                  .pattern_axis = RegionType::Col});
 
     auto result = getLocalizedExplanation(step);
     REQUIRE(result == "X-Wing on value 2 in Columns 4 and 4, Rows 1 and 1 eliminates 2 from other cells in those rows");
@@ -532,7 +532,7 @@ TEST_CASE("getLocalizedExplanation positions-too-few fallbacks", "[localized_exp
         auto step = makeStep(SolvingTechnique::XWing,
                              {.positions = {{.row = 1, .col = 2}, {.row = 1, .col = 7}, {.row = 5, .col = 2}},
                               .values = {6},
-                              .region_type = RegionType::Row},
+                              .pattern_axis = RegionType::Row},
                              "raw xw row");
         REQUIRE(getLocalizedExplanation(step) == "raw xw row");
     }
@@ -541,7 +541,7 @@ TEST_CASE("getLocalizedExplanation positions-too-few fallbacks", "[localized_exp
         auto step = makeStep(SolvingTechnique::XWing,
                              {.positions = {{.row = 0, .col = 3}, {.row = 4, .col = 3}, {.row = 0, .col = 7}},
                               .values = {2},
-                              .region_type = RegionType::Col},
+                              .pattern_axis = RegionType::Col},
                              "raw xw col");
         REQUIRE(getLocalizedExplanation(step) == "raw xw col");
     }
@@ -657,20 +657,20 @@ TEST_CASE("getLocalizedExplanation - Swordfish", "[localized_explanations]") {
 
     SECTION("Row-based Swordfish") {
         auto step =
-            makeStep(SolvingTechnique::Swordfish, {.values = {5, 1, 2, 3, 4, 5, 6}, .region_type = RegionType::Row});
+            makeStep(SolvingTechnique::Swordfish, {.values = {5, 1, 2, 3, 4, 5, 6}, .pattern_axis = RegionType::Row});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Col-based Swordfish") {
         auto step =
-            makeStep(SolvingTechnique::Swordfish, {.values = {5, 1, 2, 3, 4, 5, 6}, .region_type = RegionType::Col});
+            makeStep(SolvingTechnique::Swordfish, {.values = {5, 1, 2, 3, 4, 5, 6}, .pattern_axis = RegionType::Col});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Fallback: values too few") {
-        auto step = makeStep(SolvingTechnique::Swordfish, {.values = {5, 1}, .region_type = RegionType::Row},
+        auto step = makeStep(SolvingTechnique::Swordfish, {.values = {5, 1}, .pattern_axis = RegionType::Row},
                              "swordfish fallback");
         auto result = getLocalizedExplanation(step);
         REQUIRE(result == "swordfish fallback");
@@ -678,7 +678,7 @@ TEST_CASE("getLocalizedExplanation - Swordfish", "[localized_explanations]") {
 
     SECTION("Fallback: region_type None") {
         auto step = makeStep(SolvingTechnique::Swordfish,
-                             {.values = {5, 1, 2, 3, 4, 5, 6}, .region_type = RegionType::None}, "swordfish fallback");
+                             {.values = {5, 1, 2, 3, 4, 5, 6}, .pattern_axis = RegionType::None}, "swordfish fallback");
         auto result = getLocalizedExplanation(step);
         REQUIRE(result == "swordfish fallback");
     }
@@ -854,26 +854,26 @@ TEST_CASE("getLocalizedExplanation - FinnedXWing", "[localized_explanations]") {
 
     SECTION("Row-based FinnedXWing") {
         auto step = makeStep(SolvingTechnique::FinnedXWing,
-                             {.positions = fin_pos, .values = vals, .region_type = RegionType::Row});
+                             {.positions = fin_pos, .values = vals, .pattern_axis = RegionType::Row});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Col-based FinnedXWing") {
         auto step = makeStep(SolvingTechnique::FinnedXWing,
-                             {.positions = fin_pos, .values = vals, .region_type = RegionType::Col});
+                             {.positions = fin_pos, .values = vals, .pattern_axis = RegionType::Col});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Fallback: values empty") {
-        auto step = makeStep(SolvingTechnique::FinnedXWing, {.positions = fin_pos, .region_type = RegionType::Row},
+        auto step = makeStep(SolvingTechnique::FinnedXWing, {.positions = fin_pos, .pattern_axis = RegionType::Row},
                              "finxwing fallback");
         REQUIRE(getLocalizedExplanation(step) == "finxwing fallback");
     }
 
     SECTION("Fallback: positions empty (second guard)") {
-        auto step = makeStep(SolvingTechnique::FinnedXWing, {.values = vals, .region_type = RegionType::Row},
+        auto step = makeStep(SolvingTechnique::FinnedXWing, {.values = vals, .pattern_axis = RegionType::Row},
                              "finxwing fallback");
         REQUIRE(getLocalizedExplanation(step) == "finxwing fallback");
     }
@@ -916,20 +916,20 @@ TEST_CASE("getLocalizedExplanation - Jellyfish", "[localized_explanations]") {
     const std::vector<int> vals = {5, 1, 2, 3, 4, 5, 6, 7, 8};
 
     SECTION("Row-based Jellyfish") {
-        auto step = makeStep(SolvingTechnique::Jellyfish, {.values = vals, .region_type = RegionType::Row});
+        auto step = makeStep(SolvingTechnique::Jellyfish, {.values = vals, .pattern_axis = RegionType::Row});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Col-based Jellyfish") {
-        auto step = makeStep(SolvingTechnique::Jellyfish, {.values = vals, .region_type = RegionType::Col});
+        auto step = makeStep(SolvingTechnique::Jellyfish, {.values = vals, .pattern_axis = RegionType::Col});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Fallback: values too few") {
         auto step =
-            makeStep(SolvingTechnique::Jellyfish, {.values = {5, 1}, .region_type = RegionType::Row}, "jf fallback");
+            makeStep(SolvingTechnique::Jellyfish, {.values = {5, 1}, .pattern_axis = RegionType::Row}, "jf fallback");
         REQUIRE(getLocalizedExplanation(step) == "jf fallback");
     }
 }
@@ -941,20 +941,20 @@ TEST_CASE("getLocalizedExplanation - FinnedSwordfish", "[localized_explanations]
 
     SECTION("Row-based FinnedSwordfish") {
         auto step = makeStep(SolvingTechnique::FinnedSwordfish,
-                             {.positions = fin_pos, .values = vals, .region_type = RegionType::Row});
+                             {.positions = fin_pos, .values = vals, .pattern_axis = RegionType::Row});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Col-based FinnedSwordfish") {
         auto step = makeStep(SolvingTechnique::FinnedSwordfish,
-                             {.positions = fin_pos, .values = vals, .region_type = RegionType::Col});
+                             {.positions = fin_pos, .values = vals, .pattern_axis = RegionType::Col});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Fallback: positions empty") {
-        auto step = makeStep(SolvingTechnique::FinnedSwordfish, {.values = vals, .region_type = RegionType::Row},
+        auto step = makeStep(SolvingTechnique::FinnedSwordfish, {.values = vals, .pattern_axis = RegionType::Row},
                              "fsf fallback");
         REQUIRE(getLocalizedExplanation(step) == "fsf fallback");
     }
@@ -1004,21 +1004,21 @@ TEST_CASE("getLocalizedExplanation - FinnedJellyfish", "[localized_explanations]
 
     SECTION("Row-based FinnedJellyfish") {
         auto step = makeStep(SolvingTechnique::FinnedJellyfish,
-                             {.positions = fin_pos, .values = vals, .region_type = RegionType::Row});
+                             {.positions = fin_pos, .values = vals, .pattern_axis = RegionType::Row});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Col-based FinnedJellyfish") {
         auto step = makeStep(SolvingTechnique::FinnedJellyfish,
-                             {.positions = fin_pos, .values = vals, .region_type = RegionType::Col});
+                             {.positions = fin_pos, .values = vals, .pattern_axis = RegionType::Col});
         auto result = getLocalizedExplanation(step);
         REQUIRE(!result.empty());
     }
 
     SECTION("Fallback: values too few") {
         auto step = makeStep(SolvingTechnique::FinnedJellyfish,
-                             {.positions = fin_pos, .values = {5}, .region_type = RegionType::Row}, "fjf fallback");
+                             {.positions = fin_pos, .values = {5}, .pattern_axis = RegionType::Row}, "fjf fallback");
         REQUIRE(getLocalizedExplanation(step) == "fjf fallback");
     }
 }

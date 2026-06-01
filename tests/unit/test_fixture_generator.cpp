@@ -98,6 +98,8 @@ const std::string CONFIG_PATH = DATA_DIR + "/generator_config.yaml";
     }
     snapshot.region_type = std::string(getRegionTypeName(step.explanation_data.region_type));
     snapshot.region_index = step.explanation_data.region_index;
+    snapshot.pattern_axis = std::string(getRegionTypeName(step.explanation_data.pattern_axis));
+    snapshot.elimination_axis = std::string(getRegionTypeName(step.explanation_data.elimination_axis));
     snapshot.technique_subtype = step.explanation_data.technique_subtype;
 
     return snapshot;
@@ -358,4 +360,33 @@ TEST_CASE("Generate strategy fixture data", "[.][fixtures][generator]") {
     }
 
     printCoverageSummary(state.coverage);
+}
+
+TEST_CASE("Fixture serializer round-trips fish axis fields", "[fixtures][serializer]") {
+    // gh#39: pattern_axis (base orientation) and elimination_axis (where elims land)
+    // must survive a write/read cycle alongside the legacy region_type/region_index.
+    FixtureSnapshot in;
+    in.id = "axis_roundtrip";
+    in.seed = 42;
+    in.clue_count = 30;
+    in.rating = 5.2;
+    in.board_flat = std::string(static_cast<size_t>(TOTAL_CELLS), '0');
+    in.solution_flat = std::string(static_cast<size_t>(TOTAL_CELLS), '0');
+    in.board_at_step = std::string(static_cast<size_t>(TOTAL_CELLS), '0');
+    in.technique = "Finned X-Wing";
+    in.technique_id = static_cast<int>(SolvingTechnique::FinnedXWing);
+    in.step_type = "Elimination";
+    in.se_rating = 5.2;
+    in.eliminations = {FixtureElim{.row = 4, .col = 7, .value = 6}};
+    in.pattern_axis = "Row";
+    in.elimination_axis = "Box";
+
+    const auto path = (std::filesystem::temp_directory_path() / "sudoku_axis_roundtrip.yaml").string();
+    writeFixtureFile(path, "Hard", {in});
+    auto out = readFixtureFile(path);
+    std::filesystem::remove(path);
+
+    REQUIRE(out.size() == 1);
+    CHECK(out[0].pattern_axis == "Row");
+    CHECK(out[0].elimination_axis == "Box");
 }

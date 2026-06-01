@@ -63,6 +63,8 @@ struct FixtureSnapshot {
     std::vector<std::string> position_roles;
     std::string region_type;
     size_t region_index{};
+    std::string pattern_axis;      // fish base-axis orientation (gh#39)
+    std::string elimination_axis;  // axis/region where eliminations land (gh#39)
     int technique_subtype{-1};
 };
 

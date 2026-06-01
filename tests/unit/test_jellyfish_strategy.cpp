@@ -131,7 +131,8 @@ TEST_CASE("JellyfishStrategy - Col-based Jellyfish detection", "[jellyfish]") {
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::Jellyfish);
-    REQUIRE(result->explanation_data.region_type == RegionType::Col);
+    REQUIRE(result->explanation_data.pattern_axis == RegionType::Col);
+    REQUIRE(result->explanation_data.elimination_axis == RegionType::Row);
     REQUIRE_FALSE(result->eliminations.empty());
 
     for (const auto& elim : result->eliminations) {

@@ -137,7 +137,8 @@ private:
                              .explanation_data = {.positions = positions,
                                                   .values = {value, static_cast<int>(r1 + 1), static_cast<int>(r2 + 1),
                                                              static_cast<int>(r3 + 1), static_cast<int>(r4 + 1)},
-                                                  .region_type = RegionType::Row,
+                                                  .pattern_axis = RegionType::Row,
+                                                  .elimination_axis = RegionType::Box,
                                                   .position_roles = std::move(roles)}};
         }
         return std::nullopt;
@@ -222,7 +223,8 @@ private:
                              .explanation_data = {.positions = positions,
                                                   .values = {value, static_cast<int>(c1 + 1), static_cast<int>(c2 + 1),
                                                              static_cast<int>(c3 + 1), static_cast<int>(c4 + 1)},
-                                                  .region_type = RegionType::Col,
+                                                  .pattern_axis = RegionType::Col,
+                                                  .elimination_axis = RegionType::Box,
                                                   .position_roles = std::move(roles)}};
         }
         return std::nullopt;
