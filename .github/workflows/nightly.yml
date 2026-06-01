@@ -387,7 +387,12 @@ jobs:
 
       - name: Install Java
         if: steps.check.outputs.skip != 'true'
-        run: sudo apt-get install -y default-jre-headless
+        # Refresh the apt index first: the runner image ships a stale index that can
+        # point default-jre-headless at an openjdk patch version no longer in the pool
+        # (404 on fetch). The other apt jobs avoid this via install-qt-deps' own update.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-jre-headless
 
       - name: Install PMD
         if: steps.check.outputs.skip != 'true'
