@@ -68,7 +68,7 @@ graph.json
 .claude
 CLAUDE.md
 _bmad/
-_bmad-output/
+_bmad-output
 docs/internal
 *.swp
 *.swo
