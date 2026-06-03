@@ -29,13 +29,13 @@ This project is entirely **vibe coded** using [Claude Code](https://docs.anthrop
 
 ## Platform Support
 
-The four lines below describe four *different strengths of claim*. "Tested" means the maintainer personally exercises the app there; "CI-built" means GitHub Actions builds and runs the test suite but no human verifies UX polish; "packaged downstream" means a third party builds it.
+The lines below describe *different strengths of claim*. "Tested" means the maintainer personally exercises the app there; "CI-built" means GitHub Actions builds and runs the test suite but no human verifies UX polish; "packaged downstream" means a third party builds it; "dev target" means it builds and runs but is not a supported release platform.
 
 - **Linux (Fedora)** — primary development platform. All interactive testing by the maintainer happens here.
 - **Linux (Ubuntu 24.04)** — built and full test suite run in GitHub Actions CI on every push. Not interactively exercised by the maintainer.
 - **Windows 11** — installer artifact attached to each release. Built and tested in CI on `windows-2025` (per push to `main` and on demand); smoke-tested by the maintainer on a Win11 secondary machine before each release tag. Not a daily-driver environment — please file issues if you hit anything.
 - **Linux (openSUSE)** — RPM snapshots produced downstream via the [openSUSE Build Service](https://build.opensuse.org/) (namespace `home:AndnoVember:LXQt:Qt6`). Built and validated by the downstream packager, not directly by the project.
-- **macOS** — **not supported in 1.0.** Out of scope.
+- **macOS** — **not a supported release platform for 1.0.** Builds and runs (Homebrew Qt6, apple-clang); exercised on-demand in CI as a development target, but not interactively tested or shipped. See [docs/PACKAGING.md](docs/PACKAGING.md#macos).
 
 Other Linux distributions are likely to work (the Qt6 / CMake / Conan stack is portable) but are not on the test matrix.
 

@@ -188,7 +188,7 @@ different distribution model from Linux/Windows — no OBS, no Flatpak/AppImage.
 | `sudoku.app/Contents/MacOS/sudoku` | executable (arm64, x86_64, or Universal) |
 | `sudoku.app/Contents/Resources/translations/sudoku_*.qm` | compiled translation catalogs |
 | `sudoku.app/Contents/Info.plist` | generated from `resources/macos/Info.plist.in` |
-| `sudoku.app/Contents/Resources/AppIcon.icns` | app icon (when present) |
+| `sudoku.app/Contents/Resources/AppIcon.icns` | app icon (committed; generated from the SVG via `iconutil`) |
 | `sudoku.app/Contents/Frameworks/` | Qt frameworks (populated by `macdeployqt`) |
 
 Application data is stored in `~/Library/Application Support/Sudoku/`.
