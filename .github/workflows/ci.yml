@@ -500,7 +500,7 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake --preset release -DCMAKE_OSX_ARCHITECTURES=arm64
+          cmake --preset release -DCMAKE_OSX_ARCHITECTURES=arm64 -DSUDOKU_ENABLE_UI_TESTS=ON
 
       - name: Build
         run: cmake --build --preset release
