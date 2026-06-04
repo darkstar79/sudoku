@@ -154,6 +154,38 @@ TEST_CASE("GameViewModel - clearCellNotes clears only pencil marks", "[game_view
     }
 }
 
+// Applying a color must notify the gameState observable so the board repaints immediately. The
+// regression: GameState::operator== ignored cell colors, so Observable::update() saw "no change"
+// and skipped notification — the color only appeared on the next unrelated state change.
+TEST_CASE("GameViewModel - colorCell notifies observers so the board repaints",
+          "[game_view_model][color][observable]") {
+    OverrideFixture fixture;
+    fixture.view_model->startNewGame(Difficulty::Easy);
+    auto& vm = *fixture.view_model;
+
+    auto empty_opt = test::findEmptyCell(vm.gameState.get());
+    REQUIRE(empty_opt.has_value());
+    const auto pos = empty_opt.value_or(Position{});
+
+    int notifications = 0;
+    auto unsubscribe = vm.gameState.subscribe([&notifications](const model::GameState&) { ++notifications; });
+
+    // Each color mutation (set, change to a different value, clear) must fire its own notification —
+    // otherwise the board would not repaint. A flat set→change→clear narrative on one subscription.
+    vm.colorCell(pos, 3);
+    REQUIRE(notifications == 1);
+    REQUIRE(vm.gameState.get().getCellColor(pos.row, pos.col) == 3);
+
+    vm.colorCell(pos, 5);
+    REQUIRE(notifications == 2);
+
+    vm.colorCell(pos, 0);
+    REQUIRE(notifications == 3);
+    REQUIRE(vm.gameState.get().getCellColor(pos.row, pos.col) == 0);
+
+    unsubscribe();
+}
+
 // In EditGivens the modifier is meaningless, not the keystroke: an override is stripped and the key
 // acts plain (so Ctrl+8/Alt+8 set given 8, matching the already-plain Ctrl+Delete given-clear).
 // This is the UX ruling (2026-06-04) replacing the earlier "override is a hard no-op" behaviour.

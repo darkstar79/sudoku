@@ -414,6 +414,14 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Aktuelles Spiel</translation>
     </message>
     <message>
+        <source>{0} ({1})</source>
+        <translation>{0} ({1})</translation>
+    </message>
+    <message>
+        <source>Input mode — Space cycles Normal → Notes → Color</source>
+        <translation>Eingabemodus — Leertaste wechselt Normal → Notizen → Farbe</translation>
+    </message>
+    <message>
         <source>Import Custom Puzzle…</source>
         <translation>Eigenes Rätsel importieren…</translation>
     </message>
@@ -432,6 +440,10 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Find Step by Technique…</source>
         <translation>Schritt nach Technik suchen…</translation>
+    </message>
+    <message>
+        <source>Keyboard Shortcuts…</source>
+        <translation>Tastenkürzel …</translation>
     </message>
     <message>
         <source>Done Editing</source>
@@ -636,6 +648,18 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation> Sekunden</translation>
     </message>
     <message>
+        <source>Keyboard Shortcuts</source>
+        <translation>Tastenkürzel</translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation>Aktion</translation>
+    </message>
+    <message>
+        <source>Shortcut</source>
+        <translation>Tastenkombination</translation>
+    </message>
+    <message>
         <source>Highlight Conflicts</source>
         <translation>Konflikte hervorheben</translation>
     </message>
@@ -690,10 +714,6 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Disabling session tracking will stop recording per-game statistics. Would you like to delete existing session history?</source>
         <translation>Das Deaktivieren beendet die Aufzeichnung von Einzelspielstatistiken. Möchten Sie den vorhandenen Sitzungsverlauf löschen?</translation>
-    </message>
-    <message>
-        <source>Input mode (Space to cycle, N for Notes)</source>
-        <translation>Eingabemodus (Leertaste zum Wechseln, N für Notizen)</translation>
     </message>
     <message>
         <source>Place {0} in selected cell</source>
@@ -2122,6 +2142,54 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Find</source>
         <translation>Suchen</translation>
+    </message>
+    <message>
+        <source>Enter a digit in the active mode</source>
+        <translation>Ziffer im aktiven Modus eingeben</translation>
+    </message>
+    <message>
+        <source>Enter a final value (any mode)</source>
+        <translation>Endgültigen Wert eingeben (jeder Modus)</translation>
+    </message>
+    <message>
+        <source>Toggle a pencil mark (any mode)</source>
+        <translation>Notiz umschalten (jeder Modus)</translation>
+    </message>
+    <message>
+        <source>Apply a color (any mode)</source>
+        <translation>Farbe anwenden (jeder Modus)</translation>
+    </message>
+    <message>
+        <source>Cycle input mode (Normal → Notes → Color)</source>
+        <translation>Eingabemodus wechseln (Normal → Notizen → Farbe)</translation>
+    </message>
+    <message>
+        <source>Clear the active layer</source>
+        <translation>Aktive Ebene löschen</translation>
+    </message>
+    <message>
+        <source>Clear the value</source>
+        <translation>Wert löschen</translation>
+    </message>
+    <message>
+        <source>Clear the color</source>
+        <translation>Farbe löschen</translation>
+    </message>
+    <message>
+        <source>Clear all pencil marks</source>
+        <translation>Alle Notizen löschen</translation>
+    </message>
+    <message>
+        <source>value</source>
+        <translation>Wert</translation>
+    </message>
+    <message>
+        <source>pencil</source>
+        <translation>Notiz</translation>
+    </message>
+    <message>
+        <source>color</source>
+        <translation>Farbe</translation>
     </message>
 </context>
 </TS>

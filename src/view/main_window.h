@@ -38,6 +38,7 @@
 #include <qwindowdefs.h>
 
 class QComboBox;
+class QDialog;
 class QLabel;
 class QPushButton;
 class QStackedWidget;
@@ -51,6 +52,7 @@ class TestMenuToolbarActions;
 class TestViewModelBinding;
 class TestTrainingWidget;
 class TestEditMode;
+class TestKeyboardShortcuts;
 #endif
 
 namespace sudoku::view {
@@ -126,6 +128,7 @@ private:
     QLabel* status_label_{nullptr};
     QLabel* timer_label_{nullptr};
     QLabel* session_time_label_{nullptr};
+    QLabel* modifier_hint_label_{nullptr};
 
     // Wall-clock when MainWindow was constructed. Drives the right-side
     // session-time indicator (Settings -> Display -> "Show session timer").
@@ -174,6 +177,8 @@ private:
     void showLoadDialog();
     void showStatisticsDialog();
     void showAboutDialog();
+    void showKeyboardShortcutsDialog();
+    [[nodiscard]] QDialog* buildKeyboardShortcutsDialog();
     void showThirdPartyLicensesDialog();
     void showTechniquesDialog();
     void showSettingsDialog();
@@ -200,6 +205,7 @@ private:
     friend class ::TestViewModelBinding;
     friend class ::TestTrainingWidget;
     friend class ::TestEditMode;
+    friend class ::TestKeyboardShortcuts;
 #endif
 };
 

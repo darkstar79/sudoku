@@ -23,6 +23,7 @@
 #include "core/observable.h"
 #include "infrastructure/app_directory_manager.h"
 #include "key_utils.h"
+#include "keyboard_shortcuts.h"
 #include "locale_utils.h"
 #include "model/game_state.h"
 #include "puzzle_import_dialog.h"
@@ -82,6 +83,33 @@
 #include <spdlog/spdlog.h>
 
 namespace sudoku::view {
+
+namespace {
+
+// Mode-button face text. The three cycling modes surface the Space cycle key on the visible
+// label (not only the tooltip) — AC-1 / UX spec §Discoverability. EditGivens keeps its plain
+// label. The Space glyph is rendered via NativeText; the parenthesized layout is translatable.
+[[nodiscard]] QString modeButtonText(viewmodel::InputMode mode) {
+    const QString space = QKeySequence(Qt::Key_Space).toString(QKeySequence::NativeText);
+    // base is an already-localized mode name; the literal core::loc("Sudoku", "...") calls below
+    // keep each mode name extractable by lupdate (passing a variable to core::loc would hide it).
+    const auto cycling = [&](const std::string& base) {
+        return QString::fromStdString(core::locFormat(core::loc("Sudoku", "{0} ({1})"), base, space.toStdString()));
+    };
+    switch (mode) {
+        case viewmodel::InputMode::Normal:
+            return cycling(core::loc("Sudoku", "Normal"));
+        case viewmodel::InputMode::Notes:
+            return cycling(core::loc("Sudoku", "Notes"));
+        case viewmodel::InputMode::Color:
+            return cycling(core::loc("Sudoku", "Color"));
+        case viewmodel::InputMode::EditGivens:
+            return QString::fromStdString(core::loc("Sudoku", "Edit"));
+    }
+    return {};
+}
+
+}  // namespace
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle(qstr(core::loc("Sudoku", "Sudoku")));
@@ -194,8 +222,8 @@ void MainWindow::setupButtonPanel(QVBoxLayout* game_layout) {
     undo_valid_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Undo Until Valid")));
     auto_notes_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Fill Notes")));
     auto_notes_btn_->setCheckable(true);
-    mode_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Normal")));
-    mode_btn_->setToolTip(qstr(core::loc("Sudoku", "Input mode (Space to cycle, N for Notes)")));
+    mode_btn_ = new QPushButton(modeButtonText(viewmodel::InputMode::Normal));
+    mode_btn_->setToolTip(qstr(core::loc("Sudoku", "Input mode — Space cycles Normal → Notes → Color")));
 
     undo_btn_->setStyleSheet(BTN_STYLE);
     redo_btn_->setStyleSheet(BTN_STYLE);
@@ -415,6 +443,12 @@ void MainWindow::setupHelpMenu() {
     help_menu->addAction(qstr(core::loc("Sudoku", "Find Step by Technique…")), this,
                          &MainWindow::showFindByTechniqueDialog);
     help_menu->addSeparator();
+    // F1 already toggles the menu bar (keyPressEvent) — the shortcut map gets its own
+    // menu action rather than repurposing F1.
+    auto* shortcuts_action = help_menu->addAction(qstr(core::loc("Sudoku", "Keyboard Shortcuts…")), this,
+                                                  &MainWindow::showKeyboardShortcutsDialog);
+    shortcuts_action->setObjectName("keyboardShortcutsAction");
+    help_menu->addSeparator();
     help_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "About"))), this, &MainWindow::showAboutDialog);
     help_menu->addAction(qstr(core::loc("Sudoku", "Third-Party Licenses")), this,
                          &MainWindow::showThirdPartyLicensesDialog);
@@ -501,6 +535,14 @@ void MainWindow::setupStatusBar() {
     statusBar()->addWidget(timer_label_);
     status_label_ = new QLabel(qstr(core::loc("Sudoku", "Ready")));
     statusBar()->addWidget(status_label_, 1);
+
+    // Always-visible keyboard micro-hint (e.g. "Ctrl=value · Shift=pencil · Alt=color").
+    // Modifier names render per-OS via NativeText; the single source of truth is
+    // keyboard_shortcuts.cpp. addPermanentWidget anchors it to the right, left of the
+    // optional session timer added just below.
+    modifier_hint_label_ = new QLabel(modifierHintText());
+    modifier_hint_label_->setObjectName("modifierHintLabel");
+    statusBar()->addPermanentWidget(modifier_hint_label_);
 
     // Right-side session timer (wall-clock since app launch). Toggled by
     // Settings -> Display -> "Show session timer". addPermanentWidget()
@@ -889,21 +931,8 @@ void MainWindow::updateButtonPanel() {
     undo_btn_->setEnabled(view_model_->canExecuteCommand(viewmodel::GameCommand::Undo));
     redo_btn_->setEnabled(view_model_->canExecuteCommand(viewmodel::GameCommand::Redo));
 
-    // Update input mode indicator
-    switch (view_model_->getInputMode()) {
-        case viewmodel::InputMode::Normal:
-            mode_btn_->setText(qstr(core::loc("Sudoku", "Normal")));
-            break;
-        case viewmodel::InputMode::Notes:
-            mode_btn_->setText(qstr(core::loc("Sudoku", "Notes")));
-            break;
-        case viewmodel::InputMode::Color:
-            mode_btn_->setText(qstr(core::loc("Sudoku", "Color")));
-            break;
-        case viewmodel::InputMode::EditGivens:
-            mode_btn_->setText(qstr(core::loc("Sudoku", "Edit")));
-            break;
-    }
+    // Update input mode indicator. Cycling modes surface the Space cycle key on the face.
+    mode_btn_->setText(modeButtonText(view_model_->getInputMode()));
 
     // Update fill notes toggle state
     const auto& ui = view_model_->uiState.get();
@@ -1350,6 +1379,44 @@ void MainWindow::showAboutDialog() {
                                 qstr(core::loc("Sudoku", "Built with:"))));
 }
 
+QDialog* MainWindow::buildKeyboardShortcutsDialog() {
+    auto* dialog = new QDialog(this);
+    dialog->setObjectName("keyboardShortcutsDialog");
+    dialog->setWindowTitle(qstr(core::loc("Sudoku", "Keyboard Shortcuts")));
+    dialog->setMinimumSize(420, 360);
+
+    const auto shortcuts = keyboardShortcuts();
+    auto* table = new QTableWidget(static_cast<int>(shortcuts.size()), 2, dialog);
+    table->setObjectName("keyboardShortcutsTable");
+    table->setHorizontalHeaderLabels({qstr(core::loc("Sudoku", "Action")), qstr(core::loc("Sudoku", "Shortcut"))});
+    table->verticalHeader()->setVisible(false);
+    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    table->setSelectionMode(QAbstractItemView::NoSelection);
+    table->setFocusPolicy(Qt::NoFocus);
+
+    for (int row = 0; std::cmp_less(row, shortcuts.size()); ++row) {
+        const auto& entry = shortcuts[static_cast<size_t>(row)];
+        table->setItem(row, 0, new QTableWidgetItem(shortcutActionLabel(entry.action)));
+        table->setItem(row, 1, new QTableWidgetItem(shortcutChordText(entry)));
+    }
+    table->resizeColumnsToContents();
+    table->horizontalHeader()->setStretchLastSection(true);
+
+    auto* main_layout = new QVBoxLayout(dialog);
+    main_layout->addWidget(table);
+    auto* btn_box = new QDialogButtonBox(QDialogButtonBox::Close);
+    connect(btn_box, &QDialogButtonBox::rejected, dialog, &QDialog::close);
+    main_layout->addWidget(btn_box);
+
+    return dialog;
+}
+
+void MainWindow::showKeyboardShortcutsDialog() {
+    auto* dialog = buildKeyboardShortcutsDialog();
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->open();  // modal but non-blocking — keeps the call testable
+}
+
 void MainWindow::showThirdPartyLicensesDialog() {
     auto* dialog = new QDialog(this);
     dialog->setWindowTitle(qstr(core::loc("Sudoku", "Third-Party Licenses")));
@@ -1501,7 +1568,12 @@ void MainWindow::retranslateUi() {
     undo_valid_btn_->setText(qstr(core::loc("Sudoku", "Undo Until Valid")));
     auto_notes_btn_->setText(auto_notes_btn_->isChecked() ? qstr(core::loc("Sudoku", "Clear Notes"))
                                                           : qstr(core::loc("Sudoku", "Fill Notes")));
-    mode_btn_->setToolTip(qstr(core::loc("Sudoku", "Input mode (Space to cycle, N for Notes)")));
+    mode_btn_->setToolTip(qstr(core::loc("Sudoku", "Input mode — Space cycles Normal → Notes → Color")));
+
+    // Status-bar keyboard micro-hint (modifier names re-render per the active locale).
+    if (modifier_hint_label_) {
+        modifier_hint_label_->setText(modifierHintText());
+    }
 
     // Status bar and mode button
     updateStatusBar();

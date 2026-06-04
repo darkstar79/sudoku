@@ -411,4 +411,12 @@ TEST_CASE("GameState - Equality Operator", "[game_state][equality]") {
         state1.incrementMistakes();
         REQUIRE(!(state1 == state2));
     }
+
+    SECTION("Not equal after cell color change") {
+        // Cell colors are rendered UI state, so a color-only change must be observable —
+        // otherwise Observable<GameState>::update() skips notification and the board does not
+        // repaint until the next unrelated change (regression: colors not immediately visible).
+        state1.setCellColor(0, 0, 3);
+        REQUIRE(!(state1 == state2));
+    }
 }
