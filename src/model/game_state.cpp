@@ -306,11 +306,15 @@ bool GameState::isCellHintRevealed(const core::Position& pos) const {
 }
 
 bool GameState::operator==(const GameState& other) const {
-    // For Observable pattern, compare key state that UI cares about
-    // NOTE: timer_running_ MUST be included - it determines isGameActive() which gates all input
+    // For Observable pattern, compare key state that UI cares about.
+    // NOTE: timer_running_ MUST be included - it determines isGameActive() which gates all input.
+    // cell_colors_ MUST be included even though colors are ephemeral (not saved/undone): they are
+    // rendered, so Observable<GameState>::update() must detect a color-only change and notify —
+    // otherwise the board does not repaint until the next unrelated change.
     return values_ == other.values_ && notes_data_ == other.notes_data_ && givens_ == other.givens_ &&
            hints_revealed_ == other.hints_revealed_ && conflicts_ == other.conflicts_ &&
-           difficulty_ == other.difficulty_ && is_complete_ == other.is_complete_ && move_count_ == other.move_count_ &&
+           cell_colors_ == other.cell_colors_ && difficulty_ == other.difficulty_ &&
+           is_complete_ == other.is_complete_ && move_count_ == other.move_count_ &&
            mistake_count_ == other.mistake_count_ && timer_running_ == other.timer_running_;
 }
 
