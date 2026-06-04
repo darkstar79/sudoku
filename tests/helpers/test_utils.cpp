@@ -66,6 +66,22 @@ void unsetEnvVar(const char* name) {
 #endif
 }
 
+ScopedEnvVar::ScopedEnvVar(const char* name, const std::string& value) : name_(name) {
+    if (const char* prev = std::getenv(name)) {
+        previous_ = prev;
+        had_previous_ = true;
+    }
+    setEnvVar(name, value);
+}
+
+ScopedEnvVar::~ScopedEnvVar() {
+    if (had_previous_) {
+        setEnvVar(name_, previous_);
+    } else {
+        unsetEnvVar(name_);
+    }
+}
+
 // ============================================================================
 // Board Search Helpers
 // ============================================================================

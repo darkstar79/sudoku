@@ -204,30 +204,7 @@ TEST_CASE("GameViewModel CSV/JSON export entry points", "[game_view_model][state
 #else
     constexpr const char* kDataDirEnv = "XDG_DATA_HOME";
 #endif
-    struct DataDirOverride {
-        const char* name;
-        std::string previous;
-        bool had_previous{false};
-        DataDirOverride(const char* env_name, const std::string& path) : name(env_name) {
-            if (const char* prev = std::getenv(env_name)) {
-                previous = prev;
-                had_previous = true;
-            }
-            sudoku::test::setEnvVar(env_name, path);
-        }
-        DataDirOverride(const DataDirOverride&) = delete;
-        DataDirOverride& operator=(const DataDirOverride&) = delete;
-        DataDirOverride(DataDirOverride&&) = delete;
-        DataDirOverride& operator=(DataDirOverride&&) = delete;
-        ~DataDirOverride() {
-            if (had_previous) {
-                sudoku::test::setEnvVar(name, previous);
-            } else {
-                sudoku::test::unsetEnvVar(name);
-            }
-        }
-    };
-    DataDirOverride data_dir(kDataDirEnv, fixture.temp_dir.path().string());
+    sudoku::test::ScopedEnvVar data_dir(kDataDirEnv, fixture.temp_dir.path().string());
 
     // The serializer does not auto-create parent directories — pre-create the path that
     // AppDirectoryManager now resolves to under the redirected base directory. Querying
