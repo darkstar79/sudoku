@@ -50,7 +50,7 @@ TEST_CASE("GameViewModel - Modifier override routing", "[game_view_model][input_
 
     auto empty_opt = test::findEmptyCell(vm.gameState.get());
     REQUIRE(empty_opt.has_value());
-    const auto pos = empty_opt.value();
+    const auto pos = empty_opt.value_or(Position{});
 
     SECTION("Ctrl override forces a final value while in Notes mode (AC-2)") {
         vm.setInputMode(InputMode::Notes);
@@ -121,7 +121,7 @@ TEST_CASE("GameViewModel - Modifier override routing", "[game_view_model][input_
     SECTION("Overrides are no-ops on a locked given cell (AC-9)") {
         auto given_opt = findGivenCell(vm.gameState.get());
         REQUIRE(given_opt.has_value());
-        const auto given_pos = given_opt.value();
+        const auto given_pos = given_opt.value_or(Position{});
         const int given_value = vm.gameState.get().getCell(given_pos).value;
 
         vm.handleNumberInput(given_pos, (given_value % 9) + 1, InputMode::Normal);
@@ -137,7 +137,7 @@ TEST_CASE("GameViewModel - clearCellNotes clears only pencil marks", "[game_view
 
     auto empty_opt = test::findEmptyCell(vm.gameState.get());
     REQUIRE(empty_opt.has_value());
-    const auto pos = empty_opt.value();
+    const auto pos = empty_opt.value_or(Position{});
 
     SECTION("clearCellNotes removes every pencil mark in the cell (Shift+Delete, AC-5)") {
         vm.enterNote(pos, 2);

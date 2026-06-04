@@ -68,7 +68,7 @@ void TestResolveDigit::shiftDigitFallbackResolves() {
 void TestResolveDigit::shiftGlyphResolvesFromNativeKey() {
     // A real US keyboard cooks Shift+1 into Key_Exclam; recover the digit from the
     // physical (native) key, which is not layout-dependent.
-#if defined(Q_OS_MACOS)
+#ifdef Q_OS_MACOS
     const quint32 native_one = 0x12;  // kVK_ANSI_1
 #else
     const quint32 native_one = 0x31;  // Win VK '1' / X11 keysym XK_1 (both == ASCII '1')

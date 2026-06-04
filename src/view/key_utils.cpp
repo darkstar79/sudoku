@@ -24,7 +24,7 @@ namespace {
 /// not a digit-row key. Used only to recover Shift+digit, where the layout-cooked key() is a
 /// glyph (e.g. Key_Exclam on US) but the physical key is stable per platform.
 [[nodiscard]] int nativeDigitRow(quint32 native_virtual_key) {
-#if defined(Q_OS_MACOS)
+#ifdef Q_OS_MACOS
     // Carbon kVK_ANSI_* virtual key codes (what the cocoa backend reports).
     switch (native_virtual_key) {
         case 0x12:

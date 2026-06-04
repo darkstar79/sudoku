@@ -45,8 +45,11 @@ private:
         return ctx_->game_vm->gameState.get().getCellColor(pos.row, pos.col);
     }
 
-    void selectEmptyCell();
-    [[nodiscard]] std::optional<core::Position> findGivenCell() const;
+    // Select the first empty cell and return it. Fails the test (and returns a default) if the
+    // board has none — returning a concrete Position keeps the call sites free of optional
+    // dereferences that clang-tidy's unchecked-optional-access cannot prove safe past QVERIFY.
+    core::Position selectEmptyCell();
+    [[nodiscard]] core::Position givenCellOrFail() const;
 };
 
 void TestKeyboardHandling::initTestCase() {
@@ -178,157 +181,144 @@ void TestKeyboardHandling::spaceKeyCyclesInputMode() {
 }
 
 void TestKeyboardHandling::ctrlDigitForcesValueWithToggleOff() {
-    selectEmptyCell();
-    auto pos = selectedPos();
-    QVERIFY(pos.has_value());
+    const auto pos = selectEmptyCell();
 
     // Force a final value while NOT in Normal mode — the override must win.
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Notes);
     QTest::keyClick(window_->board_widget_, Qt::Key_8, Qt::ControlModifier);
     QApplication::processEvents();
-    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).value, 8);
+    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).value, 8);
 
     // Same digit again clears it (toggle-off).
     QTest::keyClick(window_->board_widget_, Qt::Key_8, Qt::ControlModifier);
     QApplication::processEvents();
-    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).value, 0);
+    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).value, 0);
 
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
 }
 
 void TestKeyboardHandling::shiftDigitTogglesPencilAndGuardsFilledCell() {
-    selectEmptyCell();
-    auto pos = selectedPos();
-    QVERIFY(pos.has_value());
+    const auto pos = selectEmptyCell();
 
     // Shift forces a pencil mark while in Normal mode. QTest sends Key_4 + Shift
     // (no native cooking), exercising the resolveDigit fallback path.
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
     QTest::keyClick(window_->board_widget_, Qt::Key_4, Qt::ShiftModifier);
     QApplication::processEvents();
-    QVERIFY(ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).notes.contains(4));
+    QVERIFY(ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).notes.contains(4));
 
     // Re-press removes the mark.
     QTest::keyClick(window_->board_widget_, Qt::Key_4, Qt::ShiftModifier);
     QApplication::processEvents();
-    QVERIFY(!ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).notes.contains(4));
+    QVERIFY(!ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).notes.contains(4));
 
     // Filled-cell guard: place a value, then Shift+digit is a no-op.
     QTest::keyClick(window_->board_widget_, Qt::Key_6);  // Normal mode places 6
     QApplication::processEvents();
-    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).value, 6);
+    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).value, 6);
     QTest::keyClick(window_->board_widget_, Qt::Key_2, Qt::ShiftModifier);
     QApplication::processEvents();
-    QVERIFY(!ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).notes.contains(2));
+    QVERIFY(!ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).notes.contains(2));
 
     QTest::keyClick(window_->board_widget_, Qt::Key_Delete);  // cleanup
     QApplication::processEvents();
 }
 
 void TestKeyboardHandling::altDigitAppliesColorWithToggleOff() {
-    selectEmptyCell();
-    auto pos = selectedPos();
-    QVERIFY(pos.has_value());
+    const auto pos = selectEmptyCell();
 
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
 
     QTest::keyClick(window_->board_widget_, Qt::Key_3, Qt::AltModifier);
     QApplication::processEvents();
-    QCOMPARE(colorAt(*pos), static_cast<uint8_t>(3));
+    QCOMPARE(colorAt(pos), static_cast<uint8_t>(3));
 
     // Different digit replaces the color.
     QTest::keyClick(window_->board_widget_, Qt::Key_5, Qt::AltModifier);
     QApplication::processEvents();
-    QCOMPARE(colorAt(*pos), static_cast<uint8_t>(5));
+    QCOMPARE(colorAt(pos), static_cast<uint8_t>(5));
 
     // Same digit again removes it.
     QTest::keyClick(window_->board_widget_, Qt::Key_5, Qt::AltModifier);
     QApplication::processEvents();
-    QCOMPARE(colorAt(*pos), static_cast<uint8_t>(0));
+    QCOMPARE(colorAt(pos), static_cast<uint8_t>(0));
 }
 
 void TestKeyboardHandling::colorModePlainDigitAppliesColor() {
-    selectEmptyCell();
-    auto pos = selectedPos();
-    QVERIFY(pos.has_value());
+    const auto pos = selectEmptyCell();
 
     // The previously-untested Color-mode application path: a plain digit in Color mode.
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Color);
     QTest::keyClick(window_->board_widget_, Qt::Key_2);
     QApplication::processEvents();
-    QCOMPARE(colorAt(*pos), static_cast<uint8_t>(2));
+    QCOMPARE(colorAt(pos), static_cast<uint8_t>(2));
 
     // Plain Color mode is set-only (AC-1): re-pressing the same digit must NOT toggle the color off
     // (toggle-off is exclusive to the Alt override). This guards the trickiest behavioural split.
     QTest::keyClick(window_->board_widget_, Qt::Key_2);
     QApplication::processEvents();
-    QCOMPARE(colorAt(*pos), static_cast<uint8_t>(2));
+    QCOMPARE(colorAt(pos), static_cast<uint8_t>(2));
 
-    ctx_->game_vm->colorCell(*pos, 0);  // cleanup
+    ctx_->game_vm->colorCell(pos, 0);  // cleanup
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
 }
 
 void TestKeyboardHandling::altDigitSevenToNineIsNoOp() {
-    selectEmptyCell();
-    auto pos = selectedPos();
-    QVERIFY(pos.has_value());
+    const auto pos = selectEmptyCell();
 
     QTest::keyClick(window_->board_widget_, Qt::Key_7, Qt::AltModifier);
     QApplication::processEvents();
-    QCOMPARE(colorAt(*pos), static_cast<uint8_t>(0));
+    QCOMPARE(colorAt(pos), static_cast<uint8_t>(0));
     QTest::keyClick(window_->board_widget_, Qt::Key_9, Qt::AltModifier);
     QApplication::processEvents();
-    QCOMPARE(colorAt(*pos), static_cast<uint8_t>(0));
+    QCOMPARE(colorAt(pos), static_cast<uint8_t>(0));
 }
 
 void TestKeyboardHandling::eraseFamilyModifierCombos() {
-    selectEmptyCell();
-    auto pos = selectedPos();
-    QVERIFY(pos.has_value());
+    const auto pos = selectEmptyCell();
     ctx_->game_vm->setInputMode(viewmodel::InputMode::Normal);
 
     // Ctrl+0 clears the value in any mode.
     QTest::keyClick(window_->board_widget_, Qt::Key_5);  // place a value
     QApplication::processEvents();
-    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).value, 5);
+    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).value, 5);
     QTest::keyClick(window_->board_widget_, Qt::Key_0, Qt::ControlModifier);
     QApplication::processEvents();
-    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).value, 0);
+    QCOMPARE(ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).value, 0);
 
     // Alt+0 clears the color.
     QTest::keyClick(window_->board_widget_, Qt::Key_4, Qt::AltModifier);  // set color 4
     QApplication::processEvents();
-    QCOMPARE(colorAt(*pos), static_cast<uint8_t>(4));
+    QCOMPARE(colorAt(pos), static_cast<uint8_t>(4));
     QTest::keyClick(window_->board_widget_, Qt::Key_0, Qt::AltModifier);
     QApplication::processEvents();
-    QCOMPARE(colorAt(*pos), static_cast<uint8_t>(0));
+    QCOMPARE(colorAt(pos), static_cast<uint8_t>(0));
 
     // Shift+Delete clears all pencil marks in the cell.
     QTest::keyClick(window_->board_widget_, Qt::Key_1, Qt::ShiftModifier);  // pencil 1
     QTest::keyClick(window_->board_widget_, Qt::Key_3, Qt::ShiftModifier);  // pencil 3
     QApplication::processEvents();
-    QVERIFY(ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).notes.contains(1));
+    QVERIFY(ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).notes.contains(1));
     QTest::keyClick(window_->board_widget_, Qt::Key_Delete, Qt::ShiftModifier);
     QApplication::processEvents();
-    QVERIFY(!ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).notes.contains(1));
-    QVERIFY(!ctx_->game_vm->gameState.get().getCell(pos->row, pos->col).notes.contains(3));
+    QVERIFY(!ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).notes.contains(1));
+    QVERIFY(!ctx_->game_vm->gameState.get().getCell(pos.row, pos.col).notes.contains(3));
 }
 
 void TestKeyboardHandling::overrideOnGivenCellIsNoOp() {
-    auto given = findGivenCell();
-    QVERIFY(given.has_value());
-    window_->board_widget_->setSelectedCell(given.value());
+    const auto given = givenCellOrFail();
+    window_->board_widget_->setSelectedCell(given);
     QApplication::processEvents();
 
-    const int given_value = ctx_->game_vm->gameState.get().getCell(given->row, given->col).value;
+    const int given_value = ctx_->game_vm->gameState.get().getCell(given.row, given.col).value;
     QTest::keyClick(window_->board_widget_, Qt::Key_8, Qt::ControlModifier);
     QApplication::processEvents();
 
     // The given is untouched by the value override.
-    QCOMPARE(ctx_->game_vm->gameState.get().getCell(given->row, given->col).value, given_value);
+    QCOMPARE(ctx_->game_vm->gameState.get().getCell(given.row, given.col).value, given_value);
 }
 
-std::optional<core::Position> TestKeyboardHandling::findGivenCell() const {
+core::Position TestKeyboardHandling::givenCellOrFail() const {
     const auto& state = ctx_->game_vm->gameState.get();
     for (size_t r = 0; r < core::BOARD_SIZE; ++r) {
         for (size_t c = 0; c < core::BOARD_SIZE; ++c) {
@@ -337,22 +327,25 @@ std::optional<core::Position> TestKeyboardHandling::findGivenCell() const {
             }
         }
     }
-    return std::nullopt;
+    QTest::qFail("No given cell found on Easy board", __FILE__, __LINE__);
+    return core::Position{.row = 0, .col = 0};
 }
 
-void TestKeyboardHandling::selectEmptyCell() {
+core::Position TestKeyboardHandling::selectEmptyCell() {
     const auto& state = ctx_->game_vm->gameState.get();
-    for (size_t r = 0; r < 9; ++r) {
-        for (size_t c = 0; c < 9; ++c) {
+    for (size_t r = 0; r < core::BOARD_SIZE; ++r) {
+        for (size_t c = 0; c < core::BOARD_SIZE; ++c) {
             const auto& cell = state.getCell(r, c);
             if (cell.value == 0 && !cell.is_given) {
-                window_->board_widget_->setSelectedCell(core::Position{.row = r, .col = c});
+                const core::Position pos{.row = r, .col = c};
+                window_->board_widget_->setSelectedCell(pos);
                 QApplication::processEvents();
-                return;
+                return pos;
             }
         }
     }
-    QFAIL("No empty cell found on Easy board");
+    QTest::qFail("No empty cell found on Easy board", __FILE__, __LINE__);
+    return core::Position{.row = 0, .col = 0};
 }
 
 QTEST_MAIN(TestKeyboardHandling)

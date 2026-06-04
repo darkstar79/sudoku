@@ -46,6 +46,21 @@ private:
     [[nodiscard]] QStackedWidget* pages() const {
         return trainingWidget()->pages_;
     }
+
+    // First editable (non-given, non-found) cell on the current training board. Returns a concrete
+    // Position (failing the test if none exists) so call sites avoid optional dereferences.
+    [[nodiscard]] core::Position findEditableTrainingCell() const {
+        const auto& board = trainingWidget()->training_vm_->trainingBoard.get();
+        for (size_t r = 0; r < core::BOARD_SIZE; ++r) {
+            for (size_t c = 0; c < core::BOARD_SIZE; ++c) {
+                if (!board[r][c].is_given && !board[r][c].is_found) {
+                    return core::Position{.row = r, .col = c};
+                }
+            }
+        }
+        QTest::qFail("No editable training cell found", __FILE__, __LINE__);
+        return core::Position{.row = 0, .col = 0};
+    }
 };
 
 void TestTrainingWidget::initTestCase() {
@@ -95,20 +110,10 @@ void TestTrainingWidget::testSharedBoardInputStillFunctions() {
     auto* vm = trainingWidget()->training_vm_.get();
     QVERIFY(vm != nullptr);
 
-    // Find an editable (non-given, non-found) cell to receive input, and select it on both the
-    // ViewModel (drives applyNumber/applyColor) and the widget.
-    std::optional<core::Position> editable;
-    const auto& initial = vm->trainingBoard.get();
-    for (size_t r = 0; r < core::BOARD_SIZE && !editable; ++r) {
-        for (size_t c = 0; c < core::BOARD_SIZE && !editable; ++c) {
-            if (!initial[r][c].is_given && !initial[r][c].is_found) {
-                editable = core::Position{.row = r, .col = c};
-            }
-        }
-    }
-    QVERIFY(editable.has_value());
-    vm->selectCell(editable->row, editable->col);
-    board->setSelectedCell(*editable);
+    // Select an editable cell on both the ViewModel (drives applyNumber/applyColor) and the widget.
+    const auto cell = findEditableTrainingCell();
+    vm->selectCell(cell.row, cell.col);
+    board->setSelectedCell(cell);
 
     QSignalSpy spy(board, &view::SudokuBoardWidget::digitKeyPressed);
 
@@ -122,12 +127,12 @@ void TestTrainingWidget::testSharedBoardInputStillFunctions() {
     QTest::keyClick(board, Qt::Key_1, Qt::AltModifier);
     QApplication::processEvents();
     QCOMPARE(spy.count(), 2);
-    QCOMPARE(vm->trainingBoard.get()[editable->row][editable->col].player_color, core::kMinPlayerColor);
+    QCOMPARE(vm->trainingBoard.get()[cell.row][cell.col].player_color, core::kMinPlayerColor);
 
     // Alt+5 is outside Training's two-color palette — it must be a no-op, leaving Color A intact.
     QTest::keyClick(board, Qt::Key_5, Qt::AltModifier);
     QApplication::processEvents();
-    QCOMPARE(vm->trainingBoard.get()[editable->row][editable->col].player_color, core::kMinPlayerColor);
+    QCOMPARE(vm->trainingBoard.get()[cell.row][cell.col].player_color, core::kMinPlayerColor);
 }
 
 void TestTrainingWidget::testSubmitAnswerShowsFeedback() {
