@@ -18,6 +18,7 @@
 
 #include "core/constants.h"
 #include "core/i18n_helpers.h"
+#include "key_utils.h"
 
 #include <array>
 #include <optional>
@@ -166,19 +167,12 @@ void SudokuBoardWidget::keyPressEvent(QKeyEvent* event) {
         return;
     }
 
-    // Number keys 1-9
-    if (key >= Qt::Key_1 && key <= Qt::Key_9) {
-        emit numberKeyPressed(key - Qt::Key_1 + 1);
-        return;
-    }
-
-    // Color keys A/B
-    if (key == Qt::Key_A) {
-        emit colorKeyPressed(1);
-        return;
-    }
-    if (key == Qt::Key_B) {
-        emit colorKeyPressed(2);
+    // Board digits 1-9, with optional Ctrl/Shift/Alt overrides. resolveDigit is the single,
+    // layout- and shift-glyph-aware resolution point, so a modified digit never leaks to the
+    // MainWindow bubble path. The raw modifiers travel with the signal; the consumer decides
+    // their meaning. 0 / Delete / Backspace / Space are deliberately left to bubble up.
+    if (auto digit = resolveDigit(key, event->modifiers(), event->nativeVirtualKey()); digit.has_value()) {
+        emit digitKeyPressed(digit.value(), event->modifiers());
         return;
     }
 

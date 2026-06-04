@@ -22,6 +22,7 @@
 #include "core/locale_utils.h"
 #include "core/observable.h"
 #include "infrastructure/app_directory_manager.h"
+#include "key_utils.h"
 #include "locale_utils.h"
 #include "model/game_state.h"
 #include "puzzle_import_dialog.h"
@@ -267,10 +268,12 @@ void MainWindow::setupCentralWidget() {
 
     connect(training_widget_, &TrainingWidget::backToGame, this, [this]() { central_stack_->setCurrentIndex(0); });
 
-    connect(board_widget_, &SudokuBoardWidget::numberKeyPressed, this, [this](int number) {
+    connect(board_widget_, &SudokuBoardWidget::digitKeyPressed, this, [this](int digit, Qt::KeyboardModifiers mods) {
         auto pos_opt = board_widget_->selectedCell();
         if (view_model_ && pos_opt.has_value()) {
-            view_model_->handleNumberInput(pos_opt.value(), number);
+            // overrideLayerFor maps Ctrl/Shift/Alt → the forced layer; std::nullopt keeps the
+            // active mode (AC-1). The ViewModel owns the actual routing decision (AC-8).
+            view_model_->handleNumberInput(pos_opt.value(), digit, overrideLayerFor(mods));
         }
     });
 }
@@ -758,35 +761,48 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         return;
     }
 
-    // N key toggles Notes mode directly
-    if (key == Qt::Key_N && event->modifiers() == Qt::NoModifier) {
-        auto current = view_model_->getInputMode();
-        view_model_->setInputMode(current == viewmodel::InputMode::Notes ? viewmodel::InputMode::Normal
-                                                                         : viewmodel::InputMode::Notes);
-        updateButtonPanel();
-        return;
-    }
+    // Number keys 1-9 (with Ctrl/Shift/Alt overrides) are handled by the board widget signal
+    // (digitKeyPressed). The hardcoded 'N' jump-to-Notes key was retired in 0a.2 — Space-cycle
+    // reaches any mode and the gameplay layer stays language-neutral.
 
-    // Number keys 1-9 are handled by board widget signals (numberKeyPressed)
-
-    // Editing keys
+    // Editing keys. Plain Delete/Backspace/0 clears the active layer; modifier combos clear a
+    // specific layer in any mode: Ctrl+0/Delete → value, Alt+0/Delete → color, Shift+Delete →
+    // all pencil marks. 0 is the erase digit in this domain, so Ctrl+0/Alt+0 arrive as Key_0.
     if (key == Qt::Key_Delete || key == Qt::Key_Backspace || key == Qt::Key_0) {
         auto edit_pos = board_widget_->selectedCell();
-        if (edit_pos.has_value()) {
-            switch (view_model_->getInputMode()) {
-                case viewmodel::InputMode::Color:
-                    view_model_->colorCell(edit_pos.value(), 0);  // Clear color
-                    break;
-                case viewmodel::InputMode::EditGivens:
-                    // clearCell is blocked on given cells; edit-mode givens need
-                    // their own clear path.
-                    view_model_->setEditModeGiven(edit_pos.value(), 0);
-                    break;
-                case viewmodel::InputMode::Normal:
-                case viewmodel::InputMode::Notes:
-                    view_model_->clearCell(edit_pos.value());
-                    break;
+        if (!edit_pos.has_value()) {
+            return;
+        }
+        const auto pos = edit_pos.value();
+        const auto mode = view_model_->getInputMode();
+        const auto mods = event->modifiers();
+
+        // Modifier erase overrides are meaningless while building givens (AC-9).
+        const bool has_erase_modifier =
+            mods.testFlag(Qt::ControlModifier) || mods.testFlag(Qt::AltModifier) || mods.testFlag(Qt::ShiftModifier);
+        if (mode != viewmodel::InputMode::EditGivens && has_erase_modifier) {
+            if (mods.testFlag(Qt::ControlModifier)) {
+                view_model_->clearCell(pos);  // Ctrl+0 / Ctrl+Delete → clear the value
+            } else if (mods.testFlag(Qt::AltModifier)) {
+                view_model_->colorCell(pos, 0);  // Alt+0 / Alt+Delete → clear the color
+            } else if (key != Qt::Key_0) {
+                view_model_->clearCellNotes(pos);  // Shift+Delete → clear all pencil marks
             }
+            return;
+        }
+
+        switch (mode) {
+            case viewmodel::InputMode::Color:
+                view_model_->colorCell(pos, 0);  // Clear color
+                break;
+            case viewmodel::InputMode::EditGivens:
+                // clearCell is blocked on given cells; edit-mode givens need their own clear path.
+                view_model_->setEditModeGiven(pos, 0);
+                break;
+            case viewmodel::InputMode::Normal:
+            case viewmodel::InputMode::Notes:
+                view_model_->clearCell(pos);
+                break;
         }
         return;
     }

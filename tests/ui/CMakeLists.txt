@@ -4,6 +4,7 @@ set(UI_TEST_SOURCES
     test_main_window_construction.cpp
     test_board_interaction.cpp
     test_keyboard_handling.cpp
+    test_resolve_digit.cpp
     test_menu_toolbar_actions.cpp
     test_view_model_binding.cpp
     test_training_widget.cpp

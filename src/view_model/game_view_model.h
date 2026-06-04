@@ -58,6 +58,10 @@ enum class InputMode : std::uint8_t {
     EditGivens,  ///< Number keys lay down "given" clue cells for an imported puzzle (I-2)
 };
 
+/// Size of the free-form analysis color palette (valid colors are 1..kColorPaletteSize).
+/// A domain value, not board geometry — there are six palette entries (see SudokuBoardColors).
+inline constexpr int kColorPaletteSize = 6;
+
 /// Commands that can be executed from the UI
 enum class GameCommand : std::uint8_t {
     NewGame,
@@ -205,8 +209,17 @@ public:
     void enterNote(const core::Position& pos, int number);
     void clearCell(const core::Position& pos);
 
-    /// Mode-aware number input: validates and routes to enterNumber/enterNote/colorCell
-    void handleNumberInput(const core::Position& pos, int number);
+    /// Clear every pencil mark in a single cell (the Shift+Delete shortcut). Reuses the
+    /// undoable note-removal path; no-op on given or filled cells, since pencil marks only
+    /// ever exist on empty cells.
+    void clearCellNotes(const core::Position& pos);
+
+    /// Mode-aware number input: validates and routes to enterNumber/enterNote/colorCell.
+    /// `override_layer` forces a specific layer regardless of the active InputMode
+    /// (Ctrl→Normal/value, Shift→Notes/pencil, Alt→Color); std::nullopt uses the active
+    /// mode (the regression-safe default). Overrides are no-ops in EditGivens.
+    void handleNumberInput(const core::Position& pos, int number,
+                           std::optional<InputMode> override_layer = std::nullopt);
 
     // Analysis cell coloring (ephemeral, not saved/undoable)
     void colorCell(const core::Position& pos, uint8_t color_index);
