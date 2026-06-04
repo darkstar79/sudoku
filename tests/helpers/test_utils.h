@@ -54,6 +54,40 @@ private:
 };
 
 // ============================================================================
+// Portable Environment Variable Helpers
+// ============================================================================
+
+/// Set an environment variable for the current process.
+/// POSIX `setenv`/`unsetenv` are unavailable in the MSVC CRT, so this wraps
+/// `_putenv_s` on Windows and `setenv` elsewhere. Overwrites any existing value.
+void setEnvVar(const char* name, const std::string& value);
+
+/// Remove an environment variable from the current process.
+/// Wraps `_putenv_s(name, "")` on Windows (an empty value deletes the entry)
+/// and `unsetenv` elsewhere.
+void unsetEnvVar(const char* name);
+
+/// RAII override of an environment variable: sets `name` to `value` on
+/// construction and restores the previous value — or unsets it if it was
+/// absent — on destruction. Built on the portable setEnvVar/unsetEnvVar
+/// helpers, so it works on MSVC and POSIX alike.
+class ScopedEnvVar {
+public:
+    ScopedEnvVar(const char* name, const std::string& value);
+    ~ScopedEnvVar();
+
+    ScopedEnvVar(const ScopedEnvVar&) = delete;
+    ScopedEnvVar& operator=(const ScopedEnvVar&) = delete;
+    ScopedEnvVar(ScopedEnvVar&&) = delete;
+    ScopedEnvVar& operator=(ScopedEnvVar&&) = delete;
+
+private:
+    const char* name_;
+    std::string previous_;
+    bool had_previous_{false};
+};
+
+// ============================================================================
 // Board Search Helpers (Replace goto patterns)
 // ============================================================================
 

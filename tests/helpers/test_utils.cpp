@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
 
 namespace sudoku::test {
 
@@ -43,6 +44,42 @@ TempTestDir::~TempTestDir() {
 
 const std::filesystem::path& TempTestDir::path() const {
     return path_;
+}
+
+// ============================================================================
+// Portable Environment Variable Helpers
+// ============================================================================
+
+void setEnvVar(const char* name, const std::string& value) {
+#ifdef _WIN32
+    _putenv_s(name, value.c_str());
+#else
+    ::setenv(name, value.c_str(), 1);
+#endif
+}
+
+void unsetEnvVar(const char* name) {
+#ifdef _WIN32
+    _putenv_s(name, "");
+#else
+    ::unsetenv(name);
+#endif
+}
+
+ScopedEnvVar::ScopedEnvVar(const char* name, const std::string& value) : name_(name) {
+    if (const char* prev = std::getenv(name)) {
+        previous_ = prev;
+        had_previous_ = true;
+    }
+    setEnvVar(name, value);
+}
+
+ScopedEnvVar::~ScopedEnvVar() {
+    if (had_previous_) {
+        setEnvVar(name_, previous_);
+    } else {
+        unsetEnvVar(name_);
+    }
 }
 
 // ============================================================================

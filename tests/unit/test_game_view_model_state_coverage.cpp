@@ -16,6 +16,7 @@
 
 #include "../helpers/game_view_model_fixture.h"
 #include "../helpers/test_utils.h"
+#include "infrastructure/app_directory_manager.h"
 
 #include <chrono>
 #include <cstdlib>
@@ -190,36 +191,27 @@ TEST_CASE("GameViewModel CSV/JSON export entry points", "[game_view_model][state
     fixture.view_model->startNewGame(Difficulty::Easy);
 
     // The default-directory export functions (exportAggregateStatsCsv / exportGameSessionsCsv)
-    // resolve their output path via AppDirectoryManager::getDefaultDirectory, which honors
-    // XDG_DATA_HOME on Linux. Redirect it to the fixture's temp dir so the test stays
-    // hermetic and doesn't pollute the user's real ~/.local/share/sudoku/.
-    struct XdgOverride {
-        std::string previous;
-        bool had_previous{false};
-        explicit XdgOverride(const std::string& path) {
-            if (const char* prev = std::getenv("XDG_DATA_HOME")) {
-                previous = prev;
-                had_previous = true;
-            }
-            ::setenv("XDG_DATA_HOME", path.c_str(), 1);
-        }
-        XdgOverride(const XdgOverride&) = delete;
-        XdgOverride& operator=(const XdgOverride&) = delete;
-        XdgOverride(XdgOverride&&) = delete;
-        XdgOverride& operator=(XdgOverride&&) = delete;
-        ~XdgOverride() {
-            if (had_previous) {
-                ::setenv("XDG_DATA_HOME", previous.c_str(), 1);
-            } else {
-                ::unsetenv("XDG_DATA_HOME");
-            }
-        }
-    };
-    XdgOverride xdg(fixture.temp_dir.path().string());
+    // resolve their output path via AppDirectoryManager::getDefaultDirectory. That base
+    // directory is derived from a different environment variable on each platform
+    // (XDG_DATA_HOME on Linux, HOME on macOS, APPDATA on Windows — see
+    // AppDirectoryManager::getPlatformBaseDirectory). Redirect whichever one applies to
+    // the fixture's temp dir so the test stays hermetic and doesn't pollute the user's
+    // real data directory.
+#if defined(_WIN32)
+    constexpr const char* kDataDirEnv = "APPDATA";
+#elif defined(__APPLE__)
+    constexpr const char* kDataDirEnv = "HOME";
+#else
+    constexpr const char* kDataDirEnv = "XDG_DATA_HOME";
+#endif
+    sudoku::test::ScopedEnvVar data_dir(kDataDirEnv, fixture.temp_dir.path().string());
 
-    // The serializer does not auto-create parent directories — pre-create the
-    // path that AppDirectoryManager will resolve to under the redirected XDG_DATA_HOME.
-    std::filesystem::create_directories(fixture.temp_dir.path() / "sudoku" / "stats");
+    // The serializer does not auto-create parent directories — pre-create the path that
+    // AppDirectoryManager now resolves to under the redirected base directory. Querying
+    // getDefaultDirectory (rather than hardcoding the layout) keeps this correct across
+    // platforms, whose base-directory layouts differ.
+    std::filesystem::create_directories(
+        infrastructure::AppDirectoryManager::getDefaultDirectory(infrastructure::DirectoryType::Statistics));
 
     SECTION("exportAggregateStatsCsv writes a CSV under the redirected XDG path") {
         auto result = fixture.view_model->exportAggregateStatsCsv();
