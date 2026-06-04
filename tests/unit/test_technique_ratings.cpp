@@ -109,6 +109,9 @@ constexpr std::array<std::pair<SolvingTechnique, double>, kPinnedStrategyCount> 
 
 }  // namespace
 
+// Catch2 TEST_CASE: the SECTIONs + the 54-row pin loop expand to nested conditionals, so the
+// generated function trips the cognitive-complexity threshold; complexity is inherent to the pin.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("getTechniqueRating() golden pin — all 54 strategy ratings", "[solver][ratings]") {
     SECTION("Each strategy technique returns its pinned current rating") {
         for (const auto& [technique, expected] : kExpectedRatings) {
