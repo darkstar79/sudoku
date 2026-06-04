@@ -16,7 +16,6 @@
 
 #include "../helpers/game_view_model_fixture.h"
 #include "../helpers/test_utils.h"
-
 #include "infrastructure/app_directory_manager.h"
 
 #include <chrono>
@@ -235,8 +234,7 @@ TEST_CASE("GameViewModel CSV/JSON export entry points", "[game_view_model][state
     // getDefaultDirectory (rather than hardcoding the layout) keeps this correct across
     // platforms, whose base-directory layouts differ.
     std::filesystem::create_directories(
-        infrastructure::AppDirectoryManager::getDefaultDirectory(
-            infrastructure::DirectoryType::Statistics));
+        infrastructure::AppDirectoryManager::getDefaultDirectory(infrastructure::DirectoryType::Statistics));
 
     SECTION("exportAggregateStatsCsv writes a CSV under the redirected XDG path") {
         auto result = fixture.view_model->exportAggregateStatsCsv();
