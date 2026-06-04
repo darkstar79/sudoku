@@ -50,6 +50,12 @@ enum class AnswerResult : uint8_t {
     Incorrect          ///< Wrong answer
 };
 
+/// Training exposes exactly two player palette colors (A and B); 0 means "no color".
+/// These bound the valid `player_color` range so out-of-range input (e.g. a keyboard
+/// Alt+digit chord on the shared board widget) cannot write an unrenderable color value.
+inline constexpr int kMinPlayerColor = 1;  ///< Color A
+inline constexpr int kMaxPlayerColor = 2;  ///< Color B
+
 /// State of a single cell in a training exercise board
 struct TrainingCellState {
     int value{0};                                ///< Placed value (0 = empty)

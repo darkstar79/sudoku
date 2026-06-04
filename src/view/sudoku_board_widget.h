@@ -25,6 +25,7 @@
 
 #include <QWidget>
 #include <qcolor.h>
+#include <qnamespace.h>
 #include <qpoint.h>
 #include <qrect.h>
 #include <qtmetamacros.h>
@@ -80,8 +81,11 @@ public:
 
 signals:
     void cellClicked(size_t row, size_t col);
-    void numberKeyPressed(int value);
-    void colorKeyPressed(int color);
+    /// A board digit (1..9) was entered. `modifiers` carries the raw Ctrl/Shift/Alt flags so
+    /// each consumer (the game vs Training) decides the meaning — this keeps the game's override
+    /// semantics out of the shared widget. The digit is already resolved (layout/shift-glyph
+    /// aware) via resolveDigit; `0`, Delete and Space are not reported here (they bubble up).
+    void digitKeyPressed(int digit, Qt::KeyboardModifiers modifiers);
 
 protected:
     void paintEvent(QPaintEvent* event) override;

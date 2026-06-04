@@ -219,8 +219,27 @@ void GameViewModel::colorCell(const core::Position& pos, uint8_t color_index) {
         [&pos, color_index](model::GameState& state) { state.setCellColor(pos.row, pos.col, color_index); });
 }
 
-void GameViewModel::handleNumberInput(const core::Position& pos, int number) {
-    if (!isGameActive() || number < 1 || number > 9) {
+void GameViewModel::clearCellNotes(const core::Position& pos) {
+    if (!isGameActive()) {
+        return;
+    }
+    const auto& state = gameState.get();
+    // Pencil marks only ever exist on empty, non-given cells.
+    if (state.isGiven(pos) || state.getValue(pos) != core::EMPTY_CELL) {
+        return;
+    }
+    // Toggle each present mark off through the existing undoable note path — no parallel
+    // note-clearing logic (AC-13). Snapshot first: enterNote mutates the live state.
+    const auto notes = state.getNotes(pos);
+    for (int value = core::MIN_VALUE; value <= core::MAX_VALUE; ++value) {
+        if (notes.contains(value)) {
+            enterNote(pos, value);
+        }
+    }
+}
+
+void GameViewModel::handleNumberInput(const core::Position& pos, int number, std::optional<InputMode> override_layer) {
+    if (!isGameActive() || number < core::MIN_VALUE || number > core::MAX_VALUE) {
         return;
     }
     const auto& state = gameState.get();
@@ -232,6 +251,10 @@ void GameViewModel::handleNumberInput(const core::Position& pos, int number) {
     // EditGivens is the one mode where "given" cells are still editable — the user is
     // building the puzzle, not solving it. Handle it before the is_given guard.
     if (getInputMode() == InputMode::EditGivens) {
+        // While laying down givens the *override* is meaningless, not the keystroke: a held
+        // modifier is stripped and the key acts as its plain self (Ctrl+8/Alt+8 → set given 8),
+        // matching the already-plain Ctrl+Delete given-clear. Only final givens exist here, so
+        // there is no value/pencil/color layer to force (AC-9; UX ruling 2026-06-04).
         // Tapping a digit on a cell already showing that digit clears it (toggle behaviour
         // parallel to Normal mode's cell.value == number → clear).
         const int new_value = (cell.value == number) ? 0 : number;
@@ -243,8 +266,14 @@ void GameViewModel::handleNumberInput(const core::Position& pos, int number) {
         return;
     }
 
-    switch (getInputMode()) {
+    // No override → act on the active mode (regression-safe, AC-1). An override forces its
+    // layer (Ctrl→Normal/value, Shift→Notes/pencil, Alt→Color) in any mode.
+    const InputMode layer = override_layer.value_or(getInputMode());
+
+    switch (layer) {
         case InputMode::Normal:
+            // Value layer: place into an empty cell, or clear when re-pressing the same value.
+            // Reused verbatim by the Ctrl override (AC-2, AC-13).
             if (cell.value == 0) {
                 enterNumber(pos, number);
             } else if (cell.value == number) {
@@ -252,17 +281,27 @@ void GameViewModel::handleNumberInput(const core::Position& pos, int number) {
             }
             break;
         case InputMode::Notes:
+            // enterNote already toggles and honors the empty-cell guard (AC-3, AC-13).
             if (cell.value == 0) {
                 enterNote(pos, number);
             }
             break;
         case InputMode::Color:
-            if (number <= 6) {
-                colorCell(pos, static_cast<uint8_t>(number));
+            if (number <= kColorPaletteSize) {
+                if (override_layer.has_value()) {
+                    // Alt override toggles off when re-applying the same color, and replaces
+                    // otherwise (AC-4). Plain Color mode keeps its set-only behavior (AC-1).
+                    const auto current = state.getCellColor(pos.row, pos.col);
+                    const auto target =
+                        (current == static_cast<uint8_t>(number)) ? uint8_t{0} : static_cast<uint8_t>(number);
+                    colorCell(pos, target);
+                } else {
+                    colorCell(pos, static_cast<uint8_t>(number));
+                }
             }
             break;
         case InputMode::EditGivens:
-            // Handled above.
+            // Unreachable: active EditGivens is handled above, and an override is never EditGivens.
             break;
     }
 }

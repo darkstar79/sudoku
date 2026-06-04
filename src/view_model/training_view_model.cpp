@@ -328,6 +328,12 @@ void TrainingViewModel::applyNumber(int value) {
 }
 
 void TrainingViewModel::applyColor(int color) {
+    // Training has exactly two palette colors (A=1, B=2). Reject anything outside that range so a
+    // keyboard Alt+digit chord (the shared board widget resolves digits 1..9) cannot write an
+    // unrenderable player_color (3..9) — invisible, yet non-zero and recorded in undo history.
+    if (color < kMinPlayerColor || color > kMaxPlayerColor) {
+        return;
+    }
     const auto& state = trainingState.get();
     if (!state.selected_cell.has_value()) {
         return;

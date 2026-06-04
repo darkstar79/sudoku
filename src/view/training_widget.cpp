@@ -504,19 +504,17 @@ void TrainingWidget::buildExercisePage() {
         }
     });
 
-    // Keyboard number keys from board → ViewModel
-    connect(training_board_, &SudokuBoardWidget::numberKeyPressed, this, [this](int value) {
+    // Keyboard digit input from the shared board → ViewModel. The widget now reports a single
+    // raw intent (resolved digit + modifier flags); Training applies its own meaning: Alt+digit
+    // colors the cell (migrated from the retired A/B keys), any other digit places/eliminates.
+    // The game-only Ctrl (value) and Shift (pencil) overrides are intentionally not honored here.
+    connect(training_board_, &SudokuBoardWidget::digitKeyPressed, this, [this](int digit, Qt::KeyboardModifiers mods) {
         if (training_vm_) {
-            training_vm_->applyNumber(value);
-            undo_btn_->setEnabled(training_vm_->canUndo());
-            redo_btn_->setEnabled(training_vm_->canRedo());
-        }
-    });
-
-    // Keyboard color keys from board → ViewModel
-    connect(training_board_, &SudokuBoardWidget::colorKeyPressed, this, [this](int color) {
-        if (training_vm_) {
-            training_vm_->applyColor(color);
+            if (mods.testFlag(Qt::AltModifier)) {
+                training_vm_->applyColor(digit);
+            } else {
+                training_vm_->applyNumber(digit);
+            }
             undo_btn_->setEnabled(training_vm_->canUndo());
             redo_btn_->setEnabled(training_vm_->canRedo());
         }

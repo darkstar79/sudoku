@@ -915,6 +915,37 @@ TEST_CASE("TrainingViewModel - undo history capped at max", "[training_view_mode
     CHECK(undo_count <= 50);
 }
 
+// --- applyColor range guard ---
+
+// Training has exactly two palette colors (A=1, B=2). The shared board widget resolves keyboard
+// digits 1..9, so applyColor must reject out-of-range digits — otherwise an Alt+digit chord could
+// write an unrenderable player_color (3..9) that is invisible but still recorded in undo history.
+TEST_CASE("TrainingViewModel - applyColor only accepts the two palette colors", "[training_view_model]") {
+    VMFixture f;
+    f.vm.selectTechnique(SolvingTechnique::NakedSingle);
+    f.vm.startExercises();
+    f.vm.selectCell(1, 0);  // (1,0) is editable (only (0,0)/(0,1) are given)
+
+    SECTION("Color A (1) and Color B (2) are applied") {
+        f.vm.applyColor(kMinPlayerColor);
+        CHECK(f.vm.trainingBoard.get()[1][0].player_color == kMinPlayerColor);
+
+        f.vm.applyColor(kMaxPlayerColor);
+        CHECK(f.vm.trainingBoard.get()[1][0].player_color == kMaxPlayerColor);
+    }
+
+    SECTION("Digits above the palette (3..9) are a no-op, leaving the existing color intact") {
+        f.vm.applyColor(kMaxPlayerColor);  // establish a valid color first
+        REQUIRE(f.vm.trainingBoard.get()[1][0].player_color == kMaxPlayerColor);
+
+        f.vm.applyColor(5);  // Alt+5 — outside the A/B palette
+        CHECK(f.vm.trainingBoard.get()[1][0].player_color == kMaxPlayerColor);
+
+        f.vm.applyColor(9);  // Alt+9 — outside the A/B palette
+        CHECK(f.vm.trainingBoard.get()[1][0].player_color == kMaxPlayerColor);
+    }
+}
+
 // --- Continue-on-correct flow ---
 
 namespace {
