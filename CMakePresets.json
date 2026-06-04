@@ -14,7 +14,8 @@
             "toolchainFile": "${sourceDir}/build/Release/generators/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "SUDOKU_ENABLE_UI_TESTS": "ON"
             }
         },
         {
@@ -25,7 +26,8 @@
             "toolchainFile": "${sourceDir}/build/Debug/generators/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "SUDOKU_ENABLE_UI_TESTS": "ON"
             }
         },
         {
@@ -36,7 +38,8 @@
             "toolchainFile": "${sourceDir}/build/RelWithDebInfo/generators/conan_toolchain.cmake",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "SUDOKU_ENABLE_UI_TESTS": "ON"
             }
         }
     ],
