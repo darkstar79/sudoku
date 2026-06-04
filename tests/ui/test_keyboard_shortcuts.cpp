@@ -10,6 +10,7 @@
 #include "view/keyboard_shortcuts.h"
 #include "view/main_window.h"
 
+#include <optional>
 #include <set>
 
 #include <QAction>
@@ -31,6 +32,17 @@ namespace {
     return QKeySequence(Qt::Key_Space).toString(QKeySequence::NativeText);
 }
 
+// First shortcut entry with the given action, or nullopt. Keeps the test bodies flat (no
+// loops) so each stays well under the cognitive-complexity threshold.
+[[nodiscard]] std::optional<view::ShortcutEntry> entryFor(view::ShortcutAction action) {
+    for (const auto& entry : view::keyboardShortcuts()) {
+        if (entry.action == action) {
+            return entry;
+        }
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
 class TestKeyboardShortcuts : public QObject {
@@ -46,6 +58,9 @@ private slots:
     void modeButtonLabelSurfacesSpaceAffordance();
     void statusBarExposesModifierHint();
 
+    // Qt needs `private slots:` for the test methods, kept separate from the plain-`private:`
+    // data members below.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     std::unique_ptr<test::UITestContext> ctx_;
     std::unique_ptr<view::MainWindow> window_;
@@ -83,27 +98,18 @@ void TestKeyboardShortcuts::sourceListCoversExpectedActions() {
 }
 
 void TestKeyboardShortcuts::chordTextRendersNativeModifierAndDigitRange() {
-    const auto shortcuts = view::keyboardShortcuts();
-
-    for (const auto& entry : shortcuts) {
-        if (entry.action == view::ShortcutAction::ValueOverride) {
-            const QString chord = view::shortcutChordText(entry);
-            // Modifier glyph comes from NativeText (no hard-coded "Ctrl" literal).
-            QVERIFY(chord.contains(view::nativeModifierName(Qt::ControlModifier)));
-            // Digit family renders a 1..9 range, not a single representative digit.
-            QVERIFY(chord.contains(QString::number(core::MAX_VALUE)));
-        }
-    }
+    const auto value = entryFor(view::ShortcutAction::ValueOverride);
+    QVERIFY(value.has_value());
+    const QString value_chord = view::shortcutChordText(value.value());
+    // Modifier glyph comes from NativeText (no hard-coded "Ctrl" literal).
+    QVERIFY(value_chord.contains(view::nativeModifierName(Qt::ControlModifier)));
+    // Digit family renders a 1..9 range, not a single representative digit.
+    QVERIFY(value_chord.contains(QString::number(core::MAX_VALUE)));
 
     // The Space cycle row renders the native Space key.
-    bool saw_cycle = false;
-    for (const auto& entry : shortcuts) {
-        if (entry.action == view::ShortcutAction::CycleMode) {
-            saw_cycle = true;
-            QVERIFY(view::shortcutChordText(entry).contains(nativeSpace()));
-        }
-    }
-    QVERIFY(saw_cycle);
+    const auto cycle = entryFor(view::ShortcutAction::CycleMode);
+    QVERIFY(cycle.has_value());
+    QVERIFY(view::shortcutChordText(cycle.value()).contains(nativeSpace()));
 }
 
 void TestKeyboardShortcuts::modifierHintNamesAllThreeModifiers() {
@@ -117,17 +123,24 @@ void TestKeyboardShortcuts::modifierHintNamesAllThreeModifiers() {
 void TestKeyboardShortcuts::buildShortcutsDialogIsPopulatedFromSourceList() {
     auto* dialog = window_->buildKeyboardShortcutsDialog();
     QVERIFY(dialog != nullptr);
+    if (dialog == nullptr) {
+        return;
+    }
 
     auto* table = dialog->findChild<QTableWidget*>("keyboardShortcutsTable");
     QVERIFY(table != nullptr);
+    if (table == nullptr) {
+        delete dialog;
+        return;
+    }
     QCOMPARE(table->rowCount(), static_cast<int>(view::keyboardShortcuts().size()));
 
     // Every row carries both an action label and a chord — the no-drift surface.
     for (int row = 0; row < table->rowCount(); ++row) {
-        QVERIFY(table->item(row, 0) != nullptr);
-        QVERIFY(!table->item(row, 0)->text().isEmpty());
-        QVERIFY(table->item(row, 1) != nullptr);
-        QVERIFY(!table->item(row, 1)->text().isEmpty());
+        const auto* action_item = table->item(row, 0);
+        const auto* chord_item = table->item(row, 1);
+        QVERIFY(action_item != nullptr && !action_item->text().isEmpty());
+        QVERIFY(chord_item != nullptr && !chord_item->text().isEmpty());
     }
 
     delete dialog;
@@ -136,6 +149,9 @@ void TestKeyboardShortcuts::buildShortcutsDialogIsPopulatedFromSourceList() {
 void TestKeyboardShortcuts::helpMenuActionOpensShortcutsDialog() {
     auto* action = window_->findChild<QAction*>("keyboardShortcutsAction");
     QVERIFY(action != nullptr);
+    if (action == nullptr) {
+        return;
+    }
 
     action->trigger();
     QApplication::processEvents();
@@ -149,6 +165,9 @@ void TestKeyboardShortcuts::helpMenuActionOpensShortcutsDialog() {
         }
     }
     QVERIFY(opened != nullptr);
+    if (opened == nullptr) {
+        return;
+    }
     QVERIFY(opened->isVisible());
 
     opened->close();
@@ -176,6 +195,9 @@ void TestKeyboardShortcuts::modeButtonLabelSurfacesSpaceAffordance() {
 void TestKeyboardShortcuts::statusBarExposesModifierHint() {
     auto* hint = window_->findChild<QLabel*>("modifierHintLabel");
     QVERIFY(hint != nullptr);
+    if (hint == nullptr) {
+        return;
+    }
     QVERIFY(!hint->text().isEmpty());
     QVERIFY(hint->text().contains(view::nativeModifierName(Qt::ControlModifier)));
 }

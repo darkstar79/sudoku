@@ -170,23 +170,18 @@ TEST_CASE("GameViewModel - colorCell notifies observers so the board repaints",
     int notifications = 0;
     auto unsubscribe = vm.gameState.subscribe([&notifications](const model::GameState&) { ++notifications; });
 
-    SECTION("Setting a color fires a gameState notification") {
-        vm.colorCell(pos, 3);
-        REQUIRE(notifications == 1);
-        REQUIRE(vm.gameState.get().getCellColor(pos.row, pos.col) == 3);
-    }
+    // Each color mutation (set, change to a different value, clear) must fire its own notification —
+    // otherwise the board would not repaint. A flat set→change→clear narrative on one subscription.
+    vm.colorCell(pos, 3);
+    REQUIRE(notifications == 1);
+    REQUIRE(vm.gameState.get().getCellColor(pos.row, pos.col) == 3);
 
-    SECTION("Changing a color to a different value fires another notification") {
-        vm.colorCell(pos, 3);
-        vm.colorCell(pos, 5);
-        REQUIRE(notifications == 2);
-    }
+    vm.colorCell(pos, 5);
+    REQUIRE(notifications == 2);
 
-    SECTION("Clearing a color fires a notification") {
-        vm.colorCell(pos, 3);
-        vm.colorCell(pos, 0);
-        REQUIRE(notifications == 2);
-    }
+    vm.colorCell(pos, 0);
+    REQUIRE(notifications == 3);
+    REQUIRE(vm.gameState.get().getCellColor(pos.row, pos.col) == 0);
 
     unsubscribe();
 }

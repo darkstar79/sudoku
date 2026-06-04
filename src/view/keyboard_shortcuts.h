@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 #include <QString>
@@ -27,7 +28,7 @@ namespace sudoku::view {
 /// Semantic category of a keyboard shortcut row. Stable, language-neutral identifier:
 /// tests assert on the category (not the localized label), and the human label/chord are
 /// derived from it. The categories mirror the binding set implemented in story 0a.2.
-enum class ShortcutAction {
+enum class ShortcutAction : std::uint8_t {
     ActiveModeDigit,   ///< plain digit — acts on the active input mode's layer
     ValueOverride,     ///< Ctrl/Cmd + digit — force a final value
     PencilOverride,    ///< Shift + digit — toggle a pencil mark
@@ -44,11 +45,11 @@ enum class ShortcutAction {
 /// dialog and the status-line hint render from it, so the documented map cannot drift
 /// from the actual bindings (story 0a.3, AC-5).
 struct ShortcutEntry {
-    ShortcutAction action;
+    ShortcutAction action{};
     Qt::KeyboardModifiers modifiers;  ///< modifier portion of the chord (NoModifier for plain keys)
-    int key;                          ///< representative Qt::Key for the non-modifier part
-    bool digit_family;                ///< true → `key` is a placeholder for a 1..digit_max range
-    int digit_max;                    ///< upper bound of the digit range (only meaningful when digit_family)
+    int key{};                        ///< representative Qt::Key for the non-modifier part
+    bool digit_family{};              ///< true → `key` is a placeholder for a 1..digit_max range
+    int digit_max{};                  ///< upper bound of the digit range (only meaningful when digit_family)
 };
 
 /// The canonical keyboard map, in display order. The one list the dialog and hint consume.

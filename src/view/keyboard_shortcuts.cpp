@@ -34,7 +34,7 @@ namespace {
     if (modifiers == Qt::NoModifier) {
         return {};
     }
-    const QString full = QKeySequence(QKeyCombination(modifiers, Qt::Key_1)).toString(QKeySequence::NativeText);
+    QString full = QKeySequence(QKeyCombination(modifiers, Qt::Key_1)).toString(QKeySequence::NativeText);
     const QString key = QKeySequence(QKeyCombination(Qt::NoModifier, Qt::Key_1)).toString(QKeySequence::NativeText);
     if (full.endsWith(key)) {
         return full.left(full.size() - key.size());
