@@ -100,6 +100,9 @@ void TestKeyboardShortcuts::sourceListCoversExpectedActions() {
 void TestKeyboardShortcuts::chordTextRendersNativeModifierAndDigitRange() {
     const auto value = entryFor(view::ShortcutAction::ValueOverride);
     QVERIFY(value.has_value());
+    if (!value.has_value()) {
+        return;
+    }
     const QString value_chord = view::shortcutChordText(value.value());
     // Modifier glyph comes from NativeText (no hard-coded "Ctrl" literal).
     QVERIFY(value_chord.contains(view::nativeModifierName(Qt::ControlModifier)));
@@ -109,6 +112,9 @@ void TestKeyboardShortcuts::chordTextRendersNativeModifierAndDigitRange() {
     // The Space cycle row renders the native Space key.
     const auto cycle = entryFor(view::ShortcutAction::CycleMode);
     QVERIFY(cycle.has_value());
+    if (!cycle.has_value()) {
+        return;
+    }
     QVERIFY(view::shortcutChordText(cycle.value()).contains(nativeSpace()));
 }
 
