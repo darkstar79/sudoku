@@ -215,11 +215,17 @@ jobs:
     # (a broken-test PR is exactly when lint feedback matters). format-check must
     # still gate it (a formatting violation skips this job). On a test-failure the
     # cache is restored via the restore-keys prefix instead of the exact SHA.
-    # Skip on pushes to main: there's no meaningful diff base (already merged).
-    # Nightly's full clang-tidy is the safety net for the trunk.
+    # Also runs on manual workflow_dispatch so a full-matrix dispatch (which
+    # otherwise cancels the in-flight PR run via the shared concurrency group)
+    # still covers lint. Skip on main for push/dispatch: there's no meaningful
+    # diff base (already merged), so the diff is empty and the pass is vacuous.
+    # PR events are never on refs/heads/main (their ref is refs/pull/N/merge),
+    # so the guard leaves them unaffected. Nightly's full clang-tidy is the
+    # safety net for the trunk.
     if: |
       always() && needs.format-check.result == 'success' &&
-      (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main'))
+      (github.event_name == 'pull_request' ||
+       ((github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref != 'refs/heads/main'))
     timeout-minutes: 25
 
     steps:
