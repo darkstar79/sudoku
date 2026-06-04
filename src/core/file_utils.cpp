@@ -42,7 +42,10 @@ namespace {
 // rename metadata can reach disk before the data, defeating the atomicity.
 [[nodiscard]] std::error_code fsyncFile(const std::filesystem::path& path) {
 #ifdef _WIN32
-    const int fd = ::_open(path.string().c_str(), _O_RDONLY | _O_BINARY);
+    // _commit() flushes via FlushFileBuffers, which requires a handle with
+    // GENERIC_WRITE access. Opening read-only yields ERROR_ACCESS_DENIED,
+    // surfaced as EBADF — so the descriptor must be writable here.
+    const int fd = ::_open(path.string().c_str(), _O_WRONLY | _O_BINARY);
     if (fd == -1) {
         return {errno, std::generic_category()};
     }

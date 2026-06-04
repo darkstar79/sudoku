@@ -54,6 +54,20 @@ private:
 };
 
 // ============================================================================
+// Portable Environment Variable Helpers
+// ============================================================================
+
+/// Set an environment variable for the current process.
+/// POSIX `setenv`/`unsetenv` are unavailable in the MSVC CRT, so this wraps
+/// `_putenv_s` on Windows and `setenv` elsewhere. Overwrites any existing value.
+void setEnvVar(const char* name, const std::string& value);
+
+/// Remove an environment variable from the current process.
+/// Wraps `_putenv_s(name, "")` on Windows (an empty value deletes the entry)
+/// and `unsetenv` elsewhere.
+void unsetEnvVar(const char* name);
+
+// ============================================================================
 // Board Search Helpers (Replace goto patterns)
 // ============================================================================
 
