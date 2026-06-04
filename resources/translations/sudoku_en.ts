@@ -413,6 +413,14 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>{0} ({1})</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Input mode — Space cycles Normal → Notes → Color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Import Custom Puzzle…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -430,6 +438,10 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Find Step by Technique…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Keyboard Shortcuts…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -634,6 +646,18 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Keyboard Shortcuts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Action</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shortcut</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Highlight Conflicts</source>
         <translation type="unfinished"></translation>
     </message>
@@ -687,10 +711,6 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Disabling session tracking will stop recording per-game statistics. Would you like to delete existing session history?</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Input mode (Space to cycle, N for Notes)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2119,6 +2139,54 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Find</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter a digit in the active mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enter a final value (any mode)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Toggle a pencil mark (any mode)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Apply a color (any mode)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cycle input mode (Normal → Notes → Color)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clear the active layer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clear the value</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clear the color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Clear all pencil marks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>value</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>pencil</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>color</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
