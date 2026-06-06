@@ -281,6 +281,8 @@ void GameViewModel::importPuzzleFromString(std::string_view input) {
     current_puzzle_rating_ = 0.0;
     current_puzzle_techniques_.clear();
     current_puzzle_requires_backtracking_ = false;
+    // New puzzle (not a loaded save) → rating-model provenance is the current build.
+    current_puzzle_rating_model_version_ = core::RATING_MODEL_VERSION;
     current_puzzle_origin_ = core::PuzzleOrigin::ImportedString;
 
     // Auto-analyze before startGameSession so the stats record uses the real rating.
@@ -336,6 +338,8 @@ void GameViewModel::enterEditMode() {
     current_puzzle_rating_ = 0.0;
     current_puzzle_techniques_.clear();
     current_puzzle_requires_backtracking_ = false;
+    // New puzzle (not a loaded save) → rating-model provenance is the current build.
+    current_puzzle_rating_model_version_ = core::RATING_MODEL_VERSION;
     current_puzzle_origin_ = core::PuzzleOrigin::Generated;  // Final origin is set at commit time.
 
     errorMessage.set("");
@@ -404,6 +408,8 @@ void GameViewModel::commitEditedPuzzle() {
     current_puzzle_rating_ = 0.0;
     current_puzzle_techniques_.clear();
     current_puzzle_requires_backtracking_ = false;
+    // New puzzle (not a loaded save) → rating-model provenance is the current build.
+    current_puzzle_rating_model_version_ = core::RATING_MODEL_VERSION;
     current_puzzle_origin_ = core::PuzzleOrigin::ImportedEditMode;
 
     // Auto-analyze before startGameSession so the stats record uses the real rating.
@@ -450,6 +456,8 @@ void GameViewModel::applyDifficultyScore(const core::BoardData& board) {
 
     current_puzzle_rating_ = score->max_rating;
     current_puzzle_requires_backtracking_ = score->requires_backtracking;
+    // Imported/edited puzzle freshly rated by this build → stamp the current rating-model version.
+    current_puzzle_rating_model_version_ = core::RATING_MODEL_VERSION;
     current_puzzle_techniques_.clear();
     for (int id : score->technique_ids) {
         current_puzzle_techniques_.insert(static_cast<core::SolvingTechnique>(id));

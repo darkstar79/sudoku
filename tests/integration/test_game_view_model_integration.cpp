@@ -507,3 +507,43 @@ TEST_CASE("GameViewModel - Hint-Revealed State Persists After Save/Load", "[game
     // Cleanup
     std::filesystem::remove_all(temp_dir);
 }
+
+// Story 0b.0 firewall: loading a legacy/stale save and re-saving it (auto-save, rename, mid-game
+// checkpoint) must PRESERVE the original rating-model version — the ViewModel must not promote it
+// to the current model and silently lose the stale marker without ever re-rating.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE macro expansion
+TEST_CASE("GameViewModel - Re-saving a loaded legacy game preserves its stale rating-model version",
+          "[game_view_model][rating_model][save_load][regression]") {
+    GameViewModelTestFixture fixture;
+
+    // Seed a stale save: a real rating, but produced by an older rating model (version 0).
+    SavedGame legacy;
+    legacy.display_name = "Legacy stale save";
+    legacy.original_puzzle = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                              {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                              {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+    legacy.current_state = legacy.original_puzzle;
+    legacy.difficulty = Difficulty::Hard;
+    legacy.puzzle_rating = 4.5;
+    legacy.rating_model_version = 0;  // older model than this build
+    REQUIRE(legacy.isRatingStale());
+
+    auto seed_id = fixture.save_manager->saveGame(legacy);
+    REQUIRE(seed_id.has_value());
+
+    // Load it into the ViewModel, then re-save (the real-world auto-save / rename path).
+    fixture.view_model->loadGame(*seed_id);
+    REQUIRE(fixture.view_model->saveCurrentGame("Re-saved stale game"));
+
+    // The re-saved copy must still carry version 0 — provenance preserved, still stale.
+    auto saves = fixture.save_manager->listSaves();
+    REQUIRE(saves.has_value());
+    auto it = std::find_if(saves->begin(), saves->end(),
+                           [](const SavedGame& s) { return s.display_name == "Re-saved stale game"; });
+    REQUIRE(it != saves->end());
+
+    auto reloaded = fixture.save_manager->loadGame(it->save_id);
+    REQUIRE(reloaded.has_value());
+    REQUIRE(reloaded->rating_model_version == 0);
+    REQUIRE(reloaded->isRatingStale());
+}

@@ -108,6 +108,8 @@ void GameViewModel::startNewGame(core::Difficulty difficulty) {
     current_puzzle_rating_ = puzzle_result->rating;
     current_puzzle_techniques_ = puzzle_result->required_techniques;
     current_puzzle_requires_backtracking_ = puzzle_result->requires_backtracking;
+    // Freshly rated by this build → stamp the current rating-model version (0b.0 firewall).
+    current_puzzle_rating_model_version_ = core::RATING_MODEL_VERSION;
     current_puzzle_origin_ = core::PuzzleOrigin::Generated;
 
     // Create new game state
@@ -268,6 +270,10 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
     // Restore puzzle rating and techniques
     current_puzzle_rating_ = saved_game.puzzle_rating;
     current_puzzle_requires_backtracking_ = saved_game.puzzle_requires_backtracking;
+    // Preserve the loaded save's rating-model provenance (do NOT re-stamp to current): a legacy
+    // save's stored rating is a snapshot, so a later re-save must keep its older version and stay
+    // recognizably stale (0b.0 firewall). No recompute happens here.
+    current_puzzle_rating_model_version_ = saved_game.rating_model_version;
     current_puzzle_techniques_.clear();
     for (int id : saved_game.puzzle_technique_ids) {
         current_puzzle_techniques_.insert(static_cast<core::SolvingTechnique>(id));
@@ -306,6 +312,7 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
     // Persist puzzle rating
     saved_game.puzzle_rating = current_puzzle_rating_;
     saved_game.puzzle_requires_backtracking = current_puzzle_requires_backtracking_;
+    saved_game.rating_model_version = current_puzzle_rating_model_version_;
     for (const auto& tech : current_puzzle_techniques_) {
         saved_game.puzzle_technique_ids.push_back(static_cast<int>(tech));
     }
@@ -340,6 +347,7 @@ void GameViewModel::autoSave() {
         auto_save_game.is_auto_save = true;
         auto_save_game.puzzle_rating = current_puzzle_rating_;
         auto_save_game.puzzle_requires_backtracking = current_puzzle_requires_backtracking_;
+        auto_save_game.rating_model_version = current_puzzle_rating_model_version_;
         for (const auto& tech : current_puzzle_techniques_) {
             auto_save_game.puzzle_technique_ids.push_back(static_cast<int>(tech));
         }

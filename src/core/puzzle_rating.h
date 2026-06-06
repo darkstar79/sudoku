@@ -17,6 +17,7 @@
 #pragma once
 
 #include "i_puzzle_generator.h"  // For Difficulty enum
+#include "rating_version.h"      // RATING_MODEL_VERSION (kept here for existing includers)
 #include "solve_step.h"
 
 #include <limits>
@@ -24,23 +25,6 @@
 #include <vector>
 
 namespace sudoku::core {
-
-/// Version of the puzzle rating model. Persisted into saves (SavedGame::rating_model_version)
-/// so a stored rating can be recognized later as the product of an older model once the model
-/// evolves — the firewall that keeps a saved game from being silently reclassified.
-///
-/// BUMP THIS whenever the rating model changes in a way that could alter a puzzle's computed
-/// rating, difficulty bucket, or technique set — specifically on ANY of:
-///   - a technique-SET change (techniques added to / removed from SolvingTechnique), OR
-///   - a rating-VALUE change (any getTechniqueRating return value), OR
-///   - a pathfinding / step-ordering / minimization change in the rater.
-/// It is NOT value-only: a set or ordering change with no single value edit still changes
-/// results and still requires a bump.
-///
-/// On load, a save whose rating_model_version differs from this constant keeps its stored rating
-/// literals (snapshot-preserve; never recomputed — the per-step context needed to re-rate is not
-/// stored) and is flagged rating_stale. Version 1 is the pre-1.0.0 baseline established by 0b.0.
-inline constexpr int RATING_MODEL_VERSION = 1;
 
 /// Complete rating information for a Sudoku puzzle.
 /// Rating uses the Sudoku Explainer (SE) scale by Nicolas Juillerat:

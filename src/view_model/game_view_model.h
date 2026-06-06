@@ -26,6 +26,7 @@
 #include "../core/observable.h"
 #include "../core/puzzle_analyzer.h"
 #include "../model/game_state.h"
+#include "core/rating_version.h"
 #include "core/solve_step.h"
 #include "core/solving_technique.h"
 
@@ -372,6 +373,11 @@ private:
     double current_puzzle_rating_{0.0};  // Rating of current puzzle (SE scale)
     std::set<core::SolvingTechnique> current_puzzle_techniques_;
     bool current_puzzle_requires_backtracking_{false};
+    // Rating-model version that produced current_puzzle_rating_. Stamped to the current model
+    // (RATING_MODEL_VERSION) whenever this build freshly rates a puzzle, and set to a loaded
+    // save's stored version on load — so re-saving a legacy game preserves its older provenance
+    // and it stays recognizably stale (the 0b.0 firewall; do not always write the constant).
+    int current_puzzle_rating_model_version_{core::RATING_MODEL_VERSION};
 
     // Private methods
     void validateCurrentBoard();

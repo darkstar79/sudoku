@@ -17,6 +17,7 @@
 #pragma once
 
 #include "core/board_data.h"
+#include "core/rating_version.h"
 #include "i_game_validator.h"
 #include "i_puzzle_generator.h"
 
@@ -78,17 +79,21 @@ struct SavedGame {
     bool puzzle_requires_backtracking{false};
 
     /// Rating-model version that produced puzzle_rating / difficulty / puzzle_technique_ids.
-    /// 0 = legacy / pre-hook save (key absent). The current model's version is written on save;
-    /// this value is read back on load and NEVER triggers a recompute (see RATING_MODEL_VERSION
-    /// in puzzle_rating.h). When it differs from the current model the stored rating literals are
-    /// preserved as a snapshot and rating_stale is set.
+    /// 0 = legacy / pre-hook save (key absent). This value is the *provenance* of the stored
+    /// rating: it is written verbatim on save and read back on load, and NEVER triggers a
+    /// recompute (see RATING_MODEL_VERSION in rating_version.h). Producers stamp it with the
+    /// current model version when they freshly rate a puzzle; the load→save path preserves a
+    /// loaded save's original version so a stale save stays recognizably stale across re-saves.
     int rating_model_version{0};
 
-    /// True when this save was rated by a different rating-model version than the running build
-    /// (rating_model_version != RATING_MODEL_VERSION at load time). The stored rating/difficulty
-    /// are kept verbatim — snapshot-preserve, no recompute. Advisory only (e.g. a UI "re-analyze"
-    /// affordance); not persisted.
-    bool rating_stale{false};
+    /// True when this save's stored rating was produced by a different rating-model version than
+    /// the running build — i.e. the stored rating/difficulty are a snapshot from an older (or
+    /// newer) model and were NOT recomputed on load. Advisory only (e.g. a UI "re-analyze"
+    /// affordance). Computed from rating_model_version rather than stored, so it is always
+    /// correct regardless of how the SavedGame was constructed (load, ViewModel copy, factory).
+    [[nodiscard]] bool isRatingStale() const {
+        return rating_model_version != RATING_MODEL_VERSION;
+    }
 
     // Move history for undo/redo
     std::vector<Move> move_history;

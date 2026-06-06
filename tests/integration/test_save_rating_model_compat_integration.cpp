@@ -250,6 +250,10 @@ SavedGame makeRatedGame(const std::string& id) {
     game.difficulty = Difficulty::Hard;
     game.puzzle_rating = 4.5;
     game.puzzle_technique_ids = {0, 1, 11};
+    // A freshly-rated game carries the current model version (producers stamp this; the default
+    // member value is 0 = legacy). Without it the serializer would persist 0 and the round-trip
+    // would read back a "stale" game.
+    game.rating_model_version = RATING_MODEL_VERSION;
     return game;
 }
 
@@ -294,6 +298,10 @@ TEST_CASE("Saving then loading a game round-trips rating_model_version to the cu
     REQUIRE(loaded.has_value());
     REQUIRE(loaded->rating_model_version == RATING_MODEL_VERSION);
     REQUIRE(loaded->rating_model_version == 1);
+    // A freshly-rated, just-saved game must NOT come back stale (guards the write path: if the
+    // serializer wrote the constant instead of game.rating_model_version, a caller that forgot to
+    // stamp the version would still pass the version check above but be silently flagged stale).
+    REQUIRE(!loaded->isRatingStale());
 }
 
 TEST_CASE("Loading a legacy save with no rating_model_version key defaults it to 0",
@@ -319,7 +327,32 @@ TEST_CASE("A save rated by an older model loads its STORED rating, not a recompu
     REQUIRE(loaded->puzzle_rating == 9.99);
     REQUIRE(loaded->difficulty == Difficulty::Master);
     REQUIRE(loaded->rating_model_version == 0);
-    REQUIRE(loaded->rating_stale);
+    REQUIRE(loaded->isRatingStale());
+}
+
+TEST_CASE("Saving preserves a non-current rating_model_version (no promotion to the constant)",
+          "[integration][save_manager][rating_model][snapshot][regression]") {
+    // Regression for the firewall's core guarantee: the serializer must persist the game's OWN
+    // rating_model_version, NOT the compile-time RATING_MODEL_VERSION. If it wrote the constant,
+    // re-saving a legacy/stale game (auto-save, rename, checkpoint) would silently promote it to
+    // the current version and permanently lose the stale marker without ever re-rating it.
+    RatingModelCompatFixture fixture;
+
+    SaveSettings settings;
+    settings.compress = false;
+    settings.encrypt = false;
+
+    SavedGame stale = makeRatedGame("legacy_resave");
+    stale.rating_model_version = 0;  // produced by an older model than this build
+    REQUIRE(stale.isRatingStale());
+
+    auto save_result = fixture.save_manager_.saveGame(stale, settings);
+    REQUIRE(save_result.has_value());
+    auto loaded = fixture.save_manager_.loadGame(*save_result);
+
+    REQUIRE(loaded.has_value());
+    REQUIRE(loaded->rating_model_version == 0);  // preserved, not promoted to RATING_MODEL_VERSION
+    REQUIRE(loaded->isRatingStale());
 }
 
 TEST_CASE("A save rated by the current model is NOT flagged stale",
@@ -333,7 +366,7 @@ TEST_CASE("A save rated by the current model is NOT flagged stale",
     // Use REQUIRE(!x) rather than REQUIRE_FALSE: the latter expands to the Catch2 disposition
     // flag-combo Normal|FalseTest (== 5), which trips clang-analyzer's EnumCastOutOfRange false
     // positive (it doesn't model bitflag enums) and fails the CI clang-tidy diff gate.
-    REQUIRE(!loaded->rating_stale);
+    REQUIRE(!loaded->isRatingStale());
 }
 
 // ── AC5(a): golden load-compat matrix — both versions load to known-good state ───────────
@@ -347,6 +380,9 @@ TEST_CASE("Golden 1.0 and 1.1 fixtures each load to a known-good state",
         REQUIRE(loaded.has_value());
         REQUIRE(loaded->save_format_version == "1.0");
         REQUIRE(loaded->rating_model_version == 0);
+        // The missing-key + zero-rating combination that characterises every pre-0b.0 legacy
+        // save: it must read as stale (no model-version key → 0 ≠ current).
+        REQUIRE(loaded->isRatingStale());
         REQUIRE(loaded->difficulty == Difficulty::Easy);
         REQUIRE(loaded->original_puzzle[0][0] == 5);
     }
@@ -356,6 +392,7 @@ TEST_CASE("Golden 1.0 and 1.1 fixtures each load to a known-good state",
         REQUIRE(loaded.has_value());
         REQUIRE(loaded->save_format_version == "1.1");
         REQUIRE(loaded->rating_model_version == 1);
+        REQUIRE(!loaded->isRatingStale());
         REQUIRE(loaded->difficulty == Difficulty::Hard);
         REQUIRE(loaded->puzzle_rating == 4.5);
         REQUIRE(loaded->puzzle_technique_ids == std::vector<int>{0, 1, 11});

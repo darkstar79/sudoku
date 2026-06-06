@@ -20,10 +20,12 @@
 #include "core/i_game_validator.h"
 #include "core/i_puzzle_generator.h"
 #include "core/i_save_manager.h"
-#include "core/puzzle_rating.h"
+#include "core/rating_version.h"
 #include "encryption_manager.h"
 #include "save_manager.h"
 
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -34,6 +36,7 @@
 #include <iterator>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -49,8 +52,11 @@ namespace {
 // backward compatibility (regression-tested in test_save_origin_integration.cpp).
 inline constexpr const char* SAVE_FILE_VERSION = "1.1";
 
-// Previous schema version still accepted on load (origin field absent → defaults).
-inline constexpr const char* SAVE_FILE_VERSION_LEGACY = "1.0";
+// Schema versions the loader recognizes. A version outside this list still loads (best-effort,
+// the schema only grows additively) but logs a warning. KEEP IN SYNC when bumping
+// SAVE_FILE_VERSION — otherwise every existing save of the now-"old" version logs spuriously.
+// constexpr std::array (not a std::unordered_set) so it has no throwing static initializer.
+inline constexpr std::array<std::string_view, 2> kKnownSaveFormatVersions{"1.0", "1.1"};
 
 // Difficulty validation constants (min/max values for range checking).
 // MUST track the Difficulty enum in i_puzzle_generator.h; a hardcoded Expert
@@ -79,10 +85,13 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
 
         // Metadata
         root["version"] = SAVE_FILE_VERSION;
-        // Rating-model version (0b.0): record the model that produced this game's rating
-        // literals so a future build can recognize them as a snapshot and never silently
-        // reclassify them. Always emitted (AC5c), independent of the schema version.
-        root["rating_model_version"] = RATING_MODEL_VERSION;
+        // Rating-model version (0b.0): persist the provenance of this game's stored rating
+        // literals — the model version that produced them — so a future build can recognize
+        // them as a snapshot and never silently reclassify them. Write the game's OWN value
+        // (not the compile-time constant): a re-saved legacy game must keep its original, older
+        // version so it stays recognizably stale. Producers stamp fresh ratings with the current
+        // RATING_MODEL_VERSION. Always emitted (AC5c), independent of the schema version.
+        root["rating_model_version"] = game.rating_model_version;
         root["save_id"] = game.save_id;
         root["display_name"] = game.display_name;
         root["created_time"] =
@@ -260,8 +269,9 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
         }
         // Unknown-version policy (AC5d): an unrecognized schema version is loaded best-effort
         // (the schema only ever grows additively) but logged — a defined branch, never UB and
-        // never a hard reject. Known versions pass silently.
-        if (game.save_format_version != SAVE_FILE_VERSION && game.save_format_version != SAVE_FILE_VERSION_LEGACY) {
+        // never a hard reject. Known versions pass silently. ADD new schema versions to this set
+        // when bumping SAVE_FILE_VERSION, or every existing save will log a spurious warning.
+        if (std::ranges::find(kKnownSaveFormatVersions, game.save_format_version) == kKnownSaveFormatVersions.end()) {
             spdlog::warn("Unrecognized save schema version '{}' — attempting best-effort load",
                          game.save_format_version);
         }
@@ -442,11 +452,11 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
         }
 
         // Snapshot-preserve policy (ADR, AC4): the rating literals above are kept exactly as
-        // stored — never recomputed. If they were produced by a different rating-model version
-        // than this build, flag the save stale so the UI can offer an opt-in re-analysis.
-        // Auto-re-rate on load is intentionally NOT done: re-rating needs per-step context the
-        // save does not carry, so it would require re-solving on the load path (rejected).
-        game.rating_stale = (game.rating_model_version != RATING_MODEL_VERSION);
+        // stored — never recomputed. SavedGame::isRatingStale() (computed from the now-read
+        // rating_model_version) tells the UI whether they came from a different model so it can
+        // offer an opt-in re-analysis. Auto-re-rate on load is intentionally NOT done: re-rating
+        // needs per-step context the save does not carry, so it would require re-solving on the
+        // load path (rejected).
 
         return game;
 
