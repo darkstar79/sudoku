@@ -17,6 +17,7 @@
 #pragma once
 
 #include "i_puzzle_generator.h"  // For Difficulty enum
+#include "rating_version.h"      // RATING_MODEL_VERSION (kept here for existing includers)
 #include "solve_step.h"
 
 #include <limits>

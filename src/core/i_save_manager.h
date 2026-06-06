@@ -17,6 +17,7 @@
 #pragma once
 
 #include "core/board_data.h"
+#include "core/rating_version.h"
 #include "i_game_validator.h"
 #include "i_puzzle_generator.h"
 
@@ -46,6 +47,13 @@ struct SavedGame {
     std::chrono::system_clock::time_point created_time;
     std::chrono::system_clock::time_point last_modified;
 
+    /// Save-format schema version, read from the file's `version` key (the loader read this
+    /// key for the first time in story 0b.0 — it was write-only before). Missing key →
+    /// "1.0" (pre-origin saves), mirroring the `origin`-default back-compat pattern. Tracked
+    /// separately from rating_model_version: the schema and the rating model evolve on
+    /// independent clocks.
+    std::string save_format_version{"1.0"};
+
     // Puzzle data
     BoardData original_puzzle;         // Initial puzzle with clues
     BoardData current_state;           // Current board state
@@ -69,6 +77,23 @@ struct SavedGame {
     double puzzle_rating{0.0};
     std::vector<int> puzzle_technique_ids;  // SolvingTechnique enum values (locale-independent)
     bool puzzle_requires_backtracking{false};
+
+    /// Rating-model version that produced puzzle_rating / difficulty / puzzle_technique_ids.
+    /// 0 = legacy / pre-hook save (key absent). This value is the *provenance* of the stored
+    /// rating: it is written verbatim on save and read back on load, and NEVER triggers a
+    /// recompute (see RATING_MODEL_VERSION in rating_version.h). Producers stamp it with the
+    /// current model version when they freshly rate a puzzle; the load→save path preserves a
+    /// loaded save's original version so a stale save stays recognizably stale across re-saves.
+    int rating_model_version{0};
+
+    /// True when this save's stored rating was produced by a different rating-model version than
+    /// the running build — i.e. the stored rating/difficulty are a snapshot from an older (or
+    /// newer) model and were NOT recomputed on load. Advisory only (e.g. a UI "re-analyze"
+    /// affordance). Computed from rating_model_version rather than stored, so it is always
+    /// correct regardless of how the SavedGame was constructed (load, ViewModel copy, factory).
+    [[nodiscard]] bool isRatingStale() const {
+        return rating_model_version != RATING_MODEL_VERSION;
+    }
 
     // Move history for undo/redo
     std::vector<Move> move_history;
