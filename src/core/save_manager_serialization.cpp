@@ -20,6 +20,7 @@
 #include "core/i_game_validator.h"
 #include "core/i_puzzle_generator.h"
 #include "core/i_save_manager.h"
+#include "core/puzzle_rating.h"
 #include "encryption_manager.h"
 #include "save_manager.h"
 
@@ -48,6 +49,9 @@ namespace {
 // backward compatibility (regression-tested in test_save_origin_integration.cpp).
 inline constexpr const char* SAVE_FILE_VERSION = "1.1";
 
+// Previous schema version still accepted on load (origin field absent → defaults).
+inline constexpr const char* SAVE_FILE_VERSION_LEGACY = "1.0";
+
 // Difficulty validation constants (min/max values for range checking).
 // MUST track the Difficulty enum in i_puzzle_generator.h; a hardcoded Expert
 // bound silently rejected every Master save (see #11 / BL-8).
@@ -75,6 +79,10 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
 
         // Metadata
         root["version"] = SAVE_FILE_VERSION;
+        // Rating-model version (0b.0): record the model that produced this game's rating
+        // literals so a future build can recognize them as a snapshot and never silently
+        // reclassify them. Always emitted (AC5c), independent of the schema version.
+        root["rating_model_version"] = RATING_MODEL_VERSION;
         root["save_id"] = game.save_id;
         root["display_name"] = game.display_name;
         root["created_time"] =
@@ -244,6 +252,25 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
         SavedGame game;
 
         // Metadata
+        // Schema version (0b.0: the loader reads `version` for the first time — it was a
+        // write-only key before). Missing → "1.0" (the SavedGame default), mirroring the
+        // origin-default back-compat pattern.
+        if (root["version"]) {
+            game.save_format_version = root["version"].as<std::string>();
+        }
+        // Unknown-version policy (AC5d): an unrecognized schema version is loaded best-effort
+        // (the schema only ever grows additively) but logged — a defined branch, never UB and
+        // never a hard reject. Known versions pass silently.
+        if (game.save_format_version != SAVE_FILE_VERSION && game.save_format_version != SAVE_FILE_VERSION_LEGACY) {
+            spdlog::warn("Unrecognized save schema version '{}' — attempting best-effort load",
+                         game.save_format_version);
+        }
+        // Rating-model version (0b.0): which rating model produced the stored rating literals.
+        // Missing → 0 (legacy / pre-hook, the SavedGame default). Read as a literal — it NEVER
+        // drives a recompute; the snapshot-preserve decision happens after the rating is read.
+        if (root["rating_model_version"]) {
+            game.rating_model_version = root["rating_model_version"].as<int>();
+        }
         if (root["save_id"]) {
             game.save_id = root["save_id"].as<std::string>();
         }
@@ -413,6 +440,13 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
                 game.puzzle_technique_ids.push_back(id.as<int>());
             }
         }
+
+        // Snapshot-preserve policy (ADR, AC4): the rating literals above are kept exactly as
+        // stored — never recomputed. If they were produced by a different rating-model version
+        // than this build, flag the save stale so the UI can offer an opt-in re-analysis.
+        // Auto-re-rate on load is intentionally NOT done: re-rating needs per-step context the
+        // save does not carry, so it would require re-solving on the load path (rejected).
+        game.rating_stale = (game.rating_model_version != RATING_MODEL_VERSION);
 
         return game;
 

@@ -46,6 +46,13 @@ struct SavedGame {
     std::chrono::system_clock::time_point created_time;
     std::chrono::system_clock::time_point last_modified;
 
+    /// Save-format schema version, read from the file's `version` key (the loader read this
+    /// key for the first time in story 0b.0 — it was write-only before). Missing key →
+    /// "1.0" (pre-origin saves), mirroring the `origin`-default back-compat pattern. Tracked
+    /// separately from rating_model_version: the schema and the rating model evolve on
+    /// independent clocks.
+    std::string save_format_version{"1.0"};
+
     // Puzzle data
     BoardData original_puzzle;         // Initial puzzle with clues
     BoardData current_state;           // Current board state
@@ -69,6 +76,19 @@ struct SavedGame {
     double puzzle_rating{0.0};
     std::vector<int> puzzle_technique_ids;  // SolvingTechnique enum values (locale-independent)
     bool puzzle_requires_backtracking{false};
+
+    /// Rating-model version that produced puzzle_rating / difficulty / puzzle_technique_ids.
+    /// 0 = legacy / pre-hook save (key absent). The current model's version is written on save;
+    /// this value is read back on load and NEVER triggers a recompute (see RATING_MODEL_VERSION
+    /// in puzzle_rating.h). When it differs from the current model the stored rating literals are
+    /// preserved as a snapshot and rating_stale is set.
+    int rating_model_version{0};
+
+    /// True when this save was rated by a different rating-model version than the running build
+    /// (rating_model_version != RATING_MODEL_VERSION at load time). The stored rating/difficulty
+    /// are kept verbatim — snapshot-preserve, no recompute. Advisory only (e.g. a UI "re-analyze"
+    /// affordance); not persisted.
+    bool rating_stale{false};
 
     // Move history for undo/redo
     std::vector<Move> move_history;

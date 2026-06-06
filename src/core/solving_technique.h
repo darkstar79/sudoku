@@ -88,6 +88,67 @@ enum class SolvingTechnique : uint8_t {
     Backtracking = 255           ///< Not a logical technique - fallback solver (SE 12.0)
 };
 
+// Append-only id-pin (story 0b.0): each enumerator's integer id is locked here at compile time.
+// Saved games persist these ids (SavedGame::puzzle_technique_ids), so renumbering or removing
+// any existing value would silently corrupt loaded games. Adding a NEW technique is allowed —
+// append it to the enum with the next free id and add its static_assert line below. Changing or
+// deleting an EXISTING line fails the build. Pairs with the 0b.1 runtime golden pin.
+static_assert(static_cast<uint8_t>(SolvingTechnique::NakedSingle) == 0);
+static_assert(static_cast<uint8_t>(SolvingTechnique::HiddenSingle) == 1);
+static_assert(static_cast<uint8_t>(SolvingTechnique::NakedPair) == 2);
+static_assert(static_cast<uint8_t>(SolvingTechnique::NakedTriple) == 3);
+static_assert(static_cast<uint8_t>(SolvingTechnique::HiddenPair) == 4);
+static_assert(static_cast<uint8_t>(SolvingTechnique::HiddenTriple) == 5);
+static_assert(static_cast<uint8_t>(SolvingTechnique::PointingPair) == 6);
+static_assert(static_cast<uint8_t>(SolvingTechnique::BoxLineReduction) == 7);
+static_assert(static_cast<uint8_t>(SolvingTechnique::NakedQuad) == 8);
+static_assert(static_cast<uint8_t>(SolvingTechnique::HiddenQuad) == 9);
+static_assert(static_cast<uint8_t>(SolvingTechnique::XWing) == 10);
+static_assert(static_cast<uint8_t>(SolvingTechnique::XYWing) == 11);
+static_assert(static_cast<uint8_t>(SolvingTechnique::Swordfish) == 12);
+static_assert(static_cast<uint8_t>(SolvingTechnique::Skyscraper) == 13);
+static_assert(static_cast<uint8_t>(SolvingTechnique::TwoStringKite) == 14);
+static_assert(static_cast<uint8_t>(SolvingTechnique::XYZWing) == 15);
+static_assert(static_cast<uint8_t>(SolvingTechnique::UniqueRectangle) == 16);
+static_assert(static_cast<uint8_t>(SolvingTechnique::WWing) == 17);
+static_assert(static_cast<uint8_t>(SolvingTechnique::SimpleColoring) == 18);
+static_assert(static_cast<uint8_t>(SolvingTechnique::FinnedXWing) == 19);
+static_assert(static_cast<uint8_t>(SolvingTechnique::RemotePairs) == 20);
+static_assert(static_cast<uint8_t>(SolvingTechnique::BUG) == 21);
+static_assert(static_cast<uint8_t>(SolvingTechnique::Jellyfish) == 22);
+static_assert(static_cast<uint8_t>(SolvingTechnique::FinnedSwordfish) == 23);
+static_assert(static_cast<uint8_t>(SolvingTechnique::EmptyRectangle) == 24);
+static_assert(static_cast<uint8_t>(SolvingTechnique::WXYZWing) == 25);
+static_assert(static_cast<uint8_t>(SolvingTechnique::FinnedJellyfish) == 26);
+static_assert(static_cast<uint8_t>(SolvingTechnique::XYChain) == 27);
+static_assert(static_cast<uint8_t>(SolvingTechnique::MultiColoring) == 28);
+static_assert(static_cast<uint8_t>(SolvingTechnique::ALSxZ) == 29);
+static_assert(static_cast<uint8_t>(SolvingTechnique::SueDeCoq) == 30);
+static_assert(static_cast<uint8_t>(SolvingTechnique::ForcingChain) == 31);
+static_assert(static_cast<uint8_t>(SolvingTechnique::NiceLoop) == 32);
+static_assert(static_cast<uint8_t>(SolvingTechnique::XCycles) == 33);
+static_assert(static_cast<uint8_t>(SolvingTechnique::ThreeDMedusa) == 34);
+static_assert(static_cast<uint8_t>(SolvingTechnique::HiddenUniqueRectangle) == 35);
+static_assert(static_cast<uint8_t>(SolvingTechnique::AvoidableRectangle) == 36);
+static_assert(static_cast<uint8_t>(SolvingTechnique::ALSXYWing) == 37);
+static_assert(static_cast<uint8_t>(SolvingTechnique::DeathBlossom) == 38);
+static_assert(static_cast<uint8_t>(SolvingTechnique::VWXYZWing) == 39);
+static_assert(static_cast<uint8_t>(SolvingTechnique::FrankenFish) == 40);
+static_assert(static_cast<uint8_t>(SolvingTechnique::GroupedXCycles) == 41);
+static_assert(static_cast<uint8_t>(SolvingTechnique::SashimiXWing) == 42);
+static_assert(static_cast<uint8_t>(SolvingTechnique::SashimiSwordfish) == 43);
+static_assert(static_cast<uint8_t>(SolvingTechnique::SashimiJellyfish) == 44);
+static_assert(static_cast<uint8_t>(SolvingTechnique::UnitForcingChain) == 45);
+static_assert(static_cast<uint8_t>(SolvingTechnique::RegionForcingChain) == 46);
+static_assert(static_cast<uint8_t>(SolvingTechnique::MutantFish) == 47);
+static_assert(static_cast<uint8_t>(SolvingTechnique::KrakenFish) == 48);
+static_assert(static_cast<uint8_t>(SolvingTechnique::ALSChain) == 49);
+static_assert(static_cast<uint8_t>(SolvingTechnique::JuniorExocet) == 50);
+static_assert(static_cast<uint8_t>(SolvingTechnique::UniqueLoop) == 51);
+static_assert(static_cast<uint8_t>(SolvingTechnique::ContinuousNiceLoop) == 52);
+static_assert(static_cast<uint8_t>(SolvingTechnique::GroupedNiceLoop) == 53);
+static_assert(static_cast<uint8_t>(SolvingTechnique::Backtracking) == 255);
+
 // Sentinel: highest logical-technique enum value (excludes Backtracking).
 // When adding a new logical technique above, bump this constant to match — it pins
 // the upper bound for code that iterates the contiguous logical-technique range
