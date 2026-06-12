@@ -328,9 +328,8 @@ inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::Grou
         case UniqueRectangle:     // SE v1.2.1 (Type 1; Types 2-4 up to 5.0)
         case AvoidableRectangle:  // SE-compatible: UR Type 1 equivalent
         case RemotePairs:         // SE-compatible: chaining technique
+        case UniqueLoop:          // SE-compatible: deadly pattern loop (same as Unique Rectangle)
             return 4.5;
-        case UniqueLoop:
-            return 4.5;  // SE-compatible: deadly pattern loop (same as Unique Rectangle)
         case WXYZWing:
             return 4.6;              // SE-compatible: 4-cell wing
         case HiddenUniqueRectangle:  // SE-compatible: harder UR variant

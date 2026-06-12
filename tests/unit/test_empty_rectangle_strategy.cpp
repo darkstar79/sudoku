@@ -47,6 +47,7 @@ TEST_CASE("EmptyRectangleStrategy - Returns nullopt for complete board", "[empty
     REQUIRE_FALSE(result.has_value());
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE macro expansion
 TEST_CASE("EmptyRectangleStrategy - Row conjugate pair detection", "[empty_rectangle]") {
     // ER in Box 0 (rows 0-2, cols 0-2) for value 5:
     // L-shape: value 5 at (0,0), (0,1), (2,0) — occupies rows {0,2} and cols {0,1}
@@ -85,7 +86,7 @@ TEST_CASE("EmptyRectangleStrategy - Row conjugate pair detection", "[empty_recta
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::EmptyRectangle);
-    REQUIRE(result->rating == 4.3);
+    REQUIRE((result.has_value() && result->rating == 4.3));  // has_value() guards the deref for clang-tidy
     REQUIRE(result->eliminations.size() == 1);
     REQUIRE(result->eliminations[0].value == 5);
 }
@@ -151,6 +152,7 @@ TEST_CASE("EmptyRectangleStrategy - Explanation contains relevant info", "[empty
     REQUIRE(result->explanation.find("eliminates") != std::string::npos);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE macro expansion
 TEST_CASE("EmptyRectangleStrategy - Col conjugate pair detection", "[empty_rectangle]") {
     // ER in Box 0 (rows 0-2, cols 0-2) for value 5:
     // L-shape: value 5 at (0,0), (1,0), (0,1) — rows {0,1}, cols {0,1}
@@ -189,7 +191,7 @@ TEST_CASE("EmptyRectangleStrategy - Col conjugate pair detection", "[empty_recta
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::EmptyRectangle);
-    REQUIRE(result->rating == 4.3);
+    REQUIRE((result.has_value() && result->rating == 4.3));  // has_value() guards the deref for clang-tidy
     REQUIRE(result->explanation_data.region_type == RegionType::Col);
     REQUIRE(result->eliminations.size() == 1);
     REQUIRE(result->eliminations[0].value == 5);

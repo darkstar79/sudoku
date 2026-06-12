@@ -40,6 +40,7 @@ TEST_CASE("ALSxZStrategy - Returns nullopt for complete board", "[als_xz]") {
     REQUIRE_FALSE(result.has_value());
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE macro expansion
 TEST_CASE("ALSxZStrategy - Detects ALS-XZ with two 2-cell ALSs", "[als_xz]") {
     // ALS A: 2 cells in row 0 with 3 candidates total (N=2, N+1=3)
     //   (0,0) {1,2} and (0,1) {2,3} → union = {1,2,3}
@@ -71,7 +72,7 @@ TEST_CASE("ALSxZStrategy - Detects ALS-XZ with two 2-cell ALSs", "[als_xz]") {
     REQUIRE(result.has_value());
     REQUIRE(result->technique == SolvingTechnique::ALSxZ);
     REQUIRE(result->type == SolveStepType::Elimination);
-    REQUIRE(result->rating == 6.8);
+    REQUIRE((result.has_value() && result->rating == 6.8));  // has_value() guards the deref for clang-tidy
 
     bool found_target = false;
     for (const auto& elim : result->eliminations) {
