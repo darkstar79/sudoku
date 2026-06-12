@@ -55,13 +55,13 @@ enum class SolvingTechnique : uint8_t {
     BUG = 21,                    ///< Bivalue Universal Grave — single trivalue cell placement (SE 5.6)
     Jellyfish = 22,              ///< 4x4 fish pattern (SE 5.2)
     FinnedSwordfish = 23,        ///< Swordfish with extra candidate cell (fin) (SE 4.0)
-    EmptyRectangle = 24,         ///< Single-digit chain through box intersection (SE 4.5)
+    EmptyRectangle = 24,         ///< Single-digit chain through box intersection (SE 4.3)
     WXYZWing = 25,               ///< 4-cell wing pattern eliminating shared candidate (SE 4.6)
     FinnedJellyfish = 26,        ///< 4x4 fish with extra fin candidate (SE 5.4)
     XYChain = 27,                ///< Chain of bivalue cells with alternating shared values (SE 6.6)
     MultiColoring = 28,          ///< Cross-cluster single-digit coloring (SE 4.2)
-    ALSxZ = 29,                  ///< Almost Locked Set XZ-rule (SE 7.5)
-    SueDeCoq = 30,               ///< Two-Sector Disjoint Subset (SE 7.5)
+    ALSxZ = 29,                  ///< Almost Locked Set XZ-rule (SE 6.8)
+    SueDeCoq = 30,               ///< Two-Sector Disjoint Subset (SE 6.6)
     ForcingChain = 31,           ///< Cell forcing chains — assume each candidate, propagate (SE 7.5)
     NiceLoop = 32,               ///< Alternating Inference Chains (SE 7.5)
     XCycles = 33,                ///< Single-digit alternating chain cycles (SE 6.6)
@@ -319,15 +319,18 @@ inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::Grou
         case SashimiSwordfish:  // SE-compatible: sashimi variant of Swordfish
         case XYWing:            // SE v1.2.1
             return 4.2;
+        case EmptyRectangle:  // SE-fork TurbotFishHint (empty-region path): 4.3, below 2-String Kite
+            return 4.3;
         case ThreeDMedusa:  // SE-compatible: multi-digit coloring
         case WWing:         // SE-compatible: XYZ-Wing equivalent
         case XYZWing:       // SE v1.2.1
             return 4.4;
         case UniqueRectangle:     // SE v1.2.1 (Type 1; Types 2-4 up to 5.0)
         case AvoidableRectangle:  // SE-compatible: UR Type 1 equivalent
-        case EmptyRectangle:      // SE-compatible: single-digit intersection
         case RemotePairs:         // SE-compatible: chaining technique
             return 4.5;
+        case UniqueLoop:
+            return 4.5;  // SE-compatible: deadly pattern loop (same as Unique Rectangle)
         case WXYZWing:
             return 4.6;              // SE-compatible: 4-cell wing
         case HiddenUniqueRectangle:  // SE-compatible: harder UR variant
@@ -344,21 +347,24 @@ inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::Grou
         case BUG:               // SE v1.2.1
         case SashimiJellyfish:  // SE-compatible: sashimi variant of Jellyfish
             return 5.6;
-        case XCycles:  // SE: X-chains/X-cycles (6.5-6.9)
-        case XYChain:  // SE: Y-cycles (6.6-7.0)
+        case XCycles:   // SE: X-chains/X-cycles (6.5-6.9)
+        case XYChain:   // SE: Y-cycles (6.6-7.0)
+        case SueDeCoq:  // HoDoKu-anchored (Unfair base 250, ~XY-Chain): below ALS-XZ, so 6.6 < 6.8
             return 6.6;
-        case GroupedXCycles:
-            return 6.8;     // SE-compatible: grouped nodes add complexity
-        case ALSxZ:         // SE-compatible: forcing chain level
-        case SueDeCoq:      // SE-compatible: complex disjoint subsets
+        case GroupedXCycles:  // SE-compatible: grouped nodes add complexity
+        case ALSxZ:           // HoDoKu-anchored (Unfair base 300, below forcing chains): ~6.75 → 6.8
+            return 6.8;
+        case ContinuousNiceLoop:
+            return 7.0;     // SE-compatible: continuous AIC loop (slightly easier than discontinuous)
         case ForcingChain:  // SE v1.2.1 (7.1-7.5 range)
         case NiceLoop:      // SE-compatible: AIC equivalent
             return 7.5;
         case ALSXYWing:
         case UnitForcingChain:  // SE-compatible: unit forcing chain
             return 7.8;
-        case RegionForcingChain:
-            return 8.0;  // SE-compatible: region forcing chain (box-only, more branches)
+        case RegionForcingChain:  // SE-compatible: region forcing chain (box-only, more branches)
+        case GroupedNiceLoop:     // SE-compatible: grouped AIC (harder than Nice Loop)
+            return 8.0;
         case DeathBlossom:
             return 8.2;   // SE-compatible: region forcing chain level
         case KrakenFish:  // SE-compatible: finned fish + chain verification
@@ -366,12 +372,6 @@ inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::Grou
             return 8.5;
         case JuniorExocet:
             return 9.4;  // SE-compatible: extremely hard cross-line elimination
-        case UniqueLoop:
-            return 4.5;  // SE-compatible: deadly pattern loop (same as Unique Rectangle)
-        case ContinuousNiceLoop:
-            return 7.0;  // SE-compatible: continuous AIC loop (slightly easier than discontinuous)
-        case GroupedNiceLoop:
-            return 8.0;  // SE-compatible: grouped AIC (harder than Nice Loop)
         case Backtracking:
             return 12.0;  // Maximum: brute force / trial-and-error
     }

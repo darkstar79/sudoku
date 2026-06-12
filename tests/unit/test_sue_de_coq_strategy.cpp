@@ -28,7 +28,7 @@ TEST_CASE("SueDeCoqStrategy - Metadata", "[sue_de_coq]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::SueDeCoq);
     REQUIRE(strategy.getName() == "Sue de Coq");
-    REQUIRE(strategy.getDifficultyRating() == 7.5);
+    REQUIRE(strategy.getDifficultyRating() == 6.6);
 }
 
 TEST_CASE("SueDeCoqStrategy - Returns nullopt for complete board", "[sue_de_coq]") {
@@ -86,7 +86,7 @@ TEST_CASE("SueDeCoqStrategy - Detects Sue de Coq pattern", "[sue_de_coq]") {
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::SueDeCoq);
         REQUIRE(result->type == SolveStepType::Elimination);
-        REQUIRE(result->rating == 7.5);
+        REQUIRE(result->rating == 6.6);
         REQUIRE(result->explanation.find("Sue de Coq") != std::string::npos);
         REQUIRE_FALSE(result->eliminations.empty());
     }
@@ -177,7 +177,7 @@ TEST_CASE("SueDeCoqStrategy - Can be used through ISolvingStrategy interface", "
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::SueDeCoq);
     REQUIRE(strategy->getName() == "Sue de Coq");
-    REQUIRE(strategy->getDifficultyRating() == 7.5);
+    REQUIRE(strategy->getDifficultyRating() == 6.6);
 
     BoardData board = sudoku::testing::kSolvedBoard;
     CandidateGrid state(board);

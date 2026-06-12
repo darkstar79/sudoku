@@ -35,7 +35,7 @@ TEST_CASE("EmptyRectangleStrategy - Metadata", "[empty_rectangle]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::EmptyRectangle);
     REQUIRE(strategy.getName() == "Empty Rectangle");
-    REQUIRE(strategy.getDifficultyRating() == 4.5);
+    REQUIRE(strategy.getDifficultyRating() == 4.3);
 }
 
 TEST_CASE("EmptyRectangleStrategy - Returns nullopt for complete board", "[empty_rectangle]") {
@@ -85,7 +85,7 @@ TEST_CASE("EmptyRectangleStrategy - Row conjugate pair detection", "[empty_recta
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::EmptyRectangle);
-    REQUIRE(result->rating == 4.5);
+    REQUIRE(result->rating == 4.3);
     REQUIRE(result->eliminations.size() == 1);
     REQUIRE(result->eliminations[0].value == 5);
 }
@@ -189,7 +189,7 @@ TEST_CASE("EmptyRectangleStrategy - Col conjugate pair detection", "[empty_recta
     REQUIRE(result.has_value());
     REQUIRE(result->type == SolveStepType::Elimination);
     REQUIRE(result->technique == SolvingTechnique::EmptyRectangle);
-    REQUIRE(result->rating == 4.5);
+    REQUIRE(result->rating == 4.3);
     REQUIRE(result->explanation_data.region_type == RegionType::Col);
     REQUIRE(result->eliminations.size() == 1);
     REQUIRE(result->eliminations[0].value == 5);
@@ -200,7 +200,7 @@ TEST_CASE("EmptyRectangleStrategy - Can be used through ISolvingStrategy interfa
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::EmptyRectangle);
     REQUIRE(strategy->getName() == "Empty Rectangle");
-    REQUIRE(strategy->getDifficultyRating() == 4.5);
+    REQUIRE(strategy->getDifficultyRating() == 4.3);
 
     BoardData board = sudoku::testing::kSolvedBoard;
     CandidateGrid state(board);

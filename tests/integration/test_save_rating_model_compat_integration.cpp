@@ -113,13 +113,14 @@ progress:
 )";
 
 // Golden 1.1 save written under the current rating model — carries the new
-// rating_model_version key equal to the current constant, plus a stored rating literal.
+// rating_model_version key equal to the current constant (2 since 0b.3), plus a stored rating
+// literal. Schema version "1.1" is independent of the rating-model version (ADR point 5).
 constexpr const char* kGolden_1_1 = R"(version: "1.1"
 save_id: "golden_1_1"
 display_name: "Golden 1.1 save"
 created_time: 1747350000
 last_modified: 1747350000
-rating_model_version: 1
+rating_model_version: 2
 puzzle_data:
   difficulty: 2
   puzzle_seed: 42
@@ -158,16 +159,17 @@ puzzle_technique_ids:
   - 11
 )";
 
-// Snapshot-invariant fixture: rating_model_version is deliberately OLDER than the current
-// model (0 < current), and the stored puzzle_rating (9.99) is a value today's model would
-// never compute for this board. Load MUST surface the stored 9.99, not a recompute, and
-// flag the save stale.
+// Snapshot-invariant fixture: rating_model_version 1 is the model that was current until 0b.3
+// bumped it to 2 — so this save is OLDER than the current model (1 < 2), and the stored
+// puzzle_rating (9.99) is a value today's model would never compute for this board. Load MUST
+// surface the stored 9.99, not a recompute, and flag the save stale. This is the direct proof
+// that 0b.3's rating-value change flags previously-current (v1) saves as stale.
 constexpr const char* kStaleRatingSave = R"(version: "1.1"
 save_id: "stale_rating"
 display_name: "Stale-rating save"
 created_time: 1747350000
 last_modified: 1747350000
-rating_model_version: 0
+rating_model_version: 1
 puzzle_data:
   difficulty: 4
   puzzle_seed: 42
@@ -297,7 +299,7 @@ TEST_CASE("Saving then loading a game round-trips rating_model_version to the cu
 
     REQUIRE(loaded.has_value());
     REQUIRE(loaded->rating_model_version == RATING_MODEL_VERSION);
-    REQUIRE(loaded->rating_model_version == 1);
+    REQUIRE(loaded->rating_model_version == 2);
     // A freshly-rated, just-saved game must NOT come back stale (guards the write path: if the
     // serializer wrote the constant instead of game.rating_model_version, a caller that forgot to
     // stamp the version would still pass the version check above but be silently flagged stale).
@@ -326,7 +328,7 @@ TEST_CASE("A save rated by an older model loads its STORED rating, not a recompu
     // Snapshot-preserve: the deliberately-impossible stored value comes back verbatim.
     REQUIRE(loaded->puzzle_rating == 9.99);
     REQUIRE(loaded->difficulty == Difficulty::Master);
-    REQUIRE(loaded->rating_model_version == 0);
+    REQUIRE(loaded->rating_model_version == 1);  // previous model (current until 0b.3 bumped to 2)
     REQUIRE(loaded->isRatingStale());
 }
 
@@ -391,7 +393,7 @@ TEST_CASE("Golden 1.0 and 1.1 fixtures each load to a known-good state",
         auto loaded = fixture.loadRawYaml("golden_1_1", kGolden_1_1);
         REQUIRE(loaded.has_value());
         REQUIRE(loaded->save_format_version == "1.1");
-        REQUIRE(loaded->rating_model_version == 1);
+        REQUIRE(loaded->rating_model_version == 2);
         REQUIRE(!loaded->isRatingStale());
         REQUIRE(loaded->difficulty == Difficulty::Hard);
         REQUIRE(loaded->puzzle_rating == 4.5);

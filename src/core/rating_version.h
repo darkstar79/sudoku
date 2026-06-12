@@ -32,10 +32,15 @@ namespace sudoku::core {
 ///
 /// On load, a save whose rating_model_version differs from this constant keeps its stored rating
 /// literals (snapshot-preserve; never recomputed — the per-step context needed to re-rate is not
-/// stored) and reports SavedGame::isRatingStale(). Version 1 is the pre-1.0.0 baseline (0b.0).
+/// stored) and reports SavedGame::isRatingStale().
+///
+/// Version history:
+///   1 — pre-1.0.0 baseline (0b.0).
+///   2 — 0b.3 flat corrections: Empty Rectangle 4.5→4.3, ALS-XZ 7.5→6.8, Sue de Coq 7.5→6.6.
+///       Three getTechniqueRating() return values changed, so saves rated under v1 are now stale.
 ///
 /// Lives in this tiny dependency-free header (not puzzle_rating.h) so SavedGame can compute
 /// staleness without pulling the rating/solver headers into every i_save_manager.h consumer.
-inline constexpr int RATING_MODEL_VERSION = 1;
+inline constexpr int RATING_MODEL_VERSION = 2;
 
 }  // namespace sudoku::core

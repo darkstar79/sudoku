@@ -28,7 +28,7 @@ TEST_CASE("ALSxZStrategy - Metadata", "[als_xz]") {
 
     REQUIRE(strategy.getTechnique() == SolvingTechnique::ALSxZ);
     REQUIRE(strategy.getName() == "ALS-XZ");
-    REQUIRE(strategy.getDifficultyRating() == 7.5);
+    REQUIRE(strategy.getDifficultyRating() == 6.8);
 }
 
 TEST_CASE("ALSxZStrategy - Returns nullopt for complete board", "[als_xz]") {
@@ -71,7 +71,7 @@ TEST_CASE("ALSxZStrategy - Detects ALS-XZ with two 2-cell ALSs", "[als_xz]") {
     REQUIRE(result.has_value());
     REQUIRE(result->technique == SolvingTechnique::ALSxZ);
     REQUIRE(result->type == SolveStepType::Elimination);
-    REQUIRE(result->rating == 7.5);
+    REQUIRE(result->rating == 6.8);
 
     bool found_target = false;
     for (const auto& elim : result->eliminations) {
@@ -397,7 +397,7 @@ TEST_CASE("ALSxZStrategy - Can be used through ISolvingStrategy interface", "[al
 
     REQUIRE(strategy->getTechnique() == SolvingTechnique::ALSxZ);
     REQUIRE(strategy->getName() == "ALS-XZ");
-    REQUIRE(strategy->getDifficultyRating() == 7.5);
+    REQUIRE(strategy->getDifficultyRating() == 6.8);
 
     BoardData board = sudoku::testing::kSolvedBoard;
     CandidateGrid state(board);
