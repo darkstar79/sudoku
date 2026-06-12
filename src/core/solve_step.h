@@ -75,6 +75,38 @@ enum class RegionType : std::int8_t {
     None = -1
 };
 
+/// Per-step context that lets getTechniqueRating() vary *within* a single technique (Story 0b.4a).
+///
+/// The flat getTechniqueRating(SolvingTechnique) in solving_technique.h is the base/default rating;
+/// this struct carries the signals Sudoku Explainer / the SukakuExplainer fork use to rate the
+/// *individual step*: the resolving region (Class A — block vs line), whether the step forces a
+/// placement (Class B), and the pattern size/length (Class C). Defaults reproduce the flat rating, so
+/// getTechniqueRating(t, RatingContext{}) == getTechniqueRating(t) for every technique.
+///
+/// Class A is live now; `forces_placement` / `size_or_length` are carried but not yet consumed —
+/// 0b-4b (Direct variants / Full House) and 0b-4c (size/length scaling) wire them up.
+struct RatingContext {
+    RegionType region{RegionType::None};  ///< Resolving region (Class A: Box → block, Row/Col → line)
+    bool forces_placement{false};         ///< Class B: the placement-forcing "Direct" form (0b-4b)
+    int size_or_length{0};                ///< Class C: fish size / chain length (0b-4c)
+
+    bool operator==(const RatingContext& other) const = default;
+};
+
+/// Context-sensitive SE rating (Story 0b.4a) — the authoritative single source for ratings that vary
+/// by step context. Delegates to the flat getTechniqueRating(technique) for the base value and only
+/// overrides per class, so the per-technique numbers live in exactly one place.
+///
+/// Class A — Hidden Single region split (SE v1.2.1): a single hidden in a *block* is the easiest case
+/// (1.2); a single hidden only in a *line* (row/col) rates 1.5. Block precedence ("easiest region
+/// wins") matches SE: when a cell is a hidden single in its box, it is reported as the 1.2 block case.
+[[nodiscard]] constexpr double getTechniqueRating(SolvingTechnique technique, const RatingContext& context) {
+    if (technique == SolvingTechnique::HiddenSingle && context.region == RegionType::Box) {
+        return 1.2;  // block hidden single (line value 1.5 stays in the flat base overload)
+    }
+    return getTechniqueRating(technique);
+}
+
 /// Structured data for localized explanation templates.
 /// Strategies populate this alongside the English explanation string.
 struct ExplanationData {

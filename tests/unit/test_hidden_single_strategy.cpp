@@ -41,6 +41,18 @@ BoardData createBoardWithoutHiddenSingles() {
     return board;
 }
 
+// A *line* (row) hidden single that is deliberately NOT a block single (Story 0b.4a Class A).
+// Row 1 (index 0) is filled 2..9 leaving only R1C9 (0,8) empty, so value 1 is a hidden single in
+// that row. Value 1 appears nowhere on the board, so box 3 (rows 0-2, cols 6-8) still has several
+// cells that allow 1 — the single is NOT confined to the box. Block precedence ("easiest region
+// wins") therefore resolves it as a row single → SE line rating 1.5.
+BoardData createBoardWithLineHiddenSingle() {
+    BoardData board = {{2, 3, 4, 5, 6, 7, 8, 9, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                       {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
+                       {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    return board;
+}
+
 BoardData createCompleteBoard() {
     BoardData board = sudoku::testing::kSolvedBoard;
     return board;
@@ -78,8 +90,26 @@ TEST_CASE("HiddenSingleStrategy - Finds Hidden Single", "[hidden_single]") {
         REQUIRE(step->position.row == 0);
         REQUIRE(step->position.col == 0);
         REQUIRE(step->value == 5);
-        REQUIRE(step->rating == 1.5);
+        // Class A (0b.4a): R1C1 is the lone empty cell in its box → a *block* hidden single → SE 1.2.
+        REQUIRE(step->rating == 1.2);
+        REQUIRE(step->explanation_data.region_type == RegionType::Box);
         REQUIRE_FALSE(step->explanation.empty());
+    }
+
+    SECTION("A line (row) hidden single rates 1.5 and records the row region") {
+        // Class A (0b.4a): the single is confined to a row but not its box → SE line rating 1.5.
+        auto board = createBoardWithLineHiddenSingle();
+        CandidateGrid state(board);
+
+        auto step = strategy.findStep(board, state);
+
+        REQUIRE(step.has_value());
+        REQUIRE(step->technique == SolvingTechnique::HiddenSingle);
+        REQUIRE(step->position.row == 0);
+        REQUIRE(step->position.col == 8);
+        REQUIRE(step->value == 1);
+        REQUIRE(step->rating == 1.5);
+        REQUIRE(step->explanation_data.region_type == RegionType::Row);
     }
 
     SECTION("Leverages existing CandidateGrid::findHiddenSingle") {

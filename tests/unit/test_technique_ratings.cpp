@@ -30,6 +30,7 @@
 // This file is the *complete* save-compat pin and coexists with the partial
 // spot-checks in test_solving_technique.cpp (distinct [solver][ratings] tag/intent).
 
+#include "../../src/core/solve_step.h"  // RatingContext / RegionType — Story 0b.4a
 #include "../../src/core/solving_technique.h"
 #include "../../src/core/training_learning_path.h"
 
@@ -52,6 +53,9 @@ constexpr int kPinnedStrategyCount = 54;
 // distinct techniques share one return value (e.g. FinnedXWing/SashimiXWing/HiddenPair all 3.4).
 constexpr std::array<std::pair<SolvingTechnique, double>, kPinnedStrategyCount> kExpectedRatings = {{
     {SolvingTechnique::NakedSingle, 2.3},
+    // HiddenSingle's flat value is the base/default (= SE line rating). Story 0b.4a widens the
+    // *context* overload so a block hidden single rates 1.2 (asserted in the Class-A pin below);
+    // the flat overload stays 1.5 as the single source for the line value.
     {SolvingTechnique::HiddenSingle, 1.5},
     {SolvingTechnique::NakedPair, 3.0},
     {SolvingTechnique::NakedTriple, 3.6},
@@ -141,5 +145,40 @@ TEST_CASE("getTechniqueRating() golden pin — all 54 strategy ratings", "[solve
     SECTION("Backtracking is documented but excluded from the 54-row pin") {
         // Backtracking is the brute-force fallback, not a logical strategy — outside the count.
         REQUIRE(getTechniqueRating(SolvingTechnique::Backtracking) == 12.0);
+    }
+}
+
+// Class-A re-base (Story 0b.4a): the rating surface is now a function of (technique, RatingContext).
+// Hidden Single splits by resolving region — block 1.2 (SE "easiest region wins") vs line 1.5. This
+// is the canonical RED→GREEN of the split: the context overload does not exist until 0b.4a lands, so
+// this whole case is RED on the first build and GREEN once the overload is implemented. The flat
+// 54-row pin above is the *base/default* surface and is unchanged (HS line value 1.5 lives there).
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — SECTIONs + the base-equivalence loop
+// expand to nested conditionals; complexity is inherent to the pin (same as the golden pin above).
+TEST_CASE("getTechniqueRating() Class-A context split — Hidden Single block 1.2 / line 1.5", "[solver][ratings]") {
+    using enum RegionType;
+
+    SECTION("Block hidden single rates 1.2, line (row/col) rates 1.5") {
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenSingle, RatingContext{.region = Box}) == 1.2);
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenSingle, RatingContext{.region = Row}) == 1.5);
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenSingle, RatingContext{.region = Col}) == 1.5);
+    }
+
+    SECTION("Two contexts of the same technique yield two distinct ratings (AC1)") {
+        REQUIRE(getTechniqueRating(SolvingTechnique::HiddenSingle, RatingContext{.region = Box}) !=
+                getTechniqueRating(SolvingTechnique::HiddenSingle, RatingContext{.region = Row}));
+    }
+
+    SECTION("Default context reproduces the flat base — single source of truth, not a second table") {
+        // A null context (region None) must equal the legacy flat overload for every technique, so the
+        // numbers never silently diverge between the two surfaces.
+        for (const auto& [technique, expected] : kExpectedRatings) {
+            CAPTURE(getTechniqueName(technique));
+            REQUIRE(getTechniqueRating(technique, RatingContext{}) == getTechniqueRating(technique));
+        }
+    }
+
+    SECTION("Context overload is constexpr (spot check)") {
+        STATIC_REQUIRE(getTechniqueRating(SolvingTechnique::HiddenSingle, RatingContext{.region = Box}) == 1.2);
     }
 }
