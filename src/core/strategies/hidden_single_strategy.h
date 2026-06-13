@@ -82,6 +82,11 @@ private:
     /// block precedence ("easiest region wins"): a single confined to its box is the easy 1.2 case, so
     /// the box is tested first, then the row, then the column. The finder guarantees the value is a
     /// single in at least one region, so one branch always matches; None is a defensive fallback.
+    ///
+    /// The box→row→col branch order is deliberate: it is first-match short-circuit, and it encodes the
+    /// rating preference (Box 1.2 < Line 1.5), so it must be read as policy, not a bug. It intentionally
+    /// diverges from CandidateGrid::findHiddenSingle's row→col→box scan order — that order only decides
+    /// WHICH single is returned; this order decides how the returned single is RATED.
     [[nodiscard]] static RegionType resolvingRegion(const BoardData& board, const CandidateGrid& state,
                                                     const Position& position, int value) {
         if (getCellsWithCandidate(state, getEmptyCellsInBox(board, getBoxIndex(position.row, position.col)), value)
