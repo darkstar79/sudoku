@@ -75,6 +75,9 @@ TEST_CASE("HiddenSingleStrategy - Interface Implementation", "[hidden_single]") 
     }
 }
 
+// The SECTIONs + per-assertion has_value() short-circuit guards expand to many nested conditionals,
+// tripping the cognitive-complexity threshold; complexity is inherent to the Catch2 expansion.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("HiddenSingleStrategy - Finds Hidden Single", "[hidden_single]") {
     HiddenSingleStrategy strategy;
 
