@@ -91,8 +91,8 @@ TEST_CASE("HiddenSingleStrategy - Finds Hidden Single", "[hidden_single]") {
         REQUIRE(step->position.col == 0);
         REQUIRE(step->value == 5);
         // Class A (0b.4a): R1C1 is the lone empty cell in its box → a *block* hidden single → SE 1.2.
-        REQUIRE(step->rating == 1.2);
-        REQUIRE(step->explanation_data.region_type == RegionType::Box);
+        REQUIRE((step.has_value() && step->rating == 1.2));  // has_value() guards the deref for clang-tidy
+        REQUIRE((step.has_value() && step->explanation_data.region_type == RegionType::Box));
         REQUIRE_FALSE(step->explanation.empty());
     }
 
@@ -104,12 +104,13 @@ TEST_CASE("HiddenSingleStrategy - Finds Hidden Single", "[hidden_single]") {
         auto step = strategy.findStep(board, state);
 
         REQUIRE(step.has_value());
-        REQUIRE(step->technique == SolvingTechnique::HiddenSingle);
-        REQUIRE(step->position.row == 0);
-        REQUIRE(step->position.col == 8);
-        REQUIRE(step->value == 1);
-        REQUIRE(step->rating == 1.5);
-        REQUIRE(step->explanation_data.region_type == RegionType::Row);
+        // has_value() guards each deref for clang-tidy (bugprone-unchecked-optional-access).
+        REQUIRE((step.has_value() && step->technique == SolvingTechnique::HiddenSingle));
+        REQUIRE((step.has_value() && step->position.row == 0));
+        REQUIRE((step.has_value() && step->position.col == 8));
+        REQUIRE((step.has_value() && step->value == 1));
+        REQUIRE((step.has_value() && step->rating == 1.5));
+        REQUIRE((step.has_value() && step->explanation_data.region_type == RegionType::Row));
     }
 
     SECTION("Leverages existing CandidateGrid::findHiddenSingle") {

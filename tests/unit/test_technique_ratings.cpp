@@ -153,8 +153,10 @@ TEST_CASE("getTechniqueRating() golden pin — all 54 strategy ratings", "[solve
 // is the canonical RED→GREEN of the split: the context overload does not exist until 0b.4a lands, so
 // this whole case is RED on the first build and GREEN once the overload is implemented. The flat
 // 54-row pin above is the *base/default* surface and is unchanged (HS line value 1.5 lives there).
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) — SECTIONs + the base-equivalence loop
-// expand to nested conditionals; complexity is inherent to the pin (same as the golden pin above).
+// The SECTIONs + the base-equivalence loop expand to nested conditionals, so the generated function
+// trips the cognitive-complexity threshold; complexity is inherent to the pin (same as the golden pin
+// above). The directive MUST be the line immediately above TEST_CASE to bind to it.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("getTechniqueRating() Class-A context split — Hidden Single block 1.2 / line 1.5", "[solver][ratings]") {
     using enum RegionType;
 
