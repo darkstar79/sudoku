@@ -1552,6 +1552,14 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Wie ein Nice Loop, aber Zellgruppen innerhalb einer Box fungieren als einzelner Knoten. Dies ermöglicht die Erkennung komplexerer Muster und zusätzliche Eliminierungen.</translation>
     </message>
     <message>
+        <source>The last empty cell in a box, row, or column. Eight of the region&apos;s nine values are already placed, so the final cell is forced to the one missing value. The easiest Sudoku technique.</source>
+        <translation>Die letzte leere Zelle in einem Block, einer Zeile oder einer Spalte. Acht der neun Werte der Region sind bereits gesetzt, sodass die letzte Zelle auf den einen fehlenden Wert festgelegt ist. Die einfachste Sudoku-Technik.</translation>
+    </message>
+    <message>
+        <source>Scan for any box, row, or column with a single empty cell, then place the one value that is still missing from that region.</source>
+        <translation>Suche nach einem Block, einer Zeile oder einer Spalte mit nur einer leeren Zelle und trage dort den Wert ein, der in dieser Region noch fehlt.</translation>
+    </message>
+    <message>
         <source>A brute-force trial-and-error method. Not a logical technique — used as a fallback when no logical strategy can make progress.</source>
         <translation>Systematisches Ausprobieren von Kandidaten mit Zurücksetzen bei Widersprüchen.</translation>
     </message>
@@ -1812,6 +1820,10 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Gruppierter Nice Loop</translation>
     </message>
     <message>
+        <source>Full House</source>
+        <translation>Volles Haus</translation>
+    </message>
+    <message>
         <source>Backtracking</source>
         <translation>Backtracking</translation>
     </message>
@@ -1926,6 +1938,10 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Simple Coloring on {0}: cell {1} sees both colors — eliminates {0} from {1}</source>
         <translation>Einfache Färbung auf {0}: Zelle {1} sieht beide Farben — eliminiert {0} aus {1}</translation>
+    </message>
+    <message>
+        <source>Full House at {0}: the last empty cell in its region, so it must be {1}</source>
+        <translation>Volles Haus bei {0}: die letzte leere Zelle ihrer Region, also muss es {1} sein</translation>
     </message>
     <message>
         <source>Unique Rectangle Type 2: cells {0} with values {{{1},{2}}} — extra candidate {3} eliminated from cells seeing both floor cells in shared {4}</source>

@@ -1550,6 +1550,14 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>The last empty cell in a box, row, or column. Eight of the region&apos;s nine values are already placed, so the final cell is forced to the one missing value. The easiest Sudoku technique.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Scan for any box, row, or column with a single empty cell, then place the one value that is still missing from that region.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>A brute-force trial-and-error method. Not a logical technique — used as a fallback when no logical strategy can make progress.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1810,6 +1818,10 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Full House</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Backtracking</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1923,6 +1935,10 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Simple Coloring on {0}: cell {1} sees both colors — eliminates {0} from {1}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Full House at {0}: the last empty cell in its region, so it must be {1}</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
