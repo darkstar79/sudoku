@@ -30,6 +30,12 @@ namespace sudoku::core {
 /// It is NOT value-only: a set or ordering change with no single value edit still changes
 /// results and still requires a bump.
 ///
+/// PRE-1.0.0 CARVE-OUT: the bump rule above is a POST-TAG obligation (it protects shipped saves).
+/// Before the 1.0.0 tag there are no shipped saves to protect, so the 0b.4 a/b/c context-sensitive
+/// rating work intentionally changes computed ratings WITHOUT bumping — the per-cycle artifact is the
+/// golden-pin re-base, not a version increment. The version resumes bumping for any post-1.0.0 change.
+///
+
 /// On load, a save whose rating_model_version differs from this constant keeps its stored rating
 /// literals (snapshot-preserve; never recomputed — the per-step context needed to re-rate is not
 /// stored) and reports SavedGame::isRatingStale().
@@ -38,6 +44,8 @@ namespace sudoku::core {
 ///   1 — pre-1.0.0 baseline (0b.0).
 ///   2 — 0b.3 flat corrections: Empty Rectangle 4.5→4.3, ALS-XZ 7.5→6.8, Sue de Coq 7.5→6.6.
 ///       Three getTechniqueRating() return values changed, so saves rated under v1 are now stale.
+///       (Stays 2 through 0b.4a: Hidden Single block 1.2 / line 1.5 context split — pre-1.0.0
+///       carve-out above; new computed rating value, deliberately NO bump.)
 ///
 /// Lives in this tiny dependency-free header (not puzzle_rating.h) so SavedGame can compute
 /// staleness without pulling the rating/solver headers into every i_save_manager.h consumer.

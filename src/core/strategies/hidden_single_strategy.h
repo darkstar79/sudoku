@@ -42,6 +42,10 @@ public:
 
         const auto& [position, value] = result.value();
 
+        // Class A region split (Story 0b.4a): record which region resolves the single and rate by it —
+        // a block single is the easy SE 1.2 case, a line single 1.5.
+        const RegionType region = resolvingRegion(board, state, position, value);
+
         // Create explanation
         auto explanation = fmt::format("Hidden Single at {}: value {} can only appear in this cell within its region",
                                        formatPosition(position), value);
@@ -52,8 +56,11 @@ public:
                          .value = value,
                          .eliminations = {},
                          .explanation = explanation,
-                         .rating = getTechniqueRating(SolvingTechnique::HiddenSingle),
-                         .explanation_data = {.positions = {position}, .values = {value}}};
+                         .rating = getTechniqueRating(SolvingTechnique::HiddenSingle, RatingContext{.region = region}),
+                         .explanation_data = {.positions = {position},
+                                              .values = {value},
+                                              .region_type = region,
+                                              .region_index = getUnitIndex(region, position)}};
     }
 
     [[nodiscard]] SolvingTechnique getTechnique() const override {
@@ -65,7 +72,34 @@ public:
     }
 
     [[nodiscard]] double getDifficultyRating() const override {
+        // Static, context-free base rating (SE line value). Per-step ratings are context-derived in
+        // findStep(); this interface method reports the technique's flat base for ordering/UI.
         return getTechniqueRating(SolvingTechnique::HiddenSingle);
+    }
+
+private:
+    /// Determines the region that resolves a known hidden single at `position`/`value`, applying SE
+    /// block precedence ("easiest region wins"): a single confined to its box is the easy 1.2 case, so
+    /// the box is tested first, then the row, then the column. The finder guarantees the value is a
+    /// single in at least one region, so one branch always matches; None is a defensive fallback.
+    ///
+    /// The box→row→col branch order is deliberate: it is first-match short-circuit, and it encodes the
+    /// rating preference (Box 1.2 < Line 1.5), so it must be read as policy, not a bug. It intentionally
+    /// diverges from CandidateGrid::findHiddenSingle's row→col→box scan order — that order only decides
+    /// WHICH single is returned; this order decides how the returned single is RATED.
+    [[nodiscard]] static RegionType resolvingRegion(const BoardData& board, const CandidateGrid& state,
+                                                    const Position& position, int value) {
+        if (getCellsWithCandidate(state, getEmptyCellsInBox(board, getBoxIndex(position.row, position.col)), value)
+                .size() == 1) {
+            return RegionType::Box;
+        }
+        if (getCellsWithCandidate(state, getEmptyCellsInRow(board, position.row), value).size() == 1) {
+            return RegionType::Row;
+        }
+        if (getCellsWithCandidate(state, getEmptyCellsInCol(board, position.col), value).size() == 1) {
+            return RegionType::Col;
+        }
+        return RegionType::None;
     }
 };
 
