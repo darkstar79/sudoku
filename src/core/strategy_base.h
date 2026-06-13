@@ -21,9 +21,11 @@
 #include "solve_step.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <vector>
 
+#include <bit>
 #include <fmt/format.h>
 
 namespace sudoku::core {
@@ -260,14 +262,16 @@ protected:
         for (const auto& target : elims) {
             size_t row = target.position.row;
             size_t col = target.position.col;
-            int removed = 0;
+            // Count DISTINCT still-allowed values eliminated from this cell. A bitmask dedups, so a
+            // duplicated {cell,value} entry cannot inflate the count and falsely skip the == 1 test (P4).
+            uint16_t removed_mask = 0;
             for (const auto& other : elims) {
                 if (other.position.row == row && other.position.col == col &&
                     candidates.isAllowed(row, col, other.value)) {
-                    ++removed;
+                    removed_mask |= valueToBit(other.value);
                 }
             }
-            if (candidates.countPossibleValues(row, col) - removed == 1) {
+            if (candidates.countPossibleValues(row, col) - std::popcount(removed_mask) == 1) {
                 return true;
             }
         }

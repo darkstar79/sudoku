@@ -34,6 +34,7 @@
 #include "../../src/core/strategies/finned_x_wing_strategy.h"
 #include "../../src/core/strategies/forcing_chain_strategy.h"
 #include "../../src/core/strategies/franken_fish_strategy.h"
+#include "../../src/core/strategies/full_house_strategy.h"
 #include "../../src/core/strategies/grouped_nice_loop_strategy.h"
 #include "../../src/core/strategies/grouped_x_cycles_strategy.h"
 #include "../../src/core/strategies/hidden_pair_strategy.h"
@@ -304,9 +305,12 @@ using namespace sudoku::core;
     return technique_name + "/" + variant;
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) — registering 54 strategies in difficulty order; nesting is inherent
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — registering 55 strategies in difficulty order; nesting is inherent
 [[nodiscard]] inline std::vector<std::unique_ptr<ISolvingStrategy>> createStrategyChain() {
     std::vector<std::unique_ptr<ISolvingStrategy>> strategies;
+    // Full House runs first, mirroring SudokuSolver::initializeStrategies() — a region's last empty cell is
+    // labelled FullHouse 1.0 ahead of the Naked/Hidden Single fallbacks (story 0b.4b).
+    strategies.push_back(std::make_unique<FullHouseStrategy>());
     strategies.push_back(std::make_unique<NakedSingleStrategy>());
     strategies.push_back(std::make_unique<HiddenSingleStrategy>());
     strategies.push_back(std::make_unique<NakedPairStrategy>());

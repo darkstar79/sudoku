@@ -35,11 +35,16 @@ namespace sudoku::core {
 /// so without this strategy it would surface as a Naked Single (2.3) and be over-rated — hence this
 /// strategy is registered *before* NakedSingle/HiddenSingle so the placement is labelled FullHouse 1.0.
 ///
-/// Identity is the region-emptiness predicate, not registration order: a region-last cell is a Full
-/// House regardless of which strategy runs first. The classification gates on region emptiness (not
-/// candidate count) so a one-candidate cell whose regions still have other empties stays a Naked Single.
-/// When a cell completes more than one region at once, region precedence is **box → row → col** for the
-/// reported region (deterministic explanation_data).
+/// The strategy *classifies* a Full House purely by the region-emptiness predicate (independent of which
+/// cell is scanned first). The *system-level* label, however, relies on this strategy being registered
+/// ahead of NakedSingle/HiddenSingle — a region-last cell is also a naked/hidden single, so whichever of
+/// the three runs first claims it. That ordering is a deliberate, **pinned** contract (story 0b.4b,
+/// review D1): see the "FullHouse precedes …" order test and the solver-level "labels a region-last cell
+/// FullHouse" test, which turn a silent reorder (it would revert every region-last placement to an
+/// over-rated 2.3 Naked Single) into a loud test failure. The classification gates on region emptiness
+/// (not candidate count), so a one-candidate cell whose regions still have other empties stays a Naked
+/// Single. When a cell completes more than one region at once, region precedence is **box → row → col**
+/// for the reported region (deterministic explanation_data).
 class FullHouseStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
     [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board, const CandidateGrid& state) const override {

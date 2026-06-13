@@ -201,10 +201,10 @@ TEST_CASE("getTechniqueRating() Class-B Direct forms — forces_placement lowers
         double direct;
     };
     const std::array<Case, 4> cases = {{
-        {SolvingTechnique::PointingPair, 2.6, 1.7},      // Pointing / Direct Pointing
-        {SolvingTechnique::BoxLineReduction, 2.8, 1.9},  // Claiming / Direct Claiming
-        {SolvingTechnique::HiddenPair, 3.4, 2.0},        // Hidden Pair / Direct Hidden Pair
-        {SolvingTechnique::HiddenTriple, 4.0, 2.5},      // Hidden Triplet / Direct Hidden Triplet
+        {.technique = SolvingTechnique::PointingPair, .base = 2.6, .direct = 1.7},      // Direct Pointing
+        {.technique = SolvingTechnique::BoxLineReduction, .base = 2.8, .direct = 1.9},  // Direct Claiming
+        {.technique = SolvingTechnique::HiddenPair, .base = 3.4, .direct = 2.0},        // Direct Hidden Pair
+        {.technique = SolvingTechnique::HiddenTriple, .base = 4.0, .direct = 2.5},      // Direct Hidden Triplet
     }};
 
     SECTION("Forced (forces_placement) → Direct rating; unforced → base rating") {

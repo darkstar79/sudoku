@@ -107,4 +107,25 @@ TEST_CASE("HiddenPairStrategy - Polymorphic Usage", "[hidden_pair]") {
     }
 }
 
+// Story 0b.4b (P3 / AC3b): a real mid-solve board on which the hidden pair's eliminations open a hidden
+// single, so the strategy emits a *Direct Hidden Pair* rated 2.0 (not the elimination-only 3.4). This is
+// the end-to-end witness for the HIDDEN face of eliminationsForcePlacement: a Hidden Pair removes only the
+// extra candidates from its two host cells (which keep >= 2 candidates), so it can NEVER create a naked
+// single — any placement it forces is necessarily a hidden single. This single witness therefore exercises
+// the hidden detector through a real strategy, which is why dedicated hidden-forcing Pointing/Claiming
+// fixtures were judged redundant (review P3). The has_value() short-circuit guards each deref for clang-tidy.
+TEST_CASE("HiddenPairStrategy - Direct Hidden Pair forces a hidden single (SE 2.0)", "[hidden_pair]") {
+    HiddenPairStrategy strategy;
+    BoardData board = {{6, 0, 0, 0, 0, 8, 7, 0, 5}, {9, 0, 3, 0, 7, 5, 8, 0, 0}, {7, 5, 8, 0, 0, 0, 6, 4, 0},
+                       {4, 0, 0, 7, 5, 2, 3, 9, 8}, {5, 3, 7, 0, 0, 0, 2, 0, 0}, {2, 8, 0, 0, 0, 0, 4, 5, 7},
+                       {8, 0, 0, 1, 3, 9, 5, 7, 2}, {1, 7, 2, 5, 0, 0, 9, 0, 0}, {3, 9, 5, 0, 0, 7, 1, 0, 0}};
+    CandidateGrid state(board);
+
+    auto step = strategy.findStep(board, state);
+
+    REQUIRE(step.has_value());
+    REQUIRE((step.has_value() && step->technique == SolvingTechnique::HiddenPair));
+    REQUIRE((step.has_value() && step->rating == 2.0));
+}
+
 }  // anonymous namespace

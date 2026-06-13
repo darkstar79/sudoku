@@ -23,6 +23,7 @@ using namespace sudoku;
 using namespace sudoku::viewmodel;
 using namespace sudoku::core;
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 SECTIONs expand to nested conditionals; complexity is inherent to the multi-section TEST_CASE
 TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]") {
     sudoku::test::GameViewModelFixture fixture;
 

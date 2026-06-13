@@ -119,3 +119,21 @@ TEST_CASE("PointingPairStrategy - Returns nullopt for near-complete board", "[po
     auto result = strategy.findStep(board, state);
     REQUIRE_FALSE(result.has_value());
 }
+
+// Story 0b.4b (P3 / AC3b): a real mid-solve board on which the pointing elimination reduces a cell to a
+// single candidate, so the strategy emits a *Direct Pointing* rated 1.7 (not the elimination-only 2.6).
+// The unforced 2.6 case is covered by the boards in the sections above. The has_value() short-circuit on
+// each deref is for clang-tidy bugprone-unchecked-optional-access (see docs/CODE_QUALITY.md).
+TEST_CASE("PointingPairStrategy - Direct Pointing forces a placement (SE 1.7)", "[pointing_pair]") {
+    BoardData board = {{0, 0, 0, 3, 7, 1, 6, 4, 2}, {6, 4, 2, 5, 8, 9, 1, 7, 3}, {1, 7, 3, 0, 0, 0, 8, 5, 9},
+                       {0, 0, 0, 0, 0, 0, 0, 0, 5}, {4, 0, 6, 0, 5, 3, 0, 0, 0}, {2, 5, 0, 7, 0, 0, 0, 0, 6},
+                       {8, 6, 4, 1, 9, 5, 0, 0, 7}, {3, 1, 5, 6, 2, 7, 9, 8, 4}, {0, 0, 0, 0, 0, 0, 5, 6, 1}};
+    CandidateGrid state(board);
+    PointingPairStrategy strategy;
+
+    auto result = strategy.findStep(board, state);
+
+    REQUIRE(result.has_value());
+    REQUIRE((result.has_value() && result->technique == SolvingTechnique::PointingPair));
+    REQUIRE((result.has_value() && result->rating == 1.7));
+}

@@ -15,7 +15,15 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/candidate_grid.h"
+#include "../../src/core/game_validator.h"
 #include "../../src/core/strategies/full_house_strategy.h"
+#include "../../src/core/sudoku_solver.h"
+#include "../helpers/strategy_test_utils.h"
+
+#include <algorithm>
+#include <iterator>
+#include <memory>
+#include <optional>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -66,6 +74,16 @@ BoardData nakedSingleNotFullHouse() {
             {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
 }
 
+// clang-tidy bugprone-unchecked-optional-access (CI error): the has_value() guard must short-circuit each
+// deref in the same expression, and the analysis does not cross a helper boundary — so this helper checks
+// has_value() itself. See docs/CODE_QUALITY.md "optional access in Catch2 tests".
+[[nodiscard]] bool isFullHousePlacement(const std::optional<SolveStep>& s, size_t row, size_t col, int value,
+                                        RegionType region, size_t region_index) {
+    return s.has_value() && s->type == SolveStepType::Placement && s->technique == SolvingTechnique::FullHouse &&
+           s->position.row == row && s->position.col == col && s->value == value && s->rating == 1.0 &&
+           s->explanation_data.region_type == region && s->explanation_data.region_index == region_index;
+}
+
 }  // namespace
 
 TEST_CASE("FullHouseStrategy - Interface", "[full_house]") {
@@ -95,14 +113,7 @@ TEST_CASE("FullHouseStrategy - Finds the last cell of each region type", "[full_
         auto step = strategy.findStep(board, state);
 
         REQUIRE(step.has_value());
-        REQUIRE(step->type == SolveStepType::Placement);
-        REQUIRE(step->technique == SolvingTechnique::FullHouse);
-        REQUIRE(step->position.row == 2);
-        REQUIRE(step->position.col == 2);
-        REQUIRE(step->value == 9);
-        REQUIRE(step->rating == 1.0);
-        REQUIRE(step->explanation_data.region_type == RegionType::Box);
-        REQUIRE(step->explanation_data.region_index == 0);
+        REQUIRE(isFullHousePlacement(step, 2, 2, 9, RegionType::Box, 0));
     }
 
     SECTION("Row-last cell rates 1.0 and reports region Row") {
@@ -112,13 +123,7 @@ TEST_CASE("FullHouseStrategy - Finds the last cell of each region type", "[full_
         auto step = strategy.findStep(board, state);
 
         REQUIRE(step.has_value());
-        REQUIRE(step->technique == SolvingTechnique::FullHouse);
-        REQUIRE(step->position.row == 0);
-        REQUIRE(step->position.col == 8);
-        REQUIRE(step->value == 1);
-        REQUIRE(step->rating == 1.0);
-        REQUIRE(step->explanation_data.region_type == RegionType::Row);
-        REQUIRE(step->explanation_data.region_index == 0);
+        REQUIRE(isFullHousePlacement(step, 0, 8, 1, RegionType::Row, 0));
     }
 
     SECTION("Column-last cell rates 1.0 and reports region Col") {
@@ -128,13 +133,7 @@ TEST_CASE("FullHouseStrategy - Finds the last cell of each region type", "[full_
         auto step = strategy.findStep(board, state);
 
         REQUIRE(step.has_value());
-        REQUIRE(step->technique == SolvingTechnique::FullHouse);
-        REQUIRE(step->position.row == 8);
-        REQUIRE(step->position.col == 0);
-        REQUIRE(step->value == 9);
-        REQUIRE(step->rating == 1.0);
-        REQUIRE(step->explanation_data.region_type == RegionType::Col);
-        REQUIRE(step->explanation_data.region_index == 0);
+        REQUIRE(isFullHousePlacement(step, 8, 0, 9, RegionType::Col, 0));
     }
 }
 
@@ -148,12 +147,36 @@ TEST_CASE("FullHouseStrategy - Region precedence is box -> row -> col", "[full_h
     auto step = strategy.findStep(board, state);
 
     REQUIRE(step.has_value());
-    REQUIRE(step->technique == SolvingTechnique::FullHouse);
-    REQUIRE(step->position.row == 0);
-    REQUIRE(step->position.col == 0);
-    REQUIRE(step->value == 5);
-    REQUIRE(step->explanation_data.region_type == RegionType::Box);
-    REQUIRE(step->explanation_data.region_index == 0);
+    REQUIRE(isFullHousePlacement(step, 0, 0, 5, RegionType::Box, 0));
+}
+
+// D1 order contract (story 0b.4b): a region's last empty cell is ALSO a naked/hidden single, so whichever
+// of the three strategies runs first labels it. FullHouse must run first (SE 1.0), else every region-last
+// placement reverts to an over-rated 2.3 Naked Single and nearly every puzzle is mis-rated. These two
+// tests pin that contract — the order in the chain, and the resulting label from the real solver — so a
+// silent reorder of SudokuSolver::initializeStrategies() fails loudly instead of silently mis-rating.
+TEST_CASE("FullHouse precedes Naked/Hidden Single in the strategy chain (D1 order contract)", "[full_house]") {
+    auto chain = sudoku::testing::createStrategyChain();
+    auto indexOf = [&chain](SolvingTechnique t) -> std::ptrdiff_t {
+        auto it = std::ranges::find_if(chain, [t](const auto& s) { return s->getTechnique() == t; });
+        return it == chain.end() ? -1 : std::ranges::distance(chain.begin(), it);
+    };
+    const std::ptrdiff_t full_house = indexOf(SolvingTechnique::FullHouse);
+    REQUIRE(full_house >= 0);
+    REQUIRE(full_house < indexOf(SolvingTechnique::NakedSingle));
+    REQUIRE(full_house < indexOf(SolvingTechnique::HiddenSingle));
+}
+
+TEST_CASE("Solver labels a region-last cell FullHouse, not NakedSingle (D1 production pin)", "[full_house]") {
+    auto validator = std::make_shared<GameValidator>();
+    SudokuSolver solver(validator);
+    auto board = allRegionsFullHouse();  // single empty cell R1C1 — last in its row, column, and box
+
+    auto step = solver.findNextStep(board);
+
+    REQUIRE(step.has_value());
+    REQUIRE((step.has_value() && step->technique == SolvingTechnique::FullHouse));
+    REQUIRE((step.has_value() && step->rating == 1.0));
 }
 
 TEST_CASE("FullHouseStrategy - Does not fire on a non-region-last naked single", "[full_house]") {
