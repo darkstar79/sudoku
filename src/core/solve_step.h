@@ -100,9 +100,28 @@ struct RatingContext {
 /// Class A — Hidden Single region split (SE v1.2.1): a single hidden in a *block* is the easiest case
 /// (1.2); a single hidden only in a *line* (row/col) rates 1.5. Block precedence ("easiest region
 /// wins") matches SE: when a cell is a hidden single in its box, it is reported as the 1.2 block case.
+///
+/// Class B — "Direct" forms (SE v1.2.1, story 0b.4b): Pointing/Claiming/Hidden-subset steps whose own
+/// eliminations force a placement (`forces_placement`) rate lower than the elimination-only form —
+/// Direct Pointing 1.7 (vs 2.6), Direct Claiming 1.9 (vs 2.8), Direct Hidden Pair 2.0 (vs 3.4), Direct
+/// Hidden Triplet 2.5 (vs 4.0). Full House (1.0) is a distinct technique with a flat rating, not a flag.
 [[nodiscard]] constexpr double getTechniqueRating(SolvingTechnique technique, const RatingContext& context) {
     if (technique == SolvingTechnique::HiddenSingle && context.region == RegionType::Box) {
         return 1.2;  // block hidden single (line value 1.5 stays in the flat base overload)
+    }
+    if (context.forces_placement) {
+        switch (technique) {
+            case SolvingTechnique::PointingPair:
+                return 1.7;  // SE "Direct Pointing"
+            case SolvingTechnique::BoxLineReduction:
+                return 1.9;  // SE "Direct Claiming"
+            case SolvingTechnique::HiddenPair:
+                return 2.0;  // SE "Direct Hidden Pair"
+            case SolvingTechnique::HiddenTriple:
+                return 2.5;  // SE "Direct Hidden Triplet"
+            default:
+                break;
+        }
     }
     return getTechniqueRating(technique);
 }

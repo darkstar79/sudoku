@@ -816,6 +816,15 @@ namespace sudoku::core {
                     "Sudoku", "Grouped Nice Loop: alternating inference chain from {0} to {1} — eliminates {2}")),
                 localizedPosition(data.positions[0]), localizedPosition(data.positions[1]), data.values[0]);
         }
+        case SolvingTechnique::FullHouse: {
+            if (data.positions.empty() || data.values.empty()) {
+                return step.explanation;
+            }
+            return fmt::format(
+                fmt::runtime(
+                    core::loc("Sudoku", "Full House at {0}: the last empty cell in its region, so it must be {1}")),
+                localizedPosition(data.positions[0]), data.values[0]);
+        }
         case SolvingTechnique::UnitForcingChain:
         case SolvingTechnique::RegionForcingChain:
         case SolvingTechnique::Backtracking:

@@ -492,6 +492,15 @@ struct TechniqueDescription {
                     .what_to_look_for = core::loc(
                         "Sudoku", "Build AIC chains using grouped box nodes alongside individual cells. Look for "
                                   "discontinuous Type 2 chains where both endpoints assert the same digit.")};
+        case FullHouse:
+            return {.title = getLocalizedTechniqueName(technique),
+                    .what_it_is = core::loc(
+                        "Sudoku", "The last empty cell in a box, row, or column. Eight of the region's nine values are "
+                                  "already placed, so the final cell is forced to the one missing value. The easiest "
+                                  "Sudoku technique."),
+                    .what_to_look_for =
+                        core::loc("Sudoku", "Scan for any box, row, or column with a single empty cell, then place the "
+                                            "one value that is still missing from that region.")};
         case Backtracking:
             return {.title = getLocalizedTechniqueName(technique),
                     .what_it_is =

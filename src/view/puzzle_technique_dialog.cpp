@@ -38,6 +38,7 @@ QString qstr(std::string_view sv) {
 // All logical techniques, in registration order (matches SudokuSolver). Backtracking is
 // intentionally omitted — the L-D feature is for *logical* techniques only.
 constexpr std::array kSelectableTechniques = {
+    core::SolvingTechnique::FullHouse,
     core::SolvingTechnique::NakedSingle,
     core::SolvingTechnique::HiddenSingle,
     core::SolvingTechnique::NakedPair,

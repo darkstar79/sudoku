@@ -46,6 +46,10 @@ struct TechniquePrerequisite {
 [[nodiscard]] inline std::vector<TechniquePrerequisite> getPrerequisites(SolvingTechnique technique) {
     using enum SolvingTechnique;
     switch (technique) {
+        // Full House is the root of the learning path — no prerequisites (story 0b.4b).
+        case FullHouse:
+            return {};
+
         // Subset chains
         case NakedTriple:
             return {{.prerequisite = NakedPair}};
@@ -152,6 +156,7 @@ struct TechniquePrerequisite {
 
 /// All logical techniques in difficulty order (excludes Backtracking)
 inline constexpr std::array kAllTechniques = {
+    SolvingTechnique::FullHouse,  // SE 1.0 — easiest technique, root of the learning path (story 0b.4b)
     SolvingTechnique::NakedSingle,
     SolvingTechnique::HiddenSingle,
     SolvingTechnique::NakedPair,

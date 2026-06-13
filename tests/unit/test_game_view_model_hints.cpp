@@ -57,9 +57,12 @@ TEST_CASE("GameViewModel - Educational Hint System", "[game_view_model][hints]")
         const auto& hint = fixture.view_model->hintMessage.get();
         REQUIRE_FALSE(hint.empty());
 
-        // Should contain technique English name (no QTranslator installed -> source returned)
-        bool has_technique_name =
-            hint.find("Naked Single") != std::string::npos || hint.find("Hidden Single") != std::string::npos;
+        // Should contain technique English name (no QTranslator installed -> source returned).
+        // An Easy board can expose a region's last empty cell, so the next step may be a Full House
+        // (SE 1.0) ahead of the singles (story 0b.4b).
+        bool has_technique_name = hint.find("Naked Single") != std::string::npos ||
+                                  hint.find("Hidden Single") != std::string::npos ||
+                                  hint.find("Full House") != std::string::npos;
         REQUIRE(has_technique_name);
     }
 

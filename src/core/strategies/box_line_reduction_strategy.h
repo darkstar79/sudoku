@@ -114,7 +114,9 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .rating = getTechniqueRating(SolvingTechnique::BoxLineReduction),
+                             .rating = getTechniqueRating(SolvingTechnique::BoxLineReduction,
+                                                          RatingContext{.forces_placement = eliminationsForcePlacement(
+                                                                            candidates, eliminations)}),
                              .explanation_data = {.positions = {cells_with_value.begin(), cells_with_value.end()},
                                                   .values = {value},
                                                   .region_type = RegionType::Row,
@@ -163,7 +165,9 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .rating = getTechniqueRating(SolvingTechnique::BoxLineReduction),
+                             .rating = getTechniqueRating(SolvingTechnique::BoxLineReduction,
+                                                          RatingContext{.forces_placement = eliminationsForcePlacement(
+                                                                            candidates, eliminations)}),
                              .explanation_data = {.positions = {cells_with_value.begin(), cells_with_value.end()},
                                                   .values = {value},
                                                   .region_type = RegionType::Col,

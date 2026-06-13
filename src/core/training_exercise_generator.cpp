@@ -162,6 +162,7 @@ int TrainingExerciseGenerator::getRetryBudget(SolvingTechnique technique) {
 TrainingInteractionMode TrainingExerciseGenerator::getInteractionMode(SolvingTechnique technique) {
     switch (technique) {
         // Placement techniques
+        case SolvingTechnique::FullHouse:
         case SolvingTechnique::NakedSingle:
         case SolvingTechnique::HiddenSingle:
             return TrainingInteractionMode::Placement;

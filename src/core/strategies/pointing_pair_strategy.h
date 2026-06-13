@@ -112,7 +112,9 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .rating = getTechniqueRating(SolvingTechnique::PointingPair),
+                             .rating = getTechniqueRating(SolvingTechnique::PointingPair,
+                                                          RatingContext{.forces_placement = eliminationsForcePlacement(
+                                                                            candidates, eliminations)}),
                              .explanation_data = {.positions = {cells_in_box.begin(), cells_in_box.end()},
                                                   .values = {value},
                                                   .region_type = RegionType::Box,
@@ -156,7 +158,9 @@ private:
                              .value = 0,
                              .eliminations = eliminations,
                              .explanation = explanation,
-                             .rating = getTechniqueRating(SolvingTechnique::PointingPair),
+                             .rating = getTechniqueRating(SolvingTechnique::PointingPair,
+                                                          RatingContext{.forces_placement = eliminationsForcePlacement(
+                                                                            candidates, eliminations)}),
                              .explanation_data = {.positions = {cells_in_box.begin(), cells_in_box.end()},
                                                   .values = {value},
                                                   .region_type = RegionType::Box,

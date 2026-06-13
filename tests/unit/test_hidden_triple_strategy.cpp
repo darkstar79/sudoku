@@ -72,11 +72,13 @@ TEST_CASE("HiddenTripleStrategy - Board Analysis", "[hidden_triple]") {
 
         auto step = strategy.findStep(board, state);
 
-        // Verify correct structure if pattern found
+        // Verify correct structure if pattern found. On this board the hidden triple's eliminations
+        // open a hidden single, so it is a *Direct* Hidden Triplet (SE 2.5, story 0b.4b) rather than the
+        // elimination-only 4.0 — a real reachability witness of the forces_placement context.
         if (step.has_value()) {
             REQUIRE(step->type == SolveStepType::Elimination);
             REQUIRE(step->technique == SolvingTechnique::HiddenTriple);
-            REQUIRE(step->rating == 4.0);
+            REQUIRE(step->rating == 2.5);
             REQUIRE_FALSE(step->explanation.empty());
         }
         // Test passes whether pattern found or not - key is algorithm executed

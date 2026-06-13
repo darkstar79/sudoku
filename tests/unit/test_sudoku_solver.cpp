@@ -55,18 +55,20 @@ TEST_CASE("SudokuSolver - findNextStep", "[sudoku_solver]") {
     auto generator = std::make_shared<PuzzleGenerator>();
     SudokuSolver solver(validator);
 
-    SECTION("Finds naked single in easy puzzle") {
+    SECTION("Finds Full House in near-complete puzzle") {
+        // R1C1 is the only empty cell in its row, column, and box — a Full House (SE 1.0), found
+        // ahead of the Naked Single fallback (story 0b.4b; previously surfaced as NakedSingle 2.3).
         auto board = createEasyPuzzle();
 
         auto result = solver.findNextStep(board);
 
         REQUIRE(result.has_value());
         REQUIRE(result->type == SolveStepType::Placement);
-        REQUIRE(result->technique == SolvingTechnique::NakedSingle);
+        REQUIRE(result->technique == SolvingTechnique::FullHouse);
         REQUIRE(result->position.row == 0);
         REQUIRE(result->position.col == 0);
         REQUIRE(result->value == 5);
-        REQUIRE(result->rating == 2.3);
+        REQUIRE(result->rating == 1.0);
     }
 
     SECTION("Returns error for complete board") {

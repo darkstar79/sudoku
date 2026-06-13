@@ -57,15 +57,17 @@ TEST_CASE("PuzzleRater - Rate Easy Puzzle", "[puzzle_rater]") {
     auto solver = std::make_shared<SudokuSolver>(validator);
     PuzzleRater rater(solver);
 
-    SECTION("Rates easy puzzle with only naked singles") {
+    SECTION("Rates easy puzzle with a single Full House") {
+        // Near-complete board: R1C1 is the only empty cell in its row, column, AND box — a Full House
+        // (SE 1.0), not a Naked Single. Story 0b.4b models this correctly (previously over-rated 2.3).
         auto board = createEasyPuzzle();
 
         auto result = rater.ratePuzzle(board);
 
         REQUIRE(result.has_value());
-        REQUIRE(result->se_rating == 2.3);  // One naked single (10 points)
+        REQUIRE(result->se_rating == 1.0);  // One Full House (SE "Last value")
         REQUIRE(result->solve_path.size() == 1);
-        REQUIRE(result->solve_path[0].technique == SolvingTechnique::NakedSingle);
+        REQUIRE(result->solve_path[0].technique == SolvingTechnique::FullHouse);
         REQUIRE_FALSE(result->requires_backtracking);
         REQUIRE(result->estimated_difficulty == Difficulty::Easy);
     }

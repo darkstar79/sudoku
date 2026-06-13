@@ -210,6 +210,103 @@ protected:
                 return {};
         }
     }
+
+    /// Gets all nine cell positions of a unit (geometric — independent of board contents).
+    [[nodiscard]] static std::vector<Position> getUnitPositions(RegionType type, size_t index) {
+        std::vector<Position> cells;
+        cells.reserve(BOARD_SIZE);
+        switch (type) {
+            case RegionType::Row:
+                for (size_t c = 0; c < BOARD_SIZE; ++c) {
+                    cells.push_back(Position{.row = index, .col = c});
+                }
+                break;
+            case RegionType::Col:
+                for (size_t r = 0; r < BOARD_SIZE; ++r) {
+                    cells.push_back(Position{.row = r, .col = index});
+                }
+                break;
+            case RegionType::Box: {
+                size_t box_start_row = (index / BOX_SIZE) * BOX_SIZE;
+                size_t box_start_col = (index % BOX_SIZE) * BOX_SIZE;
+                for (size_t br = 0; br < BOX_SIZE; ++br) {
+                    for (size_t bc = 0; bc < BOX_SIZE; ++bc) {
+                        cells.push_back(Position{.row = box_start_row + br, .col = box_start_col + bc});
+                    }
+                }
+                break;
+            }
+            default:
+                break;
+        }
+        return cells;
+    }
+
+    // =========================================================================
+    // "Direct" detection (story 0b.4b) — does this step's own eliminations force a placement?
+    //
+    // SE rates the placement-forcing "Direct" form of Pointing/Claiming/Hidden-subset lower than the
+    // elimination-only form. "Forces a placement" means the eliminations create a *single* — either a
+    // naked single (a cell drops to one candidate) OR a hidden single (a digit drops to one position in
+    // a unit). Both faces are required: Hidden Pair/Triple eliminations leave their host cells with ≥2
+    // candidates, so only the hidden face can fire for them; and a Pointing/Claiming elimination can open
+    // a hidden single without a naked one. Both detectors are pure arithmetic over the *pre-elimination*
+    // grid — no copy, no re-solve. Pass the complete, unapplied elimination set.
+    // =========================================================================
+
+    /// True if removing `elims` leaves some affected cell with exactly one remaining candidate.
+    [[nodiscard]] static bool createsNakedSingle(const CandidateGrid& candidates,
+                                                 const std::vector<Elimination>& elims) {
+        for (const auto& target : elims) {
+            size_t row = target.position.row;
+            size_t col = target.position.col;
+            int removed = 0;
+            for (const auto& other : elims) {
+                if (other.position.row == row && other.position.col == col &&
+                    candidates.isAllowed(row, col, other.value)) {
+                    ++removed;
+                }
+            }
+            if (candidates.countPossibleValues(row, col) - removed == 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// True if removing `elims` leaves some digit with exactly one remaining position in a unit
+    /// (a newly-created hidden single).
+    [[nodiscard]] static bool createsHiddenSingle(const CandidateGrid& candidates,
+                                                  const std::vector<Elimination>& elims) {
+        auto eliminatedByStep = [&elims](size_t row, size_t col, int value) {
+            return std::ranges::any_of(elims, [&](const Elimination& e) {
+                return e.position.row == row && e.position.col == col && e.value == value;
+            });
+        };
+        for (const auto& target : elims) {
+            int digit = target.value;
+            for (RegionType type : {RegionType::Row, RegionType::Col, RegionType::Box}) {
+                size_t unit_index = getUnitIndex(type, target.position);
+                int remaining = 0;
+                for (const auto& pos : getUnitPositions(type, unit_index)) {
+                    if (candidates.isAllowed(pos.row, pos.col, digit) && !eliminatedByStep(pos.row, pos.col, digit)) {
+                        ++remaining;
+                    }
+                }
+                if (remaining == 1) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /// True if this step's eliminations force a placement (naked OR hidden single) — the SE "Direct"
+    /// predicate. Drives the context-sensitive Direct rating (story 0b.4b).
+    [[nodiscard]] static bool eliminationsForcePlacement(const CandidateGrid& candidates,
+                                                         const std::vector<Elimination>& elims) {
+        return createsNakedSingle(candidates, elims) || createsHiddenSingle(candidates, elims);
+    }
 };
 
 }  // namespace sudoku::core

@@ -6,6 +6,7 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
+#include "core/solving_technique.h"
 #include "test_fixture.h"
 #include "view/main_window.h"
 #include "view/puzzle_technique_dialog.h"
@@ -45,6 +46,7 @@ private slots:
 
     void menuActionExists();
     void menuActionOpensDialog();
+    void comboCoversEveryLogicalTechnique();
     void findingApplicableTechniqueSetsHintMessage();
     void findingMissingTechniqueSetsErrorMessage();
 
@@ -106,6 +108,24 @@ void TestFindByTechnique::menuActionOpensDialog() {
 
     auto* dialog = findOpenDialog();
     QVERIFY2(dialog != nullptr, "Triggering the menu should open a PuzzleTechniqueDialog");
+}
+
+// Exhaustiveness guard (story 0b.4b, AC3c): the "Find Step by Technique" combo is built from a
+// hand-maintained kSelectableTechniques array (puzzle_technique_dialog.cpp) with no -Wswitch net, so a
+// newly appended logical technique (e.g. FullHouse) could be silently omitted from the dialog. Tie the
+// combo to the enum: the contiguous logical range [0, kLastLogicalTechnique] IS the selectable set;
+// Backtracking (the id-255 sentinel) is excluded by living outside that range. Adding a logical technique
+// without listing it here turns this red.
+void TestFindByTechnique::comboCoversEveryLogicalTechnique() {
+    view::PuzzleTechniqueDialog dialog;
+
+    const int logical_count = static_cast<int>(core::kLastLogicalTechnique) + 1;
+    QCOMPARE(dialog.technique_combo_->count(), logical_count);
+
+    for (int id = 0; id <= static_cast<int>(core::kLastLogicalTechnique); ++id) {
+        QVERIFY2(dialog.technique_combo_->findData(id) >= 0,
+                 qPrintable(QString("Logical technique id %1 missing from Find-by-Technique combo").arg(id)));
+    }
 }
 
 void TestFindByTechnique::findingApplicableTechniqueSetsHintMessage() {

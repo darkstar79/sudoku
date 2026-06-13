@@ -85,6 +85,7 @@ enum class SolvingTechnique : uint8_t {
     UniqueLoop = 51,             ///< Deadly pattern loop of 4-6 cells with shared candidate pair (SE 4.5)
     ContinuousNiceLoop = 52,     ///< Continuous AIC loop — every weak link produces elimination (SE 7.0)
     GroupedNiceLoop = 53,        ///< Nice Loop with grouped nodes (grouped AIC) (SE 8.0)
+    FullHouse = 54,              ///< Last value in a region — the only empty cell in a block/row/col (SE 1.0)
     Backtracking = 255           ///< Not a logical technique - fallback solver (SE 12.0)
 };
 
@@ -147,6 +148,7 @@ static_assert(static_cast<uint8_t>(SolvingTechnique::JuniorExocet) == 50);
 static_assert(static_cast<uint8_t>(SolvingTechnique::UniqueLoop) == 51);
 static_assert(static_cast<uint8_t>(SolvingTechnique::ContinuousNiceLoop) == 52);
 static_assert(static_cast<uint8_t>(SolvingTechnique::GroupedNiceLoop) == 53);
+static_assert(static_cast<uint8_t>(SolvingTechnique::FullHouse) == 54);  // story 0b.4b — append-only
 static_assert(static_cast<uint8_t>(SolvingTechnique::Backtracking) == 255);
 
 // Sentinel: highest logical-technique enum value (excludes Backtracking).
@@ -155,7 +157,7 @@ static_assert(static_cast<uint8_t>(SolvingTechnique::Backtracking) == 255);
 // (e.g. exhaustiveness tests for description tables). Kept as a free constexpr
 // rather than an enumerator alias so it doesn't perturb `-Wswitch` exhaustiveness
 // or duplicate-case diagnostics in switches over SolvingTechnique.
-inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::GroupedNiceLoop;
+inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::FullHouse;
 
 /// Returns human-readable name for technique
 /// @param technique The solving technique
@@ -272,6 +274,8 @@ inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::Grou
             return "Continuous Nice Loop";
         case GroupedNiceLoop:
             return "Grouped Nice Loop";
+        case FullHouse:
+            return "Full House";
         case Backtracking:
             return "Backtracking";
     }
@@ -287,6 +291,8 @@ inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::Grou
 [[nodiscard]] constexpr double getTechniqueRating(SolvingTechnique technique) {
     using enum SolvingTechnique;
     switch (technique) {
+        case FullHouse:
+            return 1.0;  // SE v1.2.1 "Last value in block/row/col" — easiest technique on the scale
         case HiddenSingle:
             return 1.5;  // SE: 1.2 (block) / 1.5 (row/col)
         case NakedSingle:
@@ -493,6 +499,8 @@ inline constexpr SolvingTechnique kLastLogicalTechnique = SolvingTechnique::Grou
             return core::loc("Sudoku", "Continuous Nice Loop");
         case GroupedNiceLoop:
             return core::loc("Sudoku", "Grouped Nice Loop");
+        case FullHouse:
+            return core::loc("Sudoku", "Full House");
         case Backtracking:
             return core::loc("Sudoku", "Backtracking");
     }

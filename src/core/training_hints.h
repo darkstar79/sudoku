@@ -50,6 +50,7 @@ enum class TechniqueCategory : uint8_t {
 [[nodiscard]] constexpr TechniqueCategory getTechniqueCategory(SolvingTechnique technique) {
     using enum SolvingTechnique;
     switch (technique) {
+        case FullHouse:
         case NakedSingle:
         case HiddenSingle:
             return TechniqueCategory::Singles;
