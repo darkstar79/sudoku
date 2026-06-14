@@ -62,6 +62,10 @@ struct Move {
     // PlaceNumber/PlaceHint: peers `value` was removed from (revert re-adds it). RemoveNumber/clear:
     // peers `previous_value` was re-added to (revert re-removes it). Runtime-only — NOT serialized
     // (saves are full board+notes snapshots, so the delta is reconstructed only for live undo/redo).
+    // The explicit {} is required so GCC's -Wmissing-field-initializers does not fire at Move's
+    // many designated-init sites that omit this trailing field; clang-tidy flags it as redundant
+    // (std::vector already default-constructs empty), so the check is suppressed here.
+    // NOLINTNEXTLINE(readability-redundant-member-init)
     std::vector<Position> peer_note_delta{};
 };
 
