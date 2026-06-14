@@ -318,6 +318,49 @@ TEST_CASE("GameViewModel - Undo/Redo Edge Cases", "[game_view_model][undo]") {
     }
 }
 
+// Story 6.2 / GH #77 (premise closed 2026-06-14): "undo to last valid" stays digit-only — a
+// notes-level contradiction is NOT a board error and must never drive a (destructive) rewind.
+// This guard locks the decision: no notes state, contradictory or not, may change undoToLastValid's
+// behaviour. Once 6.1 (#76) stops corrupting notes, the original complaint cannot even arise.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("undoToLastValid stays digit-only regardless of notes (#77 guard)",
+          "[game_view_model][undo][regression][bug-77-undo][guard]") {
+    EdgeCaseTestFixture fixture;
+
+    SECTION("An impossible notes state does not trigger a rewind on a digit-valid board") {
+        fixture.view_model->startNewGame(Difficulty::Easy);
+
+        const auto& state = fixture.view_model->gameState.get();
+        REQUIRE(state.hasSolution());
+        const auto& solution = state.getSolutionBoard();
+
+        // Two correct placements → a digit-valid board with a recorded last-valid state.
+        auto empties_opt = test::findEmptyCells(state, 3);
+        REQUIRE(empties_opt.has_value());
+        const auto empties = empties_opt.value_or(std::vector<Position>{});
+        const Position p0 = empties[0];
+        const Position p1 = empties[1];
+        const Position noted = empties[2];
+
+        fixture.view_model->enterNumber(p0, solution[p0.row][p0.col]);
+        fixture.view_model->enterNumber(p1, solution[p1.row][p1.col]);
+
+        // Plant a deliberately impossible notes state: an empty non-given cell with NO candidates.
+        fixture.view_model->gameState.update([&](model::GameState& s) { s.setNotes(noted, core::CellNotes{}); });
+
+        // A notes-level contradiction must NOT register as a board error — that is the half of the
+        // invariant that keeps undoToLastValid digit-only (asserted before AND after the call).
+        CHECK(!fixture.view_model->hasBoardErrors());
+
+        fixture.view_model->undoToLastValid();
+
+        // The board is digit-valid, so nothing is rewound — both correct placements survive.
+        CHECK(fixture.view_model->gameState.get().getValue(p0) == solution[p0.row][p0.col]);
+        CHECK(fixture.view_model->gameState.get().getValue(p1) == solution[p1.row][p1.col]);
+        CHECK(!fixture.view_model->hasBoardErrors());
+    }
+}
+
 // BL-13: updateUIState() built a fresh UIState every call, carrying forward only input_mode
 // and notes_filled. show_conflicts, show_hints, and status_message were silently reset to
 // their defaults on every keystroke / undo / completion check.

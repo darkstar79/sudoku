@@ -300,6 +300,10 @@ public:
 
     // Game state queries
     [[nodiscard]] bool isGameActive() const;
+    /// True if the board has structural conflicts (row/col/box duplicates) or, when a solution is
+    /// known, any non-given cell whose value differs from the solution. Notes never count — a
+    /// pencil-mark contradiction is not a board error. Drives undoToLastValid.
+    [[nodiscard]] bool hasBoardErrors() const;
     [[nodiscard]] bool isGameComplete() const;
     [[nodiscard]] bool isGamePaused() const;
     [[nodiscard]] bool isGameStateDirty() const;
@@ -386,10 +390,35 @@ private:
     void startGameSession();
     void endGameSession(bool completed);
     void recordMove(const core::Move& move, bool is_mistake = false);
-    void applyMove(const core::Move& move);
+    /// First application of a freshly-created move (forward edit). Runs the note-cleanup and
+    /// records the exact peer-note delta into `move` so revert/redo replay it verbatim — no
+    /// re-derivation against the live board (Story 6.1 / #76).
+    void applyMoveCapture(core::Move& move);
+    /// Re-application of an already-recorded move (redo). Replays the stored peer-note delta
+    /// instead of recomputing it, keeping cleanup and restore true inverses.
+    void applyMoveReplay(const core::Move& move);
     void revertMove(const core::Move& move);
-    static void cleanupConflictingNotes(model::GameState& state, const core::Position& pos, int number);
-    static void restoreConflictingNotes(model::GameState& state, const core::Position& pos, int number);
+    /// Strips `number` from the pencil marks of every empty peer (row/col/box) that actually
+    /// holds it, returning exactly those peer positions so the placement can be inverted.
+    [[nodiscard]] static std::vector<core::Position> cleanupConflictingNotes(model::GameState& state,
+                                                                             const core::Position& pos, int number);
+    /// Forward inverse of cleanup, used when a placed value is cleared: re-adds `value` as a
+    /// pencil mark to every empty peer where it is now a legal candidate and does not already
+    /// hold it. Returns the peers it added to, so undoing the clear re-strips exactly those.
+    [[nodiscard]] static std::vector<core::Position>
+    restorePeerNotesForClearedValue(model::GameState& state, const core::Position& pos, int value);
+    /// Faithful inverse for clearing a placed value (Story 6.1 / #76, review 2026-06-14): reuse the
+    /// originating PlaceNumber/PlaceHint move's recorded `peer_note_delta` (the peers the value was
+    /// actually stripped from), re-adding it only to peers still empty — so a candidate the player
+    /// manually eliminated is never resurrected. Falls back to `restorePeerNotesForClearedValue`
+    /// re-derivation only when no placement move is in history (loaded saves / truncated history).
+    /// Mutates `state` and returns the peers re-added to (the clear move's delta).
+    [[nodiscard]] std::vector<core::Position> restoreClearedValueNotes(model::GameState& state,
+                                                                       const core::Position& pos, int value);
+    /// Drop any redo tail (moves beyond the cursor) and clamp the last-valid index. Called when
+    /// notes are mutated outside the move model (fill/clear-all) so a pending redo cannot replay a
+    /// stored delta against a now-stale note state (Story 6.1 review 2026-06-14).
+    void invalidateRedoTail();
     void checkGameCompletion();
     void handleError(std::string_view message);
     [[nodiscard]] static std::string formatTime(std::chrono::milliseconds time);
@@ -397,7 +426,6 @@ private:
     void recomputeAutoNotes();
     void clearAllNotes();
     void updateConflictHighlighting();
-    [[nodiscard]] bool hasBoardErrors() const;
 
     // Hint system helpers
     [[nodiscard]] std::string formatHintExplanation(const core::SolveStep& step) const;
