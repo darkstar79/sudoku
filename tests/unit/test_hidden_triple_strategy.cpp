@@ -63,6 +63,7 @@ TEST_CASE("HiddenTripleStrategy - Finds Hidden Triple", "[hidden_triple]") {
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 SECTIONs + has_value() short-circuit guards expand to nested conditionals; complexity is inherent
 TEST_CASE("HiddenTripleStrategy - Board Analysis", "[hidden_triple]") {
     HiddenTripleStrategy strategy;
 

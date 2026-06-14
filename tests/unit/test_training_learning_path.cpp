@@ -132,8 +132,9 @@ TEST_CASE("getRecommendedTechnique — fresh stats recommends FullHouse", "[Lear
 
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
-    // Full House (SE 1.0) is the easiest technique on the SE scale and the root of the path (story 0b.4b)
-    CHECK(*recommended == SolvingTechnique::FullHouse);
+    // Full House (SE 1.0) is the easiest technique on the SE scale and the root of the path (story 0b.4b).
+    // has_value() short-circuit guards the deref for clang-tidy bugprone-unchecked-optional-access.
+    CHECK((recommended.has_value() && *recommended == SolvingTechnique::FullHouse));
 }
 
 TEST_CASE("getRecommendedTechnique — advances after mastering", "[LearningPath]") {
