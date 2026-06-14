@@ -950,17 +950,18 @@ TEST_CASE("TrainingViewModel - applyColor only accepts the two palette colors", 
 
 namespace {
 
-/// Mock that generates exercises with a real board containing multiple naked singles.
-/// Board has 3 naked singles: (0,2)=4, (7,8)=5, (8,8)=9
+/// Mock that generates exercises with a real board containing multiple GENUINE naked singles.
+/// Story 0b.4d: region-last cells are Full Houses, so each single keeps >=2 empties in every region.
+/// Board has 3 naked singles: (0,0)=5, (4,4)=5, (8,8)=9 (satellite empties keep regions populated).
 class MultiStepMockGenerator : public ITrainingExerciseGenerator {
 public:
     [[nodiscard]] std::expected<std::vector<TrainingExercise>, std::string>
     generateExercises(SolvingTechnique technique, int count) const override {
-        // Real board with 3 naked singles
+        // Real board with 3 genuine naked singles
         BoardData board = {
-            {5, 3, 0, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 0}, {3, 4, 5, 2, 8, 6, 1, 7, 0},
+            {0, 3, 0, 6, 7, 8, 9, 1, 2}, {6, 0, 2, 1, 9, 5, 3, 4, 8}, {0, 9, 8, 3, 4, 2, 5, 6, 7},
+            {8, 5, 9, 7, 0, 1, 4, 2, 3}, {4, 2, 6, 0, 0, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 0, 8, 5, 6},
+            {9, 6, 1, 5, 3, 7, 2, 8, 0}, {2, 8, 7, 4, 1, 9, 6, 0, 5}, {3, 4, 5, 2, 8, 6, 0, 7, 0},
         };
 
         CandidateGrid candidates(board);
@@ -979,12 +980,12 @@ public:
             ex.expected_step = SolveStep{
                 .type = SolveStepType::Placement,
                 .technique = technique,
-                .position = Position{.row = 0, .col = 2},
-                .value = 4,
+                .position = Position{.row = 0, .col = 0},
+                .value = 5,
                 .eliminations = {},
-                .explanation = "Naked Single at R1C3: only value 4 is possible",
+                .explanation = "Naked Single at R1C1: only value 5 is possible",
                 .rating = getTechniqueRating(technique),
-                .explanation_data = {.positions = {Position{.row = 0, .col = 2}}, .values = {4}},
+                .explanation_data = {.positions = {Position{.row = 0, .col = 0}}, .values = {5}},
             };
             ex.technique = technique;
             ex.interaction_mode = TrainingInteractionMode::Placement;
@@ -1005,8 +1006,8 @@ TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[train
 
     SECTION("First correct answer stays in Exercise phase") {
         auto board = vm.trainingBoard.get();
-        // Place value 4 at (0,2) — first naked single
-        board[0][2].value = 4;
+        // Place value 5 at (0,0) — first naked single
+        board[0][0].value = 5;
         vm.trainingBoard.set(board);
         vm.submitAnswer();
 
@@ -1015,22 +1016,22 @@ TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[train
         REQUIRE(vm.trainingState.get().correct_count == 1);
         REQUIRE_FALSE(vm.trainingState.get().found_step_message.empty());
 
-        // Cell (0,2) should be marked as found on the board
+        // Cell (0,0) should be marked as found on the board
         const auto& updated = vm.trainingBoard.get();
-        CHECK(updated[0][2].is_found);
-        CHECK(updated[0][2].value == 4);
-        CHECK(updated[0][2].highlight_role == CellRole::CorrectAnswer);
+        CHECK(updated[0][0].is_found);
+        CHECK(updated[0][0].value == 5);
+        CHECK(updated[0][0].highlight_role == CellRole::CorrectAnswer);
     }
 
     SECTION("Second correct answer also stays in Exercise") {
         auto board = vm.trainingBoard.get();
-        board[0][2].value = 4;
+        board[0][0].value = 5;
         vm.trainingBoard.set(board);
         vm.submitAnswer();
 
-        // Now find second one: (7,8)=5
+        // Now find second one: (4,4)=5
         auto board2 = vm.trainingBoard.get();
-        board2[7][8].value = 5;
+        board2[4][4].value = 5;
         vm.trainingBoard.set(board2);
         vm.submitAnswer();
 
@@ -1040,19 +1041,19 @@ TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[train
 
         // Both found cells should be locked
         const auto& updated = vm.trainingBoard.get();
-        CHECK(updated[0][2].is_found);
-        CHECK(updated[7][8].is_found);
+        CHECK(updated[0][0].is_found);
+        CHECK(updated[4][4].is_found);
     }
 
     SECTION("Last correct answer transitions to Feedback") {
         // Find all 3 naked singles
         auto board = vm.trainingBoard.get();
-        board[0][2].value = 4;
+        board[0][0].value = 5;
         vm.trainingBoard.set(board);
         vm.submitAnswer();
 
         auto board2 = vm.trainingBoard.get();
-        board2[7][8].value = 5;
+        board2[4][4].value = 5;
         vm.trainingBoard.set(board2);
         vm.submitAnswer();
 
@@ -1069,7 +1070,7 @@ TEST_CASE("TrainingViewModel - continue on correct with multiple steps", "[train
 
     SECTION("Wrong answer during multi-step goes to Feedback") {
         auto board = vm.trainingBoard.get();
-        board[0][2].value = 7;  // Wrong value
+        board[0][0].value = 7;  // Wrong value
         vm.trainingBoard.set(board);
         vm.submitAnswer();
 

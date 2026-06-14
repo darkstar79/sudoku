@@ -22,7 +22,9 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <bit>
@@ -150,6 +152,36 @@ protected:
     /// Checks if two positions are in the same box
     [[nodiscard]] static bool sameBox(const Position& pos_a, const Position& pos_b) {
         return getBoxIndex(pos_a.row, pos_a.col) == getBoxIndex(pos_b.row, pos_b.col);
+    }
+
+    /// Resolves the region for which `(row, col)` is the *only* empty cell — i.e. a "Full House"
+    /// (SE "Last value in block/row/col", rating 1.0). Region precedence is **box → row → col**, the
+    /// deterministic order FullHouseStrategy reports. Returns `nullopt` when every region of the cell
+    /// still has another empty (the cell is a genuine naked/hidden single, not a region-last cell).
+    /// Single source of truth shared by FullHouseStrategy (for labelling) and the single-strategy guards.
+    [[nodiscard]] static std::optional<std::pair<RegionType, size_t>> getRegionLastCell(const BoardData& board,
+                                                                                        size_t row, size_t col) {
+        if (board[row][col] != EMPTY_CELL) {
+            return std::nullopt;  // Only an empty cell can be a region's last empty cell.
+        }
+        if (getEmptyCellsInBox(board, getBoxIndex(row, col)).size() == 1) {
+            return std::make_pair(RegionType::Box, getBoxIndex(row, col));
+        }
+        if (getEmptyCellsInRow(board, row).size() == 1) {
+            return std::make_pair(RegionType::Row, row);
+        }
+        if (getEmptyCellsInCol(board, col).size() == 1) {
+            return std::make_pair(RegionType::Col, col);
+        }
+        return std::nullopt;
+    }
+
+    /// True iff `(row, col)` is the only empty cell in at least one of its regions (box, row, or col),
+    /// i.e. it is a Full House. `NakedSingleStrategy`/`HiddenSingleStrategy` *defer* such cells (emit no
+    /// step), so the FullHouse 1.0 label holds intrinsically — regardless of strategy registration order
+    /// (story 0b.4d). A filled cell is never region-last (returns false).
+    [[nodiscard]] static bool isRegionLastCell(const BoardData& board, size_t row, size_t col) {
+        return getRegionLastCell(board, row, col).has_value();
     }
 
     /// Checks if a specific value is a candidate in a cell

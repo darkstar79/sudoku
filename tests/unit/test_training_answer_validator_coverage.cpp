@@ -92,12 +92,12 @@ TEST_CASE("TrainingAnswerValidator::validatePlacement rejection branches", "[tra
 
 TEST_CASE("TrainingAnswerValidator hidden-single detection accepts a column-only hidden single",
           "[training_answer_validator][coverage]") {
-    // Standard solved layout with cells (0,0) and (0,2) cleared. Column 2 is now
-    // missing exactly one digit at (0,2) — the test confirms validatePlacement
-    // accepts a hidden single on that cell. (Row 0 has two empties, so the
-    // pure-row branch alone cannot identify the cell.)
+    // Story 0b.4d: the single must not be region-last (else it is a Full House, not a Hidden Single).
+    // Cells (0,0), (0,2) and (1,2) are cleared, so row 0, column 2 and box 0 each keep >=2 empties.
+    // Digit 4 is a hidden single at (0,2) (column 2 has no other cell that can hold 4) — the test
+    // confirms validatePlacement accepts a hidden single on that genuine (non-region-last) cell.
     BoardData board = {
-        {0, 3, 0, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+        {0, 3, 0, 6, 7, 8, 9, 1, 2}, {6, 7, 0, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
         {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
         {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9},
     };

@@ -33,8 +33,13 @@ namespace sudoku::core {
 class HiddenSingleStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
     [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board, const CandidateGrid& state) const override {
-        // Leverage CandidateGrid::findHiddenSingle which respects per-cell eliminations
-        auto result = state.findHiddenSingle(board);
+        // Leverage CandidateGrid::findHiddenSingle which respects per-cell eliminations. Skip a region's
+        // last empty cell so it is deferred to FullHouseStrategy (FullHouse 1.0, not Hidden Single 1.2/1.5):
+        // this makes the FullHouse label intrinsic — order-independent — rather than a registration-order
+        // artefact. Skipping (rather than aborting the scan) keeps a *genuine* hidden single elsewhere
+        // visible to single-strategy callers like findNextStepByTechnique (story 0b.4d).
+        auto result = state.findHiddenSingle(
+            board, [&board](const Position& pos) { return isRegionLastCell(board, pos.row, pos.col); });
 
         if (!result.has_value()) {
             return std::nullopt;

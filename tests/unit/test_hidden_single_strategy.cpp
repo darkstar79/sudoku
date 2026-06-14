@@ -15,8 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/candidate_grid.h"
+#include "../../src/core/strategies/full_house_strategy.h"
 #include "../../src/core/strategies/hidden_single_strategy.h"
+#include "../../src/core/strategies/naked_single_strategy.h"
 #include "../helpers/candidate_test_utils.h"
+
+#include <array>
+#include <optional>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -24,14 +29,22 @@ using namespace sudoku::core;
 
 namespace {
 
-// Test helper: Create a board with a hidden single
+// White-box probe: exposes StrategyBase's protected region-last predicate so tests can assert against
+// the exact production predicate the single strategies defer on (story 0b.4d).
+struct RegionLastProbe : StrategyBase {
+    using StrategyBase::isRegionLastCell;
+};
+
+// Test helper: Create a board with a GENUINE (non-region-last) BLOCK hidden single (Story 0b.4a/0b.4d).
+// From the canonical solved grid we empty (0,0),(0,1),(1,1): the first cell in scan order, R1C2 (0,1),
+// is a hidden single for digit 3 inside box 0 (the only box-0 cell that can hold 3) — a *block* single
+// → SE 1.2. All three regions of (0,1) keep ≥2 empties (row0: C1&C2, col1: (0,1)&(1,1), box0: all three),
+// so it is NOT a Full House. (R1C1 (0,0) needs 5, R2C2 (1,1) needs 7 — neither is hidden first in box 0.)
 BoardData createBoardWithHiddenSingle() {
-    // Valid complete board with one cell emptied
-    // The empty cell will have a hidden single (only possible value)
-    BoardData board = {{0, 3, 4, 6, 7, 8, 9, 1, 2},  // R1C1 empty, must be 5 (hidden single in row/col/box)
-                       {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7}, {8, 5, 9, 7, 6, 1, 4, 2, 3},
-                       {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6}, {9, 6, 1, 5, 3, 7, 2, 8, 4},
-                       {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+    BoardData board = sudoku::testing::kSolvedBoard;
+    board[0][0] = EMPTY_CELL;
+    board[0][1] = EMPTY_CELL;  // R1C2 -> 3, block hidden single (first in scan order)
+    board[1][1] = EMPTY_CELL;
     return board;
 }
 
@@ -41,15 +54,18 @@ BoardData createBoardWithoutHiddenSingles() {
     return board;
 }
 
-// A *line* (row) hidden single that is deliberately NOT a block single (Story 0b.4a Class A).
-// Row 1 (index 0) is filled 2..9 leaving only R1C9 (0,8) empty, so value 1 is a hidden single in
-// that row. Value 1 appears nowhere on the board, so box 3 (rows 0-2, cols 6-8) still has several
-// cells that allow 1 — the single is NOT confined to the box. Block precedence ("easiest region
-// wins") therefore resolves it as a row single → SE line rating 1.5.
+// A *line* (row) hidden single that is deliberately NOT a block single, AND not a Full House
+// (Story 0b.4a Class A + 0b.4d). From the canonical solved grid we empty (0,0),(0,1),(1,1),(1,6):
+// the first cell in scan order, R1C2 (0,1), is a hidden single for digit 3 in row 0 (the only row-0
+// empty that can hold 3). Box 0 also lost its 3 at (1,1) but (1,1) can still hold 3, so 3 is NOT
+// confined to a single box cell — block precedence resolves it as a *row* single → SE line 1.5.
+// Every region of (0,1) keeps ≥2 empties, so it is not region-last (not a Full House).
 BoardData createBoardWithLineHiddenSingle() {
-    BoardData board = {{2, 3, 4, 5, 6, 7, 8, 9, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                       {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0},
-                       {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    BoardData board = sudoku::testing::kSolvedBoard;
+    board[0][0] = EMPTY_CELL;
+    board[0][1] = EMPTY_CELL;  // R1C2 -> 3, line (row) hidden single (first in scan order)
+    board[1][1] = EMPTY_CELL;
+    board[1][6] = EMPTY_CELL;
     return board;
 }
 
@@ -91,12 +107,13 @@ TEST_CASE("HiddenSingleStrategy - Finds Hidden Single", "[hidden_single]") {
         REQUIRE(step->type == SolveStepType::Placement);
         REQUIRE(step->technique == SolvingTechnique::HiddenSingle);
         REQUIRE(step->position.row == 0);
-        REQUIRE(step->position.col == 0);
-        REQUIRE(step->value == 5);
-        // Class A (0b.4a): R1C1 is the lone empty cell in its box → a *block* hidden single → SE 1.2.
+        REQUIRE(step->position.col == 1);
+        REQUIRE(step->value == 3);
+        // Class A (0b.4a): 3 is confined to R1C2 within box 0 (box keeps ≥2 empties, so not a Full
+        // House) → a *block* hidden single → SE 1.2.
         REQUIRE((step.has_value() && step->rating == 1.2));  // has_value() guards the deref for clang-tidy
         REQUIRE((step.has_value() && step->explanation_data.region_type == RegionType::Box));
-        REQUIRE_FALSE(step->explanation.empty());
+        REQUIRE(!step->explanation.empty());
     }
 
     SECTION("A line (row) hidden single rates 1.5 and records the row region") {
@@ -110,8 +127,8 @@ TEST_CASE("HiddenSingleStrategy - Finds Hidden Single", "[hidden_single]") {
         // has_value() guards each deref for clang-tidy (bugprone-unchecked-optional-access).
         REQUIRE((step.has_value() && step->technique == SolvingTechnique::HiddenSingle));
         REQUIRE((step.has_value() && step->position.row == 0));
-        REQUIRE((step.has_value() && step->position.col == 8));
-        REQUIRE((step.has_value() && step->value == 1));
+        REQUIRE((step.has_value() && step->position.col == 1));
+        REQUIRE((step.has_value() && step->value == 3));
         REQUIRE((step.has_value() && step->rating == 1.5));
         REQUIRE((step.has_value() && step->explanation_data.region_type == RegionType::Row));
     }
@@ -167,11 +184,11 @@ TEST_CASE("HiddenSingleStrategy - Explanation Content", "[hidden_single]") {
     }
 
     SECTION("Explanation includes position") {
-        REQUIRE(step->explanation.find("R1C1") != std::string::npos);
+        REQUIRE(step->explanation.find("R1C2") != std::string::npos);
     }
 
     SECTION("Explanation includes value") {
-        REQUIRE(step->explanation.find("5") != std::string::npos);
+        REQUIRE(step->explanation.find("3") != std::string::npos);
     }
 
     SECTION("Explanation describes why value is hidden") {
@@ -182,37 +199,36 @@ TEST_CASE("HiddenSingleStrategy - Explanation Content", "[hidden_single]") {
 
 TEST_CASE("HiddenSingleStrategy - Hidden vs Naked Singles", "[hidden_single]") {
     SECTION("Hidden single may have multiple candidates in cell") {
-        // Use the standard test board where R1C1 has candidates {5,6,7}
-        // but 5 is hidden (only cell in box 1 that can have 5)
+        // Standard test board: R1C2 has multiple candidates but 3 is hidden (only box-0 cell for 3).
         auto board = createBoardWithHiddenSingle();
         CandidateGrid state(board);
 
         HiddenSingleStrategy hidden_strategy;
         auto hidden_step = hidden_strategy.findStep(board, state);
 
-        // Should find that 5 can only go in R1C1 within box 1
-        // (even though R1C1 has other candidates like 6, 7)
+        // Should find that 3 can only go in R1C2 within box 0 (even though R1C2 has other candidates).
         REQUIRE(hidden_step.has_value());
-        REQUIRE(hidden_step->value == 5);
+        REQUIRE(hidden_step->value == 3);
         REQUIRE(hidden_step->position.row == 0);
-        REQUIRE(hidden_step->position.col == 0);
+        REQUIRE(hidden_step->position.col == 1);
     }
 }
 
 TEST_CASE("HiddenSingleStrategy - Edge Cases", "[hidden_single]") {
     HiddenSingleStrategy strategy;
 
-    SECTION("Handles single empty cell") {
-        auto board = createCompleteBoard();
-        board[0][0] = 0;  // Make one cell empty
+    SECTION("Handles near-complete board (genuine hidden single)") {
+        // Story 0b.4d: a lone empty cell is now a Full House (1.0), not a Hidden Single. Use the genuine
+        // multi-empty fixture so R1C2 stays a true hidden single (≥2 empties in box/row/col).
+        auto board = createBoardWithHiddenSingle();
         CandidateGrid state(board);
 
         auto step = strategy.findStep(board, state);
 
         REQUIRE(step.has_value());
         REQUIRE(step->position.row == 0);
-        REQUIRE(step->position.col == 0);
-        REQUIRE(step->value == 5);
+        REQUIRE(step->position.col == 1);
+        REQUIRE(step->value == 3);
     }
 
     SECTION("Handles board with conflicts gracefully") {
@@ -242,6 +258,94 @@ TEST_CASE("HiddenSingleStrategy - Polymorphic Usage", "[hidden_single]") {
         REQUIRE(strategy->getTechnique() == SolvingTechnique::HiddenSingle);
         REQUIRE(strategy->getDifficultyRating() == 1.5);
     }
+}
+
+// Story 0b.4d AC2 — intrinsic (registration-order-independent) Full House labelling.
+// A region-last cell must be DEFERRED by both single strategies and claimed only by FullHouseStrategy,
+// even when the single strategies run first. This proves the FullHouse 1.0 label is intrinsic to the
+// deferral predicate (StrategyBase::isRegionLastCell) rather than an artifact of registration order.
+TEST_CASE("FullHouse order-independence - singles defer the region-last cell to FullHouse",
+          "[hidden_single][naked_single][full_house][order_independence]") {
+    // Arrange: a board whose only empty cell (R1C1) is region-last in its box, row, AND col.
+    BoardData board = sudoku::testing::kSolvedBoard;
+    board[0][0] = EMPTY_CELL;  // must be 5; lone empty in box 0 / row 0 / col 0 -> a Full House
+    CandidateGrid state(board);
+
+    NakedSingleStrategy naked;
+    HiddenSingleStrategy hidden;
+    FullHouseStrategy full_house;
+
+    SECTION("NakedSingle (run first) does not claim the region-last cell") {
+        // Act
+        auto step = naked.findStep(board, state);
+        // Assert: it defers — either nullopt or some other (non-(0,0)) cell.
+        REQUIRE(!(step.has_value() && step->position.row == 0 && step->position.col == 0));
+    }
+
+    SECTION("HiddenSingle (run first) does not claim the region-last cell") {
+        // Act
+        auto step = hidden.findStep(board, state);
+        // Assert
+        REQUIRE(!(step.has_value() && step->position.row == 0 && step->position.col == 0));
+    }
+
+    SECTION("FullHouse claims it as FullHouse with rating 1.0") {
+        // Act
+        auto step = full_house.findStep(board, state);
+        // Assert
+        REQUIRE(step.has_value());
+        REQUIRE((step.has_value() && step->position.row == 0));
+        REQUIRE((step.has_value() && step->position.col == 0));
+        REQUIRE((step.has_value() && step->value == 5));
+        REQUIRE((step.has_value() && step->technique == SolvingTechnique::FullHouse));
+        REQUIRE((step.has_value() && step->rating == 1.0));
+    }
+
+    SECTION("Singles registered AHEAD of FullHouse still yield FullHouse 1.0 (perturbed order)") {
+        // Build a chain with the single strategies BEFORE FullHouse — the inverse of production order.
+        // If the label were a registration-order artefact, NakedSingle/HiddenSingle would steal (0,0) and
+        // mis-rate it 2.3/1.2; because they defer, FullHouse claims it regardless of order.
+        const std::array<ISolvingStrategy*, 3> perturbed_chain{&naked, &hidden, &full_house};
+        std::optional<SolveStep> step;
+        for (auto* strategy : perturbed_chain) {
+            step = strategy->findStep(board, state);
+            if (step.has_value()) {
+                break;
+            }
+        }
+        REQUIRE(step.has_value());
+        REQUIRE((step.has_value() && step->technique == SolvingTechnique::FullHouse));
+        REQUIRE((step.has_value() && step->rating == 1.0));
+        REQUIRE((step.has_value() && step->position == Position{.row = 0, .col = 0}));
+    }
+}
+
+// Story 0b.4d masking guard — deferring a region-last cell must NOT hide a genuine hidden single that
+// lies later in scan order. HiddenSingleStrategy SKIPS region-last cells (via the findHiddenSingle skip
+// predicate) instead of aborting the scan, so single-strategy callers (findNextStepByTechnique, training
+// findAllSteps) still surface a real hidden single even when a Full House sits earlier on the board.
+TEST_CASE("findHiddenSingle(skip) skips region-last cells without masking a genuine single", "[hidden_single]") {
+    // createBoardWithHiddenSingle: (0,1)=3 is the genuine non-region-last hidden single; (0,0)=5 and
+    // (1,1)=7 are region-last (Full Houses) that are ALSO hidden singles for their forced values.
+    BoardData board = createBoardWithHiddenSingle();
+    CandidateGrid state(board);
+
+    // With the PRODUCTION predicate, region-last cells are skipped and the genuine single is surfaced —
+    // exactly what stops a Full House from masking a real hidden single in single-strategy callers.
+    auto genuine = state.findHiddenSingle(
+        board, [&board](const Position& pos) { return RegionLastProbe::isRegionLastCell(board, pos.row, pos.col); });
+    REQUIRE(genuine.has_value());
+    REQUIRE((genuine.has_value() && genuine->first == Position{.row = 0, .col = 1}));
+    REQUIRE((genuine.has_value() && genuine->second == 3));
+    REQUIRE((genuine.has_value() && !RegionLastProbe::isRegionLastCell(board, genuine->first.row, genuine->first.col)));
+
+    // And skipping continues the scan rather than aborting: skipping the first-found single yields a
+    // DIFFERENT later single, never nullopt.
+    auto first = state.findHiddenSingle(board);
+    REQUIRE(first.has_value());
+    auto next = state.findHiddenSingle(board, [&first](const Position& pos) { return pos == first->first; });
+    REQUIRE(next.has_value());
+    REQUIRE((next.has_value() && !(next->first == first->first)));
 }
 
 }  // anonymous namespace
