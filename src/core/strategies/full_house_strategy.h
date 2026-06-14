@@ -38,8 +38,10 @@ namespace sudoku::core {
 /// The strategy *classifies* a Full House purely by the region-emptiness predicate (independent of which
 /// cell is scanned first). The *system-level* label is **intrinsic**, not order-dependent: NakedSingle and
 /// HiddenSingle defer every region-last cell (`StrategyBase::isRegionLastCell`, story 0b.4d), so a region's
-/// last empty cell is labelled FullHouse 1.0 regardless of strategy registration order — the shared
-/// `getRegionLastCell` predicate below is the single source of truth they both consult. The classification
+/// last empty cell is labelled FullHouse 1.0 regardless of where FullHouse sits relative to those two
+/// strategies in the chain — the shared `getRegionLastCell` predicate below is the single source of truth
+/// they both consult. (The invariant scopes to NakedSingle/HiddenSingle; a *new* placement strategy that
+/// could also claim a region-last cell would need the same deferral to preserve it.) The classification
 /// gates on region emptiness (not candidate count), so a one-candidate cell whose regions still have other
 /// empties stays a Naked Single. When a cell completes more than one region at once, region precedence is
 /// **box → row → col** for the reported region (deterministic explanation_data).
