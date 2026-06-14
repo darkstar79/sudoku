@@ -460,7 +460,8 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .rating = getTechniqueRating(SolvingTechnique::MutantFish),
+            .rating = getTechniqueRating(SolvingTechnique::MutantFish,
+                                         RatingContext{.size_or_length = static_cast<int>(chosen_bases.size())}),
             .explanation_data = {.positions = positions,
                                  .values = {digit},
                                  .position_roles = std::vector<CellRole>(positions.size(), CellRole::Pattern)}};
