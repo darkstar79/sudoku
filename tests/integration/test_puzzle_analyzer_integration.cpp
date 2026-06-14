@@ -79,7 +79,9 @@ TEST_CASE("IPuzzleAnalyzer resolves from DI and supports a full round-trip", "[i
     // Score.
     auto score = analyzer->scoreDifficulty(*parsed, 1000ms);
     REQUIRE(score.has_value());
-    REQUIRE(score->max_rating >= 1.5);
+    // This input has a single empty cell (R1C1) — a Full House (SE 1.0), the region's last cell
+    // (story 0b.4b; previously surfaced as a Naked Single 2.3).
+    REQUIRE(score->max_rating >= 1.0);
     REQUIRE(score->max_rating <= 3.0);
     REQUIRE_FALSE(score->requires_backtracking);
 

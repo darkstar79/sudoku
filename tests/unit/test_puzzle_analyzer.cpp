@@ -344,11 +344,11 @@ TEST_CASE("PuzzleAnalyzer::scoreDifficulty", "[puzzle_analyzer][scoring]") {
     auto solver = std::make_shared<SudokuSolver>(validator);
     PuzzleAnalyzer analyzer(validator, solver, counter);
 
-    SECTION("Easy puzzle: returns score with max_rating in [1.5, 3.0]") {
-        BoardData easy = makeEasyBoard();  // single naked-single puzzle
+    SECTION("Easy puzzle: returns score with max_rating in [1.0, 3.0]") {
+        BoardData easy = makeEasyBoard();  // single Full House (region's last cell — SE 1.0, story 0b.4b)
         auto result = analyzer.scoreDifficulty(easy, 1000ms);
         REQUIRE(result.has_value());
-        REQUIRE(result->max_rating >= 1.5);
+        REQUIRE(result->max_rating >= 1.0);
         REQUIRE(result->max_rating <= 3.0);
         REQUIRE_FALSE(result->requires_backtracking);
         REQUIRE_FALSE(result->technique_ids.empty());

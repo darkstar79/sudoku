@@ -43,10 +43,10 @@ using namespace sudoku::core;
 
 namespace {
 
-// Number of logical strategy techniques pinned here: NakedSingle(0) .. GroupedNiceLoop(53).
+// Number of logical strategy techniques pinned here: NakedSingle(0) .. FullHouse(54).
 // Backtracking (255) and the getTechniqueRating() 0.0 fallback are non-strategies and are
 // deliberately excluded — matching the cardinality convention used across the solver suite.
-constexpr int kPinnedStrategyCount = 54;
+constexpr int kPinnedStrategyCount = 55;
 
 // Explicit expected ratings in enum order (0..53), copied verbatim from the switch at
 // src/core/solving_technique.h:228-318. Watch the fall-through groups in the switch — several
@@ -109,6 +109,8 @@ constexpr std::array<std::pair<SolvingTechnique, double>, kPinnedStrategyCount> 
     {SolvingTechnique::UniqueLoop, 4.5},
     {SolvingTechnique::ContinuousNiceLoop, 7.0},
     {SolvingTechnique::GroupedNiceLoop, 8.0},
+    // Story 0b.4b — Full House (SE "Last value in block/row/col"), the easiest technique on the scale.
+    {SolvingTechnique::FullHouse, 1.0},
 }};
 
 }  // namespace
@@ -116,7 +118,7 @@ constexpr std::array<std::pair<SolvingTechnique, double>, kPinnedStrategyCount> 
 // Catch2 TEST_CASE: the SECTIONs + the 54-row pin loop expand to nested conditionals, so the
 // generated function trips the cognitive-complexity threshold; complexity is inherent to the pin.
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("getTechniqueRating() golden pin — all 54 strategy ratings", "[solver][ratings]") {
+TEST_CASE("getTechniqueRating() golden pin — all 55 strategy ratings", "[solver][ratings]") {
     SECTION("Each strategy technique returns its pinned current rating") {
         for (const auto& [technique, expected] : kExpectedRatings) {
             // Name the offending technique if a future drift makes this go RED.
@@ -128,7 +130,7 @@ TEST_CASE("getTechniqueRating() golden pin — all 54 strategy ratings", "[solve
         }
     }
 
-    SECTION("Cardinality guard — exactly 54 strategies are pinned") {
+    SECTION("Cardinality guard — exactly 55 strategies are pinned") {
         // Adding a new SolvingTechnique strategy without pinning its rating must fail here.
         REQUIRE(kExpectedRatings.size() == kPinnedStrategyCount);
 
@@ -182,5 +184,48 @@ TEST_CASE("getTechniqueRating() Class-A context split — Hidden Single block 1.
 
     SECTION("Context overload is constexpr (spot check)") {
         STATIC_REQUIRE(getTechniqueRating(SolvingTechnique::HiddenSingle, RatingContext{.region = Box}) == 1.2);
+    }
+}
+
+// Class-B re-base (Story 0b.4b): the "Direct" forms rate lower than the elimination-only form when the
+// step's own eliminations force a placement (forces_placement). SE v1.2.1: Direct Pointing 1.7 (vs
+// 2.6), Direct Claiming 1.9 (vs 2.8), Direct Hidden Pair 2.0 (vs 3.4), Direct Hidden Triplet 2.5 (vs
+// 4.0). This pins the rating mapping; the strategy/helper tests prove the flag is reachable on real
+// boards (test_full_house_strategy.cpp / test_strategy_base_direct.cpp). The forced/unforced pairing
+// here is the canonical "the flag distinguishes" guard.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("getTechniqueRating() Class-B Direct forms — forces_placement lowers the rating", "[solver][ratings]") {
+    struct Case {
+        SolvingTechnique technique;
+        double base;
+        double direct;
+    };
+    const std::array<Case, 4> cases = {{
+        {.technique = SolvingTechnique::PointingPair, .base = 2.6, .direct = 1.7},      // Direct Pointing
+        {.technique = SolvingTechnique::BoxLineReduction, .base = 2.8, .direct = 1.9},  // Direct Claiming
+        {.technique = SolvingTechnique::HiddenPair, .base = 3.4, .direct = 2.0},        // Direct Hidden Pair
+        {.technique = SolvingTechnique::HiddenTriple, .base = 4.0, .direct = 2.5},      // Direct Hidden Triplet
+    }};
+
+    SECTION("Forced (forces_placement) → Direct rating; unforced → base rating") {
+        for (const auto& c : cases) {
+            CAPTURE(getTechniqueName(c.technique));
+            REQUIRE(getTechniqueRating(c.technique, RatingContext{.forces_placement = true}) == c.direct);
+            REQUIRE(getTechniqueRating(c.technique, RatingContext{.forces_placement = false}) == c.base);
+            // The Direct value must actually differ from the base (the flag is not a no-op).
+            REQUIRE(c.direct != c.base);
+        }
+    }
+
+    SECTION("forces_placement does not perturb techniques outside the Direct family") {
+        // A non-Direct technique ignores the flag (single source of truth — no silent drift).
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedPair, RatingContext{.forces_placement = true}) ==
+                getTechniqueRating(SolvingTechnique::NakedPair));
+        REQUIRE(getTechniqueRating(SolvingTechnique::FullHouse, RatingContext{.forces_placement = true}) == 1.0);
+    }
+
+    SECTION("Context overload is constexpr for Direct forms (spot check)") {
+        STATIC_REQUIRE(getTechniqueRating(SolvingTechnique::PointingPair, RatingContext{.forces_placement = true}) ==
+                       1.7);
     }
 }

@@ -123,17 +123,20 @@ private:
                             "Hidden Pair [{}, {}] at {}, {} in {} eliminates other candidates from these cells", val1,
                             val2, formatPosition(pos1), formatPosition(pos2), formatRegion(region_type, region_idx));
 
-                        return SolveStep{.type = SolveStepType::Elimination,
-                                         .technique = SolvingTechnique::HiddenPair,
-                                         .position = pos1,
-                                         .value = 0,
-                                         .eliminations = eliminations,
-                                         .explanation = explanation,
-                                         .rating = getTechniqueRating(SolvingTechnique::HiddenPair),
-                                         .explanation_data = {.positions = {pos1, pos2},
-                                                              .values = {val1, val2},
-                                                              .region_type = region_type,
-                                                              .region_index = region_idx}};
+                        return SolveStep{
+                            .type = SolveStepType::Elimination,
+                            .technique = SolvingTechnique::HiddenPair,
+                            .position = pos1,
+                            .value = 0,
+                            .eliminations = eliminations,
+                            .explanation = explanation,
+                            .rating = getTechniqueRating(
+                                SolvingTechnique::HiddenPair,
+                                RatingContext{.forces_placement = eliminationsForcePlacement(state, eliminations)}),
+                            .explanation_data = {.positions = {pos1, pos2},
+                                                 .values = {val1, val2},
+                                                 .region_type = region_type,
+                                                 .region_index = region_idx}};
                     }
                 }
             }

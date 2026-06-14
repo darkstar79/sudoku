@@ -31,6 +31,7 @@
 #include "strategies/finned_x_wing_strategy.h"
 #include "strategies/forcing_chain_strategy.h"
 #include "strategies/franken_fish_strategy.h"
+#include "strategies/full_house_strategy.h"
 #include "strategies/grouped_nice_loop_strategy.h"
 #include "strategies/grouped_x_cycles_strategy.h"
 #include "strategies/hidden_pair_strategy.h"
@@ -366,6 +367,8 @@ std::unique_ptr<ISolvingStrategy> TrainingAnswerValidator::createStrategy(Solvin
             return std::make_unique<GroupedNiceLoopStrategy>();
         case ContinuousNiceLoop:
             return std::make_unique<ContinuousNiceLoopStrategy>();
+        case FullHouse:
+            return std::make_unique<FullHouseStrategy>();
         case Backtracking:
             return nullptr;
     }

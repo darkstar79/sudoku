@@ -63,6 +63,7 @@ TEST_CASE("HiddenTripleStrategy - Finds Hidden Triple", "[hidden_triple]") {
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 SECTIONs + has_value() short-circuit guards expand to nested conditionals; complexity is inherent
 TEST_CASE("HiddenTripleStrategy - Board Analysis", "[hidden_triple]") {
     HiddenTripleStrategy strategy;
 
@@ -72,14 +73,16 @@ TEST_CASE("HiddenTripleStrategy - Board Analysis", "[hidden_triple]") {
 
         auto step = strategy.findStep(board, state);
 
-        // Verify correct structure if pattern found
-        if (step.has_value()) {
-            REQUIRE(step->type == SolveStepType::Elimination);
-            REQUIRE(step->technique == SolvingTechnique::HiddenTriple);
-            REQUIRE(step->rating == 4.0);
-            REQUIRE_FALSE(step->explanation.empty());
-        }
-        // Test passes whether pattern found or not - key is algorithm executed
+        // On this board the hidden triple's eliminations open a hidden single, so it is a *Direct*
+        // Hidden Triplet (SE 2.5, story 0b.4b) rather than the elimination-only 4.0 — a real end-to-end
+        // reachability witness of the forces_placement context. De-guarded from the former
+        // `if (step.has_value())` so the 2.5 assertion cannot pass vacuously (review P3/AC3b). The
+        // has_value() short-circuit on each deref is for clang-tidy (see docs/CODE_QUALITY.md).
+        REQUIRE(step.has_value());
+        REQUIRE((step.has_value() && step->type == SolveStepType::Elimination));
+        REQUIRE((step.has_value() && step->technique == SolvingTechnique::HiddenTriple));
+        REQUIRE((step.has_value() && step->rating == 2.5));  // Direct Hidden Triplet (forces a hidden single)
+        REQUIRE((step.has_value() && !step->explanation.empty()));
     }
 
     SECTION("Analyzes nearly complete board") {

@@ -35,6 +35,7 @@
 #include "strategies/finned_x_wing_strategy.h"
 #include "strategies/forcing_chain_strategy.h"
 #include "strategies/franken_fish_strategy.h"
+#include "strategies/full_house_strategy.h"
 #include "strategies/grouped_nice_loop_strategy.h"
 #include "strategies/grouped_x_cycles_strategy.h"
 #include "strategies/hidden_pair_strategy.h"
@@ -100,7 +101,9 @@ void SudokuSolver::buildTechniqueIndex() {
 }
 
 void SudokuSolver::initializeStrategies() {
-    // Add strategies in difficulty order (easiest first)
+    // Add strategies in difficulty order (easiest first). Full House (SE 1.0) runs first so a
+    // region's last empty cell is labelled FullHouse 1.0 rather than a Naked Single 2.3 (story 0b.4b).
+    strategies_.push_back(std::make_unique<FullHouseStrategy>());
     strategies_.push_back(std::make_unique<NakedSingleStrategy>());
     strategies_.push_back(std::make_unique<HiddenSingleStrategy>());
     strategies_.push_back(std::make_unique<NakedPairStrategy>());

@@ -127,7 +127,9 @@ TEST_CASE("findNextStep with budget succeeds on easy puzzle", "[sudoku_solver][t
     auto result = solver.findNextStep(makeEasyNakedSingle(), makeEasyNakedSingle(), 250ms);
 
     REQUIRE(result.has_value());
-    REQUIRE(result->technique == SolvingTechnique::NakedSingle);
+    // The single empty cell is a region's last cell — a Full House (SE 1.0), found ahead of Naked
+    // Single (story 0b.4b). The board-helper name predates the Full House model.
+    REQUIRE(result->technique == SolvingTechnique::FullHouse);
 }
 
 // Step 1.3 — findNextStepByTechnique. Picks a board where multiple techniques apply, ensuring

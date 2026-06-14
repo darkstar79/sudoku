@@ -126,25 +126,27 @@ TEST_CASE("arePrerequisitesMet — unlocks after reaching Intermediate", "[Learn
     CHECK(arePrerequisitesMet(SolvingTechnique::NakedQuad, mgr));
 }
 
-TEST_CASE("getRecommendedTechnique — fresh stats recommends HiddenSingle", "[LearningPath]") {
+TEST_CASE("getRecommendedTechnique — fresh stats recommends FullHouse", "[LearningPath]") {
     sudoku::test::TempTestDir tmp;
     TrainingStatisticsManager mgr(tmp.path());
 
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
-    // HiddenSingle (SE 1.5) is the easiest technique in SE scale
-    CHECK(*recommended == SolvingTechnique::HiddenSingle);
+    // Full House (SE 1.0) is the easiest technique on the SE scale and the root of the path (story 0b.4b).
+    // has_value() short-circuit guards the deref for clang-tidy bugprone-unchecked-optional-access.
+    CHECK((recommended.has_value() && *recommended == SolvingTechnique::FullHouse));
 }
 
 TEST_CASE("getRecommendedTechnique — advances after mastering", "[LearningPath]") {
     sudoku::test::TempTestDir tmp;
     TrainingStatisticsManager mgr(tmp.path());
 
+    masterTechnique(mgr, SolvingTechnique::FullHouse);
     masterTechnique(mgr, SolvingTechnique::HiddenSingle);
 
     auto recommended = getRecommendedTechnique(mgr);
     REQUIRE(recommended.has_value());
-    // After mastering HiddenSingle (SE 1.5), NakedSingle (SE 2.3) is next
+    // After Full House (SE 1.0) and HiddenSingle (SE 1.5), NakedSingle (SE 2.3) is next
     CHECK(*recommended == SolvingTechnique::NakedSingle);
 }
 
@@ -152,7 +154,8 @@ TEST_CASE("getRecommendedTechnique — skips techniques with unmet prerequisites
     sudoku::test::TempTestDir tmp;
     TrainingStatisticsManager mgr(tmp.path());
 
-    // Master HiddenSingle and NakedSingle
+    // Master the easy singles (Full House, HiddenSingle, NakedSingle)
+    masterTechnique(mgr, SolvingTechnique::FullHouse);
     masterTechnique(mgr, SolvingTechnique::HiddenSingle);
     masterTechnique(mgr, SolvingTechnique::NakedSingle);
 
@@ -169,6 +172,7 @@ TEST_CASE("getRecommendedTechnique — prefers least recently practiced at same 
 
     // Practice both PointingPair and BoxLineReduction (both 100 pts, no prereqs blocked)
     // Master lower-difficulty techniques first
+    masterTechnique(mgr, SolvingTechnique::FullHouse);
     masterTechnique(mgr, SolvingTechnique::NakedSingle);
     masterTechnique(mgr, SolvingTechnique::HiddenSingle);
     masterTechnique(mgr, SolvingTechnique::NakedPair);
@@ -196,7 +200,7 @@ TEST_CASE("getRecommendedTechnique — returns nullopt when all mastered", "[Lea
 }
 
 TEST_CASE("kAllTechniques — contains all logical techniques", "[LearningPath]") {
-    CHECK(kAllTechniques.size() == 54);
+    CHECK(kAllTechniques.size() == 55);  // story 0b.4b — FullHouse added as the root
 
     // Verify Backtracking is excluded
     for (auto tech : kAllTechniques) {
