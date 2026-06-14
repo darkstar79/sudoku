@@ -62,7 +62,7 @@ struct Move {
     // PlaceNumber/PlaceHint: peers `value` was removed from (revert re-adds it). RemoveNumber/clear:
     // peers `previous_value` was re-added to (revert re-removes it). Runtime-only — NOT serialized
     // (saves are full board+notes snapshots, so the delta is reconstructed only for live undo/redo).
-    std::vector<Position> peer_note_delta;
+    std::vector<Position> peer_note_delta{};
 };
 
 /// Error types for validation
