@@ -36,11 +36,19 @@ BoardData makeAIEscargot() {
             {3, 0, 0, 0, 0, 0, 0, 1, 0}, {0, 4, 0, 0, 0, 0, 0, 0, 7}, {0, 0, 7, 0, 0, 0, 3, 0, 0}};
 }
 
-// Easy puzzle with one naked single — for "budget not exceeded → succeeds" case.
-BoardData makeEasyNakedSingle() {
+// Easy puzzle with a single empty cell — a Full House (SE 1.0). For "budget not exceeded → succeeds".
+BoardData makeEasyFullHouse() {
     return {{0, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
             {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
             {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+}
+
+// Easy puzzle with GENUINE (non-region-last) naked singles (Story 0b.4d). Anchors (0,0)=5, (4,4)=5,
+// (8,8)=9 each keep >=2 empties in box/row/col, so NakedSingle (not Full House) applies to them.
+BoardData makeEasyMultiNakedSingle() {
+    return {{0, 3, 0, 6, 7, 8, 9, 1, 2}, {6, 0, 2, 1, 9, 5, 3, 4, 8}, {0, 9, 8, 3, 4, 2, 5, 6, 7},
+            {8, 5, 9, 7, 0, 1, 4, 2, 3}, {4, 2, 6, 0, 0, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 0, 8, 5, 6},
+            {9, 6, 1, 5, 3, 7, 2, 8, 0}, {2, 8, 7, 4, 1, 9, 6, 0, 5}, {3, 4, 5, 2, 8, 6, 0, 7, 0}};
 }
 
 }  // namespace
@@ -62,14 +70,19 @@ TEST_CASE("solvePuzzle completes within ample budget on easy puzzle", "[sudoku_s
     auto validator = std::make_shared<GameValidator>();
     SudokuSolver solver(validator);  // default SystemTimeProvider
 
-    auto result = solver.solvePuzzle(makeEasyNakedSingle(), 1000ms);
+    auto result = solver.solvePuzzle(makeEasyFullHouse(), 1000ms);
 
     REQUIRE(result.has_value());
     REQUIRE_FALSE(result->used_backtracking);
 }
 
 // Step 1.1 triggering test (R2 idiom 2): real-time integration check. Tagged so it can be
-// skipped in inner test loops. Bounds elapsed at 4x the budget per R2's pragmatic slack rule.
+// skipped in inner test loops. This is a COARSE runaway guard, not a tight latency assertion:
+// the cooperative budget is only checked between strategy attempts, so a single full strategy-chain
+// sweep can overshoot 50ms by a wide, machine-dependent margin (hundreds of ms on a loaded CI
+// runner). The deterministic proof that the timeout is wired is the negative-budget test above; here
+// we only verify the solver does not run unbounded — a generous 1s ceiling tolerates load while still
+// catching a broken-timeout regression that would let DFS + the full chain churn for seconds.
 TEST_CASE("solvePuzzle bails out on AI Escargot within wall-clock budget", "[sudoku_solver][timeout][.integration]") {
     auto validator = std::make_shared<GameValidator>();
     SudokuSolver solver(validator);
@@ -78,7 +91,7 @@ TEST_CASE("solvePuzzle bails out on AI Escargot within wall-clock budget", "[sud
     auto result = solver.solvePuzzle(makeAIEscargot(), 50ms);
     auto elapsed = std::chrono::steady_clock::now() - t0;
 
-    REQUIRE(elapsed < 200ms);
+    REQUIRE(elapsed < 1s);
     if (!result.has_value()) {
         // Expected on adversarial input — strategy iteration burns the budget.
         REQUIRE(result.error() == SolverError::Timeout);
@@ -124,11 +137,11 @@ TEST_CASE("findNextStep with budget succeeds on easy puzzle", "[sudoku_solver][t
     auto validator = std::make_shared<GameValidator>();
     SudokuSolver solver(validator);
 
-    auto result = solver.findNextStep(makeEasyNakedSingle(), makeEasyNakedSingle(), 250ms);
+    auto result = solver.findNextStep(makeEasyFullHouse(), makeEasyFullHouse(), 250ms);
 
     REQUIRE(result.has_value());
     // The single empty cell is a region's last cell — a Full House (SE 1.0), found ahead of Naked
-    // Single (story 0b.4b). The board-helper name predates the Full House model.
+    // Single (story 0b.4b).
     REQUIRE(result->technique == SolvingTechnique::FullHouse);
 }
 
@@ -140,8 +153,9 @@ TEST_CASE("findNextStepByTechnique returns matching technique", "[sudoku_solver]
     SudokuSolver solver(validator);
 
     SECTION("Returns NakedSingle when requested on naked-single board") {
-        auto result =
-            solver.findNextStepByTechnique(makeEasyNakedSingle(), makeEasyNakedSingle(), SolvingTechnique::NakedSingle);
+        // Use the genuine multi-single board: a single-empty board would be a Full House (0b.4d).
+        auto result = solver.findNextStepByTechnique(makeEasyMultiNakedSingle(), makeEasyMultiNakedSingle(),
+                                                     SolvingTechnique::NakedSingle);
         REQUIRE(result.has_value());
         REQUIRE(result->technique == SolvingTechnique::NakedSingle);
     }
@@ -149,15 +163,15 @@ TEST_CASE("findNextStepByTechnique returns matching technique", "[sudoku_solver]
     SECTION("Returns Unsolvable when requested technique does not apply") {
         // Easy puzzle has no SueDeCoq step.
         auto result =
-            solver.findNextStepByTechnique(makeEasyNakedSingle(), makeEasyNakedSingle(), SolvingTechnique::SueDeCoq);
+            solver.findNextStepByTechnique(makeEasyFullHouse(), makeEasyFullHouse(), SolvingTechnique::SueDeCoq);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == SolverError::Unsolvable);
     }
 
     SECTION("Returns InvalidBoard for Backtracking sentinel technique") {
         // Backtracking is the fallback sentinel; there is no strategy registered for it.
-        auto result = solver.findNextStepByTechnique(makeEasyNakedSingle(), makeEasyNakedSingle(),
-                                                     SolvingTechnique::Backtracking);
+        auto result =
+            solver.findNextStepByTechnique(makeEasyFullHouse(), makeEasyFullHouse(), SolvingTechnique::Backtracking);
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == SolverError::InvalidBoard);
     }

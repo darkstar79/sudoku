@@ -43,6 +43,14 @@ public:
 
                 // Check if cell has exactly one candidate
                 if (state.countPossibleValues(row, col) == 1) {
+                    // Defer a region's last empty cell to FullHouseStrategy: it is forced to one value but
+                    // is rated FullHouse 1.0, not Naked Single 2.3. Deferring makes that label intrinsic
+                    // (order-independent), not a registration-order artefact (story 0b.4d). Checked only
+                    // for forced cells so the per-empty-cell scan avoids isRegionLastCell's region scan.
+                    if (isRegionLastCell(board, row, col)) {
+                        continue;
+                    }
+
                     // Extract the single candidate
                     auto candidates = getCandidates(state, row, col);
                     if (candidates.empty()) {

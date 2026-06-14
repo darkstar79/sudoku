@@ -135,11 +135,29 @@ public:
      * @return Optional (Position, value) if any hidden single found
      */
     [[nodiscard]] std::optional<std::pair<Position, int>> findHiddenSingle(const BoardData& board) const {
+        return findHiddenSingle(board, [](const Position&) { return false; });
+    }
+
+    /**
+     * @brief Find the first hidden single whose cell is not skipped by `skip`.
+     *
+     * Scans the same row→col→box order as the no-argument overload but passes over any candidate cell
+     * for which `skip(pos)` is true, returning the next qualifying single instead of aborting. This lets
+     * HiddenSingleStrategy skip region-last cells (Full Houses) without masking a genuine hidden single
+     * that lies later in scan order (story 0b.4d).
+     *
+     * @param board Current board state
+     * @param skip Predicate; a cell for which it returns true is not eligible to be reported
+     * @return Optional (Position, value) of the first non-skipped hidden single
+     */
+    template <typename SkipPred>
+    [[nodiscard]] std::optional<std::pair<Position, int>> findHiddenSingle(const BoardData& board,
+                                                                           SkipPred skip) const {
         // Check rows
         for (size_t row = 0; row < BOARD_SIZE; ++row) {
             for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
                 auto result = findSingleCandidateInRow(row, value, board);
-                if (result.has_value()) {
+                if (result.has_value() && !skip(result.value())) {
                     return std::make_pair(result.value(), value);
                 }
             }
@@ -149,7 +167,7 @@ public:
         for (size_t col = 0; col < BOARD_SIZE; ++col) {
             for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
                 auto result = findSingleCandidateInCol(col, value, board);
-                if (result.has_value()) {
+                if (result.has_value() && !skip(result.value())) {
                     return std::make_pair(result.value(), value);
                 }
             }
@@ -159,7 +177,7 @@ public:
         for (size_t box = 0; box < BOARD_SIZE; ++box) {
             for (int value = MIN_VALUE; value <= MAX_VALUE; ++value) {
                 auto result = findSingleCandidateInBox(box, value, board);
-                if (result.has_value()) {
+                if (result.has_value() && !skip(result.value())) {
                     return std::make_pair(result.value(), value);
                 }
             }

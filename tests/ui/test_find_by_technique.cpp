@@ -23,17 +23,18 @@ using namespace sudoku;
 
 namespace {
 
-// 81-char canonical "easy" puzzle, matching test_puzzle_analyzer.cpp::kEasyDigits.
-// Note: this puzzle is fully solvable by Naked Singles — perfect for L-D testing.
-constexpr const char* kEasyOneCellGap = ".34678912"
-                                        "672195348"
-                                        "198342567"
-                                        "859761423"
-                                        "426853791"
-                                        "713924856"
-                                        "961537284"
-                                        "287419635"
-                                        "345286179";
+// 81-char "easy" puzzle with GENUINE (non-region-last) Naked Singles (Story 0b.4d). Anchors
+// (0,0)=5, (4,4)=5, (8,8)=9 each keep >=2 empties in box/row/col, so Naked Single (not Full House)
+// applies. Satellite empties keep the regions populated; no advanced technique applies.
+constexpr const char* kEasyOneCellGap = ".3.678912"
+                                        "6.2195348"
+                                        ".98342567"
+                                        "8597.1423"
+                                        "426..3791"
+                                        "71392.856"
+                                        "96153728."
+                                        "2874196.5"
+                                        "345286.7.";
 
 }  // namespace
 

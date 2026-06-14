@@ -226,14 +226,14 @@ TEST_CASE("GameViewModel - Hint Message Format", "[game_view_model][hints]") {
 TEST_CASE("GameViewModel - findStepByTechnique", "[game_view_model][hints][by_technique]") {
     sudoku::test::GameViewModelFixture fixture;
 
-    // Deterministic near-complete board with exactly one naked single at R1C1.
-    // Avoids relying on random-seeded generation which can yield boards where SueDeCoq
-    // happens to fire — this fixture has no candidates for any advanced strategy.
+    // Deterministic near-complete board with GENUINE (non-region-last) naked singles at (0,0)=5,
+    // (4,4)=5, (8,8)=9 (Story 0b.4d: a single-empty board would be a Full House, not a Naked Single).
+    // Each anchor keeps >=2 empties in box/row/col; the board has no candidates for advanced strategies.
     auto loadNakedSingleBoard = [&]() {
         SavedGame saved;
-        saved.original_puzzle = {{0, 3, 4, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-                                 {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-                                 {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        saved.original_puzzle = {{0, 3, 0, 6, 7, 8, 9, 1, 2}, {6, 0, 2, 1, 9, 5, 3, 4, 8}, {0, 9, 8, 3, 4, 2, 5, 6, 7},
+                                 {8, 5, 9, 7, 0, 1, 4, 2, 3}, {4, 2, 6, 0, 0, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 0, 8, 5, 6},
+                                 {9, 6, 1, 5, 3, 7, 2, 8, 0}, {2, 8, 7, 4, 1, 9, 6, 0, 5}, {3, 4, 5, 2, 8, 6, 0, 7, 0}};
         saved.current_state = saved.original_puzzle;
         saved.difficulty = Difficulty::Easy;
         // Empty move_history + no notes + original==current is the "fresh game" path in

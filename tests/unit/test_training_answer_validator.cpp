@@ -18,37 +18,32 @@
 #include "../../src/core/solving_technique.h"
 #include "../../src/core/training_answer_validator.h"
 
+#include <algorithm>
+
 #include <catch2/catch_test_macros.hpp>
 
 using namespace sudoku::core;
 
 namespace {
 
-/// A board with a few empty cells that have naked singles and hidden singles.
-/// Row 0: 5 3 _ | 6 7 8 | 9 1 2   (cell (0,2) = 4 naked single)
-/// Row 1: 6 7 2 | 1 9 5 | 3 4 8
-/// Row 2: 1 9 8 | 3 4 2 | 5 6 7
-/// Row 3: 8 5 9 | 7 6 1 | 4 2 3
-/// Row 4: 4 2 6 | 8 5 3 | 7 9 1
-/// Row 5: 7 1 3 | 9 2 4 | 8 5 6
-/// Row 6: 9 6 1 | 5 3 7 | 2 8 4
-/// Row 7: 2 8 7 | 4 1 9 | 6 3 _   (cell (7,8) = 5 naked single)
-/// Row 8: 3 4 5 | 2 8 6 | 1 7 _   (cell (8,8) = 9 naked single)
+/// A board with exactly 3 GENUINE (non-region-last) naked singles (Story 0b.4d). Each anchor cell is
+/// forced to a single value while every one of its regions keeps >=2 empties (so it is a Naked Single,
+/// not a Full House): (0,0)=5, (4,4)=5, (8,8)=9. The other emptied cells are satellites that keep the
+/// regions populated and themselves have >1 candidate, so they are not naked singles.
 BoardData makeNakedSingleBoard() {
     return {
-        {5, 3, 0, 6, 7, 8, 9, 1, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
-        {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
-        {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 0}, {3, 4, 5, 2, 8, 6, 1, 7, 0},
+        {0, 3, 0, 6, 7, 8, 9, 1, 2}, {6, 0, 2, 1, 9, 5, 3, 4, 8}, {0, 9, 8, 3, 4, 2, 5, 6, 7},
+        {8, 5, 9, 7, 0, 1, 4, 2, 3}, {4, 2, 6, 0, 0, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 0, 8, 5, 6},
+        {9, 6, 1, 5, 3, 7, 2, 8, 0}, {2, 8, 7, 4, 1, 9, 6, 0, 5}, {3, 4, 5, 2, 8, 6, 0, 7, 0},
     };
 }
 
-/// A board with multiple hidden singles.
-/// Most cells filled, a few empty cells where value is unique in row/col/box.
-/// Row 0: 5 3 _ | _ 7 _ | _ _ 2   (cells (0,2), (0,3), (0,5), (0,6), (0,7) empty)
-/// Rows 1-8: fully filled
+/// A board with multiple GENUINE (non-region-last) hidden singles (Story 0b.4d). Box 0 is fully empty
+/// plus (0,3) is empty, so box 0 keeps 9 empties and each of (0,0)=5, (0,1)=3, (0,2)=4 is a hidden
+/// single (its digit is confined to that one box-0 cell) while no region is region-last.
 BoardData makeHiddenSingleBoard() {
     return {
-        {5, 3, 0, 0, 7, 0, 0, 0, 2}, {6, 7, 2, 1, 9, 5, 3, 4, 8}, {1, 9, 8, 3, 4, 2, 5, 6, 7},
+        {0, 0, 0, 0, 7, 8, 9, 1, 2}, {0, 0, 0, 1, 9, 5, 3, 4, 8}, {0, 0, 0, 3, 4, 2, 5, 6, 7},
         {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
         {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9},
     };
@@ -78,22 +73,23 @@ TEST_CASE("TrainingAnswerValidator - reconstructCandidates", "[training_answer_v
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — has_value() guards inflate the expansion
 TEST_CASE("TrainingAnswerValidator - NakedSingle accepts all valid placements", "[training_answer_validator]") {
     auto board = makeNakedSingleBoard();
     CandidateGrid candidates(board);
 
-    // Three naked singles: (0,2)=4, (7,8)=5, (8,8)=9
-    SECTION("Cell (0,2) value 4 is accepted") {
+    // Three genuine naked singles: (0,0)=5, (4,4)=5, (8,8)=9
+    SECTION("Cell (0,0) value 5 is accepted") {
         auto result = TrainingAnswerValidator::validatePlacement(board, candidates, SolvingTechnique::NakedSingle,
-                                                                 Position{.row = 0, .col = 2}, 4);
+                                                                 Position{.row = 0, .col = 0}, 5);
         REQUIRE(result.has_value());
-        REQUIRE(result->position == Position{.row = 0, .col = 2});
-        REQUIRE(result->value == 4);
+        REQUIRE((result.has_value() && result->position == Position{.row = 0, .col = 0}));
+        REQUIRE((result.has_value() && result->value == 5));
     }
 
-    SECTION("Cell (7,8) value 5 is accepted") {
+    SECTION("Cell (4,4) value 5 is accepted") {
         auto result = TrainingAnswerValidator::validatePlacement(board, candidates, SolvingTechnique::NakedSingle,
-                                                                 Position{.row = 7, .col = 8}, 5);
+                                                                 Position{.row = 4, .col = 4}, 5);
         REQUIRE(result.has_value());
         REQUIRE(result->value == 5);
     }
@@ -107,36 +103,43 @@ TEST_CASE("TrainingAnswerValidator - NakedSingle accepts all valid placements", 
 
     SECTION("Wrong value is rejected") {
         auto result = TrainingAnswerValidator::validatePlacement(board, candidates, SolvingTechnique::NakedSingle,
-                                                                 Position{.row = 0, .col = 2}, 7);
-        REQUIRE_FALSE(result.has_value());
+                                                                 Position{.row = 0, .col = 0}, 7);
+        REQUIRE(!result.has_value());
     }
 
     SECTION("Filled cell is rejected") {
         auto result = TrainingAnswerValidator::validatePlacement(board, candidates, SolvingTechnique::NakedSingle,
-                                                                 Position{.row = 0, .col = 0}, 5);
-        REQUIRE_FALSE(result.has_value());
+                                                                 Position{.row = 0, .col = 1}, 3);
+        REQUIRE(!result.has_value());
     }
 }
 
+// SECTION expansion trips cognitive-complexity; inherent to the Catch2 expansion.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("TrainingAnswerValidator - HiddenSingle accepts all valid placements", "[training_answer_validator]") {
     auto board = makeHiddenSingleBoard();
     CandidateGrid candidates(board);
 
-    // Row 0 empty cells: (0,2), (0,3), (0,5), (0,6), (0,7)
-    // Missing values in row 0: 1, 4, 6, 8, 9
-    // By constraint propagation, each empty cell should have specific candidates.
-    // Cell (0,2) can only be 4 (hidden single in box 0 — only place for 4)
-    // These are all hidden singles since row 0 is the only row with empties
+    // Box 0 is fully empty (plus (0,3)). Several digits are confined to a single box-0 cell, e.g.
+    // (0,0)=5, (0,1)=3, (0,2)=4 — genuine hidden singles whose regions all keep >=2 empties.
 
-    SECTION("findAllSteps finds multiple hidden singles") {
+    SECTION("findAllSteps finds the named genuine hidden singles") {
         auto steps = TrainingAnswerValidator::findAllSteps(board, candidates, SolvingTechnique::HiddenSingle);
         REQUIRE(steps.size() >= 2);
 
-        // All should be placements in row 0
+        // All should be placements via the hidden single technique
         for (const auto& step : steps) {
             REQUIRE(step.type == SolveStepType::Placement);
             REQUIRE(step.technique == SolvingTechnique::HiddenSingle);
         }
+
+        // Pin the actual cells, not just the count: the named genuine singles must be present.
+        auto contains = [&steps](const Position& pos, int value) {
+            return std::ranges::any_of(
+                steps, [&](const SolveStep& step) { return step.position == pos && step.value == value; });
+        };
+        REQUIRE(contains(Position{.row = 0, .col = 1}, 3));
+        REQUIRE(contains(Position{.row = 0, .col = 2}, 4));
     }
 
     SECTION("Any valid hidden single is accepted") {
@@ -154,6 +157,8 @@ TEST_CASE("TrainingAnswerValidator - HiddenSingle accepts all valid placements",
     }
 }
 
+// SECTION expansion trips cognitive-complexity; inherent to the Catch2 expansion.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("TrainingAnswerValidator - findAllSteps for NakedSingle", "[training_answer_validator]") {
     auto board = makeNakedSingleBoard();
     CandidateGrid candidates(board);
@@ -164,22 +169,22 @@ TEST_CASE("TrainingAnswerValidator - findAllSteps for NakedSingle", "[training_a
     REQUIRE(steps.size() == 3);
 
     // Verify they cover the expected cells
-    bool found_02 = false;
-    bool found_78 = false;
+    bool found_00 = false;
+    bool found_44 = false;
     bool found_88 = false;
     for (const auto& step : steps) {
-        if (step.position == Position{.row = 0, .col = 2} && step.value == 4) {
-            found_02 = true;
+        if (step.position == Position{.row = 0, .col = 0} && step.value == 5) {
+            found_00 = true;
         }
-        if (step.position == Position{.row = 7, .col = 8} && step.value == 5) {
-            found_78 = true;
+        if (step.position == Position{.row = 4, .col = 4} && step.value == 5) {
+            found_44 = true;
         }
         if (step.position == Position{.row = 8, .col = 8} && step.value == 9) {
             found_88 = true;
         }
     }
-    REQUIRE(found_02);
-    REQUIRE(found_78);
+    REQUIRE(found_00);
+    REQUIRE(found_44);
     REQUIRE(found_88);
 }
 

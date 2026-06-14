@@ -24,24 +24,25 @@ using namespace sudoku::core;
 
 namespace {
 
-// Test helper: Create a board with a naked single at specified position
+// Test helper: Create a board with a GENUINE (non-region-last) naked single at R1C1.
+// Story 0b.4d: a cell that is the only empty in its box/row/col is now a Full House (1.0), not a
+// Naked Single, so the fixture must keep ≥2 empties in EVERY region of the single. From the canonical
+// solved grid we empty (0,0),(0,8),(2,2),(4,0): R1C1 (=5) is forced (its peers exclude 1-4,6-9), while
+// row 0 keeps empties at C1 & C9, box 0 keeps (0,0)&(2,2), col 0 keeps (0,0)&(4,0) — none region-last.
 BoardData createBoardWithNakedSingle() {
-    // Board with R1C1 having only candidate 5
-    BoardData board = {{0, 1, 2, 3, 4, 6, 7, 8, 9},  // R1: only 5 missing, must go in C1
-                       {3, 0, 0, 0, 0, 0, 0, 0, 0}, {4, 0, 0, 0, 0, 0, 0, 0, 0}, {6, 0, 0, 0, 0, 0, 0, 0, 0},
-                       {7, 0, 0, 0, 0, 0, 0, 0, 0}, {8, 0, 0, 0, 0, 0, 0, 0, 0}, {9, 0, 0, 0, 0, 0, 0, 0, 0},
-                       {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    BoardData board = sudoku::testing::kSolvedBoard;
+    board[0][0] = EMPTY_CELL;  // R1C1 -> 5 (the genuine naked single, first in scan order)
+    board[0][8] = EMPTY_CELL;  // keeps row 0 with 2 empties
+    board[2][2] = EMPTY_CELL;  // keeps box 0 with 2 empties
+    board[4][0] = EMPTY_CELL;  // keeps col 0 with 2 empties
     return board;
 }
 
 BoardData createBoardWithMultipleNakedSingles() {
-    // Board with multiple cells having only one candidate
-    BoardData board = {{0, 1, 2, 3, 4, 6, 7, 8, 9},  // R1C1: only 5 possible
-                       {3, 0, 0, 0, 0, 0, 0, 0, 0},  // R2C2: multiple candidates
-                       {4, 0, 0, 0, 0, 0, 0, 0, 0}, {6, 0, 0, 0, 0, 0, 0, 0, 0}, {7, 0, 0, 0, 0, 0, 0, 0, 0},
-                       {8, 0, 0, 0, 0, 0, 0, 0, 0}, {9, 0, 0, 0, 0, 0, 0, 0, 0}, {2, 0, 0, 0, 0, 0, 0, 0, 0},
-                       {0, 0, 0, 0, 0, 0, 0, 0, 0}};
-    return board;
+    // Reuses the genuine-single base. (0,0)=5 is the only naked single NakedSingleStrategy returns here:
+    // the other emptied cells are region-last (Full Houses) and are deferred (story 0b.4d). This
+    // exercises scan order returning the first genuine naked single at R1C1.
+    return createBoardWithNakedSingle();
 }
 
 BoardData createBoardWithoutNakedSingles() {
@@ -182,9 +183,10 @@ TEST_CASE("NakedSingleStrategy - Edge Cases", "[naked_single]") {
         // No specific requirement on return value for invalid boards
     }
 
-    SECTION("Handles single empty cell") {
-        auto board = createCompleteBoard();
-        board[0][0] = 0;  // Make one cell empty (must be 5)
+    SECTION("Handles near-complete board (genuine naked single)") {
+        // Story 0b.4d: a lone empty cell is now a Full House (1.0), not a Naked Single. Use the genuine
+        // multi-empty fixture so R1C1 stays a true naked single (≥2 empties in box/row/col).
+        auto board = createBoardWithNakedSingle();
         CandidateGrid state(board);
 
         auto step = strategy.findStep(board, state);

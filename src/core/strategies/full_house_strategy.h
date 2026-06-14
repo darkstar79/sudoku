@@ -36,15 +36,15 @@ namespace sudoku::core {
 /// strategy is registered *before* NakedSingle/HiddenSingle so the placement is labelled FullHouse 1.0.
 ///
 /// The strategy *classifies* a Full House purely by the region-emptiness predicate (independent of which
-/// cell is scanned first). The *system-level* label, however, relies on this strategy being registered
-/// ahead of NakedSingle/HiddenSingle — a region-last cell is also a naked/hidden single, so whichever of
-/// the three runs first claims it. That ordering is a deliberate, **pinned** contract (story 0b.4b,
-/// review D1): see the "FullHouse precedes …" order test and the solver-level "labels a region-last cell
-/// FullHouse" test, which turn a silent reorder (it would revert every region-last placement to an
-/// over-rated 2.3 Naked Single) into a loud test failure. The classification gates on region emptiness
-/// (not candidate count), so a one-candidate cell whose regions still have other empties stays a Naked
-/// Single. When a cell completes more than one region at once, region precedence is **box → row → col**
-/// for the reported region (deterministic explanation_data).
+/// cell is scanned first). The *system-level* label is **intrinsic**, not order-dependent: NakedSingle and
+/// HiddenSingle defer every region-last cell (`StrategyBase::isRegionLastCell`, story 0b.4d), so a region's
+/// last empty cell is labelled FullHouse 1.0 regardless of where FullHouse sits relative to those two
+/// strategies in the chain — the shared `getRegionLastCell` predicate below is the single source of truth
+/// they both consult. (The invariant scopes to NakedSingle/HiddenSingle; a *new* placement strategy that
+/// could also claim a region-last cell would need the same deferral to preserve it.) The classification
+/// gates on region emptiness (not candidate count), so a one-candidate cell whose regions still have other
+/// empties stays a Naked Single. When a cell completes more than one region at once, region precedence is
+/// **box → row → col** for the reported region (deterministic explanation_data).
 class FullHouseStrategy : public ISolvingStrategy, protected StrategyBase {
 public:
     [[nodiscard]] std::optional<SolveStep> findStep(const BoardData& board, const CandidateGrid& state) const override {
@@ -54,22 +54,14 @@ public:
                     continue;
                 }
 
-                // Region-emptiness predicate with box → row → col precedence. A region qualifies when
-                // this is its only empty cell.
-                RegionType region = RegionType::None;
-                size_t region_index = 0;
-                if (getEmptyCellsInBox(board, getBoxIndex(row, col)).size() == 1) {
-                    region = RegionType::Box;
-                    region_index = getBoxIndex(row, col);
-                } else if (getEmptyCellsInRow(board, row).size() == 1) {
-                    region = RegionType::Row;
-                    region_index = row;
-                } else if (getEmptyCellsInCol(board, col).size() == 1) {
-                    region = RegionType::Col;
-                    region_index = col;
-                } else {
+                // Region-emptiness predicate with box → row → col precedence (shared single source of
+                // truth — the same predicate NakedSingle/HiddenSingle defer on). A region qualifies when
+                // this is its only empty cell; nullopt means every region still has another empty.
+                auto region_last = getRegionLastCell(board, row, col);
+                if (!region_last.has_value()) {
                     continue;  // Not a Full House: every region of this cell has other empties.
                 }
+                const auto [region, region_index] = region_last.value();
 
                 auto candidates = getCandidates(state, row, col);
                 if (candidates.size() != 1) {
