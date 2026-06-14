@@ -104,16 +104,16 @@ TEST_CASE("HiddenSingleStrategy - Finds Hidden Single", "[hidden_single]") {
         auto step = strategy.findStep(board, state);
 
         REQUIRE(step.has_value());
-        REQUIRE(step->type == SolveStepType::Placement);
-        REQUIRE(step->technique == SolvingTechnique::HiddenSingle);
-        REQUIRE(step->position.row == 0);
-        REQUIRE(step->position.col == 1);
-        REQUIRE(step->value == 3);
+        REQUIRE((step.has_value() && step->type == SolveStepType::Placement));
+        REQUIRE((step.has_value() && step->technique == SolvingTechnique::HiddenSingle));
+        REQUIRE((step.has_value() && step->position.row == 0));
+        REQUIRE((step.has_value() && step->position.col == 1));
+        REQUIRE((step.has_value() && step->value == 3));
         // Class A (0b.4a): 3 is confined to R1C2 within box 0 (box keeps ≥2 empties, so not a Full
         // House) → a *block* hidden single → SE 1.2.
         REQUIRE((step.has_value() && step->rating == 1.2));  // has_value() guards the deref for clang-tidy
         REQUIRE((step.has_value() && step->explanation_data.region_type == RegionType::Box));
-        REQUIRE(!step->explanation.empty());
+        REQUIRE((step.has_value() && !step->explanation.empty()));
     }
 
     SECTION("A line (row) hidden single rates 1.5 and records the row region") {
@@ -171,6 +171,7 @@ TEST_CASE("HiddenSingleStrategy - No Hidden Single Found", "[hidden_single]") {
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — has_value() guards inflate the expansion
 TEST_CASE("HiddenSingleStrategy - Explanation Content", "[hidden_single]") {
     HiddenSingleStrategy strategy;
     auto board = createBoardWithHiddenSingle();
@@ -184,11 +185,11 @@ TEST_CASE("HiddenSingleStrategy - Explanation Content", "[hidden_single]") {
     }
 
     SECTION("Explanation includes position") {
-        REQUIRE(step->explanation.contains("R1C2"));
+        REQUIRE((step.has_value() && step->explanation.contains("R1C2")));
     }
 
     SECTION("Explanation includes value") {
-        REQUIRE(step->explanation.contains('3'));
+        REQUIRE((step.has_value() && step->explanation.contains('3')));
     }
 
     SECTION("Explanation describes why value is hidden") {
@@ -197,6 +198,7 @@ TEST_CASE("HiddenSingleStrategy - Explanation Content", "[hidden_single]") {
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — has_value() guards inflate the expansion
 TEST_CASE("HiddenSingleStrategy - Hidden vs Naked Singles", "[hidden_single]") {
     SECTION("Hidden single may have multiple candidates in cell") {
         // Standard test board: R1C2 has multiple candidates but 3 is hidden (only box-0 cell for 3).
@@ -208,12 +210,13 @@ TEST_CASE("HiddenSingleStrategy - Hidden vs Naked Singles", "[hidden_single]") {
 
         // Should find that 3 can only go in R1C2 within box 0 (even though R1C2 has other candidates).
         REQUIRE(hidden_step.has_value());
-        REQUIRE(hidden_step->value == 3);
-        REQUIRE(hidden_step->position.row == 0);
-        REQUIRE(hidden_step->position.col == 1);
+        REQUIRE((hidden_step.has_value() && hidden_step->value == 3));
+        REQUIRE((hidden_step.has_value() && hidden_step->position.row == 0));
+        REQUIRE((hidden_step.has_value() && hidden_step->position.col == 1));
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — has_value() guards inflate the expansion
 TEST_CASE("HiddenSingleStrategy - Edge Cases", "[hidden_single]") {
     HiddenSingleStrategy strategy;
 
@@ -227,8 +230,8 @@ TEST_CASE("HiddenSingleStrategy - Edge Cases", "[hidden_single]") {
 
         REQUIRE(step.has_value());
         REQUIRE(step->position.row == 0);
-        REQUIRE(step->position.col == 1);
-        REQUIRE(step->value == 3);
+        REQUIRE((step.has_value() && step->position.col == 1));
+        REQUIRE((step.has_value() && step->value == 3));
     }
 
     SECTION("Handles board with conflicts gracefully") {
@@ -350,7 +353,7 @@ TEST_CASE("findHiddenSingle(skip) skips region-last cells without masking a genu
     REQUIRE(first.has_value());
     auto next = state.findHiddenSingle(board, [&first](const Position& pos) { return pos == first->first; });
     REQUIRE(next.has_value());
-    REQUIRE((next.has_value() && next->first != first->first));
+    REQUIRE((first.has_value() && next.has_value() && next->first != first->first));
 }
 
 }  // anonymous namespace

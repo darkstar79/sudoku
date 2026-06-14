@@ -73,6 +73,7 @@ TEST_CASE("TrainingAnswerValidator - reconstructCandidates", "[training_answer_v
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — has_value() guards inflate the expansion
 TEST_CASE("TrainingAnswerValidator - NakedSingle accepts all valid placements", "[training_answer_validator]") {
     auto board = makeNakedSingleBoard();
     CandidateGrid candidates(board);
@@ -82,8 +83,8 @@ TEST_CASE("TrainingAnswerValidator - NakedSingle accepts all valid placements", 
         auto result = TrainingAnswerValidator::validatePlacement(board, candidates, SolvingTechnique::NakedSingle,
                                                                  Position{.row = 0, .col = 0}, 5);
         REQUIRE(result.has_value());
-        REQUIRE(result->position == Position{.row = 0, .col = 0});
-        REQUIRE(result->value == 5);
+        REQUIRE((result.has_value() && result->position == Position{.row = 0, .col = 0}));
+        REQUIRE((result.has_value() && result->value == 5));
     }
 
     SECTION("Cell (4,4) value 5 is accepted") {
