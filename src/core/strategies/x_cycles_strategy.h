@@ -297,7 +297,8 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .rating = getTechniqueRating(SolvingTechnique::XCycles),
+            .rating = getTechniqueRating(SolvingTechnique::XCycles,
+                                         RatingContext{.size_or_length = static_cast<int>(chain.size())}),
             .explanation_data = {
                 .positions = positions, .values = {digit}, .technique_subtype = 0, .position_roles = std::move(roles)}};
     }
@@ -332,7 +333,8 @@ private:
             .value = digit,
             .eliminations = {},
             .explanation = explanation,
-            .rating = getTechniqueRating(SolvingTechnique::XCycles),
+            .rating = getTechniqueRating(SolvingTechnique::XCycles,
+                                         RatingContext{.size_or_length = static_cast<int>(chain.size())}),
             .explanation_data = {
                 .positions = positions, .values = {digit}, .technique_subtype = 1, .position_roles = std::move(roles)}};
     }
@@ -370,7 +372,8 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .rating = getTechniqueRating(SolvingTechnique::XCycles),
+            .rating = getTechniqueRating(SolvingTechnique::XCycles,
+                                         RatingContext{.size_or_length = static_cast<int>(chain.size())}),
             .explanation_data = {
                 .positions = positions, .values = {digit}, .technique_subtype = 2, .position_roles = std::move(roles)}};
     }

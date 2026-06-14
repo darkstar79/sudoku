@@ -131,7 +131,8 @@ TEST_CASE("XCyclesStrategy - Finds X-Cycle with multiple strong links", "[x_cycl
     // Verify it finds an X-Cycle pattern
     if (result.has_value()) {
         REQUIRE(result->technique == SolvingTechnique::XCycles);
-        REQUIRE(result->rating == 6.6);
+        // Class-C scaling (0b.4c): this loop has length 5, so the rating is base 6.6 + 0.1·(5−4) = 6.7.
+        REQUIRE(result->rating == 6.7);
     }
 }
 

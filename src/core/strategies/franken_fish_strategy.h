@@ -399,7 +399,8 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .rating = getTechniqueRating(SolvingTechnique::FrankenFish),
+            .rating = getTechniqueRating(SolvingTechnique::FrankenFish,
+                                         RatingContext{.size_or_length = static_cast<int>(chosen_bases.size())}),
             .explanation_data = {.positions = positions,
                                  .values = {digit},
                                  .position_roles = std::vector<CellRole>(positions.size(), CellRole::Pattern)}};

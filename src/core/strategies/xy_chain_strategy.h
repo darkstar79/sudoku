@@ -165,16 +165,17 @@ private:
             "XY-Chain: chain of {} bivalue cells from {} to {} — eliminates {} from cells seeing both endpoints",
             chain_length, formatPosition(start), formatPosition(end), elim_x);
 
-        return SolveStep{.type = SolveStepType::Elimination,
-                         .technique = SolvingTechnique::XYChain,
-                         .position = eliminations[0].position,
-                         .value = 0,
-                         .eliminations = eliminations,
-                         .explanation = explanation,
-                         .rating = getTechniqueRating(SolvingTechnique::XYChain),
-                         .explanation_data = {.positions = {start, end},
-                                              .values = {elim_x, chain_length},
-                                              .position_roles = {CellRole::ChainA, CellRole::ChainB}}};
+        return SolveStep{
+            .type = SolveStepType::Elimination,
+            .technique = SolvingTechnique::XYChain,
+            .position = eliminations[0].position,
+            .value = 0,
+            .eliminations = eliminations,
+            .explanation = explanation,
+            .rating = getTechniqueRating(SolvingTechnique::XYChain, RatingContext{.size_or_length = chain_length}),
+            .explanation_data = {.positions = {start, end},
+                                 .values = {elim_x, chain_length},
+                                 .position_roles = {CellRole::ChainA, CellRole::ChainB}}};
     }
 };
 

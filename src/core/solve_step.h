@@ -93,6 +93,29 @@ struct RatingContext {
     bool operator==(const RatingContext& other) const = default;
 };
 
+/// Class C (Story 0b.4c) — base size/length at which the scaled value equals the flat base (+0).
+/// Fish (FrankenFish/MutantFish/KrakenFish) are smallest at size 2; chains/loops (XYChain/XCycles/
+/// GroupedXCycles + the AIC nice-loop family) are shortest at length 4 (XYChain needs depth ≥ 3).
+inline constexpr int kFishBaseSize = 2;
+inline constexpr int kChainBaseLength = 4;
+
+/// Class C structural scaling (Story 0b.4c): a larger fish / longer chain rates strictly higher than a
+/// smaller/shorter one of the same technique. `flat_base` is the rating at the canonical `base_unit`;
+/// every extra unit of size/length adds one tenth (0.1). The arithmetic is done in integer tenths so the
+/// result stays an EXACT decimal multiple of 0.1 — `4.2 + 0.1` drifts off `4.3` in IEEE doubles, which
+/// would break the golden pin's `==`. Below the base unit (and at the `size_or_length == 0` sentinel) the
+/// clamp returns the flat base unchanged, so default context reproduces the flat rating exactly (AC4b).
+[[nodiscard]] constexpr double scaledByStructure(double flat_base, int size_or_length, int base_unit) {
+    constexpr double kTenthsPerUnit = 10.0;  // ratings are 0.1-multiples; tenths keep results exact for ==
+    constexpr double kRoundHalf = 0.5;       // round-to-nearest when recovering integer tenths from the base
+    if (size_or_length <= base_unit) {
+        return flat_base;
+    }
+    const int base_tenths = static_cast<int>((flat_base * kTenthsPerUnit) + kRoundHalf);
+    const int scaled_tenths = base_tenths + (size_or_length - base_unit);  // +1 tenth per unit above base
+    return static_cast<double>(scaled_tenths) / kTenthsPerUnit;
+}
+
 /// Context-sensitive SE rating (Story 0b.4a) — the authoritative single source for ratings that vary
 /// by step context. Delegates to the flat getTechniqueRating(technique) for the base value and only
 /// overrides per class, so the per-technique numbers live in exactly one place.
@@ -105,6 +128,15 @@ struct RatingContext {
 /// eliminations force a placement (`forces_placement`) rate lower than the elimination-only form —
 /// Direct Pointing 1.7 (vs 2.6), Direct Claiming 1.9 (vs 2.8), Direct Hidden Pair 2.0 (vs 3.4), Direct
 /// Hidden Triplet 2.5 (vs 4.0). Full House (1.0) is a distinct technique with a flat rating, not a flag.
+///
+/// Class C — structural size/length scaling (story 0b.4c): a larger fish / longer chain rates strictly
+/// higher than a smaller/shorter one of the same technique, via `scaledByStructure()`. The X-chain/cycle
+/// families stay inside Expert *by construction* — XYChain/XCycles/GroupedXCycles top out at 7.1/7.2/7.4
+/// (< 7.5) at their max generated length. The AIC nice-loop family is also scaled (per design), and there
+/// ContinuousNiceLoop (base 7.0) could in principle reach Master for a very long loop (7.0 + 0.1·(9−4) =
+/// 7.5); that crossing is NOT closed by construction but is empirically inert — a nice-loop is never a
+/// generated puzzle's hardest step, and the fixed-seed bucket-migration corpus confirms 0 reclassifications
+/// (test_class_c_bucket_migration_integration.cpp). NiceLoop/GroupedNiceLoop (7.5/8.0) are already Master.
 [[nodiscard]] constexpr double getTechniqueRating(SolvingTechnique technique, const RatingContext& context) {
     if (technique == SolvingTechnique::HiddenSingle && context.region == RegionType::Box) {
         return 1.2;  // block hidden single (line value 1.5 stays in the flat base overload)
@@ -122,6 +154,21 @@ struct RatingContext {
             default:
                 break;
         }
+    }
+    switch (technique) {
+        case SolvingTechnique::FrankenFish:
+        case SolvingTechnique::MutantFish:
+        case SolvingTechnique::KrakenFish:
+            return scaledByStructure(getTechniqueRating(technique), context.size_or_length, kFishBaseSize);
+        case SolvingTechnique::XYChain:
+        case SolvingTechnique::XCycles:
+        case SolvingTechnique::GroupedXCycles:
+        case SolvingTechnique::NiceLoop:
+        case SolvingTechnique::ContinuousNiceLoop:
+        case SolvingTechnique::GroupedNiceLoop:
+            return scaledByStructure(getTechniqueRating(technique), context.size_or_length, kChainBaseLength);
+        default:
+            break;
     }
     return getTechniqueRating(technique);
 }
