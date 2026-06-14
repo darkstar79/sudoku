@@ -247,8 +247,10 @@ private:
                 : fmt::format("Kraken {} on value {} in {} {} with fin at {} — eliminates {} via chain verification",
                               fishOrderName(order), value, orientation, base_list, formatPosition(fin_pos), value);
 
-        double rating =
-            outcome.fin_excluded ? finnedFishRatingForOrder(order) : getTechniqueRating(SolvingTechnique::KrakenFish);
+        double rating = outcome.fin_excluded
+                            ? finnedFishRatingForOrder(order)
+                            : getTechniqueRating(SolvingTechnique::KrakenFish,
+                                                 RatingContext{.size_or_length = static_cast<int>(order)});
 
         // Build values for explanation_data: [value, base_line1, base_line2, ...]
         std::vector<int> explain_values;

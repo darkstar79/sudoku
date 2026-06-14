@@ -451,7 +451,8 @@ private:
             .value = 0,
             .eliminations = eliminations,
             .explanation = explanation,
-            .rating = getTechniqueRating(SolvingTechnique::ContinuousNiceLoop),
+            .rating = getTechniqueRating(SolvingTechnique::ContinuousNiceLoop,
+                                         RatingContext{.size_or_length = static_cast<int>(chain.size())}),
             .explanation_data = {.positions = chain_positions,
                                  .values = {static_cast<int>(chain.size()), static_cast<int>(eliminations.size())},
                                  .position_roles = {CellRole::ChainA, CellRole::ChainB}}};

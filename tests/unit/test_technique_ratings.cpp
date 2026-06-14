@@ -229,3 +229,98 @@ TEST_CASE("getTechniqueRating() Class-B Direct forms — forces_placement lowers
                        1.7);
     }
 }
+
+// Class-C re-base (Story 0b.4c): the context overload now scales fish size / chain length structurally —
+// rating = base + 0.1·max(0, n − base_unit), base_unit 2 (fish smallest size) / 4 (chains shortest length,
+// XYChain depth≥3). A larger fish / longer chain rates STRICTLY higher than a smaller/shorter one of the
+// *same* technique (AC4a); the canonical base size/length reproduces the flat base exactly (AC4b, single
+// source of truth); and the XYChain length-term ceiling keeps the Expert→Master 7.5 crossing closed by
+// construction (AC4d: 6.6 + 0.1·(9−4) = 7.1 < 7.5). Scaling is done in integer tenths so every value stays
+// an exact decimal multiple of 0.1 (== holds — 4.2+0.1 would otherwise drift off 4.3 in IEEE doubles).
+// RED on the first build (the overload ignores size_or_length until the Class-C branch lands), GREEN after.
+// The SECTIONs + sweep loops trip the cognitive-complexity threshold; complexity is inherent to the pin.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("getTechniqueRating() Class-C structural scaling — size/length raises rating strictly", "[solver][ratings]") {
+    struct ScaledFamily {
+        SolvingTechnique technique;
+        int base_unit;  ///< size/length at which the scaled value == the flat base (+0)
+        int max_unit;   ///< top of the range to sweep for exhaustive monotonicity
+    };
+    // Fish (multi-size enums) base at size 2; X-chain/cycle + AIC nice-loop families base at length 4.
+    const std::array<ScaledFamily, 9> families = {{
+        {.technique = SolvingTechnique::FrankenFish, .base_unit = 2, .max_unit = 4},
+        {.technique = SolvingTechnique::MutantFish, .base_unit = 2, .max_unit = 4},
+        {.technique = SolvingTechnique::KrakenFish, .base_unit = 2, .max_unit = 4},
+        {.technique = SolvingTechnique::XYChain, .base_unit = 4, .max_unit = 12},
+        {.technique = SolvingTechnique::XCycles, .base_unit = 4, .max_unit = 12},
+        {.technique = SolvingTechnique::GroupedXCycles, .base_unit = 4, .max_unit = 12},
+        {.technique = SolvingTechnique::NiceLoop, .base_unit = 4, .max_unit = 12},
+        {.technique = SolvingTechnique::ContinuousNiceLoop, .base_unit = 4, .max_unit = 12},
+        {.technique = SolvingTechnique::GroupedNiceLoop, .base_unit = 4, .max_unit = 12},
+    }};
+
+    SECTION("Base size/length reproduces the flat base exactly (AC4b)") {
+        for (const auto& f : families) {
+            CAPTURE(getTechniqueName(f.technique));
+            REQUIRE(getTechniqueRating(f.technique, RatingContext{.size_or_length = f.base_unit}) ==
+                    getTechniqueRating(f.technique));
+        }
+    }
+
+    SECTION("A larger size/length rates strictly higher than the base (AC4)") {
+        for (const auto& f : families) {
+            CAPTURE(getTechniqueName(f.technique));
+            REQUIRE(getTechniqueRating(f.technique, RatingContext{.size_or_length = f.base_unit + 1}) >
+                    getTechniqueRating(f.technique, RatingContext{.size_or_length = f.base_unit}));
+        }
+    }
+
+    SECTION("Strict monotonicity across the full realized range — exhaustive (AC4a / DoD)") {
+        for (const auto& f : families) {
+            for (int n = f.base_unit; n < f.max_unit; ++n) {
+                CAPTURE(getTechniqueName(f.technique), n);
+                REQUIRE(getTechniqueRating(f.technique, RatingContext{.size_or_length = n}) <
+                        getTechniqueRating(f.technique, RatingContext{.size_or_length = n + 1}));
+            }
+        }
+    }
+
+    SECTION("Default/sentinel context reproduces the flat base (single source of truth, AC4b)") {
+        for (const auto& f : families) {
+            CAPTURE(getTechniqueName(f.technique));
+            REQUIRE(getTechniqueRating(f.technique, RatingContext{}) == getTechniqueRating(f.technique));
+            REQUIRE(getTechniqueRating(f.technique, RatingContext{.size_or_length = 0}) ==
+                    getTechniqueRating(f.technique));
+        }
+    }
+
+    SECTION("XYChain length-term ceiling keeps Expert→Master closed by construction (AC4d)") {
+        // Chain length is bounded at 9 in the generated corpus; 6.6 + 0.1·(9−4) = 7.1 must stay < 7.5 (Master).
+        REQUIRE(getTechniqueRating(SolvingTechnique::XYChain, RatingContext{.size_or_length = 9}) == 7.1);
+        REQUIRE(getTechniqueRating(SolvingTechnique::XYChain, RatingContext{.size_or_length = 9}) < 7.5);
+        // XCycles (also base 6.6) inherits the same ceiling.
+        REQUIRE(getTechniqueRating(SolvingTechnique::XCycles, RatingContext{.size_or_length = 9}) < 7.5);
+    }
+
+    SECTION("Scaling is exact tenths — == holds with no IEEE drift") {
+        REQUIRE(getTechniqueRating(SolvingTechnique::FrankenFish, RatingContext{.size_or_length = 3}) == 4.3);
+        REQUIRE(getTechniqueRating(SolvingTechnique::FrankenFish, RatingContext{.size_or_length = 4}) == 4.4);
+        REQUIRE(getTechniqueRating(SolvingTechnique::MutantFish, RatingContext{.size_or_length = 4}) == 5.6);
+        REQUIRE(getTechniqueRating(SolvingTechnique::XYChain, RatingContext{.size_or_length = 5}) == 6.7);
+    }
+
+    SECTION("forces below the base unit / sentinel never lower the base") {
+        // max(0, …) clamp: a length below the canonical base reproduces the base, never goes negative.
+        REQUIRE(getTechniqueRating(SolvingTechnique::XYChain, RatingContext{.size_or_length = 3}) ==
+                getTechniqueRating(SolvingTechnique::XYChain));
+    }
+
+    SECTION("Scaling does not perturb a non-Class-C technique") {
+        REQUIRE(getTechniqueRating(SolvingTechnique::NakedSingle, RatingContext{.size_or_length = 9}) ==
+                getTechniqueRating(SolvingTechnique::NakedSingle));
+    }
+
+    SECTION("Context overload stays constexpr for Class-C (spot check)") {
+        STATIC_REQUIRE(getTechniqueRating(SolvingTechnique::XYChain, RatingContext{.size_or_length = 9}) == 7.1);
+    }
+}

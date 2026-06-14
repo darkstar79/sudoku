@@ -455,7 +455,9 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .rating = getTechniqueRating(SolvingTechnique::GroupedNiceLoop),
+                         .rating =
+                             getTechniqueRating(SolvingTechnique::GroupedNiceLoop,
+                                                RatingContext{.size_or_length = static_cast<int>(chain.size() + 1)}),
                          .explanation_data = {.positions = {start_pos, end_pos},
                                               .values = {digit, static_cast<int>(chain.size() + 1)},
                                               .position_roles = {CellRole::ChainA, CellRole::ChainB}}};

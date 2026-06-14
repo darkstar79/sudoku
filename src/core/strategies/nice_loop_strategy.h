@@ -402,7 +402,9 @@ private:
                          .value = 0,
                          .eliminations = eliminations,
                          .explanation = explanation,
-                         .rating = getTechniqueRating(SolvingTechnique::NiceLoop),
+                         .rating =
+                             getTechniqueRating(SolvingTechnique::NiceLoop,
+                                                RatingContext{.size_or_length = static_cast<int>(chain.size() + 1)}),
                          .explanation_data = {.positions = {start_pos, end_pos},
                                               .values = {digit, static_cast<int>(chain.size() + 1)},
                                               .position_roles = {CellRole::ChainA, CellRole::ChainB}}};

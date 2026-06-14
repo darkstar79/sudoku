@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.28)
 
-# Collect all integration test files
+# Collect all integration test files.
+# NOTE: plain GLOB (not CONFIGURE_DEPENDS) — adding/removing a *.cpp here requires a reconfigure
+# (`cmake build/<preset>` or touch this file) so incremental builds re-glob; CI cold-configures.
+# Last touched when test_class_c_bucket_migration_integration.cpp was added (story 0b.4c).
 file(GLOB_RECURSE INTEGRATION_TEST_SOURCES "*.cpp")
 
 # Custom Catch2 entry point that owns a QCoreApplication for the run.
