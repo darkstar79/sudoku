@@ -91,6 +91,17 @@ jobs:
           echo "Running: $UNIT_TESTS [strategy]"
           "$UNIT_TESTS" "[strategy]"
 
+      - name: Run Class-C bucket-migration gate
+        if: steps.check.outputs.skip != 'true'
+        # [.]-hidden integration test (story 0b.4c): a fixed-seed corpus that proves the
+        # size/length rating scaling never re-bands puzzles beyond the threshold. Heavy
+        # (difficulty-validated generation), so it lives here in the nightly alongside the
+        # [strategy] suite rather than in per-PR CI. Selected explicitly by tag.
+        run: |
+          INTEGRATION_TESTS=$(find build/RelWithDebInfo -name integration_tests -type f | head -1)
+          echo "Running: $INTEGRATION_TESTS [bucket_migration]"
+          "$INTEGRATION_TESTS" "[bucket_migration]"
+
       - name: Propagate previous failure
         if: steps.check.outputs.previous-failed == 'true'
         run: |

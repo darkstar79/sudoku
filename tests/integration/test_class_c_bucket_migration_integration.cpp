@@ -29,9 +29,11 @@
 // second code version is needed: per step, the flat getTechniqueRating(technique) is the old value and the
 // step's own (context-scaled) .rating is the new value; a puzzle's rating is the max over its steps.
 //
-// Heavy + generation-bound (difficulty-validated generation across Hard/Expert/Master), so it is [.]-hidden —
-// run manually on Release/RWDI for the DoD gate, exactly like [strategy][correctness]. The from→to histogram
-// is printed to stdout so the numbers can be lifted into the CHANGELOG / commit body.
+// Heavy + generation-bound (difficulty-validated generation across Hard/Expert/Master), so it is [.]-hidden
+// and excluded from per-PR CI. It runs in the NIGHTLY workflow (.github/workflows/nightly.yml, the
+// strategy-correctness job, selected via `integration_tests "[bucket_migration]"`) alongside the
+// [strategy][correctness] suite; run it locally the same way for the DoD gate. The from→to histogram is
+// printed to stdout so the numbers can be lifted into the CHANGELOG / commit body.
 
 #include "../../src/core/game_validator.h"
 #include "../../src/core/i_puzzle_generator.h"
