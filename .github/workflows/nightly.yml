@@ -63,7 +63,7 @@ jobs:
       - name: Configure ccache
         if: steps.check.outputs.skip != 'true'
         run: |
-          ccache --set-config=max_size=2G
+          ccache --set-config=max_size=1Gi
           ccache --zero-stats
 
       - name: Install dependencies
@@ -162,7 +162,7 @@ jobs:
       - name: Configure ccache
         if: steps.check.outputs.skip != 'true'
         run: |
-          ccache --set-config=max_size=2G
+          ccache --set-config=max_size=1Gi
           ccache --zero-stats
 
       - name: Install dependencies
@@ -276,7 +276,7 @@ jobs:
       - name: Configure ccache
         if: steps.check.outputs.skip != 'true'
         run: |
-          ccache --set-config=max_size=2G
+          ccache --set-config=max_size=1Gi
           ccache --zero-stats
 
       - name: Install dependencies
@@ -358,7 +358,7 @@ jobs:
       - name: Configure ccache
         if: steps.check.outputs.skip != 'true'
         run: |
-          ccache --set-config=max_size=2G
+          ccache --set-config=max_size=1Gi
           ccache --zero-stats
 
       - name: Build for compile database
