@@ -177,7 +177,8 @@ jobs:
 
       - name: Configure ccache
         run: |
-          ccache --set-config=max_size=500M
+          ccache --set-config=max_size=2G
+          ccache --set-config=max_file_size=128M
           ccache --zero-stats
 
       - name: Build, test, and generate coverage report
@@ -288,7 +289,8 @@ jobs:
 
       - name: Configure ccache
         run: |
-          ccache --set-config=max_size=500M
+          ccache --set-config=max_size=2G
+          ccache --set-config=max_file_size=128M
           ccache --zero-stats
 
       - name: Install dependencies
