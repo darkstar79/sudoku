@@ -33,6 +33,7 @@
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 using namespace sudoku;
 using namespace sudoku::core;
@@ -175,38 +176,72 @@ TEST_CASE("Faithful note inverse on undo/clear", "[game_view_model][undo][regres
         REQUIRE(vm.gameState.get().getNotes(manual_cell) == manual_notes);
     }
 
-    SECTION("Round-trip: undoing back to every index restores the notes snapshot (AC#7b)") {
+    SECTION("Clearing a placement does not resurrect a manually-eliminated candidate (AC#4 / hybrid Option 4)") {
+        // The faithful clear must reuse the placement's actual-removals delta, NOT re-derive
+        // "every legal empty peer" — otherwise it re-adds the value to a peer the player
+        // deliberately eliminated. Set up a placement cell C and two empty row-peers: P legitimately
+        // holds the value, Q has it manually eliminated.
         vm.startNewGame(Difficulty::Easy);
         const auto& state = vm.gameState.get();
         REQUIRE(state.hasSolution());
-        const auto& solution = state.getSolutionBoard();
 
-        const auto cells_opt = test::findEmptyCells(state, 4);
-        REQUIRE(cells_opt.has_value());
-        const auto cells = cells_opt.value_or(std::vector<Position>{});
+        std::optional<std::array<Position, 3>> picked;
+        for (size_t row = 0; row < core::BOARD_SIZE && !picked.has_value(); ++row) {
+            std::vector<Position> empties;
+            for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
+                if (state.getValue(row, col) == core::EMPTY_CELL) {
+                    empties.push_back(Position{.row = row, .col = col});
+                }
+            }
+            if (empties.size() >= 3) {
+                picked = std::array<Position, 3>{empties[0], empties[1], empties[2]};
+            }
+        }
+        REQUIRE(picked.has_value());
+        const auto cells = picked.value_or(std::array<Position, 3>{});
+        const Position c = cells[0];  // placement
+        const Position p = cells[1];  // peer that legitimately holds the value
+        const Position q = cells[2];  // peer where the value was manually eliminated
+        const int value = state.getSolutionBoard()[c.row][c.col];
+        const int other = (value % core::MAX_VALUE) + core::MIN_VALUE;  // never == value
 
-        // Seed some partial, player-authored notes so over-restore (not just under-restore)
-        // is exercised: arbitrary scratch marks that a candidate re-derivation would disturb.
+        core::CellNotes p_notes;
+        p_notes.add(value);
+        core::CellNotes q_notes;
+        q_notes.add(other);  // Q deliberately does NOT carry `value`
         vm.gameState.update([&](model::GameState& s) {
-            core::CellNotes scratch;
-            scratch.add(2);
-            s.setNotes(cells[3], scratch);
+            s.setNotes(p, p_notes);
+            s.setNotes(q, q_notes);
         });
 
-        std::vector<NotesSnapshot> snapshots;
-        snapshots.push_back(snapshotNotes(vm.gameState.get()));  // before move 0
+        vm.enterNumber(c, value);
+        REQUIRE(!vm.gameState.get().getNotes(p).contains(value));  // placement stripped it from P
 
-        for (size_t i = 0; i < 3; ++i) {
-            const Position pos = cells[i];
-            vm.enterNumber(pos, solution[pos.row][pos.col]);
-            snapshots.push_back(snapshotNotes(vm.gameState.get()));  // before move i+1
-        }
+        vm.clearCell(c);
 
-        // Undo back to each index k and assert the live notes equal the pre-move-k snapshot.
-        for (size_t k = 3; k-- > 0;) {
-            vm.undo();
-            REQUIRE(snapshotNotes(vm.gameState.get()) == snapshots[k]);
-        }
+        // Faithful: P regains the value (it was in the placement delta); Q is untouched.
+        REQUIRE(vm.gameState.get().getNotes(p).contains(value));
+        REQUIRE(!vm.gameState.get().getNotes(q).contains(value));
+    }
+
+    SECTION("fillNotes drops a pending redo so replay cannot use a stale delta (redo-tail guard)") {
+        // fillNotes/clearAllNotes rewrite pencil marks outside the move model. A pending redo would
+        // replay its stored delta against the rewritten notes — so the redo tail must be invalidated.
+        vm.startNewGame(Difficulty::Easy);
+        const auto& state = vm.gameState.get();
+
+        const auto target = test::findEmptyCell(state);
+        REQUIRE(target.has_value());
+        const Position pos = target.value_or(Position{});
+        const int value = state.getSolutionBoard()[pos.row][pos.col];
+
+        vm.enterNumber(pos, value);
+        vm.undo();
+        REQUIRE(vm.canRedo());
+
+        vm.fillNotes();
+
+        REQUIRE(!vm.canRedo());
     }
 
     SECTION("clearCell restores the peer notes the placement stripped (AC#4)") {
@@ -246,5 +281,57 @@ TEST_CASE("Faithful note inverse on undo/clear", "[game_view_model][undo][regres
 
         // Redo must reproduce the exact post-placement notes via the stored delta.
         REQUIRE(snapshotNotes(vm.gameState.get()) == after_place);
+    }
+}
+
+// AC#7b general round-trip property: a seeded sequence of RECORDED moves — placements, note
+// add/remove (enterNote toggles), and a clear — undone back to every index must reproduce the
+// exact NotesData snapshot taken before that index, down to the empty-grid base case (k=0).
+// GENERATE over a fixed seed list keeps failures deterministically reproducible.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("Faithful note inverse — seeded round-trip property (AC#7b)",
+          "[game_view_model][undo][regression][bug-76-notes]") {
+    const unsigned seed = GENERATE(1u, 2u, 3u, 4u);
+    test::GameViewModelFixture fixture;
+    auto& vm = *fixture.view_model;
+
+    vm.startNewGame(Difficulty::Easy);
+    const auto& state = vm.gameState.get();
+    REQUIRE(state.hasSolution());
+    const auto& solution = state.getSolutionBoard();
+
+    const auto cells_opt = test::findEmptyCells(state, 6);
+    REQUIRE(cells_opt.has_value());
+    const auto cells = cells_opt.value_or(std::vector<Position>{});
+
+    // Seed-varied note digits (any 1..9 is a legal pencil mark); the cell roles are fixed so the
+    // move script stays valid (note cells stay empty until cleared/placed).
+    const int d1 = static_cast<int>(seed % core::MAX_VALUE) + core::MIN_VALUE;
+    const int d2 = static_cast<int>((seed + 3) % core::MAX_VALUE) + core::MIN_VALUE;
+
+    std::vector<NotesSnapshot> snapshots;
+    auto record = [&]() { snapshots.push_back(snapshotNotes(vm.gameState.get())); };
+
+    // An interleaving of recorded moves: AddNote, AddNote, placement (may strip peer notes),
+    // RemoveNote/AddNote toggle, placement, clear. Each is snapshotted before it runs.
+    record();
+    vm.enterNote(cells[0], d1);
+    record();
+    vm.enterNote(cells[1], d2);
+    record();
+    vm.enterNumber(cells[2], solution[cells[2].row][cells[2].col]);
+    record();
+    vm.enterNote(cells[0], d1);  // toggles the cells[0]/d1 mark (Remove or Add depending on strip)
+    record();
+    vm.enterNumber(cells[3], solution[cells[3].row][cells[3].col]);
+    record();
+    vm.clearCell(cells[3]);
+    // snapshots now holds the pre-state of each of the 6 moves (indices 0..5).
+
+    // Undo each move and assert the live notes equal the pre-move snapshot, down to k = 0
+    // (the empty-grid base case is the final canary).
+    for (size_t k = snapshots.size(); k-- > 0;) {
+        vm.undo();
+        REQUIRE(snapshotNotes(vm.gameState.get()) == snapshots[k]);
     }
 }

@@ -194,6 +194,9 @@ void GameViewModel::recomputeAutoNotes() {
 }
 
 void GameViewModel::fillNotes() {
+    // Filling/clearing all notes rewrites pencil marks outside the move model, so any pending redo
+    // would replay a stored delta against a now-stale note state — drop the redo tail first.
+    invalidateRedoTail();
     if (uiState.get().notes_filled) {
         clearAllNotes();
         uiState.update([](UIState& state) { state.notes_filled = false; });

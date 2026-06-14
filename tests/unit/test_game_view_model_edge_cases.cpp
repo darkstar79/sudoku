@@ -322,6 +322,7 @@ TEST_CASE("GameViewModel - Undo/Redo Edge Cases", "[game_view_model][undo]") {
 // notes-level contradiction is NOT a board error and must never drive a (destructive) rewind.
 // This guard locks the decision: no notes state, contradictory or not, may change undoToLastValid's
 // behaviour. Once 6.1 (#76) stops corrupting notes, the original complaint cannot even arise.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("undoToLastValid stays digit-only regardless of notes (#77 guard)",
           "[game_view_model][undo][regression][bug-77-undo][guard]") {
     EdgeCaseTestFixture fixture;
@@ -347,11 +348,16 @@ TEST_CASE("undoToLastValid stays digit-only regardless of notes (#77 guard)",
         // Plant a deliberately impossible notes state: an empty non-given cell with NO candidates.
         fixture.view_model->gameState.update([&](model::GameState& s) { s.setNotes(noted, core::CellNotes{}); });
 
+        // A notes-level contradiction must NOT register as a board error — that is the half of the
+        // invariant that keeps undoToLastValid digit-only (asserted before AND after the call).
+        CHECK(!fixture.view_model->hasBoardErrors());
+
         fixture.view_model->undoToLastValid();
 
         // The board is digit-valid, so nothing is rewound — both correct placements survive.
         CHECK(fixture.view_model->gameState.get().getValue(p0) == solution[p0.row][p0.col]);
         CHECK(fixture.view_model->gameState.get().getValue(p1) == solution[p1.row][p1.col]);
+        CHECK(!fixture.view_model->hasBoardErrors());
     }
 }
 
