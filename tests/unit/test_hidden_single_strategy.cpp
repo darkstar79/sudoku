@@ -184,11 +184,11 @@ TEST_CASE("HiddenSingleStrategy - Explanation Content", "[hidden_single]") {
     }
 
     SECTION("Explanation includes position") {
-        REQUIRE(step->explanation.find("R1C2") != std::string::npos);
+        REQUIRE(step->explanation.contains("R1C2"));
     }
 
     SECTION("Explanation includes value") {
-        REQUIRE(step->explanation.find("3") != std::string::npos);
+        REQUIRE(step->explanation.contains('3'));
     }
 
     SECTION("Explanation describes why value is hidden") {
@@ -264,6 +264,8 @@ TEST_CASE("HiddenSingleStrategy - Polymorphic Usage", "[hidden_single]") {
 // A region-last cell must be DEFERRED by both single strategies and claimed only by FullHouseStrategy,
 // even when the single strategies run first. This proves the FullHouse 1.0 label is intrinsic to the
 // deferral predicate (StrategyBase::isRegionLastCell) rather than an artifact of registration order.
+// SECTION expansion + has_value() guards trip cognitive-complexity; inherent to the Catch2 expansion.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("FullHouse order-independence - singles defer the region-last cell to FullHouse",
           "[hidden_single][naked_single][full_house][order_independence]") {
     // Arrange: a board whose only empty cell (R1C1) is region-last in its box, row, AND col.
@@ -279,14 +281,16 @@ TEST_CASE("FullHouse order-independence - singles defer the region-last cell to 
         // Act
         auto step = naked.findStep(board, state);
         // Assert: it defers — either nullopt or some other (non-(0,0)) cell.
-        REQUIRE(!(step.has_value() && step->position.row == 0 && step->position.col == 0));
+        const bool claimed_region_last = step.has_value() && step->position == Position{.row = 0, .col = 0};
+        REQUIRE(!claimed_region_last);
     }
 
     SECTION("HiddenSingle (run first) does not claim the region-last cell") {
         // Act
         auto step = hidden.findStep(board, state);
         // Assert
-        REQUIRE(!(step.has_value() && step->position.row == 0 && step->position.col == 0));
+        const bool claimed_region_last = step.has_value() && step->position == Position{.row = 0, .col = 0};
+        REQUIRE(!claimed_region_last);
     }
 
     SECTION("FullHouse claims it as FullHouse with rating 1.0") {
@@ -324,6 +328,7 @@ TEST_CASE("FullHouse order-independence - singles defer the region-last cell to 
 // lies later in scan order. HiddenSingleStrategy SKIPS region-last cells (via the findHiddenSingle skip
 // predicate) instead of aborting the scan, so single-strategy callers (findNextStepByTechnique, training
 // findAllSteps) still surface a real hidden single even when a Full House sits earlier on the board.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("findHiddenSingle(skip) skips region-last cells without masking a genuine single", "[hidden_single]") {
     // createBoardWithHiddenSingle: (0,1)=3 is the genuine non-region-last hidden single; (0,0)=5 and
     // (1,1)=7 are region-last (Full Houses) that are ALSO hidden singles for their forced values.
@@ -345,7 +350,7 @@ TEST_CASE("findHiddenSingle(skip) skips region-last cells without masking a genu
     REQUIRE(first.has_value());
     auto next = state.findHiddenSingle(board, [&first](const Position& pos) { return pos == first->first; });
     REQUIRE(next.has_value());
-    REQUIRE((next.has_value() && !(next->first == first->first)));
+    REQUIRE((next.has_value() && next->first != first->first));
 }
 
 }  // anonymous namespace

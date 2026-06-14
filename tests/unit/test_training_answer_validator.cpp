@@ -113,6 +113,8 @@ TEST_CASE("TrainingAnswerValidator - NakedSingle accepts all valid placements", 
     }
 }
 
+// SECTION expansion trips cognitive-complexity; inherent to the Catch2 expansion.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("TrainingAnswerValidator - HiddenSingle accepts all valid placements", "[training_answer_validator]") {
     auto board = makeHiddenSingleBoard();
     CandidateGrid candidates(board);
@@ -154,6 +156,8 @@ TEST_CASE("TrainingAnswerValidator - HiddenSingle accepts all valid placements",
     }
 }
 
+// SECTION expansion trips cognitive-complexity; inherent to the Catch2 expansion.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("TrainingAnswerValidator - findAllSteps for NakedSingle", "[training_answer_validator]") {
     auto board = makeNakedSingleBoard();
     CandidateGrid candidates(board);
