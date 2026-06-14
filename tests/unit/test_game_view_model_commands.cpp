@@ -357,6 +357,7 @@ TEST_CASE("GameViewModel - Refresh Statistics", "[game_view_model][statistics]")
     }
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — many independent SECTIONs in one case
 TEST_CASE("GameViewModel - Clear Cell", "[game_view_model][clear]") {
     CommandTestFixture fixture;
 
@@ -394,29 +395,51 @@ TEST_CASE("GameViewModel - Clear Cell", "[game_view_model][clear]") {
         REQUIRE(after.getCell(pos).value == 0);
     }
 
-    SECTION("Clear cell with notes") {
+    // Story 6.1 (#76): clearing a placed value is a faithful inverse — it restores the pencil
+    // marks that value's placement stripped from peers. (Was a documented known limitation:
+    // clearCell did no note restoration at all.)
+    SECTION("Clear cell restores peer notes the placement stripped") {
         fixture.view_model->startNewGame(Difficulty::Easy);
+        fixture.view_model->fillNotes();  // empty cells carry their legal candidates
 
-        // Find empty cell and add notes
         const auto& state = fixture.view_model->gameState.get();
-        auto empty_pos = test::findEmptyCell(state);
-        REQUIRE(empty_pos.has_value());
-        Position pos = empty_pos.value();
+        REQUIRE(state.hasSolution());
+        const auto& solution = state.getSolutionBoard();
 
-        fixture.view_model->enterNote(pos, 5);
-        fixture.view_model->enterNote(pos, 7);
+        // Find an empty cell whose correct value is still a legal candidate in a same-row peer.
+        std::optional<Position> placement;
+        std::optional<Position> peer;
+        int value = 0;
+        for (size_t row = 0; row < BOARD_SIZE && !placement.has_value(); ++row) {
+            for (size_t col = 0; col < BOARD_SIZE && !placement.has_value(); ++col) {
+                if (state.getValue(row, col) != EMPTY_CELL) {
+                    continue;
+                }
+                const int candidate = solution[row][col];
+                for (size_t peer_col = 0; peer_col < BOARD_SIZE; ++peer_col) {
+                    if (peer_col != col && state.getValue(row, peer_col) == EMPTY_CELL &&
+                        state.getNotes(row, peer_col).contains(candidate)) {
+                        placement = Position{.row = row, .col = col};
+                        peer = Position{.row = row, .col = peer_col};
+                        value = candidate;
+                        break;
+                    }
+                }
+            }
+        }
+        REQUIRE(placement.has_value());
+        REQUIRE(peer.has_value());
+        const Position placement_cell = placement.value_or(Position{});
+        const Position peer_cell = peer.value_or(Position{});
 
-        // Verify notes were added
-        const auto& mid = fixture.view_model->gameState.get();
-        REQUIRE_FALSE(mid.getCell(pos).notes.empty());
+        fixture.view_model->enterNumber(placement_cell, value);
+        REQUIRE(!fixture.view_model->gameState.get().getNotes(peer_cell).contains(value));
 
-        // Clear it — note: clearCell uses RemoveNumber move type,
-        // which clears the value but does not clear notes (known limitation).
-        // Test verifies the cell remains empty (value == 0) after clear.
-        fixture.view_model->clearCell(pos);
+        fixture.view_model->clearCell(placement_cell);
 
         const auto& after = fixture.view_model->gameState.get();
-        REQUIRE(after.getCell(pos).value == 0);
+        REQUIRE(after.getValue(placement_cell) == 0);
+        REQUIRE(after.getNotes(peer_cell).contains(value));  // faithfully restored
     }
 
     SECTION("Cannot clear given cell") {

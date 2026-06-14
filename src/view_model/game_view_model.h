@@ -386,10 +386,23 @@ private:
     void startGameSession();
     void endGameSession(bool completed);
     void recordMove(const core::Move& move, bool is_mistake = false);
-    void applyMove(const core::Move& move);
+    /// First application of a freshly-created move (forward edit). Runs the note-cleanup and
+    /// records the exact peer-note delta into `move` so revert/redo replay it verbatim — no
+    /// re-derivation against the live board (Story 6.1 / #76).
+    void applyMoveCapture(core::Move& move);
+    /// Re-application of an already-recorded move (redo). Replays the stored peer-note delta
+    /// instead of recomputing it, keeping cleanup and restore true inverses.
+    void applyMoveReplay(const core::Move& move);
     void revertMove(const core::Move& move);
-    static void cleanupConflictingNotes(model::GameState& state, const core::Position& pos, int number);
-    static void restoreConflictingNotes(model::GameState& state, const core::Position& pos, int number);
+    /// Strips `number` from the pencil marks of every empty peer (row/col/box) that actually
+    /// holds it, returning exactly those peer positions so the placement can be inverted.
+    [[nodiscard]] static std::vector<core::Position> cleanupConflictingNotes(model::GameState& state,
+                                                                             const core::Position& pos, int number);
+    /// Forward inverse of cleanup, used when a placed value is cleared: re-adds `value` as a
+    /// pencil mark to every empty peer where it is now a legal candidate and does not already
+    /// hold it. Returns the peers it added to, so undoing the clear re-strips exactly those.
+    [[nodiscard]] static std::vector<core::Position>
+    restorePeerNotesForClearedValue(model::GameState& state, const core::Position& pos, int value);
     void checkGameCompletion();
     void handleError(std::string_view message);
     [[nodiscard]] static std::string formatTime(std::chrono::milliseconds time);

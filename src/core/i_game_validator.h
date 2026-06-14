@@ -56,6 +56,13 @@ struct Move {
     int previous_value{0};               // Previous cell value before this move
     CellNotes previous_notes;            // Previous notes before this move
     bool previous_hint_revealed{false};  // Previous hint-revealed state before this move
+
+    // Story 6.1 (#76): peers whose pencil mark for this move's relevant digit was toggled by the
+    // move's note-cleanup, captured so revert/redo replay it exactly (no live-board re-derivation).
+    // PlaceNumber/PlaceHint: peers `value` was removed from (revert re-adds it). RemoveNumber/clear:
+    // peers `previous_value` was re-added to (revert re-removes it). Runtime-only — NOT serialized
+    // (saves are full board+notes snapshots, so the delta is reconstructed only for live undo/redo).
+    std::vector<Position> peer_note_delta;
 };
 
 /// Error types for validation

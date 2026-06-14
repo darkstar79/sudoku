@@ -73,7 +73,7 @@ void GameViewModel::redo() {
 
     move_history_index_++;
     const auto& move = move_history_[move_history_index_];
-    applyMove(move);
+    applyMoveReplay(move);
     updateConflictHighlighting();
 
     updateUIState();
@@ -213,16 +213,21 @@ void GameViewModel::recordMove(const core::Move& move, bool is_mistake) {
     }
 }
 
-void GameViewModel::applyMove(const core::Move& move) {
+void GameViewModel::applyMoveCapture(core::Move& move) {
     gameState.update([&move](model::GameState& state) {
         switch (move.move_type) {
             case core::MoveType::PlaceNumber:
                 state.setValue(move.position, move.value);
                 state.clearNotes(move.position);
-                cleanupConflictingNotes(state, move.position, move.value);
+                move.peer_note_delta = cleanupConflictingNotes(state, move.position, move.value);
                 break;
             case core::MoveType::RemoveNumber:
                 state.setValue(move.position, 0);
+                // Clearing a placed value re-opens it as a candidate in peers — restore it the
+                // forward way and record those peers so undoing the clear re-strips exactly them.
+                if (move.previous_value != 0) {
+                    move.peer_note_delta = restorePeerNotesForClearedValue(state, move.position, move.previous_value);
+                }
                 break;
             case core::MoveType::AddNote:
                 state.addNote(move.position, move.value);
@@ -234,7 +239,44 @@ void GameViewModel::applyMove(const core::Move& move) {
                 state.setValue(move.position, move.value);
                 state.setHintRevealed(move.position, true);
                 state.clearNotes(move.position);
-                cleanupConflictingNotes(state, move.position, move.value);
+                move.peer_note_delta = cleanupConflictingNotes(state, move.position, move.value);
+                state.incrementMoves();  // Count hint as a move
+                break;
+            default:
+                break;
+        }
+    });
+}
+
+void GameViewModel::applyMoveReplay(const core::Move& move) {
+    gameState.update([&move](model::GameState& state) {
+        switch (move.move_type) {
+            case core::MoveType::PlaceNumber:
+                state.setValue(move.position, move.value);
+                state.clearNotes(move.position);
+                for (const auto& peer : move.peer_note_delta) {
+                    state.removeNote(peer, move.value);
+                }
+                break;
+            case core::MoveType::RemoveNumber:
+                state.setValue(move.position, 0);
+                for (const auto& peer : move.peer_note_delta) {
+                    state.addNote(peer, move.previous_value);
+                }
+                break;
+            case core::MoveType::AddNote:
+                state.addNote(move.position, move.value);
+                break;
+            case core::MoveType::RemoveNote:
+                state.removeNote(move.position, move.value);
+                break;
+            case core::MoveType::PlaceHint:
+                state.setValue(move.position, move.value);
+                state.setHintRevealed(move.position, true);
+                state.clearNotes(move.position);
+                for (const auto& peer : move.peer_note_delta) {
+                    state.removeNote(peer, move.value);
+                }
                 state.incrementMoves();  // Count hint as a move
                 break;
             default:
@@ -250,16 +292,19 @@ void GameViewModel::revertMove(const core::Move& move) {
                 state.setValue(move.position, move.previous_value);
                 state.setHintRevealed(move.position, move.previous_hint_revealed);
                 state.setNotes(move.position, move.previous_notes);
-                if (move.value != 0) {
-                    restoreConflictingNotes(state, move.position, move.value);
+                // Faithful inverse: re-add the placed value to exactly the peers it was stripped
+                // from (no live-board re-derivation — that was the #76 corruption).
+                for (const auto& peer : move.peer_note_delta) {
+                    state.addNote(peer, move.value);
                 }
                 break;
             case core::MoveType::RemoveNumber:
                 state.setValue(move.position, move.previous_value);
                 state.setHintRevealed(move.position, move.previous_hint_revealed);
                 state.setNotes(move.position, move.previous_notes);
-                if (move.previous_value != 0) {
-                    cleanupConflictingNotes(state, move.position, move.previous_value);
+                // Undo of a clear re-strips the cleared value from the peers the clear restored it to.
+                for (const auto& peer : move.peer_note_delta) {
+                    state.removeNote(peer, move.previous_value);
                 }
                 break;
             case core::MoveType::AddNote:
@@ -270,8 +315,8 @@ void GameViewModel::revertMove(const core::Move& move) {
                 state.setValue(move.position, move.previous_value);
                 state.setHintRevealed(move.position, move.previous_hint_revealed);
                 state.setNotes(move.position, move.previous_notes);
-                if (move.value != 0) {
-                    restoreConflictingNotes(state, move.position, move.value);
+                for (const auto& peer : move.peer_note_delta) {
+                    state.addNote(peer, move.value);
                 }
                 spdlog::warn("Attempted to revert hint move - hints should not be undoable!");
                 break;

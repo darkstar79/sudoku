@@ -79,7 +79,7 @@ void GameViewModel::enterNumber(const core::Position& pos, int number) {
     }
 
     // Apply move
-    applyMove(move);
+    applyMoveCapture(move);
     recordMove(move, is_mistake);
 
     spdlog::debug("Placed {} at ({}, {}){}", number, pos.row, pos.col, is_mistake ? " [MISTAKE]" : "");
@@ -125,7 +125,7 @@ void GameViewModel::enterNote(const core::Position& pos, int number) {
     move.previous_hint_revealed = current_state.isCellHintRevealed(pos);
 
     // Apply move
-    applyMove(move);
+    applyMoveCapture(move);
     recordMove(move, false);  // Notes are never mistakes
 
     updateUIState();
@@ -164,7 +164,7 @@ void GameViewModel::clearCell(const core::Position& pos) {
     move.previous_hint_revealed = current_state.isCellHintRevealed(pos);
 
     // Apply move
-    applyMove(move);
+    applyMoveCapture(move);
     recordMove(move, false);  // Clearing is not a mistake
 
     // Notes are now stale — reset toggle so next press re-fills
@@ -369,66 +369,75 @@ void GameViewModel::updateConflictHighlighting() {
     gameState.update([&conflicts](model::GameState& state) { state.updateConflicts(conflicts); });
 }
 
-// CPD-OFF — row/col/box iteration with different operations (remove vs add+validate)
-void GameViewModel::cleanupConflictingNotes(model::GameState& state, const core::Position& pos, int number) {
-    // Remove the placed number from notes in all related cells
+namespace {
 
-    // Same row
+/// Invoke `fn(row, col)` for every empty peer of `pos` in its row, column and 3x3 box (the cell
+/// itself excluded). A cell shared by two units is visited more than once; callers must be
+/// idempotent (the note helpers below dedupe via a contains()/already-present check).
+template <typename Fn>
+void forEachEmptyPeer(const model::GameState& state, const core::Position& pos, const Fn& fn) {
     for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
         if (col != pos.col && state.getValue(pos.row, col) == 0) {
-            state.removeNote({.row = pos.row, .col = col}, number);
+            fn(pos.row, col);
         }
     }
-
-    // Same column
     for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
         if (row != pos.row && state.getValue(row, pos.col) == 0) {
-            state.removeNote({.row = row, .col = pos.col}, number);
+            fn(row, pos.col);
         }
     }
-
-    // Same 3x3 block
-    size_t box_start_row = (pos.row / core::BOX_SIZE) * core::BOX_SIZE;
-    size_t box_start_col = (pos.col / core::BOX_SIZE) * core::BOX_SIZE;
+    const size_t box_start_row = (pos.row / core::BOX_SIZE) * core::BOX_SIZE;
+    const size_t box_start_col = (pos.col / core::BOX_SIZE) * core::BOX_SIZE;
     for (size_t row = box_start_row; row < box_start_row + core::BOX_SIZE; ++row) {
         for (size_t col = box_start_col; col < box_start_col + core::BOX_SIZE; ++col) {
             if ((row != pos.row || col != pos.col) && state.getValue(row, col) == 0) {
-                state.removeNote({.row = row, .col = col}, number);
+                fn(row, col);
             }
         }
     }
-
-    spdlog::debug("Cleaned up conflicting notes for number {} at ({}, {})", number, pos.row, pos.col);
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity) — restores notes in row/col/box with conflict checking; nesting is inherent
-void GameViewModel::restoreConflictingNotes(model::GameState& state, const core::Position& pos, int number) {
-    // Restore the removed number to notes in all related cells (inverse of cleanupConflictingNotes)
-    // Only restore if the note would still be valid (no conflicts with other placed numbers)
+}  // namespace
 
-    // Get current board to check what numbers are already placed
-    auto board = state.extractNumbers();
+std::vector<core::Position> GameViewModel::cleanupConflictingNotes(model::GameState& state, const core::Position& pos,
+                                                                   int number) {
+    // Strip the placed number from every empty peer that ACTUALLY holds it, recording exactly
+    // those peers so revert can re-add the same set — capture/replay, not re-derivation (#76).
+    std::vector<core::Position> removed;
+    forEachEmptyPeer(state, pos, [&](size_t row, size_t col) {
+        const core::Position peer{.row = row, .col = col};
+        if (state.getNotes(peer).contains(number)) {
+            state.removeNote(peer, number);
+            removed.push_back(peer);
+        }
+    });
+    spdlog::debug("Cleaned up {} conflicting notes for number {} at ({}, {})", removed.size(), number, pos.row,
+                  pos.col);
+    return removed;
+}
 
-    // Helper: Check if a number can be a valid note at a position
-    auto canBeNote = [&](const core::Position& check_pos, int num) -> bool {
-        // Check row for conflicts
+std::vector<core::Position> GameViewModel::restorePeerNotesForClearedValue(model::GameState& state,
+                                                                           const core::Position& pos, int value) {
+    // Clearing a placed value re-opens it as a candidate. Re-add it to every empty peer where it
+    // is now legal (not already placed in that peer's row/col/box) and absent, returning those
+    // peers so undoing the clear re-strips exactly them.
+    const auto board = state.extractNumbers();
+    auto legalAt = [&](const core::Position& peer) -> bool {
         for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
-            if (board[check_pos.row][col] == num) {
+            if (board[peer.row][col] == value) {
                 return false;
             }
         }
-        // Check column for conflicts
         for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
-            if (board[row][check_pos.col] == num) {
+            if (board[row][peer.col] == value) {
                 return false;
             }
         }
-        // Check 3x3 box for conflicts
-        size_t box_start_row = (check_pos.row / core::BOX_SIZE) * core::BOX_SIZE;
-        size_t box_start_col = (check_pos.col / core::BOX_SIZE) * core::BOX_SIZE;
+        const size_t box_start_row = (peer.row / core::BOX_SIZE) * core::BOX_SIZE;
+        const size_t box_start_col = (peer.col / core::BOX_SIZE) * core::BOX_SIZE;
         for (size_t row = box_start_row; row < box_start_row + core::BOX_SIZE; ++row) {
             for (size_t col = box_start_col; col < box_start_col + core::BOX_SIZE; ++col) {
-                if (board[row][col] == num) {
+                if (board[row][col] == value) {
                     return false;
                 }
             }
@@ -436,34 +445,16 @@ void GameViewModel::restoreConflictingNotes(model::GameState& state, const core:
         return true;
     };
 
-    // Same row
-    for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
-        if (col != pos.col && state.getValue(pos.row, col) == 0 && canBeNote({.row = pos.row, .col = col}, number)) {
-            state.addNote({.row = pos.row, .col = col}, number);
+    std::vector<core::Position> added;
+    forEachEmptyPeer(state, pos, [&](size_t row, size_t col) {
+        const core::Position peer{.row = row, .col = col};
+        if (!state.getNotes(peer).contains(value) && legalAt(peer)) {
+            state.addNote(peer, value);
+            added.push_back(peer);
         }
-    }
-
-    // Same column
-    for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
-        if (row != pos.row && state.getValue(row, pos.col) == 0 && canBeNote({.row = row, .col = pos.col}, number)) {
-            state.addNote({.row = row, .col = pos.col}, number);
-        }
-    }
-
-    // Same 3x3 block
-    size_t box_start_row = (pos.row / core::BOX_SIZE) * core::BOX_SIZE;
-    size_t box_start_col = (pos.col / core::BOX_SIZE) * core::BOX_SIZE;
-    for (size_t row = box_start_row; row < box_start_row + core::BOX_SIZE; ++row) {
-        for (size_t col = box_start_col; col < box_start_col + core::BOX_SIZE; ++col) {
-            if ((row != pos.row || col != pos.col) && state.getValue(row, col) == 0 &&
-                canBeNote({.row = row, .col = col}, number)) {
-                state.addNote({.row = row, .col = col}, number);
-            }
-        }
-    }
-
-    spdlog::debug("Restored conflicting notes for number {} at ({}, {})", number, pos.row, pos.col);
+    });
+    spdlog::debug("Restored {} peer notes for cleared value {} at ({}, {})", added.size(), value, pos.row, pos.col);
+    return added;
 }
-// CPD-ON
 
 }  // namespace sudoku::viewmodel

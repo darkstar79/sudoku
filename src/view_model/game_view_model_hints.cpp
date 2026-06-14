@@ -200,7 +200,7 @@ void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
         hint_move.previous_hint_revealed = current_state.isCellHintRevealed(step.position);
         hint_move.previous_notes = current_state.getNotes(step.position);
 
-        applyMove(hint_move);
+        applyMoveCapture(hint_move);
         recordMove(hint_move, false);
     }
 
@@ -718,7 +718,7 @@ void GameViewModel::applyCoachingStep() {
             move.previous_hint_revealed = current_state.isCellHintRevealed(step.position);
             move.previous_notes = current_state.getNotes(step.position);
 
-            applyMove(move);
+            applyMoveCapture(move);
             recordMove(move, false);
         }
     } else {
@@ -734,7 +734,7 @@ void GameViewModel::applyCoachingStep() {
                 move.previous_value = current_state.getValue(elim.position);
                 move.previous_notes = current_state.getNotes(elim.position);
 
-                applyMove(move);
+                applyMoveCapture(move);
                 recordMove(move, false);
             }
         }
