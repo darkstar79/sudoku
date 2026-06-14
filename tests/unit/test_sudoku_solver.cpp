@@ -156,23 +156,34 @@ TEST_CASE("SudokuSolver - applyStep", "[sudoku_solver]") {
 
 TEST_CASE("SudokuSolver - Strategy Chain Order", "[sudoku_solver]") {
     auto validator = std::make_shared<GameValidator>();
-    auto generator = std::make_shared<PuzzleGenerator>();
     SudokuSolver solver(validator);
 
     SECTION("Tries easier techniques first") {
-        // Generate a puzzle and check first step is easiest available
-        auto puzzle_result = generator->generatePuzzle({.difficulty = Difficulty::Easy});
-        if (puzzle_result.has_value()) {
-            auto board = puzzle_result->board;
-            auto step = solver.findNextStep(board);
+        // Deterministic, generator-free board: box 0 (the top-left 3x3) is fully
+        // emptied from the canonical solved board; every other cell is a given.
+        // No region has exactly one empty cell, so this is NOT a Full House — the
+        // solver must surface a Naked/Hidden Single from box 0 ahead of any harder
+        // technique, exercising the easiest-first chain ordering deterministically.
+        // clang-format off
+        BoardData board = {
+            {0, 0, 0, 6, 7, 8, 9, 1, 2}, {0, 0, 0, 1, 9, 5, 3, 4, 8}, {0, 0, 0, 3, 4, 2, 5, 6, 7},
+            {8, 5, 9, 7, 6, 1, 4, 2, 3}, {4, 2, 6, 8, 5, 3, 7, 9, 1}, {7, 1, 3, 9, 2, 4, 8, 5, 6},
+            {9, 6, 1, 5, 3, 7, 2, 8, 4}, {2, 8, 7, 4, 1, 9, 6, 3, 5}, {3, 4, 5, 2, 8, 6, 1, 7, 9}};
+        // clang-format on
+        REQUIRE(validator->validateBoard(board));
 
-            if (step.has_value()) {
-                // First step should be Naked Single or Hidden Single (easiest)
-                bool is_easy_technique = (step->technique == SolvingTechnique::NakedSingle ||
-                                          step->technique == SolvingTechnique::HiddenSingle);
-                REQUIRE(is_easy_technique);
-            }
-        }
+        auto step = solver.findNextStep(board);
+
+        REQUIRE(step.has_value());
+        REQUIRE(step->type == SolveStepType::Placement);
+        // The chain surfaces the Naked Single at R1C1 (=5) — an easiest-tier single
+        // (Full House / Naked / Hidden Single) ahead of any harder technique. If a
+        // new easiest-tier (Class A) technique is ever added that applies here, this
+        // pin will fail deterministically; update it (and the tier list above) then.
+        REQUIRE(step->technique == SolvingTechnique::NakedSingle);
+        REQUIRE(step->position.row == 0);
+        REQUIRE(step->position.col == 0);
+        REQUIRE(step->value == 5);
     }
 }
 
