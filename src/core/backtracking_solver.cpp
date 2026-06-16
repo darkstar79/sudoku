@@ -28,7 +28,9 @@
 
 namespace sudoku::core {
 
-BacktrackingSolver::BacktrackingSolver(std::shared_ptr<IGameValidator> validator) : validator_(std::move(validator)) {
+BacktrackingSolver::BacktrackingSolver(std::shared_ptr<IGameValidator> validator,
+                                       std::shared_ptr<ITimeProvider> time_provider)
+    : validator_(std::move(validator)), time_provider_(std::move(time_provider)) {
 }
 
 bool BacktrackingSolver::solve(BoardData& board, ValueSelectionStrategy strategy, std::mt19937* rng,
@@ -48,7 +50,7 @@ bool BacktrackingSolver::solve(Board& board, ValueSelectionStrategy strategy, st
     // Performance-optimized path: uses ConstraintState for O(1) validation
     // Early exit if the deadline has already elapsed before any recursion. Matches the
     // SudokuSolver wrapper's wall-clock contract so unsolvable-by-deadline returns fast.
-    if (deadline.has_value() && std::chrono::steady_clock::now() >= *deadline) {
+    if (deadline.has_value() && time_provider_->steadyNow() >= *deadline) {
         return false;
     }
     ConstraintState state(board);
@@ -114,7 +116,7 @@ bool BacktrackingSolver::solveRecursive(Board& board, ConstraintState& state, Va
     // and the cadence must keep overshoot inside R2's 4× budget envelope (50 ms budget ⇒ ≤200 ms
     // elapsed). The 1024-stride overshot by ~230 ms on AI Escargot fallback.
     if (deadline.has_value() && (++recursion_count & 0x3FU) == 0) {
-        if (std::chrono::steady_clock::now() >= *deadline) {
+        if (time_provider_->steadyNow() >= *deadline) {
             timed_out = true;
             return false;
         }

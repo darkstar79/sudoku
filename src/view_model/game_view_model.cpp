@@ -299,7 +299,7 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
     saved_game.difficulty = current_state.getDifficulty();
     saved_game.elapsed_time = current_state.getElapsedTime();
     saved_game.move_history = move_history_;
-    saved_game.created_time = std::chrono::system_clock::now();
+    saved_game.created_time = std::chrono::system_clock::now();  // determinism-ok: persisted save wall-clock metadata
 
     // Extract notes
     core::forEachCell([&](size_t row, size_t col) { saved_game.notes[row][col] = current_state.getNotes(row, col); });

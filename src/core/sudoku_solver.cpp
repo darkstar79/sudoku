@@ -358,7 +358,7 @@ bool SudokuSolver::isComplete(const BoardData& board) {
 
 bool SudokuSolver::solveWithBacktracking(BoardData& board,
                                          std::optional<std::chrono::steady_clock::time_point> deadline) const {
-    BacktrackingSolver solver(validator_);
+    BacktrackingSolver solver(validator_, time_provider_);
     return solver.solve(board, ValueSelectionStrategy::MostConstrained, /*rng*/ nullptr, deadline);
 }
 

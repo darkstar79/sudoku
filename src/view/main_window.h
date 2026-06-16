@@ -132,7 +132,8 @@ private:
 
     // Wall-clock when MainWindow was constructed. Drives the right-side
     // session-time indicator (Settings -> Display -> "Show session timer").
-    std::chrono::steady_clock::time_point session_start_time_{std::chrono::steady_clock::now()};
+    std::chrono::steady_clock::time_point session_start_time_{
+        std::chrono::steady_clock::now()};  // determinism-ok: UI session-timer origin
 
     // Button panel below board
     QPushButton* undo_btn_{nullptr};

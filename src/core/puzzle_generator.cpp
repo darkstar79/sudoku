@@ -75,8 +75,24 @@ std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(const Gen
                   static_cast<int>(settings.difficulty), settings.ensure_unique, settings.max_attempts,
                   solverPathName(solution_counter_.solverPath()));
 
-    // Set up random number generator
-    std::mt19937 rng(settings.seed != 0 ? settings.seed : std::random_device{}());
+    // Compute the actual seed ONCE so seed-0 ("random") puzzles are reproducible: the concrete value
+    // that drives generation is recorded in result.seed below (#24 H3/M1), rather than persisting the
+    // sentinel 0. The hardware entropy source seeds the RNG; its value is captured, not discarded.
+    // Re-roll a 0 draw: 0 is the "pick randomly" sentinel, so a recorded seed of 0 would re-randomize
+    // on replay and break the reproducibility guarantee (AC#3).
+    const uint32_t actual_seed = [&settings] {
+        if (settings.seed != 0) {
+            return settings.seed;
+        }
+        std::random_device rd;  // determinism-ok: H3 records the drawn seed in result.seed
+        uint32_t drawn = 0;
+        // NOLINTNEXTLINE(bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions) — result_type is unsigned int; uint32_t fits
+        while ((drawn = rd()) == 0) {
+        }
+        return drawn;
+    }();
+    // NOLINTNEXTLINE(bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions) — mt19937 seeds from result_type; uint32_t fits
+    std::mt19937 rng(actual_seed);
 
     // Retry loop for puzzle generation
     for (int attempt = 0; attempt < settings.max_attempts; ++attempt) {
@@ -118,7 +134,7 @@ std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(const Gen
         result.board = *puzzle_board;
         result.solution = *solution;
         result.difficulty = settings.difficulty;
-        result.seed = settings.seed;
+        result.seed = actual_seed;
         result.clue_count = countClues(result.board);
 
         // Rate puzzle if rater is available

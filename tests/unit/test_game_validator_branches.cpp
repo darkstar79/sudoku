@@ -40,7 +40,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -58,7 +57,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = true,  // Contradictory: is_note=true but move_type=PlaceNumber
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -76,7 +74,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 5,
                   .move_type = MoveType::AddNote,
                   .is_note = false,  // Contradictory: move_type=AddNote but is_note=false
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -94,7 +91,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 5,
                   .move_type = MoveType::RemoveNote,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -113,7 +109,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 0,  // Clear cell
                   .move_type = MoveType::RemoveNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -133,7 +128,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -153,7 +147,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -173,7 +166,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -194,7 +186,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -213,7 +204,6 @@ TEST_CASE("GameValidator - Edge Cases and Branch Coverage", "[game_validator][br
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};

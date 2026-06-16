@@ -128,7 +128,6 @@ TEST_CASE("SaveManager - include_history=true with non-empty move_history", "[sa
     move.value = 5;
     move.move_type = MoveType::PlaceNumber;
     move.is_note = false;
-    move.timestamp = std::chrono::steady_clock::now();
     game.move_history.push_back(move);
     game.current_move_index = 0;
 
@@ -152,7 +151,6 @@ TEST_CASE("SaveManager - include_history=false with non-empty move_history", "[s
     move.value = 3;
     move.move_type = MoveType::PlaceNumber;
     move.is_note = false;
-    move.timestamp = std::chrono::steady_clock::now();
     game.move_history.push_back(move);
 
     SaveSettings settings;

@@ -46,7 +46,9 @@ inline constexpr int HOURS_PER_DAY = 24;
 
 namespace sudoku::core {
 
-SaveManager::SaveManager(std::filesystem::path save_directory) {
+// NOLINTNEXTLINE(performance-unnecessary-value-param) — save_directory is std::move'd into save_directory_ below
+SaveManager::SaveManager(std::filesystem::path save_directory, std::shared_ptr<ITimeProvider> time_provider)
+    : time_provider_(std::move(time_provider)) {
     if (save_directory.empty()) {
         // Use platform-appropriate default directory
         save_directory_ =
@@ -76,7 +78,7 @@ std::expected<std::string, SaveError> SaveManager::saveGame(const SavedGame& gam
         // Create a copy of the game with the save_id
         SavedGame game_copy = game;
         game_copy.save_id = save_id;
-        game_copy.last_modified = std::chrono::system_clock::now();
+        game_copy.last_modified = time_provider_->systemNow();
 
         if (game_copy.display_name.empty()) {
             if (!settings.custom_name.empty()) {
@@ -87,7 +89,7 @@ std::expected<std::string, SaveError> SaveManager::saveGame(const SavedGame& gam
                                                                                              "Expert", "Master"};
                 static_assert(difficulty_names.size() == DIFFICULTY_COUNT,
                               "difficulty_names size must match DIFFICULTY_COUNT");
-                auto now = std::chrono::system_clock::now();
+                auto now = time_provider_->systemNow();
                 auto time_t_val = std::chrono::system_clock::to_time_t(now);
                 std::tm tm_val{};
 #ifdef _MSC_VER
@@ -128,6 +130,13 @@ std::expected<SavedGame, SaveError> SaveManager::loadGame(const std::string& sav
 
         auto result = deserializeFromYaml(save_path);
         if (!result) {
+            // Catastrophic-failure recovery (#24 / CODE_REVIEW §3.4): a corrupt/unparseable file is
+            // archived aside so a later save can't overwrite recoverable bytes. Structurally-valid
+            // but semantically-rejected saves (InvalidSaveData) are left in place.
+            if (result.error() == SaveError::SerializationError) {
+                // archiveCorruptSave logs its own outcome; the load error is surfaced regardless.
+                [[maybe_unused]] const auto archived = archiveCorruptSave(save_path);
+            }
             return std::unexpected(result.error());
         }
 
@@ -149,7 +158,7 @@ std::expected<void, SaveError> SaveManager::autoSave(const SavedGame& game) {
 
         SavedGame auto_save_game = game;
         auto_save_game.is_auto_save = true;
-        auto_save_game.last_auto_save = std::chrono::system_clock::now();
+        auto_save_game.last_auto_save = time_provider_->systemNow();
         auto_save_game.display_name = "Auto Save";
 
         SaveSettings settings;
@@ -178,6 +187,12 @@ std::expected<SavedGame, SaveError> SaveManager::loadAutoSave() {
 
         auto result = deserializeFromYaml(auto_save_path_);
         if (!result) {
+            // Catastrophic-failure recovery (#24 / CODE_REVIEW §3.4): never overwrite an unreadable
+            // auto-save — archive the corrupt bytes aside before the next autoSave() runs.
+            if (result.error() == SaveError::SerializationError) {
+                // archiveCorruptSave logs its own outcome; the load error is surfaced regardless.
+                [[maybe_unused]] const auto archived = archiveCorruptSave(auto_save_path_);
+            }
             return std::unexpected(result.error());
         }
 
@@ -259,7 +274,7 @@ std::expected<void, SaveError> SaveManager::renameSave(const std::string& save_i
 
     SavedGame game = *load_result;
     game.display_name = new_name;
-    game.last_modified = std::chrono::system_clock::now();
+    game.last_modified = time_provider_->systemNow();
 
     SaveSettings settings;
     auto save_result = saveGame(game, settings);
@@ -308,7 +323,7 @@ std::expected<std::string, SaveError> SaveManager::importSave(const std::string&
 
         SavedGame game = *load_result;
         game.save_id = generateSaveId();  // Generate new ID for import
-        game.last_modified = std::chrono::system_clock::now();
+        game.last_modified = time_provider_->systemNow();
 
         if (new_name) {
             game.display_name = *new_name;
@@ -343,7 +358,7 @@ bool SaveManager::validateSave(const std::string& save_id) const {
 int SaveManager::cleanupOldSaves(int days_old) {
     try {
         int deleted_count = 0;
-        auto cutoff_time = std::chrono::system_clock::now() - std::chrono::hours(HOURS_PER_DAY * days_old);
+        auto cutoff_time = time_provider_->systemNow() - std::chrono::hours(HOURS_PER_DAY * days_old);
 
         if (!std::filesystem::exists(save_directory_)) {
             return 0;
@@ -397,7 +412,7 @@ uint64_t SaveManager::getSaveDirectorySize() const {
 // Private helper methods
 
 std::string SaveManager::generateSaveId() {
-    static std::random_device rd;
+    static std::random_device rd;  // determinism-ok: save-id uniqueness entropy, not engine determinism
     static std::mt19937 gen(rd());
     static std::uniform_int_distribution<> dis(0, HEX_RADIX);
 
@@ -426,6 +441,33 @@ std::expected<void, SaveError> SaveManager::ensureDirectoryExists() const {
         spdlog::error("Failed to create directory {}: {}", save_directory_.string(), e.what());
         return std::unexpected(SaveError::FileAccessError);
     }
+}
+
+std::expected<std::filesystem::path, SaveError>
+SaveManager::archiveCorruptSave(const std::filesystem::path& file_path) const {
+    // Mirrors StatisticsManager::archiveUnreadableSessions: stamp a `.corrupt-<unix_ts>` suffix and
+    // uniquify with `-N` so a same-second retry never clobbers a prior archive (the "never deletes"
+    // guarantee). systemNow() keeps the suffix deterministic under an injected clock in tests.
+    auto timestamp = std::chrono::system_clock::to_time_t(time_provider_->systemNow());
+    auto base_path = file_path;
+    base_path += ".corrupt-" + std::to_string(timestamp);
+
+    auto archive_path = base_path;
+    for (int suffix = 1; std::filesystem::exists(archive_path); ++suffix) {
+        archive_path = base_path;
+        archive_path += "-" + std::to_string(suffix);
+    }
+
+    std::error_code ec;
+    std::filesystem::rename(file_path, archive_path, ec);
+    if (ec) {
+        spdlog::error("Failed to archive corrupt save {} -> {}: {}", file_path.string(), archive_path.string(),
+                      ec.message());
+        return std::unexpected(SaveError::FileAccessError);
+    }
+
+    spdlog::warn("Archived unreadable save aside to {} (original not overwritten)", archive_path.string());
+    return archive_path;
 }
 
 }  // namespace sudoku::core

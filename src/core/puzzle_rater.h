@@ -20,10 +20,16 @@
 #include "i_puzzle_rater.h"
 #include "i_sudoku_solver.h"
 
+#include <chrono>
 #include <format>
 #include <memory>
 
 namespace sudoku::core {
+
+/// Default wall-clock budget the rater enforces per solve. Generous enough that any legitimately
+/// rateable puzzle (incl. Master) finishes well within it, but bounded so an adversarial
+/// no-logical-path board (AI Escargot) cannot livelock the solver during generation/rating.
+inline constexpr std::chrono::milliseconds kDefaultRatingBudget{5000};
 
 /// Concrete implementation of puzzle rating using the Sudoku Explainer (SE) scale.
 /// Rates puzzles by the hardest logical technique required to solve them.
@@ -31,12 +37,18 @@ class PuzzleRater : public IPuzzleRater {
 public:
     /// Constructor with dependency injection
     /// @param solver Solver for determining required techniques
-    explicit PuzzleRater(std::shared_ptr<ISudokuSolver> solver);
+    /// @param solve_budget Wall-clock budget passed to the solver's budget overload so rating
+    ///        a pathological board returns RatingError::Timeout instead of livelocking (#24 H2).
+    ///        Defaults to kDefaultRatingBudget; tests inject a small/negative budget to assert
+    ///        the budget is actually honored.
+    explicit PuzzleRater(std::shared_ptr<ISudokuSolver> solver,
+                         std::chrono::milliseconds solve_budget = kDefaultRatingBudget);
 
     [[nodiscard]] std::expected<PuzzleRating, RatingError> ratePuzzle(const BoardData& board) const override;
 
 private:
     std::shared_ptr<ISudokuSolver> solver_;
+    std::chrono::milliseconds solve_budget_;
 
     /// Calculates SE rating from solve path (max technique difficulty)
     /// @param solve_path Steps used to solve puzzle

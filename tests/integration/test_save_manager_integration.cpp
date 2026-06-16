@@ -315,7 +315,6 @@ TEST_CASE("SaveManager - Move history persistence", "[save_manager][integration]
                    .value = 4,
                    .move_type = MoveType::PlaceNumber,
                    .is_note = false,
-                   .timestamp = std::chrono::steady_clock::now(),
                    .previous_value = 0,
                    .previous_notes = {},
                    .previous_hint_revealed = false};
@@ -323,7 +322,6 @@ TEST_CASE("SaveManager - Move history persistence", "[save_manager][integration]
                    .value = 7,
                    .move_type = MoveType::PlaceNumber,
                    .is_note = false,
-                   .timestamp = std::chrono::steady_clock::now(),
                    .previous_value = 0,
                    .previous_notes = {},
                    .previous_hint_revealed = false};

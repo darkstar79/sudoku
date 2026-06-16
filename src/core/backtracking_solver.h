@@ -17,6 +17,7 @@
 #pragma once
 
 #include "i_game_validator.h"
+#include "i_time_provider.h"
 
 #include <chrono>
 #include <cstdint>
@@ -49,7 +50,12 @@ enum class ValueSelectionStrategy : std::uint8_t {
  */
 class BacktrackingSolver {
 public:
-    explicit BacktrackingSolver(std::shared_ptr<IGameValidator> validator);
+    /// @param validator Validator for board legality checks.
+    /// @param time_provider Clock source for deadline checks. Defaults to SystemTimeProvider so
+    ///        deadline-free callers (the generator's fill/solve paths) stay drop-in; SudokuSolver
+    ///        injects its own provider so MockTimeProvider drives the deadline in tests (#24 H1).
+    explicit BacktrackingSolver(std::shared_ptr<IGameValidator> validator,
+                                std::shared_ptr<ITimeProvider> time_provider = std::make_shared<SystemTimeProvider>());
 
     /**
      * Solve the given Sudoku board using backtracking.
@@ -82,6 +88,7 @@ public:
 
 private:
     std::shared_ptr<IGameValidator> validator_;
+    std::shared_ptr<ITimeProvider> time_provider_;
 
     // Board path (uses ConstraintState for O(1) validation instead of O(27) validator scan)
     [[nodiscard]] static std::optional<Position> findEmptyPosition(const Board& board);

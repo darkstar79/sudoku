@@ -140,8 +140,9 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
                 yaml_move["value"] = move.value;
                 yaml_move["type"] = static_cast<int>(move.move_type);
                 yaml_move["is_note"] = move.is_note;
-                yaml_move["timestamp"] =
-                    std::chrono::duration_cast<std::chrono::milliseconds>(move.timestamp.time_since_epoch()).count();
+                // Move::timestamp was dropped in #24 M4 (write-only steady_clock value, meaningless
+                // across restart, no consumer). The key is no longer written; the read path still
+                // tolerates older snapshots that carry it (it is simply ignored).
                 move_history.push_back(yaml_move);
             }
             root["move_history"] = move_history;
@@ -414,10 +415,8 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
                 move.move_type = static_cast<MoveType>(yaml_move["type"].as<int>());
                 move.is_note = yaml_move["is_note"].as<bool>();
 
-                if (yaml_move["timestamp"]) {
-                    auto ms = yaml_move["timestamp"].as<long long>();
-                    move.timestamp = std::chrono::steady_clock::time_point(std::chrono::milliseconds(ms));
-                }
+                // #24 M4: Move::timestamp removed. Older snapshots may still carry a "timestamp"
+                // key — it is intentionally ignored (forward-tolerant read, no migration needed).
 
                 game.move_history.push_back(move);
             }

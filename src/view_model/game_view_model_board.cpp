@@ -23,7 +23,6 @@
 #include "model/game_state.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cstddef>
 #include <expected>
 #include <format>
@@ -56,7 +55,6 @@ void GameViewModel::enterNumber(const core::Position& pos, int number) {
     move.position = pos;
     move.value = number;
     move.move_type = core::MoveType::PlaceNumber;
-    move.timestamp = std::chrono::steady_clock::now();
 
     // Capture previous state for undo
     move.previous_value = current_state.getValue(pos);
@@ -117,7 +115,6 @@ void GameViewModel::enterNote(const core::Position& pos, int number) {
     move.value = number;
     move.move_type = note_exists ? core::MoveType::RemoveNote : core::MoveType::AddNote;
     move.is_note = true;
-    move.timestamp = std::chrono::steady_clock::now();
 
     // Capture previous state for undo
     move.previous_value = current_state.getValue(pos);
@@ -156,7 +153,6 @@ void GameViewModel::clearCell(const core::Position& pos) {
     move.position = pos;
     move.value = 0;  // Clear to empty
     move.move_type = core::MoveType::RemoveNumber;
-    move.timestamp = std::chrono::steady_clock::now();
 
     // Capture previous state for undo
     move.previous_value = current_state.getValue(pos);

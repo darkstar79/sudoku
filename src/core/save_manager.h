@@ -17,11 +17,13 @@
 #pragma once
 
 #include "i_save_manager.h"
+#include "i_time_provider.h"
 
 #include <chrono>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -32,7 +34,12 @@ namespace sudoku::core {
 /// Handles game persistence with optional compression and encryption
 class SaveManager : public ISaveManager {
 public:
-    explicit SaveManager(std::filesystem::path save_directory = {});
+    /// @param save_directory Root directory for save files (defaults to the app save dir).
+    /// @param time_provider Clock source for persisted wall-clock timestamps and the corrupt-save
+    ///        archive suffix (#24). Defaults to SystemTimeProvider so existing callers are unchanged;
+    ///        tests inject MockTimeProvider for deterministic timestamps.
+    explicit SaveManager(std::filesystem::path save_directory = {},
+                         std::shared_ptr<ITimeProvider> time_provider = std::make_shared<SystemTimeProvider>());
     ~SaveManager() override = default;
     SaveManager(const SaveManager&) = delete;
     SaveManager& operator=(const SaveManager&) = delete;
@@ -75,11 +82,19 @@ public:
 private:
     std::filesystem::path save_directory_;
     std::filesystem::path auto_save_path_;
+    std::shared_ptr<ITimeProvider> time_provider_;
 
     // Helper methods
     [[nodiscard]] static std::string generateSaveId();
     [[nodiscard]] std::filesystem::path getSavePath(const std::string& save_id) const;
     [[nodiscard]] std::expected<void, SaveError> ensureDirectoryExists() const;
+
+    /// Catastrophic-failure recovery (#24 / CODE_REVIEW §3.4): move an unreadable save file aside to
+    /// `<path>.corrupt-<unix_ts>` (with a `-N` suffix on collision) instead of leaving it where a
+    /// later save could overwrite it. The original bytes are preserved in the archive, never deleted.
+    /// @return the archive path on success, or a SaveError if the rename failed.
+    [[nodiscard]] std::expected<std::filesystem::path, SaveError>
+    archiveCorruptSave(const std::filesystem::path& file_path) const;
 
     // YAML serialization
     [[nodiscard]] static std::expected<void, SaveError>
