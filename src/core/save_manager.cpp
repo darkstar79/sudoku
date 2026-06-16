@@ -134,7 +134,8 @@ std::expected<SavedGame, SaveError> SaveManager::loadGame(const std::string& sav
             // archived aside so a later save can't overwrite recoverable bytes. Structurally-valid
             // but semantically-rejected saves (InvalidSaveData) are left in place.
             if (result.error() == SaveError::SerializationError) {
-                (void)archiveCorruptSave(save_path);
+                // archiveCorruptSave logs its own outcome; the load error is surfaced regardless.
+                [[maybe_unused]] const auto archived = archiveCorruptSave(save_path);
             }
             return std::unexpected(result.error());
         }
@@ -189,7 +190,8 @@ std::expected<SavedGame, SaveError> SaveManager::loadAutoSave() {
             // Catastrophic-failure recovery (#24 / CODE_REVIEW §3.4): never overwrite an unreadable
             // auto-save — archive the corrupt bytes aside before the next autoSave() runs.
             if (result.error() == SaveError::SerializationError) {
-                (void)archiveCorruptSave(auto_save_path_);
+                // archiveCorruptSave logs its own outcome; the load error is surfaced regardless.
+                [[maybe_unused]] const auto archived = archiveCorruptSave(auto_save_path_);
             }
             return std::unexpected(result.error());
         }

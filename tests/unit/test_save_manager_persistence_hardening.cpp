@@ -96,6 +96,7 @@ SavedGame makeRandomGame(std::mt19937& rng, Difficulty difficulty) {
 
 // Assert every field the serializer is responsible for survives the round-trip. save_id /
 // last_modified / created_time / display_name are intentionally excluded — saveGame() stamps them.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — a flat list of REQUIRE field checks; the count, not nesting, drives the score
 void requireRoundTripEqual(const SavedGame& original, const SavedGame& loaded) {
     REQUIRE(loaded.original_puzzle == original.original_puzzle);
     REQUIRE(loaded.current_state == original.current_state);
@@ -185,7 +186,7 @@ TEST_CASE("SaveManager - corrupt save is archived aside and never overwritten",
     // ...and exactly one archive must hold the original bytes intact.
     std::vector<fs::path> archives;
     for (const auto& entry : fs::directory_iterator(tmp.path())) {
-        if (entry.path().filename().string().rfind("corrupt.yaml.corrupt-", 0) == 0) {
+        if (entry.path().filename().string().starts_with("corrupt.yaml.corrupt-")) {
             archives.push_back(entry.path());
         }
     }
