@@ -421,15 +421,23 @@ std::expected<void, StatisticsError> exportGameSessionsCsv(const std::vector<Gam
             // Session ID (1-indexed)
             file << (i + 1) << ",";
 
-            // Format timestamp as date and time
-            auto time_t = std::chrono::system_clock::to_time_t(session.start_time);
-            auto tm = *std::localtime(&time_t);
+            // Format timestamp as date and time. Reentrant conversion (#24 M3) — mirrors the
+            // idiom in save_manager.cpp:93-101; the plain C library call returns a shared buffer.
+            // A zero-initialized tm_val is the benign fallback on the (practically unreachable)
+            // conversion failure, keeping the two CSV columns aligned without a branch.
+            auto time_t_val = std::chrono::system_clock::to_time_t(session.start_time);
+            std::tm tm_val{};
+#ifdef _MSC_VER
+            (void)localtime_s(&tm_val, &time_t_val);
+#else
+            (void)localtime_r(&time_t_val, &tm_val);
+#endif
 
             // Date (YYYY-MM-DD)
-            file << std::put_time(&tm, "%Y-%m-%d") << ",";
+            file << std::put_time(&tm_val, "%Y-%m-%d") << ",";
 
             // Time (HH:MM:SS)
-            file << std::put_time(&tm, "%H:%M:%S") << ",";
+            file << std::put_time(&tm_val, "%H:%M:%S") << ",";
 
             // Difficulty (enum is 0-based, matches array indexing)
             file << csv_difficulty_names[static_cast<size_t>(session.difficulty)] << ",";

@@ -21,6 +21,7 @@
 #include "core/i_puzzle_generator.h"
 #include "core/i_sudoku_solver.h"
 
+#include <chrono>
 #include <expected>
 #include <string_view>
 #include <utility>
@@ -65,8 +66,11 @@ TrainingExerciseGenerator::generateExercises(SolvingTechnique technique, int cou
             continue;
         }
 
-        // Solve it to get the full path
-        auto solve_result = solver_->solvePuzzle(puzzle_result->board);
+        // Solve it to get the full path. Use the budget overload (#24 M2/H2 class) so an
+        // adversarial board cannot livelock exercise generation; a freshly generated puzzle has a
+        // logical path, so the budget is a defensive ceiling rather than the common path.
+        constexpr std::chrono::milliseconds kSolveBudget{5000};
+        auto solve_result = solver_->solvePuzzle(puzzle_result->board, kSolveBudget);
         if (!solve_result.has_value()) {
             continue;
         }

@@ -86,6 +86,29 @@ std::chrono::milliseconds GameState::getElapsedTime() const {
 - Session tracking, completion times
 - Uses `systemNow()` for timestamps
 
+### 4. Solver spine — SudokuSolver / BacktrackingSolver / PuzzleRater (#24)
+
+- `BacktrackingSolver` and `SudokuSolver` take an injected provider; deadline checks use
+  `steadyNow()` so `MockTimeProvider` drives wall-clock budgets in tests (no real sleeps).
+- `PuzzleRater` enforces a solve budget (default `kDefaultRatingBudget`, constructor-injectable) so a
+  no-logical-path board cannot livelock generation-time rating (the AI Escargot class).
+- `PuzzleGenerator` records the concrete RNG seed (incl. the `random_device` value chosen for
+  seed-0) in `result.seed`, so every generated puzzle is reproducible.
+
+### 5. SaveManager ([src/core/save_manager.h](../src/core/save_manager.h))
+
+- Persisted wall-clock metadata (`last_modified`, `last_auto_save`, cleanup cutoff) and the
+  corrupt-save `.corrupt-<ts>` archive suffix route through `systemNow()`.
+
+### GameState default-provider decision (#24 H4)
+
+`GameState` keeps its **default** `SystemTimeProvider` constructor argument. The game timer is
+user-facing wall-clock time, outside the engine determinism contract, and `GameState` already routes
+**all** time access through `time_provider_->systemNow()` (no raw `std::chrono::*::now()` calls).
+Production constructs `GameState{}` and legitimately wants real time; timing-sensitive tests inject a
+`MockTimeProvider`. Removing the default would force injection at every construction site for no
+determinism gain, so it is retained by design.
+
 ## Usage in Tests
 
 ### ✅ CORRECT Pattern - Deterministic Time Control
@@ -260,9 +283,41 @@ TEST_CASE("MyClass time-dependent behavior", "[my_class]") {
 }
 ```
 
+## Determinism Contract & CI Gate (#24)
+
+The pattern is enforced, not just documented. [scripts/check_determinism.sh](../scripts/check_determinism.sh)
+runs in CI (the **Determinism Gate** job, `needs: format-check`) and fails the build if any of these
+**bypass calls** appear in `src/` outside the one legal bridge:
+
+| Flagged call | Why it breaks determinism |
+|--------------|---------------------------|
+| `steady_clock::now()` / `system_clock::now()` | direct wall-clock read |
+| `std::localtime` | non-reentrant (shared static buffer) |
+| `random_device` | unseeded entropy |
+
+The gate matches the **call**, not the type — `system_clock::time_point member_;` declarations are
+fine. Two exemptions, both explicit (never a blanket directory exclude):
+
+- `src/core/i_time_provider.h` — the single legal bridge (`SystemTimeProvider` / `MockTimeProvider`).
+- A `// determinism-ok: <reason>` marker on the flagged line **or the line directly above it** — a
+  documented, reviewed real-time exception (UI session timers, persisted wall-clock save metadata,
+  save-id entropy, internal `SolutionCounter` timeout sampling). The above-line tolerance keeps the
+  marker attached even when clang-format wraps a long statement.
+
+Run it locally before pushing:
+
+```bash
+./scripts/check_determinism.sh
+```
+
+To add engine code that needs time or randomness, route it through `ITimeProvider`
+(`steadyNow()` / `systemNow()`) or a seeded `std::mt19937` — do **not** reach for a raw marker unless
+the value is genuinely real-time and outside the solver / generator / rater reproducibility surface.
+
 ## Additional Resources
 
 - [TDD_GUIDE.md](TDD_GUIDE.md) - Testing best practices
-- [src/core/i_time_provider.h](../src/core/i_time_provider.h) - Interface definition
-- [src/core/system_time_provider.h](../src/core/system_time_provider.h) - Production implementation
-- [tests/helpers/mock_time_provider.h](../tests/helpers/mock_time_provider.h) - Test implementation
+- [src/core/i_time_provider.h](../src/core/i_time_provider.h) - Interface definition, plus both
+  implementations: `SystemTimeProvider` (production) and `MockTimeProvider` (tests) live in this
+  same header — there is no separate `system_time_provider.h` / `mock_time_provider.h`.
+- [scripts/check_determinism.sh](../scripts/check_determinism.sh) - The CI determinism gate (below)

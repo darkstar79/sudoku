@@ -60,6 +60,22 @@ jobs:
           fi
           echo "✅ Code formatting check passed"
 
+  determinism-check:
+    name: Determinism Gate
+    runs-on: ubuntu-24.04
+    needs: format-check
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Check for wall-clock / unseeded-RNG bypasses in src/
+        run: |
+          # Fails if a steady_clock/system_clock::now(), std::localtime, or random_device call is
+          # introduced in src/ outside core::ITimeProvider without a documented `determinism-ok`
+          # marker. Backs the #24 determinism contract. No build required — pure source grep.
+          ./scripts/check_determinism.sh
+
   i18n-check:
     name: Translation Completeness
     runs-on: ubuntu-24.04

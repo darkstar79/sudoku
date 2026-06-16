@@ -15,10 +15,13 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/game_validator.h"
+#include "../../src/core/i_time_provider.h"
 #include "../../src/core/puzzle_generator.h"
 #include "../../src/core/puzzle_rater.h"
 #include "../../src/core/sudoku_solver.h"
 #include "../helpers/candidate_test_utils.h"
+
+#include <chrono>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -254,6 +257,30 @@ TEST_CASE("PuzzleRater - Solver error paths", "[puzzle_rater]") {
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error() == RatingError::Timeout);
     }
+}
+
+// #24 H2: the rater must enforce a wall-clock budget so a no-logical-path board (AI Escargot) cannot
+// livelock generation-time rating. Injecting a negative budget makes the solver's deadline already
+// past, so the budget overload short-circuits to Timeout deterministically (mirrors the solver's
+// negative-budget plumbing idiom in test_sudoku_solver_timeout.cpp). The pre-#24 rater called the
+// no-budget overload and would instead grind into the backtracking fallback on this board.
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("PuzzleRater honors its solve budget (negative budget short-circuits to Timeout)",
+          "[puzzle_rater][timeout]") {
+    auto validator = std::make_shared<GameValidator>();
+    auto mock_time = std::make_shared<MockTimeProvider>();
+    auto solver = std::make_shared<SudokuSolver>(validator, mock_time);
+    PuzzleRater rater(solver, std::chrono::milliseconds{-1});
+
+    // AI Escargot — 17 clues, no logical-only path.
+    BoardData board = {{1, 0, 0, 0, 0, 7, 0, 9, 0}, {0, 3, 0, 0, 2, 0, 0, 0, 8}, {0, 0, 9, 6, 0, 0, 5, 0, 0},
+                       {0, 0, 5, 3, 0, 0, 9, 0, 0}, {0, 1, 0, 0, 8, 0, 0, 0, 2}, {6, 0, 0, 0, 0, 4, 0, 0, 0},
+                       {3, 0, 0, 0, 0, 0, 0, 1, 0}, {0, 4, 0, 0, 0, 0, 0, 0, 7}, {0, 0, 7, 0, 0, 0, 3, 0, 0}};
+
+    auto result = rater.ratePuzzle(board);
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == RatingError::Timeout);
 }
 
 }  // anonymous namespace

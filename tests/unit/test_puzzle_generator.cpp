@@ -178,6 +178,31 @@ TEST_CASE("PuzzleGenerator - Generation Settings", "[puzzle_generator]") {
         REQUIRE(result1.value().solution == result2.value().solution);
         REQUIRE(result1.value().seed == result2.value().seed);
     }
+
+    SECTION("Seed-0 generation records a reproducible seed (#24 H3)") {
+        // seed == 0 means "pick a random seed". Pre-#24 the generator stored the sentinel 0 in
+        // result.seed, discarding the random_device value that actually drove generation — so a
+        // seed-0 puzzle could never be reproduced. H3 records the concrete seed instead.
+        GenerationSettings settings;
+        settings.difficulty = Difficulty::Medium;
+        settings.seed = 0;               // random seed
+        settings.ensure_unique = false;  // keep generation fast + fully RNG-determined
+
+        auto first = generator.generatePuzzle(settings);
+        REQUIRE(first.has_value());
+        // The sentinel 0 must NOT be persisted — a concrete seed must be recorded.
+        REQUIRE(first->seed != 0);
+
+        // Re-generating from the recorded seed must reproduce the identical puzzle.
+        GenerationSettings replay = settings;
+        replay.seed = first->seed;
+        auto second = generator.generatePuzzle(replay);
+        REQUIRE(second.has_value());
+
+        REQUIRE(first->board == second->board);
+        REQUIRE(first->solution == second->solution);
+        REQUIRE(first->seed == second->seed);
+    }
 }
 TEST_CASE("PuzzleGenerator - Error Handling", "[puzzle_generator]") {
     PuzzleGenerator generator;

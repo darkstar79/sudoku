@@ -141,14 +141,16 @@ std::chrono::system_clock::time_point SaveManager::getFileModificationTime(const
     try {
         auto ftime = std::filesystem::last_write_time(file_path);
 
-        // Convert to system_clock time_point
+        // Convert filesystem file-time to a system_clock time_point. The clock::now() pair is the
+        // standard file_time→system_clock bridge, not engine determinism.
         auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-            ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+            ftime - std::filesystem::file_time_type::clock::now() +
+            std::chrono::system_clock::now());  // determinism-ok: file-time→system_clock conversion
 
         return sctp;
 
     } catch (const std::exception&) {
-        return std::chrono::system_clock::now();
+        return std::chrono::system_clock::now();  // determinism-ok: fallback file mtime on stat failure
     }
 }
 

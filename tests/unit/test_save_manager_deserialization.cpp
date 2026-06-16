@@ -337,8 +337,72 @@ TEST_CASE("SaveManager - deserialize: invalid YAML content → SerializationErro
 }
 
 // ============================================================================
-// Load YAML with move_history + current_move_index → covers true branches L740-761
-// (also covers yaml_move["timestamp"] true branch)
+// #24 Task 9.2 — Master-save format-version migration. Pin a current (1.1) Master save that OMITS
+// the dropped move `timestamp` key, plus an older fixture that still CARRIES it; both must load
+// clean. Backs the decision to leave SAVE_FILE_VERSION at "1.1" after dropping Move::timestamp
+// (the key was always optional on read, so no version bump / migration logic is needed).
+// ============================================================================
+
+namespace {
+std::string masterSaveYaml(const std::string& id, const std::string& version, bool with_timestamp) {
+    std::string yaml = "version: '" + version +
+                       "'\n"
+                       "save_id: " +
+                       id +
+                       "\n"
+                       "display_name: Master Game\n"
+                       "created_time: 1000000000\n"
+                       "last_modified: 1000000000\n"
+                       "puzzle_data:\n"
+                       "  difficulty: 4\n"  // Difficulty::Master
+                       "  puzzle_seed: 7\n";
+    yaml += nineRowBoard("original_puzzle");
+    yaml += nineRowBoard("current_state");
+    yaml += "move_history:\n"
+            "  - row: 0\n"
+            "    col: 1\n"
+            "    value: 5\n"
+            "    type: 0\n"
+            "    is_note: false\n";
+    if (with_timestamp) {
+        yaml += "    timestamp: 123456789\n";  // older saves carry it — must be ignored, not rejected
+    }
+    yaml += "current_move_index: 0\n";
+    return yaml;
+}
+}  // namespace
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - Master save loads with and without the dropped move timestamp key",
+          "[save_manager_deser][migration]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    SECTION("current 1.1 Master save without the dropped timestamp key") {
+        writeYaml(tmp.path(), "master-current", masterSaveYaml("master-current", "1.1", /*with_timestamp=*/false));
+
+        auto result = mgr.loadGame("master-current");
+        REQUIRE(result.has_value());
+        REQUIRE(result->difficulty == Difficulty::Master);
+        REQUIRE(result->move_history.size() == 1);
+        REQUIRE(result->move_history[0].value == 5);
+        REQUIRE(result->current_move_index == 0);
+    }
+
+    SECTION("older Master save still carrying the timestamp key loads (key ignored)") {
+        writeYaml(tmp.path(), "master-legacy", masterSaveYaml("master-legacy", "1.1", /*with_timestamp=*/true));
+
+        auto result = mgr.loadGame("master-legacy");
+        REQUIRE(result.has_value());
+        REQUIRE(result->difficulty == Difficulty::Master);
+        REQUIRE(result->move_history.size() == 1);
+        REQUIRE(result->move_history[0].value == 5);
+    }
+}
+
+// ============================================================================
+// Load YAML with move_history + current_move_index. The move `timestamp` key (#24 M4) is dropped on
+// write and ignored on read — a fixture that still carries it must load unchanged.
 // ============================================================================
 
 TEST_CASE("SaveManager - deserialize: YAML with move_history is loaded correctly", "[save_manager_deser]") {

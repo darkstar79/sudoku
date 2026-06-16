@@ -195,7 +195,6 @@ void GameViewModel::getHint(std::optional<core::Position> pos_opt) {
         hint_move.position = step.position;
         hint_move.value = step.value;
         hint_move.move_type = core::MoveType::PlaceHint;
-        hint_move.timestamp = std::chrono::steady_clock::now();
         hint_move.previous_value = current_state.getValue(step.position);
         hint_move.previous_hint_revealed = current_state.isCellHintRevealed(step.position);
         hint_move.previous_notes = current_state.getNotes(step.position);
@@ -428,10 +427,11 @@ void GameViewModel::applyDifficultyScore(const core::BoardData& board) {
     }
 
     constexpr std::chrono::milliseconds kBudget{1000};
-    const auto t0 = std::chrono::steady_clock::now();
+    const auto t0 = std::chrono::steady_clock::now();  // determinism-ok: UI analyze-duration metric
     auto score = analyzer_->scoreDifficulty(board, kBudget);
-    const auto elapsed_ms =
-        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count();
+    const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                std::chrono::steady_clock::now() - t0)  // determinism-ok: UI analyze-duration metric
+                                .count();
 
     if (!score) {
         switch (score.error()) {
@@ -713,7 +713,6 @@ void GameViewModel::applyCoachingStep() {
             move.position = step.position;
             move.value = step.value;
             move.move_type = core::MoveType::PlaceNumber;
-            move.timestamp = std::chrono::steady_clock::now();
             move.previous_value = current_state.getValue(step.position);
             move.previous_hint_revealed = current_state.isCellHintRevealed(step.position);
             move.previous_notes = current_state.getNotes(step.position);
@@ -730,7 +729,6 @@ void GameViewModel::applyCoachingStep() {
                 move.value = elim.value;
                 move.move_type = core::MoveType::RemoveNote;
                 move.is_note = true;
-                move.timestamp = std::chrono::steady_clock::now();
                 move.previous_value = current_state.getValue(elim.position);
                 move.previous_notes = current_state.getNotes(elim.position);
 

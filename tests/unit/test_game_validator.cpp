@@ -92,7 +92,6 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -106,7 +105,6 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -120,7 +118,6 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
                   .value = 10,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -134,7 +131,6 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
                   .value = 0,
                   .move_type = MoveType::RemoveNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -148,7 +144,6 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
                   .value = 5,
                   .move_type = MoveType::AddNote,
                   .is_note = true,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -163,7 +158,6 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -178,7 +172,6 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
                   .value = 7,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -193,7 +186,6 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
                   .value = 3,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};
@@ -212,7 +204,6 @@ TEST_CASE("GameValidator - Move Validation", "[game_validator]") {
                   .value = 5,
                   .move_type = MoveType::PlaceNumber,
                   .is_note = false,
-                  .timestamp = std::chrono::steady_clock::now(),
                   .previous_value = 0,
                   .previous_notes = {},
                   .previous_hint_revealed = false};

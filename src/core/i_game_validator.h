@@ -19,9 +19,9 @@
 #include "core/board_data.h"
 #include "core/constants.h"
 
-#include <chrono>
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -50,7 +50,6 @@ struct Move {
     int value{0};  // 1-9, or 0 for clearing
     MoveType move_type{MoveType::PlaceNumber};
     bool is_note{false};  // true if this is a pencil mark
-    std::chrono::steady_clock::time_point timestamp;
 
     // For undo: store previous state
     int previous_value{0};               // Previous cell value before this move

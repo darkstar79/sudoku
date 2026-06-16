@@ -84,7 +84,8 @@ int SolutionCounter::countSolutions(const BoardData& board, int max_solutions) c
     // Convert to Board for hot path: 96-byte stack copy instead of 9 heap allocations
     auto board_copy = Board::fromBoardData(board);
     int count = 0;
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = std::chrono::steady_clock::now();  // determinism-ok: internal countSolutions timeout sampling,
+                                                         // deferred from #24
     auto timeout = std::chrono::milliseconds(DEFAULT_SOLUTION_TIMEOUT_MS);
     bool timed_out = false;
 
@@ -134,7 +135,8 @@ int SolutionCounter::countSolutionsWithTimeout(const BoardData& board, int max_s
     // Convert to Board for hot path: 96-byte stack copy instead of 9 heap allocations
     auto board_copy = Board::fromBoardData(board);
     int count = 0;
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = std::chrono::steady_clock::now();  // determinism-ok: internal countSolutions timeout sampling,
+                                                         // deferred from #24
     bool timed_out = false;
 
     // Compute initial Zobrist hash once; passed incrementally through recursion
@@ -180,8 +182,9 @@ void SolutionCounter::countSolutionsHelper(Board& board, ConstraintState& state,
                                            uint32_t& recursion_count) const {
     // Sample timeout check every 1024 iterations to avoid vDSO overhead (was 9% of profile)
     if ((++recursion_count & 0x3FF) == 0) {
-        auto elapsed =
-            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
+        // determinism-ok: internal countSolutions timeout sampling, deferred from #24
+        const auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time);
         if (elapsed > timeout) {
             timed_out = true;
             return;
@@ -383,8 +386,9 @@ void SolutionCounter::countSolutionsHelperSIMD(Board& board, SIMDConstraintState
                                                uint32_t& recursion_count, uint32_t dirty_regions) const {
     // Sample timeout check every 1024 iterations to avoid vDSO overhead (was 9% of profile)
     if ((++recursion_count & 0x3FF) == 0) {
-        auto elapsed =
-            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time);
+        // determinism-ok: internal countSolutions timeout sampling, deferred from #24
+        const auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time);
         if (elapsed > timeout) {
             timed_out = true;
             return;

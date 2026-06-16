@@ -18,8 +18,10 @@
 #include "../helpers/test_utils.h"
 #include "core/backtracking_solver.h"
 #include "core/game_validator.h"
+#include "core/i_time_provider.h"
 
 #include <chrono>
+#include <memory>
 #include <random>
 
 #include <catch2/catch_test_macros.hpp>
@@ -164,25 +166,33 @@ TEST_CASE("BacktrackingSolver - Edge Cases", "[backtracking_solver]") {
 // NOTE: Backtracking behavior tests removed - too slow (only 20-23 clues = huge search space)
 // The solver IS tested for correctness with faster test cases above
 
-// Deadline plumbing: a past steady_clock deadline must short-circuit the solve() before any
-// recursion, even on adversarial inputs. Mirrors SudokuSolver's wall-clock budget contract so
-// the strategy loop can fall through to backtracking without losing the timeout guarantee.
-TEST_CASE("BacktrackingSolver returns false when deadline has already passed", "[backtracking_solver][timeout]") {
+// Deadline plumbing (#24 H1): the short-circuit must be driven by the INJECTED clock, not a direct
+// steady_clock::now() call. The mock clock is advanced an hour ahead of the real wall clock and the
+// deadline is set just behind the mock's "now". Only an implementation that reads
+// time_provider_->steadyNow() sees the deadline as already-passed and bails immediately; one still
+// reading the real clock would view the deadline as a future point and grind the AI-Escargot board.
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("BacktrackingSolver short-circuits a passed deadline via the injected clock",
+          "[backtracking_solver][timeout]") {
     auto validator = std::make_shared<GameValidator>();
-    BacktrackingSolver solver(validator);
+    auto mock_time = std::make_shared<MockTimeProvider>();
+    BacktrackingSolver solver(validator, mock_time);
 
     // AI Escargot — 17-clue, no logical path, would otherwise consume seconds of backtracking.
     BoardData board = {{1, 0, 0, 0, 0, 7, 0, 9, 0}, {0, 3, 0, 0, 2, 0, 0, 0, 8}, {0, 0, 9, 6, 0, 0, 5, 0, 0},
                        {0, 0, 5, 3, 0, 0, 9, 0, 0}, {0, 1, 0, 0, 8, 0, 0, 0, 2}, {6, 0, 0, 0, 0, 4, 0, 0, 0},
                        {3, 0, 0, 0, 0, 0, 0, 1, 0}, {0, 4, 0, 0, 0, 0, 0, 0, 7}, {0, 0, 7, 0, 0, 0, 3, 0, 0}};
 
-    const auto past_deadline = std::chrono::steady_clock::now() - std::chrono::seconds(1);
+    // Drive the injected clock well ahead of real time, then set the deadline behind the mock's now
+    // but ahead of real time — distinguishing the injected clock from std::chrono::steady_clock::now().
+    mock_time->advanceSteadyTime(std::chrono::hours(1));
+    const auto past_deadline = mock_time->steadyNow() - std::chrono::seconds(1);
 
     auto t0 = std::chrono::steady_clock::now();
     bool result = solver.solve(board, ValueSelectionStrategy::MostConstrained, /*rng*/ nullptr, past_deadline);
     auto elapsed = std::chrono::steady_clock::now() - t0;
 
-    REQUIRE_FALSE(result);
+    REQUIRE(!result);
     // Must exit essentially immediately — backtracking should not have meaningfully started.
     REQUIRE(elapsed < std::chrono::milliseconds(50));
 }

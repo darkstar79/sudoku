@@ -28,12 +28,15 @@
 
 namespace sudoku::core {
 
-PuzzleRater::PuzzleRater(std::shared_ptr<ISudokuSolver> solver) : solver_(std::move(solver)) {
+PuzzleRater::PuzzleRater(std::shared_ptr<ISudokuSolver> solver, std::chrono::milliseconds solve_budget)
+    : solver_(std::move(solver)), solve_budget_(solve_budget) {
 }
 
 std::expected<PuzzleRating, RatingError> PuzzleRater::ratePuzzle(const BoardData& board) const {
-    // Solve puzzle using logical techniques
-    auto result = solver_->solvePuzzle(board);
+    // Solve puzzle using logical techniques under a wall-clock budget. The budget restores the
+    // AI Escargot livelock protection (#24 H2): a board with no logical path can otherwise spin
+    // in the backtracking fallback during generation-time rating.
+    auto result = solver_->solvePuzzle(board, solve_budget_);
 
     if (!result.has_value()) {
         // Map solver errors to rating errors

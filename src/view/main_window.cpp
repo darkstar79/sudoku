@@ -871,7 +871,7 @@ void MainWindow::updateStatusBar() {
     // unless the user enabled it in Settings -> Display.
     if (session_time_label_ && session_time_label_->isVisible()) {
         const auto session_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - session_start_time_);
+            std::chrono::steady_clock::now() - session_start_time_);  // determinism-ok: UI session-timer label
         session_time_label_->setText(QString::fromStdString(viewmodel::GameViewModel::formatDuration(session_elapsed)));
     }
 
