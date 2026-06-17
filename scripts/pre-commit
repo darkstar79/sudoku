@@ -65,16 +65,35 @@ else
 fi
 
 # Check 2: Code formatting (staged files only, ~instant)
-# Locate clang-format: PATH first, then common Homebrew locations (macOS)
-CLANG_FORMAT=$(command -v clang-format 2>/dev/null || true)
-if [ -z "$CLANG_FORMAT" ]; then
-    for candidate in /opt/homebrew/opt/llvm/bin/clang-format /usr/local/opt/llvm/bin/clang-format; do
-        if [ -x "$candidate" ]; then
-            CLANG_FORMAT="$candidate"
-            break
-        fi
+# Locate clang-format across platforms: PATH (incl. versioned names), macOS Homebrew LLVM
+# (keg-only, not on PATH), and Windows LLVM installs. Override with CLANG_FORMAT=/path.
+# Kept in sync with scripts/format.sh and .claude/hooks/format-changed.py.
+find_clang_format() {
+    if [ -n "${CLANG_FORMAT:-}" ] && command -v "$CLANG_FORMAT" >/dev/null 2>&1; then
+        command -v "$CLANG_FORMAT"; return 0
+    fi
+    local c
+    for c in clang-format clang-format-22 clang-format-21 clang-format-20 \
+             clang-format-19 clang-format-18 clang-format-17 clang-format-16 clang-format-15; do
+        if command -v "$c" >/dev/null 2>&1; then command -v "$c"; return 0; fi
     done
-fi
+    local p
+    if command -v brew >/dev/null 2>&1; then
+        for p in "$(brew --prefix llvm 2>/dev/null)/bin/clang-format" \
+                 "$(brew --prefix clang-format 2>/dev/null)/bin/clang-format"; do
+            [ -x "$p" ] && { echo "$p"; return 0; }
+        done
+    fi
+    for p in /opt/homebrew/opt/llvm/bin/clang-format \
+             /usr/local/opt/llvm/bin/clang-format \
+             "/c/Program Files/LLVM/bin/clang-format.exe" \
+             "/c/Program Files (x86)/LLVM/bin/clang-format.exe"; do
+        [ -x "$p" ] && { echo "$p"; return 0; }
+    done
+    return 1
+}
+
+CLANG_FORMAT="$(find_clang_format || true)"
 
 if [ -z "$CLANG_FORMAT" ] || [ ! -x "$CLANG_FORMAT" ]; then
     echo -e "${YELLOW}[pre-commit] clang-format not found — skipping formatting check.${NC}"

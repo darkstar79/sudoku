@@ -14,16 +14,44 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Find clang-format
-CLANG_FORMAT=$(command -v clang-format || echo "")
+# Find clang-format across platforms: PATH (incl. versioned names like clang-format-19),
+# macOS Homebrew LLVM (keg-only, not on PATH), and Windows LLVM installs.
+# Override on any machine with: CLANG_FORMAT=/path/to/clang-format ./scripts/format.sh
+find_clang_format() {
+    if [ -n "${CLANG_FORMAT:-}" ] && command -v "$CLANG_FORMAT" >/dev/null 2>&1; then
+        command -v "$CLANG_FORMAT"; return 0
+    fi
+    local c
+    for c in clang-format clang-format-22 clang-format-21 clang-format-20 \
+             clang-format-19 clang-format-18 clang-format-17 clang-format-16 clang-format-15; do
+        if command -v "$c" >/dev/null 2>&1; then command -v "$c"; return 0; fi
+    done
+    local p
+    if command -v brew >/dev/null 2>&1; then
+        for p in "$(brew --prefix llvm 2>/dev/null)/bin/clang-format" \
+                 "$(brew --prefix clang-format 2>/dev/null)/bin/clang-format"; do
+            [ -x "$p" ] && { echo "$p"; return 0; }
+        done
+    fi
+    for p in /opt/homebrew/opt/llvm/bin/clang-format \
+             /usr/local/opt/llvm/bin/clang-format \
+             "/c/Program Files/LLVM/bin/clang-format.exe" \
+             "/c/Program Files (x86)/LLVM/bin/clang-format.exe"; do
+        [ -x "$p" ] && { echo "$p"; return 0; }
+    done
+    return 1
+}
+
+CLANG_FORMAT="$(find_clang_format || true)"
 if [ -z "$CLANG_FORMAT" ]; then
     echo -e "${RED}Error: clang-format not found${NC}"
-    echo "Install with: sudo dnf install clang-tools-extra"
+    echo "Install: Fedora 'sudo dnf install clang-tools-extra' | macOS 'brew install llvm' | Windows: LLVM installer"
+    echo "Or set CLANG_FORMAT=/path/to/clang-format"
     exit 1
 fi
 
 # Check clang-format version
-VERSION=$($CLANG_FORMAT --version | grep -oP '(?<=version )\d+' | head -1)
+VERSION=$("$CLANG_FORMAT" --version | sed -n 's/.*version \([0-9][0-9]*\).*/\1/p' | head -1)
 if [ "$VERSION" -lt 15 ]; then
     echo -e "${YELLOW}Warning: clang-format version $VERSION detected${NC}"
     echo -e "${YELLOW}InsertBraces feature requires version 15+${NC}"
