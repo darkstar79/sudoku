@@ -11,3 +11,11 @@ conan>=2.18.1
 # on system packages.
 cmake>=3.28
 ninja>=1.11
+
+# Patch-coverage gate. CI (.github/workflows/ci.yml) runs diff-cover on the
+# src/-only coverage.xml so changed lines must be >=80% covered; listed here so
+# the same check is reproducible locally:
+#   ./scripts/coverage.sh xml
+#   diff-cover coverage.xml --compare-branch=origin/main --fail-under=80
+# (gcovr is installed inline by CI and intentionally not pinned here.)
+diff-cover>=9.0

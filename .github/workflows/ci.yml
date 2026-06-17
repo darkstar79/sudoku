@@ -148,6 +148,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          # Full history so the patch-coverage step can resolve the merge-base
+          # with origin/main for `diff-cover`.
+          fetch-depth: 0
 
       - name: Install system dependencies
         uses: ./.github/actions/install-qt-deps
@@ -218,6 +222,97 @@ jobs:
             coverage.xml
             coverage_report.html
           retention-days: 30
+
+      - name: Enforce patch coverage on changed lines
+        if: github.event_name == 'pull_request'
+        # The absolute gcovr thresholds above let new code ride on the existing
+        # average (new code can be 0% covered and still pass). diff-cover instead
+        # requires the lines changed in THIS PR — those that appear in the
+        # src/-only coverage.xml — to be >=80% covered. It reuses the coverage.xml
+        # already produced above, so there is no extra build or test run.
+        # (View-layer / test files are excluded from coverage.xml by .gcovr.cfg
+        # and are therefore simply not measured here.)
+        run: |
+          pip3 install diff-cover
+          git fetch --no-tags origin main
+          echo "Checking patch coverage (changed src/ lines must be >=80% covered)..."
+          diff-cover coverage.xml --compare-branch=origin/main --fail-under=80
+          echo "✅ Patch coverage threshold met"
+
+  sanitizers-unit:
+    name: ASan + UBSan (unit)
+    runs-on: ubuntu-24.04
+    needs: format-check
+    # Unit-suite-only ASan+UBSan on every PR: catches the common UB classes
+    # (uninitialized reads, the AVX-512 alignment SIGSEGV class) at PR time
+    # rather than hours later via nightly. To bound per-PR runner minutes this
+    # builds ONLY the unit_tests target and runs ONLY the unit suite; the
+    # exhaustive sanitizer run (integration tests + full corpus) stays in
+    # nightly.yml's sanitizer-check.
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install system dependencies
+        uses: ./.github/actions/install-qt-deps
+
+      - name: Install Conan
+        run: |
+          pip3 install conan
+          conan profile detect --force
+
+      - name: Cache Conan packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          key: conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}-${{ github.sha }}
+          restore-keys: |
+            conan-${{ runner.os }}-release-${{ hashFiles('conanfile.py') }}-
+            conan-${{ runner.os }}-release-
+
+      # Shares the rel-san ccache flavor with nightly's sanitizer-check (identical
+      # Release + ENABLE_SANITIZERS compile flags). This job compiles only the
+      # unit_tests target — a strict subset of nightly's objects — so everything it
+      # builds is cache-compatible. The ${github.sha} suffix keeps the two workflows
+      # from colliding on save; cache-cleanup.yml reclaims closed-PR entries.
+      - name: Cache ccache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-rel-san-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-rel-san-
+
+      - name: Configure ccache
+        run: |
+          ccache --set-config=max_size=1Gi
+          ccache --zero-stats
+
+      - name: Install dependencies
+        run: conan install . --build=missing -s build_type=Release -s compiler.cppstd=gnu23
+
+      - name: Build unit tests with sanitizers
+        run: |
+          cmake --preset release -DENABLE_SANITIZERS=ON
+          cmake --build --preset release --target unit_tests
+
+      - name: Show ccache stats
+        run: ccache --show-stats
+
+      - name: Run unit tests under ASan + UBSan
+        env:
+          ASAN_OPTIONS: "detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1:halt_on_error=1"
+          UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+        run: |
+          if [ -f "build/Release/build/Release/bin/tests/unit_tests" ]; then
+            UNIT_TESTS="build/Release/build/Release/bin/tests/unit_tests"
+          else
+            UNIT_TESTS="build/Release/bin/tests/unit_tests"
+          fi
+          echo "Running: $UNIT_TESTS"
+          "$UNIT_TESTS" "~[slow]~[pathological]"
 
   clang-tidy-diff:
     name: clang-tidy (diff)
