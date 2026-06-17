@@ -118,8 +118,9 @@ TEST_CASE("GameViewModel - Auto-save resume on restart",
 
         auto empty = sudoku::test::findEmptyCell(fixture.view_model->gameState.get());
         REQUIRE(empty.has_value());
-        // has_value() block (not just the REQUIRE above) so clang-tidy's optional dataflow sees the
-        // access as guarded; the REQUIRE still fails loudly if a generated board had no empty cell.
+        // has_value() block so clang-tidy's std::optional dataflow sees the access as guarded; the
+        // REQUIRE above still fails loudly if a generated board somehow had no empty cell. (loaded
+        // below is std::expected, which that check does not track, so it needs no such guard.)
         if (empty.has_value()) {
             const core::Position cell = empty.value();
             fixture.view_model->enterNote(cell, 5);  // progress recorded; digits unchanged
@@ -128,15 +129,13 @@ TEST_CASE("GameViewModel - Auto-save resume on restart",
             // Reload exactly as the app does on launch.
             auto loaded = fixture.save_manager->loadAutoSave();
             REQUIRE(loaded.has_value());
-            if (loaded.has_value()) {
-                REQUIRE(loaded.value().is_auto_save);
+            REQUIRE(loaded.value().is_auto_save);
 
-                fixture.view_model->restoreGameState(loaded.value());
+            fixture.view_model->restoreGameState(loaded.value());
 
-                const auto& state = fixture.view_model->gameState.get();
-                REQUIRE(state.extractGivenNumbers() == pre_givens);  // same puzzle reopened
-                REQUIRE(state.getNotes(cell).contains(5));           // pencil mark survived round-trip
-            }
+            const auto& state = fixture.view_model->gameState.get();
+            REQUIRE(state.extractGivenNumbers() == pre_givens);  // same puzzle reopened
+            REQUIRE(state.getNotes(cell).contains(5));           // pencil mark survived round-trip
         }
     }
 }
