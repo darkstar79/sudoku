@@ -137,33 +137,9 @@ std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(const Gen
         result.seed = actual_seed;
         result.clue_count = countClues(result.board);
 
-        // Rate puzzle if rater is available
-        if (rater_) {
-            auto rating_result = rater_->ratePuzzle(result.board);
-            if (rating_result.has_value()) {
-                result.rating = rating_result->se_rating;
-                result.requires_backtracking = rating_result->requires_backtracking;
-                for (const auto& step : rating_result->solve_path) {
-                    if (step.technique != SolvingTechnique::Backtracking) {
-                        result.required_techniques.insert(step.technique);
-                    }
-                }
-                spdlog::info("Puzzle rated: SE {:.1f}", result.rating);
-
-                // Validate rating: reject puzzles outside the expected range for their difficulty
-                {
-                    auto [min_rating, max_rating] = getDifficultyRatingRange(settings.difficulty);
-                    if (result.rating < min_rating || result.rating >= max_rating) {
-                        spdlog::debug("Puzzle rating {} outside range [{}, {}), rejecting...", result.rating,
-                                      min_rating, max_rating);
-                        continue;  // Try again with different puzzle
-                    }
-                    spdlog::debug("Puzzle rating {} within range [{}, {})", result.rating, min_rating, max_rating);
-                }
-            } else {
-                spdlog::warn("Failed to rate puzzle: {}", static_cast<int>(rating_result.error()));
-                // Continue without rating if rating fails (don't reject puzzle)
-            }
+        // Rate puzzle and reject it if it falls outside the expected difficulty band
+        if (!rateAndValidatePuzzle(result, settings)) {
+            continue;  // Try again with a different puzzle
         }
 
         return result;
@@ -172,6 +148,36 @@ std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(const Gen
     // All attempts failed
     spdlog::error("Failed to generate puzzle after {} attempts", settings.max_attempts);
     return std::unexpected(GenerationError::NoUniqueSolution);
+}
+
+bool PuzzleGenerator::rateAndValidatePuzzle(Puzzle& result, const GenerationSettings& settings) const {
+    if (!rater_) {
+        return true;  // No rater configured: accept the puzzle as-is
+    }
+
+    auto rating_result = rater_->ratePuzzle(result.board);
+    if (!rating_result.has_value()) {
+        spdlog::warn("Failed to rate puzzle: {}", static_cast<int>(rating_result.error()));
+        return true;  // Continue without rating if rating fails (don't reject puzzle)
+    }
+
+    result.rating = rating_result->se_rating;
+    result.requires_backtracking = rating_result->requires_backtracking;
+    for (const auto& step : rating_result->solve_path) {
+        if (step.technique != SolvingTechnique::Backtracking) {
+            result.required_techniques.insert(step.technique);
+        }
+    }
+    spdlog::info("Puzzle rated: SE {:.1f}", result.rating);
+
+    // Validate rating: reject puzzles outside the expected range for their difficulty
+    auto [min_rating, max_rating] = getDifficultyRatingRange(settings.difficulty);
+    if (result.rating < min_rating || result.rating >= max_rating) {
+        spdlog::debug("Puzzle rating {} outside range [{}, {}), rejecting...", result.rating, min_rating, max_rating);
+        return false;
+    }
+    spdlog::debug("Puzzle rating {} within range [{}, {})", result.rating, min_rating, max_rating);
+    return true;
 }
 
 std::expected<Puzzle, GenerationError> PuzzleGenerator::generatePuzzle(Difficulty difficulty) const {

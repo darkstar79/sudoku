@@ -141,6 +141,11 @@ private:
     /// Generates a complete valid Sudoku solution
     std::optional<BoardData> generateCompleteSolution(std::mt19937& rng) const;
 
+    /// Rates a candidate puzzle (when a rater is configured) and confirms it falls within the
+    /// expected SE range for its difficulty. Populates rating / required_techniques / backtracking
+    /// flags on @p result. Returns false when the puzzle must be rejected so the caller retries.
+    [[nodiscard]] bool rateAndValidatePuzzle(Puzzle& result, const GenerationSettings& settings) const;
+
     /// Removes clues from a complete solution to create a puzzle
     std::optional<BoardData> removeCluesToCreatePuzzle(const BoardData& solution, const GenerationSettings& settings,
                                                        std::mt19937& rng) const;
