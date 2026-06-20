@@ -190,6 +190,21 @@ TEST_CASE("SaveManager - clearAutoSave is a no-op when no auto-save exists", "[s
     REQUIRE(!mgr.hasAutoSave());
 }
 
+TEST_CASE("SaveManager - clearAutoSave reports an error when removal fails", "[save_manager_extra]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // Force std::filesystem::remove to fail: make the auto-save path a NON-EMPTY directory
+    // (remove() only deletes files or empty directories). Exercises the I/O-error path.
+    const fs::path auto_path = tmp.path() / "autosave.yaml";
+    fs::create_directory(auto_path);
+    std::ofstream(auto_path / "blocker.txt") << "x";
+
+    auto cleared = mgr.clearAutoSave();
+    REQUIRE(!cleared.has_value());
+    REQUIRE(cleared.error() == SaveError::FileAccessError);
+}
+
 // ============================================================================
 // saveGame: game with pre-existing save_id reuses that id
 // ============================================================================
