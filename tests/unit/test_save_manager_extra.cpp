@@ -168,6 +168,28 @@ TEST_CASE("SaveManager - autoSave then loadAutoSave returns correct data", "[sav
     REQUIRE(load_result->current_state[0][0] == 5);
 }
 
+TEST_CASE("SaveManager - clearAutoSave removes an existing auto-save", "[save_manager_extra]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    REQUIRE(mgr.autoSave(makeGame()).has_value());
+    REQUIRE(mgr.hasAutoSave());
+
+    auto cleared = mgr.clearAutoSave();
+    REQUIRE(cleared.has_value());
+    REQUIRE(!mgr.hasAutoSave());
+}
+
+TEST_CASE("SaveManager - clearAutoSave is a no-op when no auto-save exists", "[save_manager_extra]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    REQUIRE(!mgr.hasAutoSave());
+    auto cleared = mgr.clearAutoSave();
+    REQUIRE(cleared.has_value());  // absent auto-save is success, not an error
+    REQUIRE(!mgr.hasAutoSave());
+}
+
 // ============================================================================
 // saveGame: game with pre-existing save_id reuses that id
 // ============================================================================

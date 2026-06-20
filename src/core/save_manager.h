@@ -56,6 +56,7 @@ public:
     [[nodiscard]] std::expected<void, SaveError> autoSave(const SavedGame& game) override;
     [[nodiscard]] std::expected<SavedGame, SaveError> loadAutoSave() override;
     [[nodiscard]] bool hasAutoSave() const override;
+    [[nodiscard]] std::expected<void, SaveError> clearAutoSave() override;
 
     // Save management
     [[nodiscard]] std::expected<void, SaveError> deleteSave(const std::string& save_id) override;

@@ -372,6 +372,12 @@ void GameViewModel::checkGameCompletion() {
         });
 
         endGameSession(true);
+
+        // A finished puzzle must not be offered for resume on the next launch. Completion pauses the
+        // timer, which gates autoSave(), so the on-disk auto-save would otherwise keep the stale
+        // pre-final-move board. Clear it explicitly. (clearAutoSave is idempotent if none exists.)
+        [[maybe_unused]] const auto cleared = save_manager_->clearAutoSave();
+
         spdlog::info("Game completed!");
     }
 }
