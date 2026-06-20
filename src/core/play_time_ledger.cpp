@@ -20,6 +20,7 @@
 #include "file_utils.h"
 #include "infrastructure/app_directory_manager.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -111,8 +112,12 @@ std::chrono::milliseconds PlayTimeLedger::cooldownRemaining(int cooldown_minutes
     if (!last_session_end_ || cooldown_minutes <= 0) {
         return std::chrono::milliseconds::zero();
     }
-    const auto elapsed =
-        std::chrono::duration_cast<std::chrono::milliseconds>(time_provider_->systemNow() - *last_session_end_);
+    // Clamp elapsed at 0: if last_session_end_ is in the future (the clock was set forward when the
+    // session ended, then corrected back), a negative elapsed would inflate the lockout past the
+    // configured cooldown. Only clock-*backward* is an accepted bypass; never over-lock the user.
+    const auto elapsed = std::max(
+        std::chrono::milliseconds::zero(),
+        std::chrono::duration_cast<std::chrono::milliseconds>(time_provider_->systemNow() - *last_session_end_));
     const auto total = std::chrono::milliseconds{static_cast<std::int64_t>(cooldown_minutes) * 60'000};
     const auto remaining = total - elapsed;
     return remaining > std::chrono::milliseconds::zero() ? remaining : std::chrono::milliseconds::zero();

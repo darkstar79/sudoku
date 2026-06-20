@@ -133,7 +133,7 @@ TEST_CASE("evaluate - warn lead clamp boundary table", "[playlimit][policy]") {
 TEST_CASE("evaluate - warn minutes_left is rounded up", "[playlimit][policy]") {
     Settings s = sessionOnly(10, 5);
     // 4 min 30 s of remaining (limit 10, played 5 min 30 s) -> "about 5 minutes".
-    const auto d = evaluate(s, 0ms, std::chrono::milliseconds{5 * 60'000 + 30'000});
+    const auto d = evaluate(s, 0ms, std::chrono::milliseconds{(5 * 60'000) + 30'000});
     CHECK(d.action == PlayLimitAction::Warn);
     CHECK(d.minutes_left == 5);
 }

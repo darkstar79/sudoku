@@ -90,6 +90,22 @@ TEST_CASE("PlayLimitController - session limit warns once then closes and starts
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("PlayLimitController - a daily-only close does not arm a session cooldown", "[playlimit][controller]") {
+    // A daily-limit close must not stamp session-end: otherwise enabling a session limit later would
+    // surface a phantom BlockedCooldown derived from a session that never had one.
+    Harness h;
+    h.settings->setEnableDailyLimit(true);
+    h.settings->setMaxDailyMinutes(2);  // session limit stays OFF
+
+    std::ignore = h.controller->onTick(0s);
+    const auto close = h.controller->onTick(120s);
+    REQUIRE(close.event == PlayLimitController::Event::Close);
+    REQUIRE(close.limit == LimitKind::Daily);
+
+    CHECK(!h.ledger->lastSessionEnd().has_value());  // no cooldown armed
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("PlayLimitController - disabling a limit cancels the pending warn; re-enabling re-arms",
           "[playlimit][controller]") {
     Harness h;

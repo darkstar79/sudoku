@@ -101,6 +101,7 @@ private:
     // reacts to its warn/close events.
     std::shared_ptr<viewmodel::PlayLimitController> play_limit_controller_;
     bool limit_close_in_progress_{false};  // set once a limit-triggered close starts (single save)
+    bool in_play_limit_tick_{false};       // re-entrancy guard: the warn modal pumps the clock timer
 
     // Owns the active QTranslator so language can be swapped at runtime.
     // Initially empty — installed on the first setSettingsManager() call,

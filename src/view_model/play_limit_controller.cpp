@@ -80,8 +80,13 @@ PlayLimitController::TickResult PlayLimitController::onTick(std::chrono::millise
     const auto decision = core::evaluate(settings, liveDailyTotal(), session_active_);
 
     if (decision.action == core::PlayLimitAction::Close) {
-        flush();                      // persist the final active play before closing
-        ledger_->recordSessionEnd();  // start the cooldown (harmless when no session limit is set)
+        flush();  // persist the final active play before closing
+        // Only stamp session-end (which starts the cooldown) when a session limit is actually
+        // configured — a daily-only close must not arm a phantom cooldown that a later-enabled
+        // session limit would then enforce.
+        if (settings.enable_session_limit) {
+            ledger_->recordSessionEnd();
+        }
         closed_ = true;
         return {.event = Event::Close, .limit = decision.limit, .minutes_left = 0};
     }

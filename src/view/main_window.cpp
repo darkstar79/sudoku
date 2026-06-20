@@ -761,9 +761,14 @@ void MainWindow::setPlayLimitController(std::shared_ptr<viewmodel::PlayLimitCont
 }
 
 void MainWindow::onPlayLimitTick() {
-    if (!play_limit_controller_ || !view_model_ || limit_close_in_progress_) {
+    // The warning modal below spins a nested event loop that keeps the 1 s clock_timer_ firing.
+    // Without this guard a tick fired *inside* the open warning could re-enter and call close()
+    // underneath the modal. Nested ticks simply no-op; the next top-level tick picks up the full
+    // elapsed delta (getElapsedTime keeps climbing), so nothing is lost.
+    if (!play_limit_controller_ || !view_model_ || limit_close_in_progress_ || in_play_limit_tick_) {
         return;
     }
+    in_play_limit_tick_ = true;
 
     const auto elapsed = view_model_->gameState.get().getElapsedTime();
     const auto result = play_limit_controller_->onTick(elapsed);
@@ -778,6 +783,8 @@ void MainWindow::onPlayLimitTick() {
         case viewmodel::PlayLimitController::Event::None:
             break;
     }
+
+    in_play_limit_tick_ = false;
 }
 
 void MainWindow::showTimeLimitWarning(core::LimitKind limit, int minutes_left) {

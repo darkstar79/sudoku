@@ -191,15 +191,24 @@ int main(int argc, char* argv[]) {
         auto settings_manager = container.resolve<sudoku::core::ISettingsManager>();
         auto play_time_ledger = container.resolve<sudoku::core::IPlayTimeLedger>();
 
-        // Launch gate (Story 6.7): restart-proofing. Read the persisted ledger and decide BEFORE
-        // any game is loaded, dirtied, or shown — a blocked launch returns without opening a window.
-        // Daily exhaustion wins over an active cooldown (the longer, honest wait).
+        sudoku::view::MainWindow main_window;
+        main_window.setViewModel(view_model);
+        main_window.setSettingsManager(settings_manager);  // installs the QTranslator (locale) used below
+        main_window.setTrainingViewModel(training_vm);
+        main_window.setPlayLimitController(
+            std::make_shared<sudoku::viewmodel::PlayLimitController>(settings_manager, play_time_ledger));
+
+        // Launch gate (Story 6.7): restart-proofing. Decide from the persisted ledger BEFORE any game
+        // is loaded, dirtied, or shown — a blocked launch returns before restore/startNewGame/show().
+        // Placed AFTER setSettingsManager so the translator is installed and the blocked-launch dialogs
+        // render in the user's locale. Daily exhaustion wins over an active cooldown (the longer wait).
         {
             const auto& s = settings_manager->getSettings();
             const auto launch = sudoku::core::decide(s, play_time_ledger->accruedToday(),
                                                      play_time_ledger->cooldownRemaining(s.session_cooldown_minutes));
             if (launch.action == sudoku::core::LaunchAction::BlockedDailyExhausted) {
-                QMessageBox::information(nullptr, QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
+                QMessageBox::information(&main_window,
+                                         QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
                                          QString::fromStdString(sudoku::core::loc(
                                              "Sudoku", "Daily play limit reached. Come back tomorrow.")));
                 sudoku::core::getContainer().clear();
@@ -207,7 +216,7 @@ int main(int argc, char* argv[]) {
             }
             if (launch.action == sudoku::core::LaunchAction::BlockedCooldown) {
                 QMessageBox::information(
-                    nullptr, QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
+                    &main_window, QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
                     QString::fromStdString(sudoku::core::locFormat(
                         sudoku::core::loc("Sudoku", "You're on a break. Sudoku will be available again in about "
                                                     "{0} minutes."),
@@ -216,13 +225,6 @@ int main(int argc, char* argv[]) {
                 return 0;
             }
         }
-
-        sudoku::view::MainWindow main_window;
-        main_window.setViewModel(view_model);
-        main_window.setSettingsManager(settings_manager);
-        main_window.setTrainingViewModel(training_vm);
-        main_window.setPlayLimitController(
-            std::make_shared<sudoku::viewmodel::PlayLimitController>(settings_manager, play_time_ledger));
 
         // Try to load auto-save, otherwise start new game
         auto save_manager = container.resolve<sudoku::core::ISaveManager>();

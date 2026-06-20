@@ -58,7 +58,7 @@ TEST_CASE("PlayTimeLedger - missing file is a clean fresh day", "[playlimit][led
 
     CHECK(ledger.accruedToday() == 0ms);
     CHECK(ledger.isUnreadable() == false);
-    CHECK_FALSE(ledger.lastSessionEnd().has_value());
+    CHECK(!ledger.lastSessionEnd().has_value());  // CHECK(!x): CHECK_FALSE trips clang-tidy EnumCastOutOfRange
     CHECK(ledger.cooldownRemaining(15) == 0ms);
 }
 
@@ -91,7 +91,7 @@ TEST_CASE("PlayTimeLedger - on-disk bytes are an encrypted EncryptionManager blo
     ledger.addActivePlay(5min);
 
     const auto bytes = readBytes(path);
-    REQUIRE_FALSE(bytes.empty());
+    REQUIRE(!bytes.empty());                       // REQUIRE(!x): REQUIRE_FALSE trips clang-tidy EnumCastOutOfRange
     CHECK(EncryptionManager::isEncrypted(bytes));  // carries the "SDKE" magic
 }
 
@@ -148,6 +148,22 @@ TEST_CASE("PlayTimeLedger - cooldown counts down then clears", "[playlimit][ledg
     CHECK(ledger.cooldownRemaining(15) == 0ms);
     clock->advanceSystemTime(1h);
     CHECK(ledger.cooldownRemaining(15) == 0ms);  // never goes negative
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("PlayTimeLedger - a backward clock correction never inflates the cooldown past its length",
+          "[playlimit][ledger][regression]") {
+    // Regression: if last_session_end_ ends up in the future (clock set forward at record time, then
+    // corrected back), elapsed is negative and an unclamped `total - elapsed` would over-lock the user.
+    sudoku::test::TempTestDir tmp;
+    auto clock = mockAt(utcMidnight2025() + 12h);
+
+    PlayTimeLedger ledger(tmp.path() / "play_time.yaml", clock);
+    ledger.recordSessionEnd();  // stamps "now" (12:00)
+
+    clock->advanceSystemTime(-1h);  // clock corrected backward; now < last_session_end_
+
+    CHECK(ledger.cooldownRemaining(15) == 15min);  // clamped to the configured length, not 1h15m
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
