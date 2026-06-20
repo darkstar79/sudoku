@@ -457,9 +457,16 @@ void MainWindow::setupHelpMenu() {
 void MainWindow::setupToolBar() {
     auto* toolbar = addToolBar("Main");
     toolbar->setMovable(false);
+    // Static dark text on the forced-light toolbar so chrome text stays legible in dark mode
+    // (story 6-6a). One mechanism — a scoped stylesheet color, mirroring how the status bar colors
+    // its labels below — covers the toolbar's text widgets (labels, the difficulty combo, the
+    // "Done Editing" QToolButton). The blue hints badge and the rating link set their own color: in
+    // their own stylesheets and win over this ancestor rule. The background is forced light in BOTH
+    // OS schemes, so one static color is correct in both (scheme-aware theming is story 6-6b).
     toolbar->setStyleSheet(QString("QToolBar { background-color: %1; border-bottom: 1px solid %2; "
-                                   "padding: 4px; spacing: 8px; }")
-                               .arg(StyleColors::SURFACE, StyleColors::DIVIDER));
+                                   "padding: 4px; spacing: 8px; }"
+                                   "QToolBar QLabel, QToolBar QComboBox, QToolBar QToolButton { color: %3; }")
+                               .arg(StyleColors::SURFACE, StyleColors::DIVIDER, StyleColors::TEXT_NEAR_BLACK));
 
     new_game_btn_ = new QPushButton(qstr(core::loc("Sudoku", "▶ New Game")));
     new_game_btn_->setStyleSheet(
@@ -472,8 +479,12 @@ void MainWindow::setupToolBar() {
     toolbar->addSeparator();
 
     difficulty_label_ = new QLabel(QString(" %1 ").arg(qstr(core::loc("Sudoku", "Difficulty:"))));
+    difficulty_label_->setObjectName("difficultyLabel");
     toolbar->addWidget(difficulty_label_);
     difficulty_combo_ = new QComboBox;
+    difficulty_combo_->setObjectName("difficultyCombo");
+    // Resting text colored dark by the scoped QToolBar QComboBox rule above. The dropdown popup
+    // intentionally stays in the OS scheme (unified by 6-6b).
     difficulty_combo_->addItems({qstr(core::loc("Sudoku", "Easy")), qstr(core::loc("Sudoku", "Medium")),
                                  qstr(core::loc("Sudoku", "Hard")), qstr(core::loc("Sudoku", "Expert")),
                                  qstr(core::loc("Sudoku", "Master"))});
@@ -505,8 +516,10 @@ void MainWindow::setupToolBar() {
     toolbar->addSeparator();
 
     hints_text_label_ = new QLabel(QString(" %1 ").arg(qstr(core::loc("Sudoku", "Hints:"))));
+    hints_text_label_->setObjectName("hintsTextLabel");
     toolbar->addWidget(hints_text_label_);
     hints_label_ = new QLabel("10");
+    hints_label_->setObjectName("hintsBadgeLabel");
     hints_label_->setStyleSheet(QString("background-color: %1; color: white; padding: 2px 12px; border-radius: 12px;")
                                     .arg(StyleColors::PRIMARY));
     toolbar->addWidget(hints_label_);
@@ -514,11 +527,15 @@ void MainWindow::setupToolBar() {
     toolbar->addSeparator();
 
     rating_btn_ = new QPushButton;
+    rating_btn_->setObjectName("ratingButton");
     rating_btn_->setFlat(true);
     rating_btn_->setCursor(Qt::PointingHandCursor);
-    rating_btn_->setStyleSheet(QString("QPushButton { border: none; padding: 2px 8px; text-decoration: underline; }"
-                                       "QPushButton:hover { color: %1; }")
-                                   .arg(StyleColors::PRIMARY));
+    // The flat rating link carries its own stylesheet (border/underline/hover), so its dark resting
+    // color lives here rather than in the toolbar rule (a widget's own stylesheet wins).
+    rating_btn_->setStyleSheet(
+        QString("QPushButton { border: none; padding: 2px 8px; text-decoration: underline; color: %1; }"
+                "QPushButton:hover { color: %2; }")
+            .arg(StyleColors::TEXT_NEAR_BLACK, StyleColors::PRIMARY));
     connect(rating_btn_, &QPushButton::clicked, this, &MainWindow::showTechniquesDialog);
     rating_action_ = toolbar->addWidget(rating_btn_);
     rating_action_->setVisible(false);
@@ -528,12 +545,20 @@ void MainWindow::setupToolBar() {
     done_editing_action_ =
         toolbar->addAction(qstr(core::loc("Sudoku", "Done Editing")), this, &MainWindow::commitEditedPuzzle);
     done_editing_action_->setVisible(false);
+    // Rendered as a QToolButton on the same forced-light toolbar — always-visible chrome while editing
+    // a custom puzzle. Its text is colored dark by the scoped QToolBar QToolButton rule above; the
+    // objectName lets the legibility test confirm it's a toolbutton the rule covers.
+    if (auto* done_editing_button = toolbar->widgetForAction(done_editing_action_)) {
+        done_editing_button->setObjectName("doneEditingButton");
+    }
 }
 
 void MainWindow::setupStatusBar() {
     timer_label_ = new QLabel();
+    timer_label_->setObjectName("timerLabel");
     statusBar()->addWidget(timer_label_);
     status_label_ = new QLabel(qstr(core::loc("Sudoku", "Ready")));
+    status_label_->setObjectName("statusLabel");
     statusBar()->addWidget(status_label_, 1);
 
     // Always-visible keyboard micro-hint (e.g. "Ctrl=value · Shift=pencil · Alt=color").
@@ -554,6 +579,9 @@ void MainWindow::setupStatusBar() {
     statusBar()->addPermanentWidget(session_time_label_);
     session_time_label_->setVisible(false);
 
+    // The QStatusBar `color` cascades to all child labels — the single mechanism for the status-bar
+    // text, mirroring the toolbar's scoped color rule (story 6-6a). Forced-light background in both
+    // OS schemes, so the muted dark text stays legible in dark mode.
     statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; border-top: 1px solid %2; color: %3; }")
                                    .arg(StyleColors::SURFACE_STATUS, StyleColors::DIVIDER, StyleColors::TEXT_MUTED));
 
