@@ -41,6 +41,13 @@ BoardData makePuzzle() {
             {9, 6, 1, 5, 3, 7, 2, 8, 0}, {2, 8, 7, 4, 1, 9, 6, 0, 5}, {3, 4, 5, 2, 8, 6, 0, 7, 0}};
 }
 
+// A valid complete solution with a single empty cell at (0,0) — placing 1 there completes the board.
+BoardData makeSolvedExceptOneCell() {
+    return {{0, 2, 3, 4, 5, 6, 7, 8, 9}, {4, 5, 6, 7, 8, 9, 1, 2, 3}, {7, 8, 9, 1, 2, 3, 4, 5, 6},
+            {2, 3, 1, 5, 6, 4, 8, 9, 7}, {5, 6, 4, 8, 9, 7, 2, 3, 1}, {8, 9, 7, 2, 3, 1, 5, 6, 4},
+            {3, 1, 2, 6, 4, 5, 9, 7, 8}, {6, 4, 5, 9, 7, 8, 3, 1, 2}, {9, 7, 8, 3, 1, 2, 6, 4, 5}};
+}
+
 }  // namespace
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 SECTIONs expand to nested conditionals
@@ -137,5 +144,44 @@ TEST_CASE("GameViewModel - Auto-save resume on restart",
             REQUIRE(state.extractGivenNumbers() == pre_givens);  // same puzzle reopened
             REQUIRE(state.getNotes(cell).contains(5));           // pencil mark survived round-trip
         }
+    }
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 SECTIONs expand to nested conditionals
+TEST_CASE("GameViewModel - Completing a puzzle clears the in-progress auto-save",
+          "[game_view_model][autosave][regression][bug-complete-autosave]") {
+    sudoku::test::GameViewModelFixture fixture;
+
+    SECTION("Finishing a puzzle removes the auto-save so the next launch starts fresh") {
+        // Resume a board that is one correct move from done, then create an in-progress auto-save.
+        SavedGame seed;
+        seed.original_puzzle = makeSolvedExceptOneCell();
+        seed.current_state = seed.original_puzzle;
+        seed.difficulty = Difficulty::Easy;
+        fixture.view_model->restoreGameState(seed);
+
+        fixture.view_model->autoSave();
+        REQUIRE(fixture.save_manager->hasAutoSave());  // precondition: an in-progress auto-save exists
+
+        // Place the final correct digit → the puzzle completes.
+        fixture.view_model->enterNumber(core::Position{.row = 0, .col = 0}, 1);
+        REQUIRE(fixture.view_model->isGameComplete());
+
+        // A completed puzzle is not resumable: the auto-save is gone, so a relaunch starts fresh.
+        REQUIRE(!fixture.save_manager->hasAutoSave());
+    }
+
+    SECTION("Completing with no auto-save on disk is a no-op (no error)") {
+        SavedGame seed;
+        seed.original_puzzle = makeSolvedExceptOneCell();
+        seed.current_state = seed.original_puzzle;
+        seed.difficulty = Difficulty::Easy;
+        fixture.view_model->restoreGameState(seed);
+
+        REQUIRE(!fixture.save_manager->hasAutoSave());  // none created
+
+        fixture.view_model->enterNumber(core::Position{.row = 0, .col = 0}, 1);
+        REQUIRE(fixture.view_model->isGameComplete());
+        REQUIRE(!fixture.save_manager->hasAutoSave());  // still none, no crash
     }
 }

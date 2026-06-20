@@ -209,6 +209,20 @@ bool SaveManager::hasAutoSave() const {
     return std::filesystem::exists(auto_save_path_) && isValidSaveFile(auto_save_path_);
 }
 
+std::expected<void, SaveError> SaveManager::clearAutoSave() {
+    try {
+        // Absent auto-save is success: completion clears it whether or not one was written.
+        if (std::filesystem::exists(auto_save_path_)) {
+            std::filesystem::remove(auto_save_path_);
+            spdlog::info("Auto-save cleared");
+        }
+        return {};
+    } catch (const std::exception& e) {
+        spdlog::error("Exception while clearing auto-save: {}", e.what());
+        return std::unexpected(SaveError::FileAccessError);
+    }
+}
+
 std::expected<void, SaveError> SaveManager::deleteSave(const std::string& save_id) {
     try {
         auto save_path = getSavePath(save_id);

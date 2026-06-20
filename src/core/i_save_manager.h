@@ -157,6 +157,11 @@ public:
     /// @return True if auto-save exists
     [[nodiscard]] virtual bool hasAutoSave() const = 0;
 
+    /// Removes the auto-save if one exists. Called when a game completes so a finished puzzle is not
+    /// offered for resume on the next launch. Absent auto-save is treated as success (idempotent).
+    /// @return Success, or an error if an existing auto-save could not be removed
+    [[nodiscard]] virtual std::expected<void, SaveError> clearAutoSave() = 0;
+
     /// Deletes a saved game
     /// @param save_id Save ID to delete
     /// @return Success or error
