@@ -449,6 +449,18 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>You have about {0} minutes left in this session. The game will save and close when the time is up.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You have about {0} minutes left today. The game will save and close when the time is up.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Time&apos;s up — saving and closing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Import Custom Puzzle</source>
         <translation type="unfinished"></translation>
     </message>
@@ -707,6 +719,42 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Experimental</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Limit how long you play. The app warns you, then saves and closes when the time is up. Closing and reopening the app won&apos;t reset your daily time or skip a break.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Limit time per session</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source> minutes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Session limit:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Break before a new session:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Limit time per day</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Daily limit:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Warn me before the limit:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Time Limits</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2203,6 +2251,18 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Time Limit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Daily play limit reached. Come back tomorrow.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>You&apos;re on a break. Sudoku will be available again in about {0} minutes.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

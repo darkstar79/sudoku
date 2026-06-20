@@ -16,8 +16,10 @@
 
 #include "core/di_container.h"
 #include "core/game_validator.h"
+#include "core/i18n_helpers.h"
 #include "core/i_clipboard_provider.h"
 #include "core/i_game_validator.h"
+#include "core/i_play_time_ledger.h"
 #include "core/i_puzzle_generator.h"
 #include "core/i_puzzle_rater.h"
 #include "core/i_save_manager.h"
@@ -27,6 +29,8 @@
 #include "core/i_time_provider.h"
 #include "core/i_training_exercise_generator.h"
 #include "core/i_training_statistics_manager.h"
+#include "core/play_limit_policy.h"
+#include "core/play_time_ledger.h"
 #include "core/puzzle_analyzer.h"
 #include "core/puzzle_generator.h"
 #include "core/puzzle_rater.h"
@@ -42,6 +46,7 @@
 #include "sudoku/version.h"
 #include "view/main_window.h"
 #include "view_model/game_view_model.h"
+#include "view_model/play_limit_controller.h"
 #include "view_model/training_view_model.h"
 
 #include <cstdlib>
@@ -50,6 +55,7 @@
 #include <memory>
 
 #include <QApplication>
+#include <QMessageBox>
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <qcoreapplication.h>
@@ -108,6 +114,11 @@ void setupDependencies() {
 
     container.registerSingleton<sudoku::core::ISettingsManager>(
         []() { return std::make_unique<sudoku::core::SettingsManager>(); });
+
+    container.registerSingleton<sudoku::core::IPlayTimeLedger>([&container]() {
+        auto time_provider = container.resolve<sudoku::core::ITimeProvider>();
+        return std::make_unique<sudoku::core::PlayTimeLedger>(std::filesystem::path{}, time_provider);
+    });
 
     container.registerSingleton<sudoku::core::ITrainingStatisticsManager>(
         []() { return std::make_unique<sudoku::core::TrainingStatisticsManager>(); });
@@ -178,11 +189,40 @@ int main(int argc, char* argv[]) {
         auto training_vm = std::make_shared<sudoku::viewmodel::TrainingViewModel>(exercise_gen, training_stats);
 
         auto settings_manager = container.resolve<sudoku::core::ISettingsManager>();
+        auto play_time_ledger = container.resolve<sudoku::core::IPlayTimeLedger>();
+
+        // Launch gate (Story 6.7): restart-proofing. Read the persisted ledger and decide BEFORE
+        // any game is loaded, dirtied, or shown — a blocked launch returns without opening a window.
+        // Daily exhaustion wins over an active cooldown (the longer, honest wait).
+        {
+            const auto& s = settings_manager->getSettings();
+            const auto launch = sudoku::core::decide(s, play_time_ledger->accruedToday(),
+                                                     play_time_ledger->cooldownRemaining(s.session_cooldown_minutes));
+            if (launch.action == sudoku::core::LaunchAction::BlockedDailyExhausted) {
+                QMessageBox::information(nullptr, QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
+                                         QString::fromStdString(sudoku::core::loc(
+                                             "Sudoku", "Daily play limit reached. Come back tomorrow.")));
+                sudoku::core::getContainer().clear();
+                return 0;
+            }
+            if (launch.action == sudoku::core::LaunchAction::BlockedCooldown) {
+                QMessageBox::information(
+                    nullptr, QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
+                    QString::fromStdString(sudoku::core::locFormat(
+                        sudoku::core::loc("Sudoku", "You're on a break. Sudoku will be available again in about "
+                                                    "{0} minutes."),
+                        launch.minutes_remaining)));
+                sudoku::core::getContainer().clear();
+                return 0;
+            }
+        }
 
         sudoku::view::MainWindow main_window;
         main_window.setViewModel(view_model);
         main_window.setSettingsManager(settings_manager);
         main_window.setTrainingViewModel(training_vm);
+        main_window.setPlayLimitController(
+            std::make_shared<sudoku::viewmodel::PlayLimitController>(settings_manager, play_time_ledger));
 
         // Try to load auto-save, otherwise start new game
         auto save_manager = container.resolve<sudoku::core::ISaveManager>();

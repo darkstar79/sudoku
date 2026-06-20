@@ -18,7 +18,9 @@
 
 #include "../core/i_settings_manager.h"
 #include "../core/observable.h"
+#include "../core/play_limit_policy.h"
 #include "../view_model/game_view_model.h"
+#include "../view_model/play_limit_controller.h"
 #include "../view_model/training_view_model.h"
 #include "core/i_puzzle_generator.h"
 
@@ -76,6 +78,10 @@ public:
     void setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm);
     void setSettingsManager(std::shared_ptr<core::ISettingsManager> settings_manager);
 
+    /// Wire the play-time limit coordinator (Story 6.7). Drives warn/close off the 1 s clock tick;
+    /// when null (no ledger available) the feature is simply inert.
+    void setPlayLimitController(std::shared_ptr<viewmodel::PlayLimitController> controller);
+
 protected:
     void closeEvent(QCloseEvent* event) override;
     bool event(QEvent* event) override;
@@ -90,6 +96,11 @@ private:
 
     // Settings
     std::shared_ptr<core::ISettingsManager> settings_manager_;
+
+    // Play-time limits (Story 6.7). Qt-free coordinator; the View only drives it on the tick and
+    // reacts to its warn/close events.
+    std::shared_ptr<viewmodel::PlayLimitController> play_limit_controller_;
+    bool limit_close_in_progress_{false};  // set once a limit-triggered close starts (single save)
 
     // Owns the active QTranslator so language can be swapped at runtime.
     // Initially empty — installed on the first setSettingsManager() call,
@@ -197,6 +208,11 @@ private:
     void onCoachingStateChanged(const viewmodel::CoachingState& coaching);
 
     void onAutoSave();
+
+    // Play-time limit enforcement (Story 6.7), driven off the 1 s clock tick.
+    void onPlayLimitTick();
+    void showTimeLimitWarning(core::LimitKind limit, int minutes_left);
+    void forceCloseForLimit();
 
 #ifdef SUDOKU_UI_TESTING
     friend class ::TestMainWindowConstruction;

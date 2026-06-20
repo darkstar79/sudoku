@@ -48,6 +48,14 @@ public:
     virtual void setExperimentalTrainingMode(bool value) = 0;
     virtual void setExperimentalCoachingHints(bool value) = 0;
 
+    // Time limits (Story 6.7). Minute counts are clamped to a sane [0, 1440] range.
+    virtual void setEnableSessionLimit(bool value) = 0;
+    virtual void setMaxSessionMinutes(int minutes) = 0;
+    virtual void setSessionCooldownMinutes(int minutes) = 0;
+    virtual void setEnableDailyLimit(bool value) = 0;
+    virtual void setMaxDailyMinutes(int minutes) = 0;
+    virtual void setWarnBeforeMinutes(int minutes) = 0;
+
     /// Observable for reactive UI updates when settings change.
     [[nodiscard]] virtual Observable<Settings>& settingsObservable() = 0;
 
