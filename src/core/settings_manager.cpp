@@ -48,6 +48,35 @@ namespace {
     }
 }
 
+// Whole-day ceiling for any play-limit minute count. 0 is allowed (an enabled limit with 0 minutes
+// reads as unlimited — the policy guards minutes <= 0).
+constexpr int kMaxLimitMinutes = 1440;
+
+void loadTimeLimits(const YAML::Node& root, Settings& settings) {
+    auto time_limits = root["time_limits"];
+    if (!time_limits) {
+        return;
+    }
+    if (auto v = time_limits["enable_session_limit"]) {
+        settings.enable_session_limit = v.as<bool>();
+    }
+    if (auto v = time_limits["max_session_minutes"]) {
+        settings.max_session_minutes = std::clamp(v.as<int>(), 0, kMaxLimitMinutes);
+    }
+    if (auto v = time_limits["session_cooldown_minutes"]) {
+        settings.session_cooldown_minutes = std::clamp(v.as<int>(), 0, kMaxLimitMinutes);
+    }
+    if (auto v = time_limits["enable_daily_limit"]) {
+        settings.enable_daily_limit = v.as<bool>();
+    }
+    if (auto v = time_limits["max_daily_minutes"]) {
+        settings.max_daily_minutes = std::clamp(v.as<int>(), 0, kMaxLimitMinutes);
+    }
+    if (auto v = time_limits["warn_before_minutes"]) {
+        settings.warn_before_minutes = std::clamp(v.as<int>(), 0, kMaxLimitMinutes);
+    }
+}
+
 void loadLanguageField(const YAML::Node& root, Settings& settings, const std::filesystem::path& path) {
     auto v = root["language"];
     if (!v) {
@@ -170,6 +199,42 @@ void SettingsManager::setExperimentalCoachingHints(bool value) {
     notifyIfChanged(old);
 }
 
+void SettingsManager::setEnableSessionLimit(bool value) {
+    auto old = settings_;
+    settings_.enable_session_limit = value;
+    notifyIfChanged(old);
+}
+
+void SettingsManager::setMaxSessionMinutes(int minutes) {
+    auto old = settings_;
+    settings_.max_session_minutes = std::clamp(minutes, 0, kMaxLimitMinutes);
+    notifyIfChanged(old);
+}
+
+void SettingsManager::setSessionCooldownMinutes(int minutes) {
+    auto old = settings_;
+    settings_.session_cooldown_minutes = std::clamp(minutes, 0, kMaxLimitMinutes);
+    notifyIfChanged(old);
+}
+
+void SettingsManager::setEnableDailyLimit(bool value) {
+    auto old = settings_;
+    settings_.enable_daily_limit = value;
+    notifyIfChanged(old);
+}
+
+void SettingsManager::setMaxDailyMinutes(int minutes) {
+    auto old = settings_;
+    settings_.max_daily_minutes = std::clamp(minutes, 0, kMaxLimitMinutes);
+    notifyIfChanged(old);
+}
+
+void SettingsManager::setWarnBeforeMinutes(int minutes) {
+    auto old = settings_;
+    settings_.warn_before_minutes = std::clamp(minutes, 0, kMaxLimitMinutes);
+    notifyIfChanged(old);
+}
+
 Observable<Settings>& SettingsManager::settingsObservable() {
     return observable_;
 }
@@ -220,6 +285,8 @@ void SettingsManager::load() {
             // auto_notes_on_startup: ignored (feature removed)
         }
 
+        loadTimeLimits(root, settings_);
+
         loadLanguageField(root, settings_, settings_path_);
 
         if (auto experimental = root["experimental"]) {
@@ -258,6 +325,15 @@ void SettingsManager::save() const {
         display["collect_detailed_stats"] = settings_.collect_detailed_stats;
         display["encrypt_detailed_stats"] = settings_.encrypt_detailed_stats;
         root["display"] = display;
+
+        YAML::Node time_limits;
+        time_limits["enable_session_limit"] = settings_.enable_session_limit;
+        time_limits["max_session_minutes"] = settings_.max_session_minutes;
+        time_limits["session_cooldown_minutes"] = settings_.session_cooldown_minutes;
+        time_limits["enable_daily_limit"] = settings_.enable_daily_limit;
+        time_limits["max_daily_minutes"] = settings_.max_daily_minutes;
+        time_limits["warn_before_minutes"] = settings_.warn_before_minutes;
+        root["time_limits"] = time_limits;
 
         root["language"] = settings_.language;
 

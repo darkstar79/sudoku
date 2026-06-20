@@ -408,3 +408,46 @@ TEST_CASE("SettingsManager - All difficulty values round-trip", "[settings]") {
         CHECK(mgr2.getSettings().default_difficulty == d);
     }
 }
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("SettingsManager - Time limits default off and round-trip through YAML", "[settings][playlimit]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    SECTION("defaults are strictly opt-in") {
+        SettingsManager mgr(path);
+        const auto& s = mgr.getSettings();
+        CHECK(s.enable_session_limit == false);
+        CHECK(s.max_session_minutes == 0);
+        CHECK(s.session_cooldown_minutes == 15);
+        CHECK(s.enable_daily_limit == false);
+        CHECK(s.max_daily_minutes == 0);
+        CHECK(s.warn_before_minutes == 5);
+    }
+
+    SECTION("set values survive a save/reload") {
+        {
+            SettingsManager mgr(path);
+            mgr.setEnableSessionLimit(true);
+            mgr.setMaxSessionMinutes(45);
+            mgr.setSessionCooldownMinutes(20);
+            mgr.setEnableDailyLimit(true);
+            mgr.setMaxDailyMinutes(120);
+            mgr.setWarnBeforeMinutes(10);
+        }
+        SettingsManager reloaded(path);
+        const auto& s = reloaded.getSettings();
+        CHECK(s.enable_session_limit == true);
+        CHECK(s.max_session_minutes == 45);
+        CHECK(s.session_cooldown_minutes == 20);
+        CHECK(s.enable_daily_limit == true);
+        CHECK(s.max_daily_minutes == 120);
+        CHECK(s.warn_before_minutes == 10);
+    }
+
+    SECTION("minute counts are clamped to a sane ceiling") {
+        SettingsManager mgr(path);
+        mgr.setMaxDailyMinutes(99999);
+        CHECK(mgr.getSettings().max_daily_minutes == 1440);
+    }
+}

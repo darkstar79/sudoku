@@ -48,6 +48,13 @@ public:
     void setExperimentalTrainingMode(bool value) override;
     void setExperimentalCoachingHints(bool value) override;
 
+    void setEnableSessionLimit(bool value) override;
+    void setMaxSessionMinutes(int minutes) override;
+    void setSessionCooldownMinutes(int minutes) override;
+    void setEnableDailyLimit(bool value) override;
+    void setMaxDailyMinutes(int minutes) override;
+    void setWarnBeforeMinutes(int minutes) override;
+
     [[nodiscard]] Observable<Settings>& settingsObservable() override;
 
 private:

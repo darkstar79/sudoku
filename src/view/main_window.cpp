@@ -751,6 +751,69 @@ void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> sett
     spdlog::debug("SettingsManager bound to MainWindow");
 }
 
+void MainWindow::setPlayLimitController(std::shared_ptr<viewmodel::PlayLimitController> controller) {
+    play_limit_controller_ = std::move(controller);
+    if (play_limit_controller_ && clock_timer_) {
+        // Evaluate limits on the same 1 s cadence that updates the status bar.
+        connect(clock_timer_, &QTimer::timeout, this, &MainWindow::onPlayLimitTick);
+    }
+    spdlog::debug("PlayLimitController bound to MainWindow ({})", play_limit_controller_ ? "active" : "inert");
+}
+
+void MainWindow::onPlayLimitTick() {
+    // The warning modal below spins a nested event loop that keeps the 1 s clock_timer_ firing.
+    // Without this guard a tick fired *inside* the open warning could re-enter and call close()
+    // underneath the modal. Nested ticks simply no-op; the next top-level tick picks up the full
+    // elapsed delta (getElapsedTime keeps climbing), so nothing is lost.
+    if (!play_limit_controller_ || !view_model_ || limit_close_in_progress_ || in_play_limit_tick_) {
+        return;
+    }
+    in_play_limit_tick_ = true;
+
+    const auto elapsed = view_model_->gameState.get().getElapsedTime();
+    const auto result = play_limit_controller_->onTick(elapsed);
+
+    switch (result.event) {
+        case viewmodel::PlayLimitController::Event::Warn:
+            showTimeLimitWarning(result.limit, result.minutes_left);
+            break;
+        case viewmodel::PlayLimitController::Event::Close:
+            forceCloseForLimit();
+            break;
+        case viewmodel::PlayLimitController::Event::None:
+            break;
+    }
+
+    in_play_limit_tick_ = false;
+}
+
+void MainWindow::showTimeLimitWarning(core::LimitKind limit, int minutes_left) {
+    // One actionable heads-up; the controller has already latched warn-once for this session.
+    const std::string body =
+        (limit == core::LimitKind::Session)
+            ? core::locFormat(core::loc("Sudoku", "You have about {0} minutes left in this session. "
+                                                  "The game will save and close when the time is up."),
+                              minutes_left)
+            : core::locFormat(core::loc("Sudoku", "You have about {0} minutes left today. "
+                                                  "The game will save and close when the time is up."),
+                              minutes_left);
+    QMessageBox::information(this, qstr(core::loc("Sudoku", "Time Limit")), qstr(body));
+}
+
+void MainWindow::forceCloseForLimit() {
+    // No override, no snooze. Freeze input, show a brief non-interactive notice, then close. The
+    // ledger session-end was already recorded by the controller; closeEvent performs the single
+    // autoSave() so the in-progress puzzle resumes next launch (compose with 6-5).
+    limit_close_in_progress_ = true;
+    if (central_stack_) {
+        central_stack_->setEnabled(false);
+    }
+    if (status_label_) {
+        status_label_->setText(qstr(core::loc("Sudoku", "Time's up — saving and closing.")));
+    }
+    close();
+}
+
 void MainWindow::applyLocale(const std::string& locale_code) {
     // Defense in depth: by the time we reach here the code has already been
     // validated by SettingsManager, but applyLocale interpolates `locale_code`
@@ -787,6 +850,10 @@ void MainWindow::applyLocale(const std::string& locale_code) {
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
+    // Persist any unflushed active play before exit so the daily total isn't lost on a normal close.
+    if (play_limit_controller_) {
+        play_limit_controller_->flush();
+    }
     if (view_model_) {
         spdlog::info("Window close requested, saving game state...");
         view_model_->autoSave();
@@ -1744,6 +1811,60 @@ void MainWindow::showSettingsDialog() {
     experimental_layout->addStretch();
     tabs->addTab(experimental_page, qstr(core::loc("Sudoku", "Experimental")));
 
+    // === Time Limits Tab (Story 6.7) ===
+    auto* limits_page = new QWidget();
+    auto* limits_layout = new QVBoxLayout(limits_page);
+
+    auto* limits_header = new QLabel(qstr(
+        core::loc("Sudoku", "Limit how long you play. The app warns you, then saves and closes when the time is up. "
+                            "Closing and reopening the app won't reset your daily time or skip a break.")));
+    limits_header->setWordWrap(true);
+    limits_layout->addWidget(limits_header);
+    limits_layout->addSpacing(8);
+
+    auto* limits_form = new QFormLayout();
+
+    const auto& limit_settings = settings_manager_->getSettings();
+
+    auto* session_limit_cb = new QCheckBox(qstr(core::loc("Sudoku", "Limit time per session")));
+    session_limit_cb->setChecked(limit_settings.enable_session_limit);
+    limits_form->addRow(session_limit_cb);
+
+    auto* session_minutes_spin = new QSpinBox();
+    session_minutes_spin->setRange(1, 1440);
+    session_minutes_spin->setSuffix(qstr(core::loc("Sudoku", " minutes")));
+    session_minutes_spin->setValue(limit_settings.max_session_minutes > 0 ? limit_settings.max_session_minutes : 30);
+    session_minutes_spin->setEnabled(limit_settings.enable_session_limit);
+    limits_form->addRow(qstr(core::loc("Sudoku", "Session limit:")), session_minutes_spin);
+
+    auto* cooldown_spin = new QSpinBox();
+    cooldown_spin->setRange(0, 1440);
+    cooldown_spin->setSuffix(qstr(core::loc("Sudoku", " minutes")));
+    cooldown_spin->setValue(limit_settings.session_cooldown_minutes);
+    cooldown_spin->setEnabled(limit_settings.enable_session_limit);
+    limits_form->addRow(qstr(core::loc("Sudoku", "Break before a new session:")), cooldown_spin);
+
+    auto* daily_limit_cb = new QCheckBox(qstr(core::loc("Sudoku", "Limit time per day")));
+    daily_limit_cb->setChecked(limit_settings.enable_daily_limit);
+    limits_form->addRow(daily_limit_cb);
+
+    auto* daily_minutes_spin = new QSpinBox();
+    daily_minutes_spin->setRange(1, 1440);
+    daily_minutes_spin->setSuffix(qstr(core::loc("Sudoku", " minutes")));
+    daily_minutes_spin->setValue(limit_settings.max_daily_minutes > 0 ? limit_settings.max_daily_minutes : 60);
+    daily_minutes_spin->setEnabled(limit_settings.enable_daily_limit);
+    limits_form->addRow(qstr(core::loc("Sudoku", "Daily limit:")), daily_minutes_spin);
+
+    auto* warn_before_spin = new QSpinBox();
+    warn_before_spin->setRange(0, 1440);
+    warn_before_spin->setSuffix(qstr(core::loc("Sudoku", " minutes")));
+    warn_before_spin->setValue(limit_settings.warn_before_minutes);
+    limits_form->addRow(qstr(core::loc("Sudoku", "Warn me before the limit:")), warn_before_spin);
+
+    limits_layout->addLayout(limits_form);
+    limits_layout->addStretch();
+    tabs->addTab(limits_page, qstr(core::loc("Sudoku", "Time Limits")));
+
     // === Dialog layout ===
     auto* main_layout = new QVBoxLayout(dialog);
     main_layout->addWidget(tabs);
@@ -1806,6 +1927,34 @@ void MainWindow::showSettingsDialog() {
 
     connectCheckBox(coaching_hints_cb,
                     [this](bool checked) { settings_manager_->setExperimentalCoachingHints(checked); });
+
+    // Time Limits tab — checkboxes gate their spinboxes; enabling a limit commits the spinbox
+    // value so an enabled limit is never left at the "0 == unlimited" state.
+    connectCheckBox(session_limit_cb, [this, session_minutes_spin, cooldown_spin](bool checked) {
+        settings_manager_->setEnableSessionLimit(checked);
+        session_minutes_spin->setEnabled(checked);
+        cooldown_spin->setEnabled(checked);
+        if (checked) {
+            settings_manager_->setMaxSessionMinutes(session_minutes_spin->value());
+        }
+    });
+    connect(session_minutes_spin, &QSpinBox::valueChanged, this,
+            [this](int v) { settings_manager_->setMaxSessionMinutes(v); });
+    connect(cooldown_spin, &QSpinBox::valueChanged, this,
+            [this](int v) { settings_manager_->setSessionCooldownMinutes(v); });
+
+    connectCheckBox(daily_limit_cb, [this, daily_minutes_spin](bool checked) {
+        settings_manager_->setEnableDailyLimit(checked);
+        daily_minutes_spin->setEnabled(checked);
+        if (checked) {
+            settings_manager_->setMaxDailyMinutes(daily_minutes_spin->value());
+        }
+    });
+    connect(daily_minutes_spin, &QSpinBox::valueChanged, this,
+            [this](int v) { settings_manager_->setMaxDailyMinutes(v); });
+
+    connect(warn_before_spin, &QSpinBox::valueChanged, this,
+            [this](int v) { settings_manager_->setWarnBeforeMinutes(v); });
 
     dialog->exec();
 }

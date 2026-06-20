@@ -36,6 +36,17 @@ struct Settings {
     bool collect_detailed_stats{false};
     bool encrypt_detailed_stats{true};
 
+    // Time limits (all off / unlimited by default — strictly opt-in). The app warns once
+    // and then saves-and-closes when an active limit is reached; a restart cannot hand back
+    // used-up time (see PlayTimeLedger). An *enabled* limit with a 0 minute count is treated
+    // as unlimited — there is exactly one "off" state (the flag plus a >0 count).
+    bool enable_session_limit{false};
+    int max_session_minutes{0};        // active-play minutes in one continuous session
+    int session_cooldown_minutes{15};  // mandatory break before a new session may start
+    bool enable_daily_limit{false};
+    int max_daily_minutes{0};    // cumulative active-play minutes per calendar day
+    int warn_before_minutes{5};  // lead time for the pre-limit warning; clamped <= smallest active limit
+
     // Language
     std::string language{"en"};
 

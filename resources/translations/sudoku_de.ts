@@ -450,6 +450,18 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Fertig</translation>
     </message>
     <message>
+        <source>You have about {0} minutes left in this session. The game will save and close when the time is up.</source>
+        <translation>Du hast noch etwa {0} Minuten in dieser Sitzung. Das Spiel wird gespeichert und geschlossen, wenn die Zeit abgelaufen ist.</translation>
+    </message>
+    <message>
+        <source>You have about {0} minutes left today. The game will save and close when the time is up.</source>
+        <translation>Du hast heute noch etwa {0} Minuten. Das Spiel wird gespeichert und geschlossen, wenn die Zeit abgelaufen ist.</translation>
+    </message>
+    <message>
+        <source>Time&apos;s up — saving and closing.</source>
+        <translation>Die Zeit ist um – wird gespeichert und geschlossen.</translation>
+    </message>
+    <message>
         <source>Import Custom Puzzle</source>
         <translation>Eigenes Rätsel importieren</translation>
     </message>
@@ -710,6 +722,42 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Experimental</source>
         <translation>Experimentell</translation>
+    </message>
+    <message>
+        <source>Limit how long you play. The app warns you, then saves and closes when the time is up. Closing and reopening the app won&apos;t reset your daily time or skip a break.</source>
+        <translation>Begrenze, wie lange du spielst. Die App warnt dich und speichert und schließt dann, wenn die Zeit abgelaufen ist. Das Schließen und erneute Öffnen der App setzt deine Tageszeit nicht zurück und überspringt keine Pause.</translation>
+    </message>
+    <message>
+        <source>Limit time per session</source>
+        <translation>Zeit pro Sitzung begrenzen</translation>
+    </message>
+    <message>
+        <source> minutes</source>
+        <translation> Minuten</translation>
+    </message>
+    <message>
+        <source>Session limit:</source>
+        <translation>Sitzungslimit:</translation>
+    </message>
+    <message>
+        <source>Break before a new session:</source>
+        <translation>Pause vor einer neuen Sitzung:</translation>
+    </message>
+    <message>
+        <source>Limit time per day</source>
+        <translation>Zeit pro Tag begrenzen</translation>
+    </message>
+    <message>
+        <source>Daily limit:</source>
+        <translation>Tageslimit:</translation>
+    </message>
+    <message>
+        <source>Warn me before the limit:</source>
+        <translation>Vor dem Limit warnen:</translation>
+    </message>
+    <message>
+        <source>Time Limits</source>
+        <translation>Zeitlimits</translation>
     </message>
     <message>
         <source>Disabling session tracking will stop recording per-game statistics. Would you like to delete existing session history?</source>
@@ -2206,6 +2254,18 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>color</source>
         <translation>Farbe</translation>
+    </message>
+    <message>
+        <source>Time Limit</source>
+        <translation>Zeitlimit</translation>
+    </message>
+    <message>
+        <source>Daily play limit reached. Come back tomorrow.</source>
+        <translation>Tägliches Spiellimit erreicht. Komm morgen wieder.</translation>
+    </message>
+    <message>
+        <source>You&apos;re on a break. Sudoku will be available again in about {0} minutes.</source>
+        <translation>Du machst gerade eine Pause. Sudoku ist in etwa {0} Minuten wieder verfügbar.</translation>
     </message>
 </context>
 </TS>
