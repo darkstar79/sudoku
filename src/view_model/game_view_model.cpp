@@ -195,26 +195,36 @@ void GameViewModel::loadGame(const std::string& save_id) {
 }
 
 void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
-    // Detect corrupted saves: if original_puzzle == current_state but the game had any
-    // progress indicators, the save was created by a bug that marked all cells as given.
-    // Note: the old bug also prevented number entry and timer start, so move_history and
-    // elapsed_time may both be empty/zero. Check notes as an additional progress indicator.
-    bool has_any_notes = !saved_game.notes.empty();
-    if (saved_game.original_puzzle == saved_game.current_state && (!saved_game.move_history.empty() || has_any_notes)) {
-        spdlog::warn("Corrupted auto-save detected (original_puzzle == current_state with game progress), "
-                     "starting new game instead");
-        startNewGame(saved_game.difficulty);
-        return;
-    }
+    // Corruption heuristics below key off move_history (emptiness / presence) as a corruption tell.
+    // That signal is only valid for MANUAL saves, which persist the full forward log. Auto-saves are
+    // deliberately written WITHOUT history (SaveManager::autoSave sets include_history = false), so an
+    // empty move_history is their normal state and says nothing about integrity. Applying these
+    // guards to auto-saves discards every in-progress auto-save and breaks resume-on-restart entirely
+    // (Story 6.5). Gate both checks on !is_auto_save so manual-save protection is preserved while
+    // auto-saves with real progress resume.
+    if (!saved_game.is_auto_save) {
+        // Detect corrupted saves: if original_puzzle == current_state but the game had any
+        // progress indicators, the save was created by a bug that marked all cells as given.
+        // Note: the old bug also prevented number entry and timer start, so move_history and
+        // elapsed_time may both be empty/zero. Check notes as an additional progress indicator.
+        bool has_any_notes = !saved_game.notes.empty();
+        if (saved_game.original_puzzle == saved_game.current_state &&
+            (!saved_game.move_history.empty() || has_any_notes)) {
+            spdlog::warn("Corrupted save detected (original_puzzle == current_state with game progress), "
+                         "starting new game instead");
+            startNewGame(saved_game.difficulty);
+            return;
+        }
 
-    // Detect phantom-value corruption: user values exist in current_state but move_history is empty.
-    // This happens when a bug placed values during startup without recording them as moves.
-    bool has_user_values = saved_game.original_puzzle != saved_game.current_state;
-    if (has_user_values && saved_game.move_history.empty()) {
-        spdlog::warn("Corrupted auto-save detected (user values present but empty move history), "
-                     "starting new game instead");
-        startNewGame(saved_game.difficulty);
-        return;
+        // Detect phantom-value corruption: user values exist in current_state but move_history is empty.
+        // This happens when a bug placed values during startup without recording them as moves.
+        bool has_user_values = saved_game.original_puzzle != saved_game.current_state;
+        if (has_user_values && saved_game.move_history.empty()) {
+            spdlog::warn("Corrupted save detected (user values present but empty move history), "
+                         "starting new game instead");
+            startNewGame(saved_game.difficulty);
+            return;
+        }
     }
 
     // Create a GameState from the saved game
