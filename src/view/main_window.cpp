@@ -48,7 +48,6 @@
 #include <QApplication>
 #include <QCheckBox>
 #include <QCloseEvent>
-#include <QColor>
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -65,7 +64,6 @@
 #include <QListWidget>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QPalette>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QStackedWidget>
@@ -109,21 +107,6 @@ namespace {
             return QString::fromStdString(core::loc("Sudoku", "Edit"));
     }
     return {};
-}
-
-// Pin an explicit, static dark text color on a bare chrome widget so it stays legible on the
-// already-forced-light chrome even when the OS palette is dark (story 6-6a). The chrome
-// backgrounds are light in BOTH OS schemes, so one static color is correct in both — this is
-// deliberately NOT scheme detection and NOT an app-level palette force (those are 6-6b). It sets
-// the widget's own palette foreground roles so the resolved color no longer inherits the OS
-// palette's near-white. WindowText covers QLabels, ButtonText the flat rating button, and Text
-// the difficulty combo.
-void pinChromeTextColor(QWidget* widget, const QColor& color) {
-    QPalette palette = widget->palette();
-    palette.setColor(QPalette::WindowText, color);
-    palette.setColor(QPalette::ButtonText, color);
-    palette.setColor(QPalette::Text, color);
-    widget->setPalette(palette);
 }
 
 }  // namespace
@@ -474,9 +457,16 @@ void MainWindow::setupHelpMenu() {
 void MainWindow::setupToolBar() {
     auto* toolbar = addToolBar("Main");
     toolbar->setMovable(false);
+    // Static dark text on the forced-light toolbar so chrome text stays legible in dark mode
+    // (story 6-6a). One mechanism — a scoped stylesheet color, mirroring how the status bar colors
+    // its labels below — covers the toolbar's text widgets (labels, the difficulty combo, the
+    // "Done Editing" QToolButton). The blue hints badge and the rating link set their own color: in
+    // their own stylesheets and win over this ancestor rule. The background is forced light in BOTH
+    // OS schemes, so one static color is correct in both (scheme-aware theming is story 6-6b).
     toolbar->setStyleSheet(QString("QToolBar { background-color: %1; border-bottom: 1px solid %2; "
-                                   "padding: 4px; spacing: 8px; }")
-                               .arg(StyleColors::SURFACE, StyleColors::DIVIDER));
+                                   "padding: 4px; spacing: 8px; }"
+                                   "QToolBar QLabel, QToolBar QComboBox, QToolBar QToolButton { color: %3; }")
+                               .arg(StyleColors::SURFACE, StyleColors::DIVIDER, StyleColors::TEXT_NEAR_BLACK));
 
     new_game_btn_ = new QPushButton(qstr(core::loc("Sudoku", "▶ New Game")));
     new_game_btn_->setStyleSheet(
@@ -490,15 +480,11 @@ void MainWindow::setupToolBar() {
 
     difficulty_label_ = new QLabel(QString(" %1 ").arg(qstr(core::loc("Sudoku", "Difficulty:"))));
     difficulty_label_->setObjectName("difficultyLabel");
-    pinChromeTextColor(difficulty_label_, QColor(StyleColors::TEXT_NEAR_BLACK));
     toolbar->addWidget(difficulty_label_);
     difficulty_combo_ = new QComboBox;
     difficulty_combo_->setObjectName("difficultyCombo");
-    // QComboBox is palette-fussier than a label; also pin the resting text via stylesheet so the
-    // displayed selection is legible on native styles. The dropdown popup intentionally stays in
-    // the OS scheme (unified by 6-6b).
-    pinChromeTextColor(difficulty_combo_, QColor(StyleColors::TEXT_NEAR_BLACK));
-    difficulty_combo_->setStyleSheet(QString("QComboBox { color: %1; }").arg(StyleColors::TEXT_NEAR_BLACK));
+    // Resting text colored dark by the scoped QToolBar QComboBox rule above. The dropdown popup
+    // intentionally stays in the OS scheme (unified by 6-6b).
     difficulty_combo_->addItems({qstr(core::loc("Sudoku", "Easy")), qstr(core::loc("Sudoku", "Medium")),
                                  qstr(core::loc("Sudoku", "Hard")), qstr(core::loc("Sudoku", "Expert")),
                                  qstr(core::loc("Sudoku", "Master"))});
@@ -531,7 +517,6 @@ void MainWindow::setupToolBar() {
 
     hints_text_label_ = new QLabel(QString(" %1 ").arg(qstr(core::loc("Sudoku", "Hints:"))));
     hints_text_label_->setObjectName("hintsTextLabel");
-    pinChromeTextColor(hints_text_label_, QColor(StyleColors::TEXT_NEAR_BLACK));
     toolbar->addWidget(hints_text_label_);
     hints_label_ = new QLabel("10");
     hints_label_->setObjectName("hintsBadgeLabel");
@@ -545,7 +530,8 @@ void MainWindow::setupToolBar() {
     rating_btn_->setObjectName("ratingButton");
     rating_btn_->setFlat(true);
     rating_btn_->setCursor(Qt::PointingHandCursor);
-    pinChromeTextColor(rating_btn_, QColor(StyleColors::TEXT_NEAR_BLACK));
+    // The flat rating link carries its own stylesheet (border/underline/hover), so its dark resting
+    // color lives here rather than in the toolbar rule (a widget's own stylesheet wins).
     rating_btn_->setStyleSheet(
         QString("QPushButton { border: none; padding: 2px 8px; text-decoration: underline; color: %1; }"
                 "QPushButton:hover { color: %2; }")
@@ -559,22 +545,20 @@ void MainWindow::setupToolBar() {
     done_editing_action_ =
         toolbar->addAction(qstr(core::loc("Sudoku", "Done Editing")), this, &MainWindow::commitEditedPuzzle);
     done_editing_action_->setVisible(false);
-    // The action renders as a QToolButton on the same forced-light toolbar — pin its text dark so it
-    // stays legible in dark mode while editing a custom puzzle (it is always-visible chrome then).
+    // Rendered as a QToolButton on the same forced-light toolbar — always-visible chrome while editing
+    // a custom puzzle. Its text is colored dark by the scoped QToolBar QToolButton rule above; the
+    // objectName lets the legibility test confirm it's a toolbutton the rule covers.
     if (auto* done_editing_button = toolbar->widgetForAction(done_editing_action_)) {
         done_editing_button->setObjectName("doneEditingButton");
-        pinChromeTextColor(done_editing_button, QColor(StyleColors::TEXT_NEAR_BLACK));
     }
 }
 
 void MainWindow::setupStatusBar() {
     timer_label_ = new QLabel();
     timer_label_->setObjectName("timerLabel");
-    pinChromeTextColor(timer_label_, QColor(StyleColors::TEXT_MUTED));
     statusBar()->addWidget(timer_label_);
     status_label_ = new QLabel(qstr(core::loc("Sudoku", "Ready")));
     status_label_->setObjectName("statusLabel");
-    pinChromeTextColor(status_label_, QColor(StyleColors::TEXT_MUTED));
     statusBar()->addWidget(status_label_, 1);
 
     // Always-visible keyboard micro-hint (e.g. "Ctrl=value · Shift=pencil · Alt=color").
@@ -583,7 +567,6 @@ void MainWindow::setupStatusBar() {
     // optional session timer added just below.
     modifier_hint_label_ = new QLabel(modifierHintText());
     modifier_hint_label_->setObjectName("modifierHintLabel");
-    pinChromeTextColor(modifier_hint_label_, QColor(StyleColors::TEXT_MUTED));
     statusBar()->addPermanentWidget(modifier_hint_label_);
 
     // Right-side session timer (wall-clock since app launch). Toggled by
@@ -593,10 +576,12 @@ void MainWindow::setupStatusBar() {
     // flag; objectName lets UI tests find it without layout heuristics.
     session_time_label_ = new QLabel();
     session_time_label_->setObjectName("sessionTimerLabel");
-    pinChromeTextColor(session_time_label_, QColor(StyleColors::TEXT_MUTED));
     statusBar()->addPermanentWidget(session_time_label_);
     session_time_label_->setVisible(false);
 
+    // The QStatusBar `color` cascades to all child labels — the single mechanism for the status-bar
+    // text, mirroring the toolbar's scoped color rule (story 6-6a). Forced-light background in both
+    // OS schemes, so the muted dark text stays legible in dark mode.
     statusBar()->setStyleSheet(QString("QStatusBar { background-color: %1; border-top: 1px solid %2; color: %3; }")
                                    .arg(StyleColors::SURFACE_STATUS, StyleColors::DIVIDER, StyleColors::TEXT_MUTED));
 
