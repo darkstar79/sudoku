@@ -148,6 +148,54 @@ std::shared_ptr<sudoku::viewmodel::GameViewModel> createViewModel() {
                                                               settings_manager, analyzer, clipboard);
 }
 
+// Configure the multi-sink logger (console + truncated debug log file) and return the resolved
+// log-file path. In sandboxed environments (Flatpak) the executable directory is read-only, so the
+// log goes to the data directory; we detect that by absence of bundled translations next to the exe.
+std::string setupLogging() {
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
+    auto log_path = exe_dir / "sudoku_debug.log";
+    if (!std::filesystem::exists(exe_dir / "translations")) {
+        auto log_dir = sudoku::infrastructure::AppDirectoryManager::getDefaultDirectory(
+            sudoku::infrastructure::DirectoryType::Logs);
+        std::filesystem::create_directories(log_dir);
+        log_path = log_dir / "sudoku_debug.log";
+    }
+    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path.string(), true);  // truncate=true
+    auto logger = std::make_shared<spdlog::logger>("sudoku", spdlog::sinks_init_list{console_sink, file_sink});
+    logger->set_level(spdlog::level::debug);
+    logger->flush_on(spdlog::level::debug);
+    spdlog::set_default_logger(logger);
+    return log_path.string();
+}
+
+// Launch gate (Story 6.7): restart-proofing. Decide from the persisted ledger BEFORE any game is
+// loaded, dirtied, or shown. Returns true if the launch is blocked (caller should clear + exit).
+// Must be called AFTER setSettingsManager so the translator is installed and these dialogs render in
+// the user's locale. Daily exhaustion wins over an active cooldown (the longer wait).
+[[nodiscard]] bool isLaunchBlocked(QWidget& parent, const sudoku::core::ISettingsManager& settings_manager,
+                                   const sudoku::core::IPlayTimeLedger& play_time_ledger) {
+    const auto& s = settings_manager.getSettings();
+    const auto launch = sudoku::core::decide(s, play_time_ledger.accruedToday(),
+                                             play_time_ledger.cooldownRemaining(s.session_cooldown_minutes));
+    if (launch.action == sudoku::core::LaunchAction::BlockedDailyExhausted) {
+        QMessageBox::information(
+            &parent, QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
+            QString::fromStdString(sudoku::core::loc("Sudoku", "Daily play limit reached. Come back tomorrow.")));
+        return true;
+    }
+    if (launch.action == sudoku::core::LaunchAction::BlockedCooldown) {
+        QMessageBox::information(
+            &parent, QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
+            QString::fromStdString(sudoku::core::locFormat(
+                sudoku::core::loc("Sudoku", "You're on a break. Sudoku will be available again in about "
+                                            "{0} minutes."),
+                launch.minutes_remaining)));
+        return true;
+    }
+    return false;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -157,25 +205,10 @@ int main(int argc, char* argv[]) {
         QApplication::setApplicationVersion(sudoku::kAppVersion);
 
         // Setup multi-sink logger: console + debug log file (truncated each launch)
-        auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-        auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
-        auto log_path = exe_dir / "sudoku_debug.log";
-        // In sandboxed environments (Flatpak), exe_dir is read-only; use data directory instead.
-        // We detect by absence of writable bundled translations next to the executable.
-        if (!std::filesystem::exists(exe_dir / "translations")) {
-            auto log_dir = sudoku::infrastructure::AppDirectoryManager::getDefaultDirectory(
-                sudoku::infrastructure::DirectoryType::Logs);
-            std::filesystem::create_directories(log_dir);
-            log_path = log_dir / "sudoku_debug.log";
-        }
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path.string(), true);  // truncate=true
-        auto logger = std::make_shared<spdlog::logger>("sudoku", spdlog::sinks_init_list{console_sink, file_sink});
-        logger->set_level(spdlog::level::debug);
-        logger->flush_on(spdlog::level::debug);
-        spdlog::set_default_logger(logger);
+        const auto log_path = setupLogging();
 
         spdlog::info("Starting Sudoku application with Qt6 + MVVM architecture...");
-        spdlog::info("Debug log: {}", log_path.string());
+        spdlog::info("Debug log: {}", log_path);
 
         setupDependencies();
 
@@ -198,32 +231,11 @@ int main(int argc, char* argv[]) {
         main_window.setPlayLimitController(
             std::make_shared<sudoku::viewmodel::PlayLimitController>(settings_manager, play_time_ledger));
 
-        // Launch gate (Story 6.7): restart-proofing. Decide from the persisted ledger BEFORE any game
-        // is loaded, dirtied, or shown — a blocked launch returns before restore/startNewGame/show().
-        // Placed AFTER setSettingsManager so the translator is installed and the blocked-launch dialogs
-        // render in the user's locale. Daily exhaustion wins over an active cooldown (the longer wait).
-        {
-            const auto& s = settings_manager->getSettings();
-            const auto launch = sudoku::core::decide(s, play_time_ledger->accruedToday(),
-                                                     play_time_ledger->cooldownRemaining(s.session_cooldown_minutes));
-            if (launch.action == sudoku::core::LaunchAction::BlockedDailyExhausted) {
-                QMessageBox::information(&main_window,
-                                         QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
-                                         QString::fromStdString(sudoku::core::loc(
-                                             "Sudoku", "Daily play limit reached. Come back tomorrow.")));
-                sudoku::core::getContainer().clear();
-                return 0;
-            }
-            if (launch.action == sudoku::core::LaunchAction::BlockedCooldown) {
-                QMessageBox::information(
-                    &main_window, QString::fromStdString(sudoku::core::loc("Sudoku", "Time Limit")),
-                    QString::fromStdString(sudoku::core::locFormat(
-                        sudoku::core::loc("Sudoku", "You're on a break. Sudoku will be available again in about "
-                                                    "{0} minutes."),
-                        launch.minutes_remaining)));
-                sudoku::core::getContainer().clear();
-                return 0;
-            }
+        // Launch gate (Story 6.7): restart-proofing. A blocked launch returns before any game is
+        // loaded, dirtied, or shown (restore/startNewGame/show()). See isLaunchBlocked() for details.
+        if (isLaunchBlocked(main_window, *settings_manager, *play_time_ledger)) {
+            sudoku::core::getContainer().clear();
+            return 0;
         }
 
         // Try to load auto-save, otherwise start new game
