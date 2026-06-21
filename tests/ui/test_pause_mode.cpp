@@ -64,15 +64,19 @@ QPoint TestPauseMode::cellCenter(size_t row, size_t col) const {
     auto* board = window_->board_widget_;
     float cell_sz = board->cellSize();
     QPointF origin = board->boardOrigin();
-    int x = static_cast<int>(origin.x() + (static_cast<float>(col) + 0.5F) * cell_sz);
-    int y = static_cast<int>(origin.y() + (static_cast<float>(row) + 0.5F) * cell_sz);
+    int x = static_cast<int>(origin.x() + ((static_cast<float>(col) + 0.5F) * cell_sz));
+    int y = static_cast<int>(origin.y() + ((static_cast<float>(row) + 0.5F) * cell_sz));
     return {x, y};
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — flat QVERIFY/QCOMPARE sequence, no logic
 void TestPauseMode::pauseButtonTogglesPauseState() {
     freshRunningGame();
     auto* btn = window_->pause_btn_;
     QVERIFY(btn != nullptr);
+    if (btn == nullptr) {
+        return;  // clang-analyzer: QVERIFY doesn't abort in its view, so guard the deref explicitly
+    }
     QVERIFY(btn->isEnabled());
     const QString running_label = btn->text();
 

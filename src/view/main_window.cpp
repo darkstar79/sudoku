@@ -902,14 +902,21 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         return;
     }
 
-    // While paused the board is hidden and gameplay keys are inert (story 6.8 AC #4). Resume is
-    // the window-scoped P shortcut (processed before this handler) or a click on the overlay, so
-    // we simply swallow everything else here.
-    if (view_model_->canExecuteCommand(viewmodel::GameCommand::ResumeGame)) {
+    int key = event->key();
+
+    // F1 toggles the menu bar — window chrome, kept reachable even while paused so the menu stays
+    // usable behind the pause overlay (story 6.8 review).
+    if (key == Qt::Key_F1) {
+        menuBar()->setVisible(!menuBar()->isVisible());
         return;
     }
 
-    int key = event->key();
+    // While paused the board is hidden and gameplay keys are inert (story 6.8 AC #4). Resume is the
+    // window-scoped P shortcut (processed before this handler) or a click on the overlay; swallow
+    // the rest. F1 is handled above so the menu bar stays reachable.
+    if (view_model_->canExecuteCommand(viewmodel::GameCommand::ResumeGame)) {
+        return;
+    }
 
     // Escape dismisses coaching hints
     if (key == Qt::Key_Escape && view_model_->isCoachingActive()) {
@@ -973,12 +980,6 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
     // Ctrl+Shift+Z = undo to last valid
     if (key == Qt::Key_Z && event->modifiers() == (Qt::ControlModifier | Qt::ShiftModifier)) {
         view_model_->undoToLastValid();
-        return;
-    }
-
-    // F1 toggle menu
-    if (key == Qt::Key_F1) {
-        menuBar()->setVisible(!menuBar()->isVisible());
         return;
     }
 

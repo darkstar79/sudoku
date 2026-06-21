@@ -83,6 +83,13 @@ public:
     }
     void setComplete(bool complete);
 
+    /// True once a puzzle is loaded (has at least one given). Unlike hasSolution(), this holds for
+    /// games restored from a save and for custom-puzzle edit mode, neither of which sets a
+    /// solution_board_ — so it is the right "a game is in progress" signal for save/pause/resume.
+    [[nodiscard]] bool hasPuzzle() const {
+        return !givens_.empty();
+    }
+
     // Time tracking
     [[nodiscard]] std::chrono::milliseconds getElapsedTime() const;
     void startTimer();

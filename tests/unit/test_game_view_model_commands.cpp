@@ -307,6 +307,39 @@ TEST_CASE("GameViewModel - Pause/Resume command toggles is_paused", "[game_view_
     REQUIRE(!fixture.view_model->canExecuteCommand(GameCommand::ResumeGame));
 }
 
+// Story 6.8 review (H1): a loaded save and a custom-puzzle (edit) game carry NO solution_board_
+// (restoreGameState/loadPuzzle never set one), so gating Resume on hasSolution() left pause frozen
+// and the control disabled for the common "load a save then pause" path. Pause/Resume must work for
+// any loaded, incomplete game — gate on hasPuzzle(), not hasSolution().
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("GameViewModel - Pause/Resume works for a loaded game with no solution board",
+          "[game_view_model][commands][pause]") {
+    CommandTestFixture fixture;
+
+    // Restore a game the way a loaded save / auto-resume does: loadPuzzle only, no setSolution.
+    SavedGame saved;
+    saved.original_puzzle = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
+                             {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
+                             {0, 6, 0, 0, 0, 0, 2, 8, 0}, {0, 0, 0, 4, 1, 9, 0, 0, 5}, {0, 0, 0, 0, 8, 0, 0, 7, 9}};
+    saved.current_state = saved.original_puzzle;
+    saved.current_state[0][2] = 4;  // a user-placed digit so the resume restores real progress
+    saved.difficulty = Difficulty::Medium;
+    saved.is_auto_save = true;  // accepted by the 6-5 corruption guards
+    fixture.view_model->restoreGameState(saved);
+
+    REQUIRE(!fixture.view_model->gameState.get().hasSolution());  // the precondition trap this pins
+    REQUIRE(fixture.view_model->gameState.get().hasPuzzle());
+    REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::PauseGame));
+
+    fixture.view_model->executeCommand(GameCommand::PauseGame);
+    REQUIRE(fixture.view_model->uiState.get().is_paused);
+    REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::ResumeGame));  // was false → button dead
+
+    fixture.view_model->executeCommand(GameCommand::ResumeGame);
+    REQUIRE(!fixture.view_model->uiState.get().is_paused);  // resumeGame() actually resumed
+    REQUIRE(fixture.view_model->isGameActive());
+}
+
 TEST_CASE("GameViewModel - Command preconditions", "[game_view_model][commands]") {
     CommandTestFixture fixture;
 

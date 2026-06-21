@@ -122,7 +122,9 @@ bool GameViewModel::canExecuteCommand(GameCommand command) const {
         case GameCommand::PauseGame:
             return isGameActive();
         case GameCommand::ResumeGame:
-            return game_exists && isGamePaused() && !isGameComplete();
+            // hasPuzzle(), not game_exists/hasSolution(): a loaded save or a custom-puzzle edit
+            // game has no solution_board_ but is still pausable/resumable (story 6.8 review H1).
+            return state.hasPuzzle() && isGamePaused() && !isGameComplete();
         case GameCommand::ResetGame:
         case GameCommand::ClearNotes:
             return isGameActive();
@@ -147,7 +149,8 @@ void GameViewModel::pauseGame() {
 
 void GameViewModel::resumeGame() {
     const auto& state = gameState.get();
-    if (!state.hasSolution() || state.isComplete() || state.isTimerRunning()) {
+    // hasPuzzle(), not hasSolution(): restored/edit games carry no solution but must still resume.
+    if (!state.hasPuzzle() || state.isComplete() || state.isTimerRunning()) {
         return;
     }
     gameState.update([](model::GameState& s) { s.resumeTimer(); });
