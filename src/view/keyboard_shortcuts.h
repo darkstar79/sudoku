@@ -38,6 +38,7 @@ enum class ShortcutAction : std::uint8_t {
     ClearValue,        ///< Ctrl + 0/Delete — clear the value
     ClearColor,        ///< Alt + 0/Delete — clear the color
     ClearPencilMarks,  ///< Shift + Delete — clear all pencil marks
+    Pause,             ///< P — pause/resume: stop the timer and hide the board (story 6.8)
 };
 
 /// One row of the keyboard map. This struct, returned by keyboardShortcuts(), is the

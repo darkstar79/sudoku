@@ -65,6 +65,7 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QShortcut>
 #include <QSpinBox>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -224,12 +225,15 @@ void MainWindow::setupButtonPanel(QVBoxLayout* game_layout) {
     auto_notes_btn_->setCheckable(true);
     mode_btn_ = new QPushButton(modeButtonText(viewmodel::InputMode::Normal));
     mode_btn_->setToolTip(qstr(core::loc("Sudoku", "Input mode — Space cycles Normal → Notes → Color")));
+    pause_btn_ = new QPushButton(qstr(core::loc("Sudoku", "Pause")));
+    pause_btn_->setToolTip(qstr(core::loc("Sudoku", "Pause — stop the timer and hide the board (P)")));
 
     undo_btn_->setStyleSheet(BTN_STYLE);
     redo_btn_->setStyleSheet(BTN_STYLE);
     undo_valid_btn_->setStyleSheet(BTN_STYLE);
     auto_notes_btn_->setStyleSheet(BTN_STYLE);
     mode_btn_->setStyleSheet(BTN_STYLE);
+    pause_btn_->setStyleSheet(BTN_STYLE);
 
     button_layout->addStretch();
     button_layout->addWidget(mode_btn_);
@@ -237,6 +241,7 @@ void MainWindow::setupButtonPanel(QVBoxLayout* game_layout) {
     button_layout->addWidget(redo_btn_);
     button_layout->addWidget(undo_valid_btn_);
     button_layout->addWidget(auto_notes_btn_);
+    button_layout->addWidget(pause_btn_);
     button_layout->addStretch();
 
     game_layout->addWidget(button_panel);
@@ -269,6 +274,12 @@ void MainWindow::setupButtonPanel(QVBoxLayout* game_layout) {
             updateButtonPanel();
         }
     });
+    connect(pause_btn_, &QPushButton::clicked, this, &MainWindow::togglePause);
+
+    // Window-scoped P shortcut so Pause works regardless of board focus, yet stays inert while a
+    // modal text dialog (e.g. the save-name prompt) owns input — those run in their own window.
+    auto* pause_shortcut = new QShortcut(QKeySequence(Qt::Key_P), this);
+    connect(pause_shortcut, &QShortcut::activated, this, &MainWindow::togglePause);
 }
 
 void MainWindow::setupCentralWidget() {
@@ -277,6 +288,9 @@ void MainWindow::setupCentralWidget() {
     board_widget_ = new SudokuBoardWidget({.max_size = 720.0F, .min_size = 450.0F, .padding = 40.0F});
     training_widget_ = new TrainingWidget;
     toast_widget_ = new ToastWidget(this);
+
+    // A click on the paused board overlay resumes (story 6.8).
+    connect(board_widget_, &SudokuBoardWidget::resumeRequested, this, &MainWindow::togglePause);
 
     setupCoachingPanel();
 
@@ -633,6 +647,11 @@ void MainWindow::setViewModel(std::shared_ptr<viewmodel::GameViewModel> view_mod
         observer_.observe(view_model_->coachingState,
                           [this](const viewmodel::CoachingState& coaching) { onCoachingStateChanged(coaching); });
 
+        // observe() does not fire on subscribe, so sync the control states once now — otherwise
+        // the Pause/Undo/... buttons keep their default-enabled look until the first state change
+        // (Pause must read disabled with no game loaded — story 6.8 AC #6).
+        updateButtonPanel();
+
         spdlog::debug("ViewModel bound to MainWindow");
     }
 }
@@ -883,6 +902,13 @@ void MainWindow::keyPressEvent(QKeyEvent* event) {
         return;
     }
 
+    // While paused the board is hidden and gameplay keys are inert (story 6.8 AC #4). Resume is
+    // the window-scoped P shortcut (processed before this handler) or a click on the overlay, so
+    // we simply swallow everything else here.
+    if (view_model_->canExecuteCommand(viewmodel::GameCommand::ResumeGame)) {
+        return;
+    }
+
     int key = event->key();
 
     // Escape dismisses coaching hints
@@ -1034,6 +1060,26 @@ void MainWindow::updateButtonPanel() {
     auto_notes_btn_->setChecked(ui.notes_filled);
     auto_notes_btn_->setText(ui.notes_filled ? qstr(core::loc("Sudoku", "Clear Notes"))
                                              : qstr(core::loc("Sudoku", "Fill Notes")));
+
+    // Pause control + board overlay. Drive off the command preconditions rather than the raw
+    // UIState::is_paused flag, which is `!timerRunning` and so is also true with no game loaded
+    // and on a completed puzzle — neither of which is a real pause.
+    const bool resumable = view_model_->canExecuteCommand(viewmodel::GameCommand::ResumeGame);
+    const bool pausable = view_model_->canExecuteCommand(viewmodel::GameCommand::PauseGame);
+    pause_btn_->setEnabled(resumable || pausable);
+    pause_btn_->setText(resumable ? qstr(core::loc("Sudoku", "Resume")) : qstr(core::loc("Sudoku", "Pause")));
+    board_widget_->setPaused(resumable);
+}
+
+void MainWindow::togglePause() {
+    if (!view_model_) {
+        return;
+    }
+    if (view_model_->canExecuteCommand(viewmodel::GameCommand::ResumeGame)) {
+        view_model_->executeCommand(viewmodel::GameCommand::ResumeGame);
+    } else if (view_model_->canExecuteCommand(viewmodel::GameCommand::PauseGame)) {
+        view_model_->executeCommand(viewmodel::GameCommand::PauseGame);
+    }
 }
 
 // Dialog methods

@@ -347,9 +347,15 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
 }
 
 void GameViewModel::autoSave() {
-    if (auto_save_enabled_ && isGameActive()) {
+    // Persist any in-progress game, including a paused one. isGameActive() is `timerRunning`, which
+    // is false while paused (story 6.8) — gating on it would silently drop the exit auto-save on a
+    // pause then close. "In progress" = a puzzle is loaded (has givens) and not complete; this also
+    // covers running games and is true for restored games (which carry no solution_board_). A
+    // completed game is skipped here and its auto-save is cleared elsewhere (story 6.9).
+    const auto& current_state = gameState.get();
+    const bool puzzle_loaded = current_state.extractGivenNumbers() != core::BoardData{};
+    if (auto_save_enabled_ && puzzle_loaded && !isGameComplete()) {
         core::SavedGame auto_save_game;
-        const auto& current_state = gameState.get();
         auto_save_game.original_puzzle = current_state.extractGivenNumbers();
         auto_save_game.current_state = current_state.extractNumbers();
         auto_save_game.difficulty = current_state.getDifficulty();

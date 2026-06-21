@@ -51,6 +51,7 @@ class TestKeyboardShortcuts : public QObject {
 private slots:
     void initTestCase();
     void sourceListCoversExpectedActions();
+    void pauseShortcutIsRegisteredOnP();
     void chordTextRendersNativeModifierAndDigitRange();
     void modifierHintNamesAllThreeModifiers();
     void buildShortcutsDialogIsPopulatedFromSourceList();
@@ -95,6 +96,21 @@ void TestKeyboardShortcuts::sourceListCoversExpectedActions() {
     QVERIFY(actions.contains(view::ShortcutAction::ClearValue) || actions.contains(view::ShortcutAction::ClearColor) ||
             actions.contains(view::ShortcutAction::ClearPencilMarks) ||
             actions.contains(view::ShortcutAction::ClearActiveLayer));
+}
+
+void TestKeyboardShortcuts::pauseShortcutIsRegisteredOnP() {
+    // Story 6.8: Pause is a first-class canonical binding (P) so it shows in the dialog + hint
+    // and reads back as a plain, un-modified P key.
+    const auto pause = entryFor(view::ShortcutAction::Pause);
+    QVERIFY(pause.has_value());
+    if (!pause.has_value()) {
+        return;
+    }
+    QCOMPARE(pause->modifiers, Qt::NoModifier);
+    QCOMPARE(pause->key, static_cast<int>(Qt::Key_P));
+    QVERIFY(!view::shortcutActionLabel(view::ShortcutAction::Pause).isEmpty());
+    QCOMPARE(view::shortcutChordText(pause.value()),
+             QKeySequence(QKeyCombination(Qt::NoModifier, Qt::Key_P)).toString(QKeySequence::NativeText));
 }
 
 void TestKeyboardShortcuts::chordTextRendersNativeModifierAndDigitRange() {

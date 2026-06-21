@@ -285,6 +285,28 @@ TEST_CASE("GameViewModel - Parameterized command dispatch", "[game_view_model][c
     }
 }
 
+// Story 6.8 AC #1: the View dispatches the existing Pause/Resume verbs and the control reflects
+// is_paused. Pin the executeCommand round-trip that the toolbar button + P shortcut drive.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("GameViewModel - Pause/Resume command toggles is_paused", "[game_view_model][commands][pause]") {
+    CommandTestFixture fixture;
+
+    fixture.view_model->startNewGame(Difficulty::Easy);
+    REQUIRE(!fixture.view_model->uiState.get().is_paused);
+    REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::PauseGame));
+    REQUIRE(!fixture.view_model->canExecuteCommand(GameCommand::ResumeGame));
+
+    fixture.view_model->executeCommand(GameCommand::PauseGame);
+    REQUIRE(fixture.view_model->uiState.get().is_paused);
+    REQUIRE(!fixture.view_model->canExecuteCommand(GameCommand::PauseGame));
+    REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::ResumeGame));
+
+    fixture.view_model->executeCommand(GameCommand::ResumeGame);
+    REQUIRE(!fixture.view_model->uiState.get().is_paused);
+    REQUIRE(fixture.view_model->canExecuteCommand(GameCommand::PauseGame));
+    REQUIRE(!fixture.view_model->canExecuteCommand(GameCommand::ResumeGame));
+}
+
 TEST_CASE("GameViewModel - Command preconditions", "[game_view_model][commands]") {
     CommandTestFixture fixture;
 

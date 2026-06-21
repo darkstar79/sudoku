@@ -18,6 +18,7 @@ set(UI_TEST_SOURCES
     test_session_timer.cpp
     test_color_utils.cpp
     test_chrome_legibility.cpp
+    test_pause_mode.cpp
 )
 
 foreach(TEST_SOURCE ${UI_TEST_SOURCES})
