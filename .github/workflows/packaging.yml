@@ -186,13 +186,22 @@ jobs:
     name: macOS DMG (Universal Binary)
     runs-on: macos-15
     timeout-minutes: 45
+    # macOS is out of scope for 1.0.0: there is no Apple Developer account, so
+    # the DMG cannot be code-signed/notarized and would only ship as an unsigned
+    # (Gatekeeper-hostile) image. Build it on demand only, and keep it OUT of the
+    # `release` job's `needs` so it never gates a tagged release.
+    # NOTE: the universal build below still needs work before it can be relied on
+    # — conanfile.py's layout() hardcodes build/Release/generators, so the
+    # per-arch `--output-folder=build/{arm64,x86_64}` does not place the Conan
+    # toolchain where the configure step looks for it. Fix that first.
+    if: github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Install Qt6
-        run: brew install qt
+      - name: Install Qt6 and Ninja
+        run: brew install qt ninja
 
       - name: Set QT6_DIR
         run: echo "QT6_DIR=$(brew --prefix qt)/lib/cmake/Qt6" >> "$GITHUB_ENV"
@@ -280,7 +289,9 @@ jobs:
     name: Upload Release Assets
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
-    needs: [flatpak, appimage, installer, dmg]
+    # macOS DMG intentionally excluded — it is gated to workflow_dispatch only
+    # (see the dmg job) and is not part of a tagged release.
+    needs: [flatpak, appimage, installer]
     permissions:
       contents: write
 
@@ -293,8 +304,11 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # Pre-release tags carry a hyphen (e.g. v1.0.0-rc1); final tags
+          # (v1.0.0) do not. Mark RCs as pre-release and keep them off "latest".
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ !contains(github.ref_name, '-') }}
           files: |
             Sudoku-*.flatpak
             Sudoku-*.AppImage
             Sudoku-*-win64.exe
-            Sudoku-*-macOS.dmg
