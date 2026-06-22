@@ -91,6 +91,11 @@ std::vector<ShortcutEntry> keyboardShortcuts() {
          .key = Qt::Key_Delete,
          .digit_family = false,
          .digit_max = 0},
+        {.action = ShortcutAction::Pause,
+         .modifiers = Qt::NoModifier,
+         .key = Qt::Key_P,
+         .digit_family = false,
+         .digit_max = 0},
     };
 }
 
@@ -115,6 +120,8 @@ QString shortcutActionLabel(ShortcutAction action) {
             return QString::fromStdString(core::loc("Sudoku", "Clear the color"));
         case ShortcutAction::ClearPencilMarks:
             return QString::fromStdString(core::loc("Sudoku", "Clear all pencil marks"));
+        case ShortcutAction::Pause:
+            return QString::fromStdString(core::loc("Sudoku", "Pause or resume (hides the board)"));
     }
     return {};
 }

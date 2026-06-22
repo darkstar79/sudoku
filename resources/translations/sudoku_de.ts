@@ -392,6 +392,14 @@
         <translation>Kein Spiel geladen. Starte ein neues Spiel!</translation>
     </message>
     <message>
+        <source>Paused</source>
+        <translation>Pausiert</translation>
+    </message>
+    <message>
+        <source>Press P or click to resume</source>
+        <translation>P drücken oder klicken zum Fortsetzen</translation>
+    </message>
+    <message>
         <source>Start a new {0} game?
 Current progress will be lost.</source>
         <translation>Neues Spiel mit Schwierigkeit {0} starten?
@@ -420,6 +428,14 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Input mode — Space cycles Normal → Notes → Color</source>
         <translation>Eingabemodus — Leertaste wechselt Normal → Notizen → Farbe</translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation>Pause</translation>
+    </message>
+    <message>
+        <source>Pause — stop the timer and hide the board (P)</source>
+        <translation>Pause — stoppt den Timer und blendet das Brett aus (P)</translation>
     </message>
     <message>
         <source>Import Custom Puzzle…</source>
@@ -460,6 +476,10 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Time&apos;s up — saving and closing.</source>
         <translation>Die Zeit ist um – wird gespeichert und geschlossen.</translation>
+    </message>
+    <message>
+        <source>Resume</source>
+        <translation>Fortsetzen</translation>
     </message>
     <message>
         <source>Import Custom Puzzle</source>
@@ -2242,6 +2262,10 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Clear all pencil marks</source>
         <translation>Alle Notizen löschen</translation>
+    </message>
+    <message>
+        <source>Pause or resume (hides the board)</source>
+        <translation>Pausieren oder fortsetzen (blendet das Brett aus)</translation>
     </message>
     <message>
         <source>value</source>

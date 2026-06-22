@@ -68,6 +68,12 @@ public:
     /// Set read-only mode (disables all interaction)
     void setReadOnly(bool read_only);
 
+    /// Pause mode: when true the grid is fully obscured by an opaque overlay and all board
+    /// input is gated (a left-click asks to resume via resumeRequested). Distinct from
+    /// read-only — pausing hides the puzzle, read-only just locks it for analysis.
+    void setPaused(bool paused);
+    [[nodiscard]] bool isPaused() const;
+
     [[nodiscard]] float cellSize() const;
     [[nodiscard]] QPointF boardOrigin() const;
     void clearHoverHighlight();
@@ -86,6 +92,8 @@ signals:
     /// semantics out of the shared widget. The digit is already resolved (layout/shift-glyph
     /// aware) via resolveDigit; `0`, Delete and Space are not reported here (they bubble up).
     void digitKeyPressed(int digit, Qt::KeyboardModifiers modifiers);
+    /// The user clicked the board while it was paused — the window should resume the game.
+    void resumeRequested();
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -99,6 +107,7 @@ private:
     BoardRenderData board_{};
     bool has_board_{false};
     bool read_only_{false};
+    bool is_paused_{false};                        ///< Pause overlay active — grid hidden, input gated (story 6.8)
     int hovered_candidate_{0};                     ///< Currently hovered candidate value (0 = none)
     std::optional<core::Position> hovered_cell_;   ///< Currently hovered cell (nullopt = mouse outside board)
     std::optional<core::Position> selected_cell_;  ///< Currently selected cell for editing
@@ -108,6 +117,8 @@ private:
                    int highlight_value);
     void paintCellValue(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect);
     void paintCellNotes(QPainter& painter, const RenderCell& cell, const QRectF& cell_rect, int highlight_value);
+    /// Draw the opaque pause overlay over the whole widget, hiding the grid (story 6.8).
+    void paintPausedOverlay(QPainter& painter);
 
 #ifdef SUDOKU_UI_TESTING
     friend class ::TestBoardInteraction;

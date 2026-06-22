@@ -30,6 +30,7 @@
 #include <QPainter>
 #include <qbrush.h>
 #include <qnamespace.h>
+#include <qpalette.h>
 #include <qpen.h>
 #include <qsize.h>
 #include <qsizepolicy.h>
@@ -62,6 +63,22 @@ void SudokuBoardWidget::setReadOnly(bool read_only) {
         hovered_candidate_ = 0;
     }
     update();
+}
+
+void SudokuBoardWidget::setPaused(bool paused) {
+    if (is_paused_ == paused) {
+        return;
+    }
+    is_paused_ = paused;
+    if (paused) {
+        hovered_candidate_ = 0;
+        hovered_cell_ = std::nullopt;
+    }
+    update();
+}
+
+bool SudokuBoardWidget::isPaused() const {
+    return is_paused_;
 }
 
 float SudokuBoardWidget::cellSize() const {
@@ -134,9 +151,24 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
     }
 
     painter_.paintGridLines(painter, origin, board_size, cs);
+
+    // Story 6.8: while paused, hide the whole grid behind an opaque overlay so the puzzle can't
+    // be studied while the clock is stopped. Drawn last so it covers every cell.
+    if (is_paused_) {
+        paintPausedOverlay(painter);
+    }
 }
 
 void SudokuBoardWidget::mousePressEvent(QMouseEvent* event) {
+    // While paused the grid is hidden; a left-click is the "tap to resume" affordance and must
+    // not select or mutate a (hidden) cell.
+    if (is_paused_) {
+        if (event->button() == Qt::LeftButton) {
+            emit resumeRequested();
+        }
+        return;
+    }
+
     if (read_only_ || !has_board_ || event->button() != Qt::LeftButton) {
         return;
     }
@@ -150,7 +182,9 @@ void SudokuBoardWidget::mousePressEvent(QMouseEvent* event) {
 }
 
 void SudokuBoardWidget::keyPressEvent(QKeyEvent* event) {
-    if (read_only_ || event->isAutoRepeat()) {
+    // Paused: swallow every board key (no entry, no navigation). Resume is the window-scoped P
+    // shortcut / a board click — neither flows through here.
+    if (read_only_ || is_paused_ || event->isAutoRepeat()) {
         return;
     }
 
@@ -180,7 +214,7 @@ void SudokuBoardWidget::keyPressEvent(QKeyEvent* event) {
 }
 
 void SudokuBoardWidget::mouseMoveEvent(QMouseEvent* event) {
-    if (read_only_ || !has_board_) {
+    if (read_only_ || is_paused_ || !has_board_) {
         return;
     }
 
@@ -365,6 +399,30 @@ void SudokuBoardWidget::paintCellNotes(QPainter& painter, const RenderCell& cell
             }
         }
     }
+}
+
+void SudokuBoardWidget::paintPausedOverlay(QPainter& painter) {
+    // Palette-derived colors keep the overlay legible in both light and dark schemes (compose
+    // with 6-6) — no hardcoded light constants. The fill is fully opaque so no grid content
+    // (givens, values, notes, selection, highlights) remains visible.
+    const QPalette pal = palette();
+    painter.fillRect(rect(), pal.color(QPalette::Window));
+    painter.setPen(pal.color(QPalette::WindowText));
+
+    const QRectF area(rect());
+
+    QFont title_font("Sans", 24, QFont::Bold);
+    painter.setFont(title_font);
+    const auto title = core::loc("Sudoku", "Paused");
+    painter.drawText(area, Qt::AlignCenter, QString::fromUtf8(title.data(), static_cast<qsizetype>(title.size())));
+
+    QFont hint_font("Sans", 12);
+    painter.setFont(hint_font);
+    const auto hint = core::loc("Sudoku", "Press P or click to resume");
+    QRectF hint_area = area;
+    hint_area.setTop(area.center().y() + 28.0);
+    painter.drawText(hint_area, Qt::AlignHCenter | Qt::AlignTop,
+                     QString::fromUtf8(hint.data(), static_cast<qsizetype>(hint.size())));
 }
 
 }  // namespace sudoku::view

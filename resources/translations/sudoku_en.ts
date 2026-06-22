@@ -392,6 +392,14 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Paused</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Press P or click to resume</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Start a new {0} game?
 Current progress will be lost.</source>
         <translation type="unfinished"></translation>
@@ -418,6 +426,14 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Input mode — Space cycles Normal → Notes → Color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pause — stop the timer and hide the board (P)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -458,6 +474,10 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Time&apos;s up — saving and closing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Resume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2239,6 +2259,10 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Clear all pencil marks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pause or resume (hides the board)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

@@ -119,6 +119,35 @@ TEST_CASE("GameViewModel - Auto-save resume on restart",
         REQUIRE(fixture.view_model->gameState.get().extractGivenNumbers() != kPuzzle);
     }
 
+    SECTION("Story 6.8: a paused in-progress game still auto-saves (pause then close persists)") {
+        // Pause stops the timer (isGameActive() == false). The exit auto-save in closeEvent must
+        // still persist a paused game's progress, and on reload it comes back running (pause is
+        // ephemeral — story 6.8 AC#7). Before the fix, autoSave() was gated on isGameActive() and
+        // silently no-op'd while paused, losing progress on a pause then close.
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        auto empty = sudoku::test::findEmptyCell(fixture.view_model->gameState.get());
+        REQUIRE(empty.has_value());
+        if (empty.has_value()) {
+            const core::Position cell = empty.value();
+            fixture.view_model->enterNote(cell, 5);  // progress made before the break
+
+            fixture.view_model->pauseGame();
+            REQUIRE(!fixture.view_model->isGameActive());    // timer stopped while paused
+            REQUIRE(!fixture.view_model->isGameComplete());  // but the game is still in progress
+
+            fixture.view_model->autoSave();                // e.g. closeEvent's exit auto-save
+            REQUIRE(fixture.save_manager->hasAutoSave());  // paused progress is persisted, not dropped
+
+            auto loaded = fixture.save_manager->loadAutoSave();
+            REQUIRE(loaded.has_value());
+            fixture.view_model->restoreGameState(loaded.value());
+
+            const auto& state = fixture.view_model->gameState.get();
+            REQUIRE(state.getNotes(cell).contains(5));    // the pencil mark survived the round-trip
+            REQUIRE(fixture.view_model->isGameActive());  // resumes running — pause is not persisted
+        }
+    }
+
     SECTION("AC#7: round-trip through the real SaveManager auto-save path resumes") {
         fixture.view_model->startNewGame(Difficulty::Easy);
         const auto pre_givens = fixture.view_model->gameState.get().extractGivenNumbers();

@@ -55,6 +55,7 @@ class TestViewModelBinding;
 class TestTrainingWidget;
 class TestEditMode;
 class TestKeyboardShortcuts;
+class TestPauseMode;
 #endif
 
 namespace sudoku::view {
@@ -153,6 +154,7 @@ private:
     QPushButton* undo_valid_btn_{nullptr};
     QPushButton* auto_notes_btn_{nullptr};
     QPushButton* mode_btn_{nullptr};
+    QPushButton* pause_btn_{nullptr};
     QAction* done_editing_action_{nullptr};
 
     // Experimental menu entries — visibility driven by settings.experimental_*.
@@ -208,6 +210,11 @@ private:
     void updateButtonPanel();
     void onCoachingStateChanged(const viewmodel::CoachingState& coaching);
 
+    /// Toggle pause: resume a paused game, otherwise pause a running one. No-op when there is
+    /// nothing to pause (no active/complete game). Driven by the Pause button, the P shortcut,
+    /// and a click on the paused board overlay (story 6.8).
+    void togglePause();
+
     void onAutoSave();
 
     // Play-time limit enforcement (Story 6.7), driven off the 1 s clock tick.
@@ -224,6 +231,7 @@ private:
     friend class ::TestTrainingWidget;
     friend class ::TestEditMode;
     friend class ::TestKeyboardShortcuts;
+    friend class ::TestPauseMode;
 #endif
 };
 

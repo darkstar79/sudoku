@@ -95,6 +95,23 @@ TEST_CASE("GameState - Timer Operations", "[game_state][timer]") {
 
         REQUIRE(elapsed2.count() == 60);  // Exact cumulative time
     }
+
+    // Story 6.8 AC #2: the pause control stops accrual — wall time that elapses while paused
+    // must NOT count toward elapsed. Pins the pause/resume round-trip against regressions.
+    SECTION("Time advanced while paused does not count") {
+        state.startTimer();
+        mock_time->advanceSystemTime(std::chrono::milliseconds(25));  // active play
+        state.pauseTimer();
+
+        mock_time->advanceSystemTime(std::chrono::milliseconds(1000));  // a long break while paused
+        REQUIRE(state.getElapsedTime().count() == 25);                  // unchanged by the paused span
+
+        state.resumeTimer();
+        mock_time->advanceSystemTime(std::chrono::milliseconds(15));  // more active play
+        state.pauseTimer();
+
+        REQUIRE(state.getElapsedTime().count() == 40);  // 25 + 15; the 1000 ms paused span excluded
+    }
 }
 
 TEST_CASE("GameState - Difficulty Management", "[game_state][difficulty]") {
