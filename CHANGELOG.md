@@ -13,14 +13,18 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 
 ### Added — Platform support
 
-- **macOS build support** — the application now builds and runs on macOS 13+.
-  App bundle (`sudoku.app`), `Info.plist`, and a DMG packaging job are provided.
-  Application data is stored in `~/Library/Application Support/Sudoku/`.
-  Universal Binary (arm64 + x86_64) is the target for CI/packaging; ARM SIMD
-  optimisations are not included in this release (scalar fallback used on Apple
-  Silicon). Code signing and notarisation are deferred until distribution begins.
-  The `build-windows` CI job is now on-demand only (`workflow_dispatch`),
-  consistent with the new `build-macos` job.
+- **Supported platforms for this release are Linux and Windows.** Linux ships
+  as an AppImage and a Flatpak; Windows ships as an NSIS installer. These are the
+  packages attached to tagged releases.
+- **macOS support is experimental and not shipped in 1.0.0.** The application
+  builds and runs on macOS 13+ — an app bundle (`sudoku.app`) with `Info.plist`
+  is produced, application data lives in `~/Library/Application Support/Sudoku/`,
+  and a Universal Binary (arm64 + x86_64) DMG can be built on demand — but **no
+  macOS package is distributed**: without code signing and notarisation (no Apple
+  Developer account) a DMG would be unsigned and Gatekeeper-hostile, so the DMG
+  job is `workflow_dispatch`-only and is excluded from tagged releases. ARM SIMD
+  optimisations are not included (scalar fallback on Apple Silicon). macOS
+  packaging may be revisited once signing and distribution are in place.
 
 ### Added — UI
 
