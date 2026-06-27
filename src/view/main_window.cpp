@@ -87,6 +87,29 @@ namespace sudoku::view {
 
 namespace {
 
+// Qt 6.2 compatibility shim. The QMenu/QToolBar addAction() convenience overloads
+// that take a context object + slot — addAction(text, shortcut, context, slot) and
+// addAction(text, context, slot) — were added in Qt 6.3. Distributions pinned to the
+// Qt 6.2 LTS (e.g. Ubuntu 22.04 / arm64, which ships 6.2.4) don't have them, so these
+// helpers reproduce the same behaviour: create the action, set the shortcut, and wire
+// QAction::triggered to the slot. On Qt 6.3+ they are functionally identical to the
+// native overloads. `Context` is templated (not erased to QObject*) so pointer-to-
+// member slots resolve against their real receiver type.
+template <typename Widget, typename Context, typename Slot>
+QAction* addActionTo(Widget* widget, const QString& text, const QKeySequence& shortcut, Context* context, Slot&& slot) {
+    QAction* action = widget->addAction(text);
+    action->setShortcut(shortcut);
+    QObject::connect(action, &QAction::triggered, context, std::forward<Slot>(slot));
+    return action;
+}
+
+template <typename Widget, typename Context, typename Slot>
+QAction* addActionTo(Widget* widget, const QString& text, Context* context, Slot&& slot) {
+    QAction* action = widget->addAction(text);
+    QObject::connect(action, &QAction::triggered, context, std::forward<Slot>(slot));
+    return action;
+}
+
 // Mode-button face text. The three cycling modes surface the Space cycle key on the visible
 // label (not only the tooltip) — AC-1 / UX spec §Discoverability. EditGivens keeps its plain
 // label. The Space glyph is rendered via NativeText; the parenthesized layout is translatable.
@@ -329,143 +352,146 @@ void MainWindow::setupMenuBar() {
 void MainWindow::setupGameMenu() {
     auto* game_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Game"))));
 
-    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "New Game"))), QKeySequence("Ctrl+N"), this,
-                         &MainWindow::showNewGameDialog);
+    addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "New Game"))), QKeySequence("Ctrl+N"), this,
+                &MainWindow::showNewGameDialog);
 
-    auto* reset_action = game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Reset Puzzle"))),
-                                              QKeySequence("Ctrl+R"), this, &MainWindow::showResetDialog);
+    auto* reset_action = addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Reset Puzzle"))),
+                                     QKeySequence("Ctrl+R"), this, &MainWindow::showResetDialog);
     reset_action->setEnabled(false);
 
     game_menu->addSeparator();
 
-    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Save"))), QKeySequence("Ctrl+S"), this,
-                         &MainWindow::showSaveDialog);
-    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Load"))), QKeySequence("Ctrl+O"), this,
-                         &MainWindow::showLoadDialog);
+    addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Save"))), QKeySequence("Ctrl+S"), this,
+                &MainWindow::showSaveDialog);
+    addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Load"))), QKeySequence("Ctrl+O"), this,
+                &MainWindow::showLoadDialog);
 
     game_menu->addSeparator();
 
-    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Import Custom Puzzle…"))), QKeySequence("Ctrl+I"),
-                         this, &MainWindow::showImportPuzzleDialog);
+    addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Import Custom Puzzle…"))),
+                QKeySequence("Ctrl+I"), this, &MainWindow::showImportPuzzleDialog);
 
-    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Edit Custom Puzzle"))), QKeySequence("Ctrl+E"),
-                         this, &MainWindow::enterEditPuzzleMode);
+    addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Edit Custom Puzzle"))), QKeySequence("Ctrl+E"),
+                this, &MainWindow::enterEditPuzzleMode);
 
-    game_menu->addAction(qstr(core::loc("Sudoku", "Copy Puzzle as Text")), QKeySequence("Ctrl+Shift+C"), this,
-                         [this]() {
-                             if (view_model_) {
-                                 view_model_->exportPuzzleAsString();
-                                 if (toast_widget_) {
-                                     toast_widget_->show(qstr(core::loc("Sudoku", "Puzzle copied to clipboard")));
-                                 }
-                             }
-                         });
+    addActionTo(game_menu, qstr(core::loc("Sudoku", "Copy Puzzle as Text")), QKeySequence("Ctrl+Shift+C"), this,
+                [this]() {
+                    if (view_model_) {
+                        view_model_->exportPuzzleAsString();
+                        if (toast_widget_) {
+                            toast_widget_->show(qstr(core::loc("Sudoku", "Puzzle copied to clipboard")));
+                        }
+                    }
+                });
 
     game_menu->addSeparator();
 
-    training_mode_action_ = game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Training Mode"))), this,
-                                                 [this]() { central_stack_->setCurrentIndex(1); });
+    training_mode_action_ = addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Training Mode"))), this,
+                                        [this]() { central_stack_->setCurrentIndex(1); });
     // Hidden by default; setSettingsManager() applies the user's preference
     // and the settingsObservable subscription keeps it in sync afterwards.
     training_mode_action_->setVisible(false);
 
-    game_menu->addAction(
-        QString("&%1").arg(qstr(core::loc("Sudoku", "Analyze Position"))), QKeySequence("F2"), this, [this]() {
-            if (!view_model_ || !training_vm_) {
-                return;
-            }
-            auto result = view_model_->analyzePosition();
-            if (!result.has_value()) {
-                if (toast_widget_) {
-                    toast_widget_->show(qstr(core::loc("Sudoku", "No logical strategies found at this position.")));
-                }
-                return;
-            }
-            training_vm_->analyzePosition(result->board, result->given_board, result->candidate_masks,
-                                          result->applicable_steps);
-            central_stack_->setCurrentIndex(1);
-        });
+    addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Analyze Position"))), QKeySequence("F2"), this,
+                [this]() {
+                    if (!view_model_ || !training_vm_) {
+                        return;
+                    }
+                    auto result = view_model_->analyzePosition();
+                    if (!result.has_value()) {
+                        if (toast_widget_) {
+                            toast_widget_->show(
+                                qstr(core::loc("Sudoku", "No logical strategies found at this position.")));
+                        }
+                        return;
+                    }
+                    training_vm_->analyzePosition(result->board, result->given_board, result->candidate_masks,
+                                                  result->applicable_steps);
+                    central_stack_->setCurrentIndex(1);
+                });
 
-    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Resume Game"))), this,
-                         [this]() { central_stack_->setCurrentIndex(0); });
-
-    game_menu->addSeparator();
-
-    game_menu->addAction(qstr(core::loc("Sudoku", "Statistics")), this, &MainWindow::showStatisticsDialog);
-    game_menu->addAction(qstr(core::loc("Sudoku", "Export Aggregate Stats to CSV")), this,
-                         &MainWindow::exportAggregateStatsCsv);
-    game_menu->addAction(qstr(core::loc("Sudoku", "Export Game Sessions to CSV")), this,
-                         &MainWindow::exportGameSessionsCsv);
+    addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Resume Game"))), this,
+                [this]() { central_stack_->setCurrentIndex(0); });
 
     game_menu->addSeparator();
-    game_menu->addAction(qstr(core::loc("Sudoku", "Settings...")), QKeySequence("Ctrl+,"), this,
-                         &MainWindow::showSettingsDialog);
+
+    addActionTo(game_menu, qstr(core::loc("Sudoku", "Statistics")), this, &MainWindow::showStatisticsDialog);
+    addActionTo(game_menu, qstr(core::loc("Sudoku", "Export Aggregate Stats to CSV")), this,
+                &MainWindow::exportAggregateStatsCsv);
+    addActionTo(game_menu, qstr(core::loc("Sudoku", "Export Game Sessions to CSV")), this,
+                &MainWindow::exportGameSessionsCsv);
+
     game_menu->addSeparator();
-    game_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Exit"))), QKeySequence("Alt+F4"), this,
-                         &QWidget::close);
+    addActionTo(game_menu, qstr(core::loc("Sudoku", "Settings...")), QKeySequence("Ctrl+,"), this,
+                &MainWindow::showSettingsDialog);
+    game_menu->addSeparator();
+    addActionTo(game_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Exit"))), QKeySequence("Alt+F4"), this,
+                &QWidget::close);
 }
 
 void MainWindow::setupEditMenu() {
     auto* edit_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Edit"))));
-    edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Undo"))), QKeySequence("Ctrl+Z"), this, [this]() {
-        if (view_model_) {
-            view_model_->executeCommand(viewmodel::GameCommand::Undo);
-        }
-    });
+    addActionTo(edit_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Undo"))), QKeySequence("Ctrl+Z"), this,
+                [this]() {
+                    if (view_model_) {
+                        view_model_->executeCommand(viewmodel::GameCommand::Undo);
+                    }
+                });
 
-    edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Redo"))), QKeySequence("Ctrl+Y"), this, [this]() {
-        if (view_model_) {
-            view_model_->executeCommand(viewmodel::GameCommand::Redo);
-        }
-    });
+    addActionTo(edit_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Redo"))), QKeySequence("Ctrl+Y"), this,
+                [this]() {
+                    if (view_model_) {
+                        view_model_->executeCommand(viewmodel::GameCommand::Redo);
+                    }
+                });
 
     edit_menu->addSeparator();
-    edit_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "Clear Cell"))), QKeySequence("Delete"), this,
-                         [this]() {
-                             if (!view_model_) {
-                                 return;
-                             }
-                             auto pos = board_widget_->selectedCell();
-                             if (!pos.has_value()) {
-                                 return;
-                             }
-                             // clearCell is blocked on given cells; edit-mode givens
-                             // need their own clear path.
-                             if (view_model_->getInputMode() == viewmodel::InputMode::EditGivens) {
-                                 view_model_->setEditModeGiven(pos.value(), 0);
-                             } else {
-                                 view_model_->clearCell(pos.value());
-                             }
-                         });
+    addActionTo(edit_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "Clear Cell"))), QKeySequence("Delete"), this,
+                [this]() {
+                    if (!view_model_) {
+                        return;
+                    }
+                    auto pos = board_widget_->selectedCell();
+                    if (!pos.has_value()) {
+                        return;
+                    }
+                    // clearCell is blocked on given cells; edit-mode givens
+                    // need their own clear path.
+                    if (view_model_->getInputMode() == viewmodel::InputMode::EditGivens) {
+                        view_model_->setEditModeGiven(pos.value(), 0);
+                    } else {
+                        view_model_->clearCell(pos.value());
+                    }
+                });
 }
 
 void MainWindow::setupHelpMenu() {
     auto* help_menu = menuBar()->addMenu(QString("&%1").arg(qstr(core::loc("Sudoku", "Help"))));
-    help_menu->addAction(qstr(core::loc("Sudoku", "Get Hint")), QKeySequence("H"), this, [this]() {
+    addActionTo(help_menu, qstr(core::loc("Sudoku", "Get Hint")), QKeySequence("H"), this, [this]() {
         if (view_model_ && view_model_->getHintCount() > 0) {
             view_model_->getHint(board_widget_->selectedCell());
         }
     });
     coaching_hint_action_ =
-        help_menu->addAction(qstr(core::loc("Sudoku", "Get Coaching Hint")), QKeySequence("Shift+H"), this, [this]() {
+        addActionTo(help_menu, qstr(core::loc("Sudoku", "Get Coaching Hint")), QKeySequence("Shift+H"), this, [this]() {
             if (view_model_) {
                 view_model_->requestCoachingHint();
             }
         });
     // Hidden by default; gated by settings.experimental_coaching_hints.
     coaching_hint_action_->setVisible(false);
-    help_menu->addAction(qstr(core::loc("Sudoku", "Find Step by Technique…")), this,
-                         &MainWindow::showFindByTechniqueDialog);
+    addActionTo(help_menu, qstr(core::loc("Sudoku", "Find Step by Technique…")), this,
+                &MainWindow::showFindByTechniqueDialog);
     help_menu->addSeparator();
     // F1 already toggles the menu bar (keyPressEvent) — the shortcut map gets its own
     // menu action rather than repurposing F1.
-    auto* shortcuts_action = help_menu->addAction(qstr(core::loc("Sudoku", "Keyboard Shortcuts…")), this,
-                                                  &MainWindow::showKeyboardShortcutsDialog);
+    auto* shortcuts_action = addActionTo(help_menu, qstr(core::loc("Sudoku", "Keyboard Shortcuts…")), this,
+                                         &MainWindow::showKeyboardShortcutsDialog);
     shortcuts_action->setObjectName("keyboardShortcutsAction");
     help_menu->addSeparator();
-    help_menu->addAction(QString("&%1").arg(qstr(core::loc("Sudoku", "About"))), this, &MainWindow::showAboutDialog);
-    help_menu->addAction(qstr(core::loc("Sudoku", "Third-Party Licenses")), this,
-                         &MainWindow::showThirdPartyLicensesDialog);
+    addActionTo(help_menu, QString("&%1").arg(qstr(core::loc("Sudoku", "About"))), this, &MainWindow::showAboutDialog);
+    addActionTo(help_menu, qstr(core::loc("Sudoku", "Third-Party Licenses")), this,
+                &MainWindow::showThirdPartyLicensesDialog);
 }
 
 void MainWindow::setupToolBar() {
@@ -557,7 +583,7 @@ void MainWindow::setupToolBar() {
     toolbar->addSeparator();
 
     done_editing_action_ =
-        toolbar->addAction(qstr(core::loc("Sudoku", "Done Editing")), this, &MainWindow::commitEditedPuzzle);
+        addActionTo(toolbar, qstr(core::loc("Sudoku", "Done Editing")), this, &MainWindow::commitEditedPuzzle);
     done_editing_action_->setVisible(false);
     // Rendered as a QToolButton on the same forced-light toolbar — always-visible chrome while editing
     // a custom puzzle. Its text is colored dark by the scoped QToolBar QToolButton rule above; the

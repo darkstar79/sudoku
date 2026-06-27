@@ -110,7 +110,16 @@ find_package(libsodium REQUIRED)
 
 # Qt6 integration (system-installed)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Test LinguistTools)
-qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES en de)
+# qt_standard_project_setup() was added in Qt 6.3. Distros pinned to the Qt 6.2
+# LTS (e.g. Ubuntu 22.04 / arm64, which ships 6.2.4) don't have it, so fall back
+# to the equivalent AUTOMOC/AUTOUIC/AUTORCC setup it performs.
+if(COMMAND qt_standard_project_setup)
+    qt_standard_project_setup(I18N_TRANSLATED_LANGUAGES en de)
+else()
+    set(CMAKE_AUTOMOC ON)
+    set(CMAKE_AUTOUIC ON)
+    set(CMAKE_AUTORCC ON)
+endif()
 
 # Testing framework (optional)
 find_package(Catch2 QUIET)

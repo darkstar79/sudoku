@@ -25,6 +25,15 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
   job is `workflow_dispatch`-only and is excluded from tagged releases. ARM SIMD
   optimisations are not included (scalar fallback on Apple Silicon). macOS
   packaging may be revisited once signing and distribution are in place.
+- **Builds against the Qt 6.2 LTS.** Two Qt 6.3-only conveniences were replaced
+  with 6.2-compatible equivalents so the project now configures and compiles on
+  distributions pinned to Qt 6.2.x (e.g. Ubuntu 22.04, including arm64): the
+  `qt_standard_project_setup()` CMake call falls back to the equivalent
+  `AUTOMOC`/`AUTOUIC`/`AUTORCC` setup, and the menu/toolbar
+  `addAction(text[, shortcut], context, slot)` overloads are routed through a
+  local helper that wires `QAction::triggered` directly. Behaviour is unchanged
+  on Qt 6.3+. (Building also requires the `qt6-l10n-tools` package for
+  `lupdate`/`lrelease`/`lconvert`.)
 
 ### Added — UI
 
