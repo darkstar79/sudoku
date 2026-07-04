@@ -230,17 +230,17 @@ TEST_CASE("KrakenFishStrategy - vacuous fin contradiction reports fin-exclusion"
     // extraction is behavior-identical to the hand-written replay it replaced.
     const auto reconstructed = sudoku::engine::reconstruct({.board_at_step = std::string(kBoardFlat),
                                                             .prior_eliminations = {
-                                                                {{.row = 4, .col = 0}, 4},
-                                                                {{.row = 4, .col = 0}, 8},
-                                                                {{.row = 5, .col = 0}, 1},
-                                                                {{.row = 5, .col = 0}, 4},
-                                                                {{.row = 5, .col = 0}, 8},
-                                                                {{.row = 8, .col = 2}, 2},
-                                                                {{.row = 3, .col = 6}, 5},
-                                                                {{.row = 3, .col = 7}, 5},
-                                                                {{.row = 6, .col = 4}, 8},
-                                                                {{.row = 0, .col = 3}, 1},
-                                                                {{.row = 1, .col = 3}, 1},
+                                                                {.position = {.row = 4, .col = 0}, .value = 4},
+                                                                {.position = {.row = 4, .col = 0}, .value = 8},
+                                                                {.position = {.row = 5, .col = 0}, .value = 1},
+                                                                {.position = {.row = 5, .col = 0}, .value = 4},
+                                                                {.position = {.row = 5, .col = 0}, .value = 8},
+                                                                {.position = {.row = 8, .col = 2}, .value = 2},
+                                                                {.position = {.row = 3, .col = 6}, .value = 5},
+                                                                {.position = {.row = 3, .col = 7}, .value = 5},
+                                                                {.position = {.row = 6, .col = 4}, .value = 8},
+                                                                {.position = {.row = 0, .col = 3}, .value = 1},
+                                                                {.position = {.row = 1, .col = 3}, .value = 1},
                                                             }});
     REQUIRE(reconstructed.has_value());
     const BoardData& board = reconstructed->board;

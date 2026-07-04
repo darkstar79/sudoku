@@ -47,6 +47,7 @@ constexpr std::string_view kValidBoard = "530070000"
 
 }  // namespace
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE; the 81-cell no-other-change sweep is inherent to the assertion.
 TEST_CASE("Reconstruct_AppliesPriorEliminationsToBaseCandidates", "[reconstruction][engine]") {
     // Arrange
     const core::BoardData expected_board = testing::flatStringToBoard(std::string(kValidBoard));
@@ -120,6 +121,7 @@ TEST_CASE("Reconstruct_RejectsInvalidBoard", "[reconstruction][engine]") {
     CHECK(result.error() == engine::ReconstructError::InvalidBoard);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with multiple SECTIONs; complexity is inherent to the case matrix.
 TEST_CASE("Reconstruct_RejectsOutOfRangeElimination", "[reconstruction][engine]") {
     // A malformed prior-elimination entry must surface as InvalidElimination rather than
     // being silently applied (an out-of-range value sets a wrong/unused candidate bit) or,

@@ -21,7 +21,6 @@
 
 #include <optional>
 #include <string_view>
-#include <utility>
 
 namespace sudoku::engine {
 
@@ -76,7 +75,7 @@ std::expected<ReconstructedState, ReconstructError> reconstruct(const Reconstruc
         candidates.eliminateCandidate(elim.position.row, elim.position.col, elim.value);
     }
 
-    return ReconstructedState{parsed.value(), std::move(candidates)};
+    return ReconstructedState{.board = parsed.value(), .candidates = candidates};
 }
 
 }  // namespace sudoku::engine
