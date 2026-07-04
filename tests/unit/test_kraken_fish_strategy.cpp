@@ -16,6 +16,7 @@
 
 #include "../../src/core/candidate_grid.h"
 #include "../../src/core/puzzle_generator.h"
+#include "../../src/core/reconstruction.h"
 #include "../../src/core/strategies/forcing_chain_helpers.h"
 #include "../../src/core/strategies/kraken_fish_strategy.h"
 #include "../helpers/candidate_test_utils.h"
@@ -222,22 +223,28 @@ TEST_CASE("KrakenFishStrategy - vacuous fin contradiction reports fin-exclusion"
           "[kraken_fish][regression][issue40]") {
     constexpr std::string_view kBoardFlat =
         "050040000060005200370060008290000000005001090000030020507003004006070002000400010";
-    BoardData board = sudoku::testing::flatStringToBoard(std::string(kBoardFlat));
-    CandidateGrid state(board);
 
-    // Prior eliminations recorded in the fixture — bring the candidate grid into the
-    // same state the solver would reach by step 7.
-    state.eliminateCandidate(4, 0, 4);
-    state.eliminateCandidate(4, 0, 8);
-    state.eliminateCandidate(5, 0, 1);
-    state.eliminateCandidate(5, 0, 4);
-    state.eliminateCandidate(5, 0, 8);
-    state.eliminateCandidate(8, 2, 2);
-    state.eliminateCandidate(3, 6, 5);
-    state.eliminateCandidate(3, 7, 5);
-    state.eliminateCandidate(6, 4, 8);
-    state.eliminateCandidate(0, 3, 1);
-    state.eliminateCandidate(1, 3, 1);
+    // Prior eliminations recorded in the fixture — bring the candidate grid into the same
+    // state the solver would reach by step 7. Reconstructed via the shared engine primitive
+    // (Story A.0) instead of inline eliminateCandidate calls: a free proof (AC4) that the
+    // extraction is behavior-identical to the hand-written replay it replaced.
+    const auto reconstructed = sudoku::engine::reconstruct({.board_at_step = std::string(kBoardFlat),
+                                                            .prior_eliminations = {
+                                                                {{.row = 4, .col = 0}, 4},
+                                                                {{.row = 4, .col = 0}, 8},
+                                                                {{.row = 5, .col = 0}, 1},
+                                                                {{.row = 5, .col = 0}, 4},
+                                                                {{.row = 5, .col = 0}, 8},
+                                                                {{.row = 8, .col = 2}, 2},
+                                                                {{.row = 3, .col = 6}, 5},
+                                                                {{.row = 3, .col = 7}, 5},
+                                                                {{.row = 6, .col = 4}, 8},
+                                                                {{.row = 0, .col = 3}, 1},
+                                                                {{.row = 1, .col = 3}, 1},
+                                                            }});
+    REQUIRE(reconstructed.has_value());
+    const BoardData& board = reconstructed->board;
+    CandidateGrid state = reconstructed->candidates;
 
     KrakenFishStrategy strategy;
     auto result = strategy.findStep(board, state);
