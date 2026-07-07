@@ -26,8 +26,10 @@
 #include "../../src/core/save_manager.h"
 #include "../helpers/test_utils.h"
 
+#include <expected>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <random>
 #include <string>
@@ -35,6 +37,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <yaml-cpp/yaml.h>
 
 using namespace sudoku::core;
 using sudoku::test::TempTestDir;
@@ -195,4 +198,168 @@ TEST_CASE("SaveManager - corrupt save is archived aside and never overwritten",
     std::ifstream in(archives.front());
     const std::string archived((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     REQUIRE(archived == corrupt_bytes);
+}
+
+// ── Story 7.1: malicious numeric-field hardening ───────────────────────────────────────────────
+//
+// The deserializer historically validated board *dimensions* (9×9) but trusted the numeric *values*
+// inside — so a save with a plausible board plus one out-of-domain field (move row 40, note 99, cell
+// 200, …) loaded successfully and then drove an out-of-bounds write on the next undo/redo through the
+// unchecked GameState::setValue/setNotes sinks, or shift-UB via valueToBit. These cases poison exactly
+// one field of an otherwise-valid save and assert loadGame refuses it as InvalidSaveData at the parse
+// boundary. Authored RED-first: against the pre-fix parser every case *wrongly accepts* (loadGame
+// returns a value), and the note/cell cases additionally fire ASan/UBSan — precisely the bug.
+
+namespace {
+
+// A minimal but fully in-domain SavedGame with one legitimate PlaceNumber move. save_id is fixed so
+// the on-disk file path is deterministic (getSavePath = dir / (save_id + ".yaml")).
+SavedGame makeValidGameWithMove() {
+    SavedGame game;
+    game.save_id = "victim";
+    game.display_name = "Victim";
+    game.difficulty = Difficulty::Easy;
+    for (size_t r = 0; r < BOARD_SIZE; ++r) {
+        for (size_t c = 0; c < BOARD_SIZE; ++c) {
+            game.original_puzzle[r][c] = EMPTY_CELL;
+            game.current_state[r][c] = EMPTY_CELL;
+        }
+    }
+    game.current_state[0][0] = MAX_VALUE;  // one in-range filled cell
+
+    Move move;
+    move.position = {.row = 0, .col = 0};
+    move.value = MAX_VALUE;
+    move.move_type = MoveType::PlaceNumber;
+    move.is_note = false;
+    game.move_history.push_back(move);
+    game.current_move_index = 0;
+
+    return game;
+}
+
+// Save `game` uncompressed/unencrypted (so the file is plaintext YAML), mutate the on-disk node with
+// `poison`, write it back, then load it. Returns whatever loadGame returns so the caller can assert on
+// the rejection.
+std::expected<SavedGame, SaveError> poisonRoundTrip(SaveManager& mgr, const fs::path& dir, const SavedGame& game,
+                                                    const std::function<void(YAML::Node&)>& poison) {
+    SaveSettings settings;
+    settings.compress = false;
+    settings.include_history = true;
+
+    auto id = mgr.saveGame(game, settings);
+    REQUIRE(id.has_value());
+
+    const auto path = dir / (*id + ".yaml");
+    YAML::Node root = YAML::LoadFile(path.string());
+    poison(root);
+    {
+        std::ofstream out(path, std::ios::trunc);
+        out << root;
+    }
+    return mgr.loadGame(*id);
+}
+
+}  // namespace
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - malicious save with out-of-range move row is rejected",
+          "[save_manager][persistence][security][regression][bug-save-oob]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // row 40 ≫ BOARD_SIZE: on the pre-fix code this loads, then Undo(revertMove) → setValue indexes
+    // values_[40][0] → OOB write.
+    auto result = poisonRoundTrip(mgr, tmp.path(), makeValidGameWithMove(),
+                                  [](YAML::Node& root) { root["move_history"][0]["row"] = 40; });
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == SaveError::InvalidSaveData);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - malicious save with negative move row is rejected",
+          "[save_manager][persistence][security][regression][bug-save-oob]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // row -1 read as int then assigned to size_t wraps to 18446744073709551615 → OOB. Must be caught
+    // by an explicit signed-range check before the narrowing.
+    auto result = poisonRoundTrip(mgr, tmp.path(), makeValidGameWithMove(),
+                                  [](YAML::Node& root) { root["move_history"][0]["row"] = -1; });
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == SaveError::InvalidSaveData);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - malicious save with out-of-range note value is rejected",
+          "[save_manager][persistence][security][regression][bug-save-oob]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // note 99 reaches CellNotes::add → valueToBit(99) = 1 << 99 → shift-UB (V2). UBSan fires on the
+    // pre-fix code; the fix rejects the value at the deserializer boundary.
+    auto result = poisonRoundTrip(mgr, tmp.path(), makeValidGameWithMove(),
+                                  [](YAML::Node& root) { root["puzzle_data"]["notes"][0][0][0] = 99; });
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == SaveError::InvalidSaveData);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - malicious save with out-of-range cell value is rejected",
+          "[save_manager][persistence][security][regression][bug-save-oob]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // cell 200 is outside [EMPTY_CELL, MAX_VALUE]; later valueToBit(200) from the solver = shift-UB.
+    auto result = poisonRoundTrip(mgr, tmp.path(), makeValidGameWithMove(),
+                                  [](YAML::Node& root) { root["puzzle_data"]["current_state"][0][0] = 200; });
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == SaveError::InvalidSaveData);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - malicious save with out-of-range move type is rejected",
+          "[save_manager][persistence][security][regression][bug-save-oob]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // type 99 is not a defined MoveType enumerator; static_cast<MoveType>(99) then a replay switch is
+    // undefined territory. Reject at load.
+    auto result = poisonRoundTrip(mgr, tmp.path(), makeValidGameWithMove(),
+                                  [](YAML::Node& root) { root["move_history"][0]["type"] = 99; });
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == SaveError::InvalidSaveData);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - malicious save with out-of-range move column is rejected",
+          "[save_manager][persistence][security][regression][bug-save-oob]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // Poison the column (not the row) so both position axes are covered by the regression net.
+    auto result = poisonRoundTrip(mgr, tmp.path(), makeValidGameWithMove(),
+                                  [](YAML::Node& root) { root["move_history"][0]["col"] = 40; });
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == SaveError::InvalidSaveData);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - malicious save with out-of-range current_move_index is rejected",
+          "[save_manager][persistence][security][regression][bug-save-oob]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // History has exactly one move (valid indices are -1 and 0); 5 points past its end.
+    auto result = poisonRoundTrip(mgr, tmp.path(), makeValidGameWithMove(),
+                                  [](YAML::Node& root) { root["current_move_index"] = 5; });
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == SaveError::InvalidSaveData);
 }

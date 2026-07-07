@@ -7,6 +7,8 @@ sudoku is an offline desktop application. It has no network-facing components, n
 - **Save file parsing** (YAML + zlib + libsodium decryption)
 - **Local file I/O** (save/load, statistics, configuration)
 
+Save files are treated as untrusted input: every numeric field the loader reads (move positions, move values, cell values, note values, move type, and the move index) is range-validated against the board's fixed domain at the deserializer boundary. A save with an out-of-range field is rejected as invalid data — and preserved aside, never mishandled on undo/redo or overwritten.
+
 ## Reporting a Vulnerability
 
 All security issues can be reported publicly via [GitHub Issues](../../issues).

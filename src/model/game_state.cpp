@@ -161,8 +161,14 @@ core::BoardData GameState::extractGivenNumbers() const {
 // Per-cell value access
 
 void GameState::setValue(size_t row, size_t col, int value) {
-    values_[row][col] = value;
-    markDirty();
+    // Bounds guard (Story 7.1, defense in depth) — match the sibling addNote/removeNote setters so an
+    // out-of-range position from any caller (e.g. a replayed move from a hostile save) is a no-op
+    // rather than an out-of-bounds write. The (Position, value) overload delegates here, so it is
+    // covered too. Load-time validation is the primary defense; this is belt-and-suspenders.
+    if (row < core::BOARD_SIZE && col < core::BOARD_SIZE) {
+        values_[row][col] = value;
+        markDirty();
+    }
 }
 
 void GameState::setValue(const core::Position& pos, int value) {
@@ -205,8 +211,11 @@ void GameState::setHintRevealed(const core::Position& pos, bool revealed) {
 // Per-cell notes access
 
 void GameState::setNotes(const core::Position& pos, const core::CellNotes& notes) {
-    notes_data_[pos.row][pos.col] = notes;
-    markDirty();
+    // Bounds guard (Story 7.1, defense in depth) — see setValue above.
+    if (pos.row < core::BOARD_SIZE && pos.col < core::BOARD_SIZE) {
+        notes_data_[pos.row][pos.col] = notes;
+        markDirty();
+    }
 }
 
 const core::CellNotes& GameState::getNotes(size_t row, size_t col) const {
