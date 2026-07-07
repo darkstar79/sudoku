@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# Pre-push hook for sudoku: clang-tidy CI-parity gate
+#
+# Mirrors the clang-tidy-diff job in .github/workflows/ci.yml -- runs clang-tidy on
+# the branch's diff vs its merge-base with main, using the CI-pinned clang-tidy
+# version, and blocks the push on any warning. Closes the "passes locally, fails CI"
+# round-trip: the range and ruleset match what CI computes.
+#
+# Skips cleanly when there's nothing to gate (no main ref, no C++ diff, no build).
+# Bypass in a pinch with: git push --no-verify
+#
+# Install with: ./scripts/setup-hooks.sh
+
+set -eo pipefail
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+# Diff base: prefer a remote-tracking main so the three-dot range matches CI's
+# merge-base computation. Order matters -- this repo has two YubiKey remotes and
+# origin (yk1) is frequently not fetched (the key is often away from the desk), so
+# its origin/main ref goes stale and would inflate the diff to the whole branch.
+# Prefer origin2 (yk2, kept fresh here), then local main, then origin last.
+BASE_REF=""
+for ref in origin2/main main origin/main; do
+    if git rev-parse --verify --quiet "$ref" >/dev/null; then
+        BASE_REF="$ref"
+        break
+    fi
+done
+
+if [ -z "$BASE_REF" ]; then
+    echo "[pre-push] No main ref found to diff against; skipping clang-tidy gate."
+    exit 0
+fi
+
+# Nothing C++ changed vs main → docs/CI-only branches push without a tidy run.
+# Three-dot (BASE...HEAD) diffs against the merge-base, exactly like CI.
+if [ -z "$(git diff "${BASE_REF}...HEAD" --name-only -- '*.cpp' '*.h' '*.hpp' 2>/dev/null)" ]; then
+    exit 0
+fi
+
+echo -e "${YELLOW}[pre-push] Running clang-tidy CI-parity check vs ${BASE_REF}...${NC}"
+if ! "$REPO_ROOT/scripts/tidy-diff.sh" "$BASE_REF"; then
+    echo ""
+    echo -e "${RED}[pre-push] clang-tidy flagged your changed lines — this is what CI will fail on.${NC}"
+    echo "           Fix the warnings, or bypass with: git push --no-verify"
+    exit 1
+fi
+
+exit 0

@@ -41,6 +41,27 @@ echo "  • GPLv3 license header check      — always, ~instant"
 echo "  • Code formatting (clang-format)   — always, ~instant"
 echo "  • Static analysis on changed lines — opt-in: TIDY=1 git commit"
 echo ""
+
+# Install pre-push hook (clang-tidy CI-parity gate)
+PRE_PUSH_SRC="$REPO_ROOT/scripts/pre-push"
+PRE_PUSH_DEST="$REPO_ROOT/.git/hooks/pre-push"
+
+if [ ! -f "$PRE_PUSH_SRC" ]; then
+    echo "❌ Error: Pre-push hook template not found at $PRE_PUSH_SRC"
+    exit 1
+fi
+
+cp "$PRE_PUSH_SRC" "$PRE_PUSH_DEST"
+chmod +x "$PRE_PUSH_DEST"
+
+echo -e "${GREEN}✅ Pre-push hook installed${NC}"
+echo "   Location: .git/hooks/pre-push"
+echo ""
+echo "The hook mirrors the CI clang-tidy-diff job before each push:"
+echo "  • clang-tidy on the branch diff vs main — blocks on warnings"
+echo "  • Uses the CI-pinned clang-tidy version (warns on a local mismatch)"
+echo "  • Skips when no C++ changed; bypass with: git push --no-verify"
+echo ""
 echo -e "${YELLOW}To skip hooks on commit:${NC}"
 echo "  git commit --no-verify"
 echo ""
