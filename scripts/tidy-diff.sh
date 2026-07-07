@@ -41,6 +41,35 @@ if [ -z "$CLANG_TIDY_DIFF" ]; then
     exit 1
 fi
 
+# --- clang-tidy version parity with CI -------------------------------------
+# CI pins clang-tidy-19 (see the clang-tidy-diff job in .github/workflows/ci.yml).
+# A different local version diagnoses differently -- checks are added, removed, and
+# renamed across LLVM releases -- which is the exact "passes locally, fails CI" trap
+# (e.g. designated-initializers / move-const-arg / cognitive-complexity). Resolve the
+# pinned version when it is installed and warn loudly on a mismatch so the divergence
+# is visible before the push, not after CI. Override with CLANG_TIDY_BIN=/path or
+# CLANG_TIDY_VERSION=NN.
+CI_TIDY_VERSION="${CLANG_TIDY_VERSION:-19}"
+if [ -n "${CLANG_TIDY_BIN:-}" ]; then
+    TIDY_BIN="$CLANG_TIDY_BIN"
+elif command -v "clang-tidy-${CI_TIDY_VERSION}" >/dev/null 2>&1; then
+    TIDY_BIN="clang-tidy-${CI_TIDY_VERSION}"
+else
+    TIDY_BIN="clang-tidy"
+fi
+
+if ! command -v "$TIDY_BIN" >/dev/null 2>&1 && [ ! -x "$TIDY_BIN" ]; then
+    echo -e "${RED}clang-tidy binary '$TIDY_BIN' not found.${NC}"
+    echo "Install clang-tidy-${CI_TIDY_VERSION} for exact CI parity, or set CLANG_TIDY_BIN."
+    exit 1
+fi
+
+LOCAL_TIDY_VERSION=$("$TIDY_BIN" --version 2>/dev/null | grep -oE 'version [0-9]+' | grep -oE '[0-9]+' | head -1 || true)
+if [ -n "$LOCAL_TIDY_VERSION" ] && [ "$LOCAL_TIDY_VERSION" != "$CI_TIDY_VERSION" ]; then
+    echo -e "${YELLOW}[tidy-diff] WARNING: local clang-tidy is version ${LOCAL_TIDY_VERSION}, CI pins ${CI_TIDY_VERSION}.${NC}"
+    echo -e "${YELLOW}           Diagnostics may differ from CI. Install clang-tidy-${CI_TIDY_VERSION} for exact parity.${NC}"
+fi
+
 if [ ! -d "$BUILD_DIR" ]; then
     echo -e "${RED}Build directory '$BUILD_DIR' not found.${NC}"
     echo "Run: cmake --preset release && cmake --build --preset release"
@@ -65,6 +94,7 @@ CHANGED=$(echo "$DIFF" | grep '^+++ b/' | sed 's|^+++ b/||' | grep -E '\.(cpp|h|
 echo -e "${YELLOW}[tidy-diff] Checking $CHANGED file(s) — $MODE...${NC}"
 
 OUTPUT=$(echo "$DIFF" | python3 "$CLANG_TIDY_DIFF" \
+    -clang-tidy-binary "$TIDY_BIN" \
     -p1 \
     -path "$BUILD_DIR" \
     -quiet \
