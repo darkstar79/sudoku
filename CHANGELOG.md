@@ -67,6 +67,7 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 ### Security
 
 - **Save-file decompression is now capped at 64 MiB.** Previously the zlib decompression loop could allocate up to ~4096× the compressed input before giving up — a crafted 10 MiB save file could demand ~40 GiB of RAM and crash the process via OOM. The cap is far above any realistic save (YAML saves are typically <1 MiB) but small enough to keep the decompressor's memory bounded; oversized inputs are now rejected with `CompressionError`. Affects both regular save loading and `importSave`. (#12)
+- **Numeric fields in a save file are now range-validated on load.** A hand-edited or otherwise malformed save could previously carry out-of-range move positions, cell values, or note values that the loader accepted (it checked only board *dimensions*, not the numbers inside); the bad values could then cause an out-of-bounds write when you undid/redid a move, or trigger undefined behavior. Every numeric field — move row/column/value/type, the move index, board cells, and pencil-mark values — is now checked against the board's fixed range at load time, and a save that violates it is refused as invalid data rather than mishandled. A rejected file is preserved aside, never overwritten. Legitimate saves are unaffected and the save format is unchanged (`SAVE_FILE_VERSION` 1.1).
 
 ### Fixed
 

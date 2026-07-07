@@ -372,8 +372,45 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
         // Current state
         BoardSerializer::deserializeIntBoard(puzzle_data["current_state"], game.current_state);
 
+        // Range-validate every deserialized cell (Story 7.1). The dimension checks above prove the
+        // board is 9×9 but not that its numbers are in [EMPTY_CELL, MAX_VALUE]; an out-of-domain cell
+        // would later reach valueToBit() == (1 << value) from the solver → shift-UB. Reject at the
+        // deserializer boundary, the same as the dimension checks.
+        for (size_t r = 0; r < BOARD_SIZE; ++r) {
+            for (size_t c = 0; c < BOARD_SIZE; ++c) {
+                if (game.original_puzzle[r][c] < EMPTY_CELL || game.original_puzzle[r][c] > MAX_VALUE ||
+                    game.current_state[r][c] < EMPTY_CELL || game.current_state[r][c] > MAX_VALUE) {
+                    spdlog::error("Invalid cell value in save at ({}, {}): original={}, current={}", r, c,
+                                  game.original_puzzle[r][c], game.current_state[r][c]);
+                    return std::unexpected(SaveError::InvalidSaveData);
+                }
+            }
+        }
+
         // Notes
         if (puzzle_data["notes"]) {
+            // Range-validate note values BEFORE deserialization (V2, Story 7.1). Each note reaches
+            // CellNotes::add → valueToBit(value) == (1 << value), which is UB for value < MIN_VALUE or
+            // >= 32. Contract (Dev Notes AC3) = REJECT the whole save at the boundary rather than skip,
+            // so a hostile save never silently loads with dropped notes. deserializeNotes stays void.
+            const auto& notes_node = puzzle_data["notes"];
+            for (size_t r = 0; r < BOARD_SIZE; ++r) {
+                if (!notes_node[r]) {
+                    continue;
+                }
+                for (size_t c = 0; c < BOARD_SIZE; ++c) {
+                    if (!notes_node[r][c]) {
+                        continue;
+                    }
+                    for (const auto& note : notes_node[r][c]) {
+                        const int note_val = note.as<int>();
+                        if (note_val < MIN_VALUE || note_val > MAX_VALUE) {
+                            spdlog::error("Invalid note value in save at ({}, {}): {}", r, c, note_val);
+                            return std::unexpected(SaveError::InvalidSaveData);
+                        }
+                    }
+                }
+            }
             BoardSerializer::deserializeNotes(puzzle_data["notes"], game.notes);
         }
 
@@ -409,10 +446,45 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
             const auto& move_history = root["move_history"];
             for (const auto& yaml_move : move_history) {
                 Move move;
-                move.position.row = yaml_move["row"].as<int>();
-                move.position.col = yaml_move["col"].as<int>();
-                move.value = yaml_move["value"].as<int>();
-                move.move_type = static_cast<MoveType>(yaml_move["type"].as<int>());
+
+                // Range-validate every numeric field BEFORE it is stored or replayed (Story 7.1). A
+                // crafted save is untrusted input per SECURITY.md; an out-of-domain row/col/value/type
+                // would otherwise reach the GameState::setValue/setNotes sinks on undo/redo and index
+                // out of bounds. Read row/col as SIGNED ints and check both ends so a YAML "-1" is
+                // caught before it narrows to a huge size_t. Mirrors reconstruction.cpp:69-76.
+                const int row = yaml_move["row"].as<int>();
+                const int col = yaml_move["col"].as<int>();
+                const int value = yaml_move["value"].as<int>();
+                const int type = yaml_move["type"].as<int>();
+
+                if (row < 0 || col < 0 || std::cmp_greater_equal(row, BOARD_SIZE) ||
+                    std::cmp_greater_equal(col, BOARD_SIZE)) {
+                    spdlog::error("Invalid move position in save: ({}, {})", row, col);
+                    return std::unexpected(SaveError::InvalidSaveData);
+                }
+                if (value < EMPTY_CELL || value > MAX_VALUE) {
+                    spdlog::error("Invalid move value in save: {}", value);
+                    return std::unexpected(SaveError::InvalidSaveData);
+                }
+                // Validate the raw int is a defined MoveType enumerator before the cast, mirroring the
+                // origin switch-with-default idiom above. Undefined enum values are rejected, not
+                // silently coerced (a bad type would misdirect the undo/redo replay).
+                switch (type) {
+                    case static_cast<int>(MoveType::PlaceNumber):
+                    case static_cast<int>(MoveType::RemoveNumber):
+                    case static_cast<int>(MoveType::AddNote):
+                    case static_cast<int>(MoveType::RemoveNote):
+                    case static_cast<int>(MoveType::PlaceHint):
+                        move.move_type = static_cast<MoveType>(type);
+                        break;
+                    default:
+                        spdlog::error("Invalid move type in save: {}", type);
+                        return std::unexpected(SaveError::InvalidSaveData);
+                }
+
+                move.position.row = static_cast<size_t>(row);
+                move.position.col = static_cast<size_t>(col);
+                move.value = value;
                 move.is_note = yaml_move["is_note"].as<bool>();
 
                 // #24 M4: Move::timestamp removed. Older snapshots may still carry a "timestamp"
@@ -422,7 +494,15 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
             }
 
             if (root["current_move_index"]) {
-                game.current_move_index = root["current_move_index"].as<int>();
+                const int index = root["current_move_index"].as<int>();
+                // Valid range is [-1, size-1]: -1 means "all moves undone", otherwise it points at a
+                // real move. An out-of-range index would let redo walk past move_history's end.
+                if (index < -1 || std::cmp_greater_equal(index, game.move_history.size())) {
+                    spdlog::error("Invalid current_move_index in save: {} (history size {})", index,
+                                  game.move_history.size());
+                    return std::unexpected(SaveError::InvalidSaveData);
+                }
+                game.current_move_index = index;
             }
         }
 
