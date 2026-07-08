@@ -30,17 +30,20 @@ The project follows a **trunk-based workflow**:
 
 ### Versioning
 
-The version number is declared once, in the `project(... VERSION X.Y.Z ...)` clause of [CMakeLists.txt](CMakeLists.txt). At configure time CMake substitutes that value into `sudoku::kAppVersion` via [src/version.h.in](src/version.h.in); the running application, packaging metadata, and the smoke tests in [tests/unit/test_version.cpp](tests/unit/test_version.cpp) all read that one constant. Do not hardcode the version anywhere else.
+The canonical version number is declared in the `project(... VERSION X.Y.Z ...)` clause of [CMakeLists.txt](CMakeLists.txt) — the single source of truth. At configure time CMake substitutes that value into `sudoku::kAppVersion` via [src/version.h.in](src/version.h.in); the running application and the smoke tests in [tests/unit/test_version.cpp](tests/unit/test_version.cpp) read that one constant. Two packager-visible files that CMake does **not** generate mirror the version by hand — `version = "X.Y.Z"` in [conanfile.py](conanfile.py) and the top `<release version="X.Y.Z" date="…">` entry in [resources/linux/io.github.darkstar79.Sudoku.metainfo.xml](resources/linux/io.github.darkstar79.Sudoku.metainfo.xml). Drift between the three is blocked by the release guard, [`scripts/check_release_consistency.sh`](scripts/check_release_consistency.sh) (run in CI's `packaging.yml` `release-guard` job and locally at release time). Do not hardcode the version anywhere else.
 
 [Semantic Versioning](https://semver.org/) applies in spirit. Until `1.0.0` is tagged, surfaces that user code or save files depend on (save-file schema, settings keys, CLI flags, packaging layout) may still shift between snapshots — packagers and downstream consumers should track tags rather than `main`.
 
 ### Cutting a release
 
 1. Audit the working tree on `main`: full test suite green, [CHANGELOG.md](CHANGELOG.md) `[Unreleased]` section reflects the actual diff since the previous tag.
-2. Bump `project(VERSION ...)` in [CMakeLists.txt](CMakeLists.txt) if a new MAJOR/MINOR/PATCH is appropriate, and reconfigure to regenerate `sudoku/version.h`.
-3. Promote the changelog's `[Unreleased]` heading to `[X.Y.Z] — YYYY-MM-DD`.
-4. Coordinate with the downstream packager *before* tagging — particularly when transitioning off the date-stamped snapshot scheme, which may require an RPM `Epoch:` bump.
-5. Tag `vX.Y.Z` on `main` (annotated, signed where applicable) and push the tag.
+2. Bump the version in lockstep across all three copies: `project(VERSION ...)` in [CMakeLists.txt](CMakeLists.txt) (reconfigure to regenerate `sudoku/version.h`) **and** `version = "X.Y.Z"` in [conanfile.py](conanfile.py).
+3. Add/update the top `<release version="X.Y.Z" date="YYYY-MM-DD">` entry in [resources/linux/io.github.darkstar79.Sudoku.metainfo.xml](resources/linux/io.github.darkstar79.Sudoku.metainfo.xml) with the release-day date and a short note — this is the same hand-maintained entry the release guard verifies (version match + a date within 30 days of the tag commit).
+4. Promote the changelog's `[Unreleased]` heading to `[X.Y.Z] — YYYY-MM-DD`.
+5. Run `./scripts/check_release_consistency.sh vX.Y.Z` locally (create the tag first, or run consistency-only mode without the argument) — it must pass before tagging.
+6. Dispatch a `packaging.yml` dry run from the release branch (Actions → Packaging → Run workflow) and verify the three artifact names (`Sudoku-X.Y.Z-x86_64.flatpak`, `Sudoku-X.Y.Z-x86_64.AppImage`, `Sudoku-X.Y.Z-win64.exe`) all carry the identical version string.
+7. Coordinate with the downstream packager *before* tagging — particularly when transitioning off the date-stamped snapshot scheme, which may require an RPM `Epoch:` bump.
+8. Tag `vX.Y.Z` on `main` (annotated, signed where applicable) and push the tag. The `release-guard` job re-checks tag ↔ version ↔ metainfo before any artifact is built.
 
 ## Security Issues
 

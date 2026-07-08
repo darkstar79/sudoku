@@ -13,15 +13,46 @@ env:
   # VERSION is the raw ref name; tags (v1.0.0) are filename-safe but
   # branch names like feature/release-1.0-prep contain '/'. Steps that
   # embed VERSION into output paths sanitize it with bash parameter
-  # expansion: "${VERSION//\//-}". GHA expressions have no replace()
-  # function, so the substitution has to happen in shell.
+  # expansion, but the leading-'v' strip is applied ONLY for real tag
+  # refs (REF_TYPE == 'tag'); on a branch/dispatch the name is kept as-is
+  # so a branch like 'version-bump' is not corrupted into 'ersion-bump':
+  #   if [ "$REF_TYPE" = tag ]; then version_safe="${VERSION#v}"; else version_safe="$VERSION"; fi
+  #   version_safe="${version_safe//\//-}"
+  # so a tag v1.0.0 yields the artifact-name version 1.0.0 — one identical
+  # string across Flatpak/AppImage/DMG and CPack's NSIS name
+  # (Sudoku-${PROJECT_VERSION}-win64, CMakeLists.txt). GHA expressions have
+  # no replace() function, so the substitution has to happen in shell.
   VERSION: ${{ github.ref_name || 'dev' }}
 
 jobs:
+  release-guard:
+    name: Release Guard (version integrity)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Verify tag ↔ version ↔ metainfo consistency
+        env:
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          # On a tag push, run in tag mode (asserts tag == v<PROJECT_VERSION> and a fresh
+          # metainfo release date); on any other trigger (workflow_dispatch from a branch)
+          # run consistency-only mode. A mismatch fails here, before any artifact is built.
+          if [[ "$REF" == refs/tags/* ]]; then
+            ./scripts/check_release_consistency.sh "$REF_NAME"
+          else
+            ./scripts/check_release_consistency.sh
+          fi
+
   flatpak:
     name: Flatpak Bundle
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    needs: release-guard
 
     steps:
       - name: Checkout code
@@ -40,8 +71,12 @@ jobs:
             build-flatpak flatpak/io.github.darkstar79.Sudoku.yml
 
       - name: Create Flatpak bundle
+        env:
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          version_safe="${VERSION//\//-}"
+          # Strip a leading 'v' only for real tag refs, so a branch/dispatch name is never corrupted.
+          if [ "$REF_TYPE" = "tag" ]; then version_safe="${VERSION#v}"; else version_safe="$VERSION"; fi
+          version_safe="${version_safe//\//-}"
           flatpak build-bundle repo \
             "Sudoku-${version_safe}-x86_64.flatpak" \
             io.github.darkstar79.Sudoku
@@ -57,6 +92,7 @@ jobs:
     name: AppImage
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    needs: release-guard
 
     steps:
       - name: Checkout code
@@ -104,8 +140,12 @@ jobs:
           chmod +x linuxdeploy-*.AppImage
 
       - name: Create AppImage
+        env:
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          version_safe="${VERSION//\//-}"
+          # Strip a leading 'v' only for real tag refs, so a branch/dispatch name is never corrupted.
+          if [ "$REF_TYPE" = "tag" ]; then version_safe="${VERSION#v}"; else version_safe="$VERSION"; fi
+          version_safe="${version_safe//\//-}"
           export LDAI_OUTPUT="Sudoku-${version_safe}-x86_64.AppImage"
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
@@ -123,6 +163,7 @@ jobs:
     name: NSIS Installer
     runs-on: windows-2025
     timeout-minutes: 30
+    needs: release-guard
 
     steps:
       - name: Checkout code
@@ -186,6 +227,7 @@ jobs:
     name: macOS DMG (Universal Binary)
     runs-on: macos-15
     timeout-minutes: 45
+    needs: release-guard
     # macOS is out of scope for 1.0.0: there is no Apple Developer account, so
     # the DMG cannot be code-signed/notarized and would only ship as an unsigned
     # (Gatekeeper-hostile) image. Build it on demand only, and keep it OUT of the
@@ -269,8 +311,12 @@ jobs:
           "$(brew --prefix qt)/bin/macdeployqt" build/sudoku_universal.app
 
       - name: Create DMG
+        env:
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          version_safe="${VERSION//\//-}"
+          # Strip a leading 'v' only for real tag refs, so a branch/dispatch name is never corrupted.
+          if [ "$REF_TYPE" = "tag" ]; then version_safe="${VERSION#v}"; else version_safe="$VERSION"; fi
+          version_safe="${version_safe//\//-}"
           mkdir -p dist
           cp -R build/sudoku_universal.app dist/
           hdiutil create -volname "Sudoku" \
