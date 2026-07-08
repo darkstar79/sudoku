@@ -352,6 +352,8 @@ void GameViewModel::startGameSession() {
     if (session_result) {
         current_game_session_ = *session_result;
         spdlog::debug("Started game session: {} with rating: {}", current_game_session_, current_puzzle_rating_);
+    } else {
+        spdlog::warn("Failed to start game session: {}", statisticsErrorToString(session_result.error()));
     }
 }
 

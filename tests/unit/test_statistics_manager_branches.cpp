@@ -52,10 +52,45 @@ TEST_CASE("StatisticsManager - startGame with invalid difficulty returns error",
     auto time = std::make_shared<MockTimeProvider>();
     StatisticsManager mgr(tmp.path().string(), time);
 
-    // uint8_t value 99 exceeds Expert=3 → isValidDifficulty returns false
+    // uint8_t value 99 is >= DIFFICULTY_COUNT → isValidDifficulty returns false
     auto result = mgr.startGame(static_cast<Difficulty>(99), 1234, 0);
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == StatisticsError::InvalidDifficulty);
+
+    // DIFFICULTY_COUNT (= 5) is the first invalid value just past Master=4.
+    auto boundary = mgr.startGame(static_cast<Difficulty>(DIFFICULTY_COUNT), 1234, 0);
+    REQUIRE_FALSE(boundary.has_value());
+    REQUIRE(boundary.error() == StatisticsError::InvalidDifficulty);
+}
+
+// ============================================================================
+// STAT-1: Master (Difficulty=4) must be recorded like every other difficulty
+// ============================================================================
+
+TEST_CASE("StatisticsManager - Master game is recorded in aggregates", "[statistics_manager_branches][stat1]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    constexpr auto kMaster = static_cast<size_t>(Difficulty::Master);
+
+    auto id = mgr.startGame(Difficulty::Master, 4242, 900);
+    REQUIRE(id.has_value());
+    time->advanceSystemTime(std::chrono::milliseconds(90000));
+    REQUIRE(mgr.endGame(*id, true).has_value());
+
+    auto agg = mgr.getAggregateStats();
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->games_played[kMaster] == 1);
+    REQUIRE(agg->games_completed[kMaster] == 1);
+    REQUIRE(agg->best_times[kMaster] == std::chrono::milliseconds(90000));
+
+    auto master_stats = mgr.getStatsForDifficulty(Difficulty::Master);
+    REQUIRE(master_stats.has_value());
+    REQUIRE(master_stats->games_played[kMaster] == 1);
+
+    auto best = mgr.getBestTimes();
+    REQUIRE(best[kMaster] == std::chrono::milliseconds(90000));
 }
 
 TEST_CASE("StatisticsManager - getStatsForDifficulty with invalid difficulty returns error",
@@ -675,4 +710,196 @@ TEST_CASE("StatisticsManager - clean encrypted round-trip keeps history readable
     REQUIRE(sessions.has_value());
     REQUIRE(sessions->size() == 1);
     REQUIRE_FALSE(reopened.hasUnreadableSessionHistory());
+}
+
+// ============================================================================
+// STAT-2 (AC4): a hostile out-of-range difficulty in a plain game_sessions.yaml
+// must be quarantined at startup via the existing issue-#26 archive flow, never
+// indexed into the fixed-size aggregate arrays (which would be an OOB write).
+// ============================================================================
+
+TEST_CASE("StatisticsManager - hostile session difficulty is quarantined at startup",
+          "[statistics_manager_branches][stat2][issue26]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+
+    // One valid session plus one with an out-of-range difficulty. Plain YAML so
+    // no aggregate_stats.yaml exists → the constructor recalculation path reads
+    // this file directly.
+    {
+        std::ofstream f(sessions_file, std::ios::binary);
+        f << "- difficulty: 0\n"
+             "  puzzle_rating: 100\n"
+             "  completed: true\n"
+             "  time_played: 30000\n"
+             "- difficulty: 99\n"
+             "  puzzle_rating: 200\n"
+             "  completed: true\n"
+             "  time_played: 40000\n";
+    }
+    std::vector<uint8_t> original = readAllBytes(sessions_file);
+    REQUIRE_FALSE(fs::exists(tmp.path() / "aggregate_stats.yaml"));
+
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    // Aggregates must fall back to empty — the hostile session was never indexed.
+    auto agg = mgr.getAggregateStats();
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->total_games == 0);
+
+    // getAllSessions() fails closed and latches the unreadable flag.
+    auto all = mgr.getAllSessions();
+    REQUIRE_FALSE(all.has_value());
+    REQUIRE(mgr.hasUnreadableSessionHistory());
+
+    // Hostile bytes untouched on disk.
+    REQUIRE(readAllBytes(sessions_file) == original);
+
+    // The established recovery flow moves it aside so a fresh history can start.
+    auto archived = mgr.archiveUnreadableSessions();
+    REQUIRE(archived.has_value());
+    REQUIRE(fs::exists(*archived));
+    REQUIRE(readAllBytes(*archived) == original);
+    REQUIRE_FALSE(fs::exists(sessions_file));
+    REQUIRE_FALSE(mgr.hasUnreadableSessionHistory());
+}
+
+// ============================================================================
+// Review finding #1 (HIGH, data loss): a flush must serialize the FULL merged
+// history (disk + pending), never shrink the on-disk file to pending-only.
+//
+// Reachable purely through the plain-mode public API: when the on-disk history is
+// encrypted (e.g. the user turned encryption off) a plain flush must decrypt and
+// preserve that history, not overwrite it with the pending sessions alone. This
+// exercises the same unified whole-file writer the encrypt-failure fallback uses.
+// ============================================================================
+
+TEST_CASE("StatisticsManager - plain flush preserves encrypted on-disk history and merges pending",
+          "[statistics_manager_branches][review1]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+
+    // Manager A: default (encrypted) mode writes two sessions to disk.
+    {
+        StatisticsManager mgr(tmp.path().string(), time);
+        mgr.setCollectDetailedStats(true);  // encryption on by default
+        for (int i = 0; i < 2; ++i) {
+            auto id = mgr.startGame(Difficulty::Easy, static_cast<uint32_t>(i + 1), 0);
+            REQUIRE(id.has_value());
+            time->advanceSystemTime(std::chrono::milliseconds(30000));
+            REQUIRE(mgr.endGame(*id, true).has_value());
+        }
+        mgr.flushSessions();
+    }
+    // Precondition: the on-disk file is encrypted and holds exactly two sessions.
+    REQUIRE(EncryptionManager::isEncrypted(readAllBytes(sessions_file)));
+
+    // Manager B: plain mode over the same directory. It has two sessions on disk plus
+    // one freshly played (pending). A flush must persist all three — never just the one.
+    {
+        StatisticsManager mgr(tmp.path().string(), time);
+        mgr.setEncryptSessions(false);
+        mgr.setCollectDetailedStats(true);
+
+        auto id = mgr.startGame(Difficulty::Hard, 42, 0);
+        REQUIRE(id.has_value());
+        time->advanceSystemTime(std::chrono::milliseconds(30000));
+        REQUIRE(mgr.endGame(*id, true).has_value());
+
+        mgr.flushSessions();
+    }
+
+    // The on-disk history must contain history (2) + pending (1) = 3, never pending-only.
+    StatisticsManager reopened(tmp.path().string(), time);
+    auto sessions = reopened.getAllSessions();
+    REQUIRE(sessions.has_value());
+    REQUIRE(sessions->size() == 3);
+    REQUIRE_FALSE(reopened.hasUnreadableSessionHistory());
+}
+
+// ============================================================================
+// STAT-3 (AC6): flushSessions must retain pending sessions when the write fails,
+// and a later flush after the failure cause is removed must persist them.
+// ============================================================================
+
+TEST_CASE("StatisticsManager - flushSessions retains pending sessions when the write fails",
+          "[statistics_manager_branches][stat3]") {
+#ifdef _WIN32
+    SKIP("Windows does not honour POSIX read-only directory permissions via std::filesystem");
+#else
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const fs::path stats_dir = tmp.path();
+    const fs::path sessions_file = stats_dir / "game_sessions.yaml";
+
+    // Restore permissions no matter how the test exits, so temp-dir cleanup works.
+    struct PermGuard {
+        fs::path dir;
+        ~PermGuard() {
+            std::error_code ec;
+            fs::permissions(dir, fs::perms::owner_all, ec);
+        }
+    } guard{stats_dir};
+
+    SECTION("plain mode") {
+        StatisticsManager mgr(stats_dir.string(), time);
+        mgr.setEncryptSessions(false);
+        mgr.setCollectDetailedStats(true);
+
+        auto id = mgr.startGame(Difficulty::Hard, 1, 0);
+        REQUIRE(id.has_value());
+        time->advanceSystemTime(std::chrono::milliseconds(30000));
+        REQUIRE(mgr.endGame(*id, true).has_value());
+
+        // Make the directory read-only so the append write fails.
+        fs::permissions(stats_dir, fs::perms::owner_read | fs::perms::owner_exec);
+
+        mgr.flushSessions();
+
+        // Nothing hit disk, but the session is retained in memory.
+        REQUIRE_FALSE(fs::exists(sessions_file));
+        auto retained = mgr.getAllSessions();
+        REQUIRE(retained.has_value());
+        REQUIRE(retained->size() == 1);
+
+        // Remove the failure cause and retry: the retained session now persists.
+        fs::permissions(stats_dir, fs::perms::owner_all);
+        mgr.flushSessions();
+
+        StatisticsManager reopened(stats_dir.string(), time);
+        auto sessions = reopened.getAllSessions();
+        REQUIRE(sessions.has_value());
+        REQUIRE(sessions->size() == 1);
+    }
+
+    SECTION("encrypted mode") {
+        StatisticsManager mgr(stats_dir.string(), time);
+        mgr.setEncryptSessions(true);
+        mgr.setCollectDetailedStats(true);
+
+        auto id = mgr.startGame(Difficulty::Hard, 2, 0);
+        REQUIRE(id.has_value());
+        time->advanceSystemTime(std::chrono::milliseconds(45000));
+        REQUIRE(mgr.endGame(*id, true).has_value());
+
+        fs::permissions(stats_dir, fs::perms::owner_read | fs::perms::owner_exec);
+
+        mgr.flushSessions();
+
+        REQUIRE_FALSE(fs::exists(sessions_file));
+        auto retained = mgr.getAllSessions();
+        REQUIRE(retained.has_value());
+        REQUIRE(retained->size() == 1);
+
+        fs::permissions(stats_dir, fs::perms::owner_all);
+        mgr.flushSessions();
+
+        StatisticsManager reopened(stats_dir.string(), time);
+        auto sessions = reopened.getAllSessions();
+        REQUIRE(sessions.has_value());
+        REQUIRE(sessions->size() == 1);
+    }
+#endif
 }
