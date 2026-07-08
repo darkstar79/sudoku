@@ -372,3 +372,45 @@ TEST_CASE("StatisticsSerializer - serializeStatsToYaml is atomic", "[statistics_
         REQUIRE(loaded->total_games == 42);
     }
 }
+
+// ============================================================================
+// STAT-2: session difficulty must be range-validated at the deserialization
+// boundary (before the uint8_t-backed static_cast can wrap hostile values).
+// ============================================================================
+
+TEST_CASE("StatisticsSerializer - session difficulty out of range is rejected", "[statistics_serializer][stat2]") {
+    auto make_node = [](int difficulty_value) {
+        YAML::Node session;
+        session["difficulty"] = difficulty_value;
+        session["puzzle_rating"] = 500.0;
+        session["completed"] = true;
+        YAML::Node sessions;
+        sessions.push_back(session);
+        return sessions;
+    };
+
+    SECTION("difficulty 4 (Master) is accepted") {
+        auto result = deserializeGameStatsFromNode(make_node(4));
+        REQUIRE(result.has_value());
+        REQUIRE(result->size() == 1);
+        REQUIRE(result->front().difficulty == Difficulty::Master);
+    }
+
+    SECTION("difficulty 5 (first out of range) is rejected") {
+        auto result = deserializeGameStatsFromNode(make_node(static_cast<int>(DIFFICULTY_COUNT)));
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error() == StatisticsError::SerializationError);
+    }
+
+    SECTION("difficulty 99 is rejected") {
+        auto result = deserializeGameStatsFromNode(make_node(99));
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error() == StatisticsError::SerializationError);
+    }
+
+    SECTION("difficulty -1 is rejected") {
+        auto result = deserializeGameStatsFromNode(make_node(-1));
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error() == StatisticsError::SerializationError);
+    }
+}

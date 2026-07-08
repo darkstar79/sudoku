@@ -254,7 +254,19 @@ std::expected<std::vector<GameStats>, StatisticsError> deserializeGameStatsFromN
             GameStats stats;
 
             if (session_node["difficulty"]) {
-                stats.difficulty = static_cast<Difficulty>(session_node["difficulty"].as<int>());
+                // Range-check the raw int BEFORE the cast (STAT-2): Difficulty's underlying
+                // type is uint8_t, so static_cast wraps modulo-256 (e.g. 260 → 4/Master),
+                // which would silently launder hostile values. Reject the whole node parse on
+                // any out-of-range value so it routes through getAllSessions()'s fail-closed
+                // latch into the issue-#26 archive flow (never silently skip a session — a
+                // skipped session would be destroyed on the next flush rewrite).
+                const int diff_val = session_node["difficulty"].as<int>();
+                if (diff_val < 0 || diff_val >= static_cast<int>(DIFFICULTY_COUNT)) {
+                    spdlog::error("Session difficulty out of range: {} (valid 0..{})", diff_val,
+                                  static_cast<int>(DIFFICULTY_COUNT) - 1);
+                    return std::unexpected(StatisticsError::SerializationError);
+                }
+                stats.difficulty = static_cast<Difficulty>(diff_val);
             }
             if (session_node["puzzle_rating"]) {
                 stats.puzzle_rating = session_node["puzzle_rating"].as<double>();

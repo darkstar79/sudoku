@@ -211,7 +211,7 @@ std::expected<AggregateStats, StatisticsError> StatisticsManager::getStatsForDif
     }
 
     const auto& all_stats = *all_stats_result;
-    // Enum is 0-based (Easy=0, Medium=1, Hard=2, Expert=3), matches array indexing
+    // Enum is 0-based and covers all DIFFICULTY_COUNT levels (Easy=0 … Master=4); matches array indexing
     int diff_index = static_cast<int>(difficulty);
 
     AggregateStats difficulty_stats;
@@ -561,7 +561,16 @@ std::expected<void, StatisticsError> StatisticsManager::saveGameSession(const Ga
 }
 
 void StatisticsManager::updateAggregateStats(const GameStats& completed_game) const {
-    // Enum is 0-based (Easy=0, Medium=1, Hard=2, Expert=3), matches array indexing
+    // Defense in depth (STAT-2): never index the fixed-size DIFFICULTY_COUNT arrays with an
+    // out-of-range difficulty. The deserialization boundary already rejects hostile sessions,
+    // but a bad value reaching this sink must contribute to no counter rather than corrupt memory.
+    if (!isValidDifficulty(completed_game.difficulty)) {
+        spdlog::warn("Skipping session with out-of-range difficulty {} in aggregate update",
+                     static_cast<int>(completed_game.difficulty));
+        return;
+    }
+
+    // Enum is 0-based and covers all DIFFICULTY_COUNT levels (Easy=0 … Master=4); matches array indexing
     int diff_index = static_cast<int>(completed_game.difficulty);
 
     // Update rating statistics BEFORE incrementing games_played (track for all games, not just completed)
@@ -668,8 +677,9 @@ bool StatisticsManager::isValidGameSession(uint64_t game_id) const {
 
 bool StatisticsManager::isValidDifficulty(Difficulty difficulty) {
     int diff_val = static_cast<int>(difficulty);
-    // Difficulty enum is 0-based: Easy=0, Medium=1, Hard=2, Expert=3
-    return diff_val >= 0 && diff_val <= 3;
+    // Difficulty enum is 0-based and spans all DIFFICULTY_COUNT levels
+    // (Easy=0, Medium=1, Hard=2, Expert=3, Master=4). Never hardcode the upper bound.
+    return diff_val >= 0 && diff_val < static_cast<int>(DIFFICULTY_COUNT);
 }
 
 void StatisticsManager::setCollectDetailedStats(bool enabled) {
@@ -736,67 +746,90 @@ std::expected<std::filesystem::path, StatisticsError> StatisticsManager::archive
     return archive_path;
 }
 
+std::vector<uint8_t> StatisticsManager::serializeSessionsToYaml(const std::vector<GameStats>& sessions) {
+    // Build one YAML sequence node from the full session set. The plain path writes these bytes
+    // directly; the encrypted path encrypts them — same fields either way, so the two at-rest
+    // formats round-trip through deserializeGameStatsFromNode identically.
+    YAML::Node sessions_node;
+    for (const auto& s : sessions) {
+        YAML::Node node;
+        node["difficulty"] = static_cast<int>(s.difficulty);
+        node["puzzle_rating"] = s.puzzle_rating;
+        node["start_time"] = std::chrono::system_clock::to_time_t(s.start_time);
+        node["end_time"] = std::chrono::system_clock::to_time_t(s.end_time);
+        node["time_played"] = s.time_played.count();
+        node["completed"] = s.completed;
+        node["moves_made"] = s.moves_made;
+        node["hints_used"] = s.hints_used;
+        node["mistakes"] = s.mistakes;
+        node["puzzle_seed"] = s.puzzle_seed;
+        sessions_node.push_back(node);
+    }
+    std::stringstream ss;
+    ss << sessions_node;
+    const auto yaml_str = ss.str();
+    return {yaml_str.begin(), yaml_str.end()};
+}
+
+bool StatisticsManager::writeSessionsAsPlainYaml(const std::vector<GameStats>& sessions) const {
+    // Single whole-file write, mirroring the encrypted success path: all-or-nothing.
+    return atomicWriteFile(sessions_file_, serializeSessionsToYaml(sessions)).has_value();
+}
+
 void StatisticsManager::flushSessions() {
     if (pending_sessions_.empty()) {
         return;
     }
 
+    // Load the full merged history (disk + pending): getAllSessions() already merges
+    // pending_sessions_. It fails closed when the on-disk history is unreadable (issue #26) —
+    // overwriting then would re-serialize only the pending sessions over recoverable bytes and
+    // destroy history. Keep pending in memory and leave the file untouched until the user
+    // archives it via archiveUnreadableSessions().
+    auto all_result = getAllSessions();
+    if (!all_result) {
+        spdlog::warn("Session history unreadable — skipping flush to avoid overwriting recoverable data");
+        return;
+    }
+    const std::vector<GameStats> all_sessions = std::move(*all_result);
+
+    // Track what actually landed at rest so the success log reflects the true state: an encrypt
+    // failure falls back to a plain write, which must report encrypted=false.
+    bool wrote_encrypted = false;
+
+    // Unified write path: BOTH modes serialize the full merged history in a SINGLE atomic write
+    // (encrypted-blob or plain-YAML), so the whole flush is all-or-nothing. On any failure we
+    // retain the ENTIRE pending vector — never clearing sessions that are not confirmed on disk —
+    // and a later flush (once the failure cause is gone) rewrites the full file exactly once. No
+    // per-session append bookkeeping is needed because we never append; we always rewrite.
     if (encrypt_sessions_) {
-        // Load existing sessions, merge with pending, write as encrypted blob.
-        // getAllSessions() already merges pending_sessions_, so no extra append needed.
-        auto all_result = getAllSessions();
-        if (!all_result) {
-            // The on-disk history could not be read. Overwriting now would re-encrypt
-            // only the pending sessions over recoverable bytes and destroy history
-            // (issue #26). Keep pending in memory and leave the file untouched until
-            // the user archives it via archiveUnreadableSessions().
-            spdlog::warn("Session history unreadable — skipping flush to avoid overwriting recoverable data");
-            return;
-        }
-        std::vector<GameStats> all_sessions = std::move(*all_result);
-
-        // Serialize to YAML in memory
-        YAML::Node sessions_node;
-        for (const auto& s : all_sessions) {
-            YAML::Node node;
-            node["difficulty"] = static_cast<int>(s.difficulty);
-            node["puzzle_rating"] = s.puzzle_rating;
-            node["start_time"] = std::chrono::system_clock::to_time_t(s.start_time);
-            node["end_time"] = std::chrono::system_clock::to_time_t(s.end_time);
-            node["time_played"] = s.time_played.count();
-            node["completed"] = s.completed;
-            node["moves_made"] = s.moves_made;
-            node["hints_used"] = s.hints_used;
-            node["mistakes"] = s.mistakes;
-            node["puzzle_seed"] = s.puzzle_seed;
-            sessions_node.push_back(node);
-        }
-        std::stringstream ss;
-        ss << sessions_node;
-        auto yaml_str = ss.str();
-        std::vector<uint8_t> data(yaml_str.begin(), yaml_str.end());
-
-        // Encrypt with interactive KDF and write atomically
-        auto enc_result = EncryptionManager::encryptInteractive(data);
+        auto enc_result = EncryptionManager::encryptInteractive(serializeSessionsToYaml(all_sessions));
         if (enc_result) {
-            auto write_result = atomicWriteFile(sessions_file_, *enc_result);
-            if (!write_result) {
-                spdlog::warn("Atomic write failed for sessions file");
+            if (!atomicWriteFile(sessions_file_, *enc_result)) {
+                spdlog::warn("Atomic write failed for sessions file — retaining {} pending session(s)",
+                             pending_sessions_.size());
+                return;  // STAT-3: do not clear unwritten sessions
             }
+            wrote_encrypted = true;
         } else {
+            // Encryption failed (e.g. libsodium unavailable). Fall back to a plain write of the
+            // FULL merged history — never pending-only — so the encrypted history that
+            // getAllSessions() just decrypted into all_sessions is preserved, not overwritten.
             spdlog::warn("Failed to encrypt sessions, falling back to plain YAML");
-            for (const auto& session : pending_sessions_) {
-                std::ignore = saveGameSession(session);
+            if (!writeSessionsAsPlainYaml(all_sessions)) {
+                spdlog::warn("Plain-YAML fallback write failed — retaining {} pending session(s)",
+                             pending_sessions_.size());
+                return;  // STAT-3: retained the whole pending vector, do not log success
             }
         }
     } else {
-        // Write as plain YAML (append mode)
-        for (const auto& session : pending_sessions_) {
-            std::ignore = saveGameSession(session);
+        if (!writeSessionsAsPlainYaml(all_sessions)) {
+            spdlog::warn("Plain-YAML session write failed — retaining {} pending session(s)", pending_sessions_.size());
+            return;  // STAT-3: retained the whole pending vector, no success log
         }
     }
 
-    spdlog::info("Flushed {} sessions to disk (encrypted={})", pending_sessions_.size(), encrypt_sessions_);
+    spdlog::info("Flushed {} sessions to disk (encrypted={})", pending_sessions_.size(), wrote_encrypted);
     pending_sessions_.clear();
 }
 

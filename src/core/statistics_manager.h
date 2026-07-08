@@ -125,6 +125,16 @@ private:
     std::expected<void, StatisticsError> saveStatistics() const;
     std::expected<void, StatisticsError> saveGameSession(const GameStats& stats) const;
 
+    // Serializes the given sessions to plain (unencrypted) YAML bytes, reusing the exact field
+    // set the encrypted path writes so plain and encrypted at-rest files round-trip identically.
+    [[nodiscard]] static std::vector<uint8_t> serializeSessionsToYaml(const std::vector<GameStats>& sessions);
+
+    // Writes the given sessions as plain YAML to sessions_file_ in a single atomicWriteFile —
+    // all-or-nothing, mirroring the encrypted success path. Used by both the plain-mode flush and
+    // the encrypt-failure fallback (which must write the FULL merged history, not pending-only, so
+    // decrypted-from-disk history is preserved). Returns true iff the whole-file write succeeded.
+    [[nodiscard]] bool writeSessionsAsPlainYaml(const std::vector<GameStats>& sessions) const;
+
     // YAML serialization and CSV export are in statistics_serializer.h
 
     // Statistics calculation
