@@ -92,7 +92,7 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
-    <release version="1.0.0" date="2026-03-20">
+    <release version="1.0.0" date="2026-07-07">
       <description>
         <p>Initial release with full Sudoku gameplay, 54 solving strategies,
            training mode, and multi-language support.</p>
