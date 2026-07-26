@@ -93,40 +93,54 @@ fi
 CHANGED=$(echo "$DIFF" | grep '^+++ b/' | sed 's|^+++ b/||' | grep -E '\.(cpp|h|hpp)$' | wc -l)
 echo -e "${YELLOW}[tidy-diff] Checking $CHANGED file(s) — $MODE...${NC}"
 
-# Capture via a file rather than $(...) so output written directly by the parallel
-# clang-tidy children lands in the same place as the driver's own output.
-TIDY_LOG=$(mktemp -t tidy-diff.XXXXXX)
-trap 'rm -f "$TIDY_LOG"' EXIT
+# Gate on the EXIT CODE, exactly as the CI job does (.github/workflows/ci.yml,
+# "Run clang-tidy on changed lines").
+#
+# clang-tidy exits 0 even when it reports findings, so the flag has to be forced on.
+# clang-tidy-diff.py forwards only a fixed set of flags and rejects an explicit
+# -warnings-as-errors, hence the binary shim -- same trick, same reason, as CI.
+# clang-tidy-diff.py then returns non-zero if ANY child failed, which covers findings,
+# compile errors, crashes and timeouts alike.
+#
+# Do NOT go back to grepping the output for "warning:"/"error:" to decide pass/fail:
+#   1. It cannot tell "clean" from "never analyzed" -- a translation unit that fails to
+#      COMPILE emits no findings at all, which read as success.
+#   2. `echo "$OUT" | grep -q ...` silently LOSES matches under `set -o pipefail`:
+#      grep -q exits at the first match, echo then takes SIGPIPE, and pipefail turns
+#      that successful match into a failed pipeline. It breaks once the output exceeds
+#      the 64 KiB pipe buffer -- i.e. exactly on the large diffs that matter most.
+TIDY_SHIM=$(mktemp)
+TIDY_LOG=$(mktemp)
+trap 'rm -f "$TIDY_SHIM" "$TIDY_LOG"' EXIT
 
+cat > "$TIDY_SHIM" <<SHIM
+#!/bin/sh
+exec "$TIDY_BIN" --warnings-as-errors='*' "\$@"
+SHIM
+chmod +x "$TIDY_SHIM"
+
+TIDY_RC=0
 echo "$DIFF" | python3 "$CLANG_TIDY_DIFF" \
-    -clang-tidy-binary "$TIDY_BIN" \
+    -clang-tidy-binary "$TIDY_SHIM" \
     -p1 \
     -path "$BUILD_DIR" \
-    -quiet \
-    -j "$(nproc)" > "$TIDY_LOG" 2>&1 || true
+    -j "$(nproc)" > "$TIDY_LOG" 2>&1 || TIDY_RC=$?
 
-OUTPUT=$(cat "$TIDY_LOG")
+cat "$TIDY_LOG"
 
-if [ -n "$OUTPUT" ]; then
-    echo "$OUTPUT"
-fi
-
-# A translation unit that fails to COMPILE yields no check findings at all, so a clean
-# result here means "never analyzed", not "clean". Report that as a failure: a gate that
-# could not run must never claim success -- silent vacuous passes are how a branch reaches
-# CI with errors the local gate said were absent.
-if echo "$OUTPUT" | grep -q "Found compiler error\|Error while processing"; then
-    echo -e "${RED}[tidy-diff] clang-tidy could NOT analyze -- this result is meaningless.${NC}"
-    echo -e "${RED}            At least one translation unit failed to compile, so no checks ran.${NC}"
-    echo "            Usual cause: ${BUILD_DIR}/compile_commands.json carries flags clang rejects,"
-    echo "            e.g. GCC-only warning names injected via -DCMAKE_CXX_FLAGS. Look for"
-    echo "            'unknown warning option' / 'unknown argument' above, then regenerate it:"
-    echo "              cmake --preset release"
-    exit 1
-fi
-
-if echo "$OUTPUT" | grep -q "warning:\|error:"; then
-    echo -e "${RED}[tidy-diff] Warnings found in changed lines.${NC}"
+if [ "$TIDY_RC" -ne 0 ]; then
+    echo -e "${RED}[tidy-diff] clang-tidy gate FAILED (exit ${TIDY_RC}) — this is what CI will fail on.${NC}"
+    # Only an explanatory hint; the exit code above already decided the outcome. Grep the
+    # FILE (never a pipe) so this cannot hit the SIGPIPE trap described above, and anchor
+    # at column 0 so an echoed source line containing the phrase can't masquerade as one.
+    if grep -q '^Error while processing' "$TIDY_LOG"; then
+        echo -e "${RED}            A translation unit failed to COMPILE, so checks never ran on it —${NC}"
+        echo -e "${RED}            the findings above are incomplete, not a clean bill of health.${NC}"
+        echo "            Usual cause: ${BUILD_DIR}/compile_commands.json carries flags clang"
+        echo "            rejects, e.g. GCC-only warning names from a local -DCMAKE_CXX_FLAGS"
+        echo "            workaround. Look for 'unknown warning option' / 'unknown argument'"
+        echo "            above, then regenerate it with: cmake --preset release"
+    fi
     exit 1
 fi
 
