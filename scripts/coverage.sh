@@ -73,7 +73,12 @@ function run_tests() {
     # Run unit tests
     if [ -f "bin/tests/unit_tests" ]; then
         echo -e "${YELLOW}Running unit tests...${NC}"
-        ./bin/tests/unit_tests "~[slow]~[pathological]" || {
+        # Tag convention: [pathological] = deliberately excluded from instrumented
+        # (coverage/sanitizer) runs, still runs in the plain full-suite jobs. Load-bearing
+        # here: it keeps the non-hidden deep-recursion test (test_solver_infinite_loop_
+        # reproduction.cpp, "hasUniqueSolution on pathological puzzles") out of the
+        # gcov-instrumented run, where its backtracking would take minutes.
+        ./bin/tests/unit_tests "~[pathological]" || {
             echo -e "${RED}Unit tests failed${NC}"
             exit 1
         }
@@ -94,11 +99,20 @@ function run_tests() {
     fi
 
     # Run UI tests (Qt6, headless)
+    #
+    # NET-6: this zero-count check is the Linux analog of ctest's --no-tests=error (the Windows and
+    # macOS jobs get the flag; Linux coverage never goes through ctest). The UI binaries exist only
+    # when the build was configured with -DSUDOKU_ENABLE_UI_TESTS=ON. Without the check, dropping
+    # that flag would print a yellow "skipping" line and exit 0 — per-PR Linux CI green having run
+    # zero UI tests, with UI coverage silently missing from the gcovr numbers that gate the PR.
+    # It cannot fire spuriously: configure_build() above passes -DSUDOKU_ENABLE_UI_TESTS=ON.
     local ui_test_dir="bin/tests/ui"
+    local ui_test_count=0
     if [ -d "$ui_test_dir" ]; then
         echo -e "${YELLOW}Running UI tests (offscreen)...${NC}"
         for test_exe in "$ui_test_dir"/test_*; do
             if [ -x "$test_exe" ]; then
+                ui_test_count=$((ui_test_count + 1))
                 echo -e "${YELLOW}  Running $(basename "$test_exe")...${NC}"
                 QT_QPA_PLATFORM=offscreen "$test_exe" || {
                     echo -e "${RED}UI test $(basename "$test_exe") failed${NC}"
@@ -106,9 +120,14 @@ function run_tests() {
                 }
             fi
         done
-    else
-        echo -e "${YELLOW}UI tests directory not found, skipping...${NC}"
     fi
+
+    if [ "$ui_test_count" -eq 0 ]; then
+        echo -e "${RED}No UI test executables found in ${cmake_build_dir}/${ui_test_dir}${NC}"
+        echo -e "${RED}Coverage requires them — configure with -DSUDOKU_ENABLE_UI_TESTS=ON.${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}Ran ${ui_test_count} UI test executables${NC}"
 }
 
 function clean_coverage() {

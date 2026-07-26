@@ -200,8 +200,16 @@ TEST_CASE("PuzzleAnalyzer::parseString — rejection paths", "[puzzle_analyzer][
         auto result = analyzer.parseString(input);
         auto elapsed = std::chrono::steady_clock::now() - t0;
         REQUIRE_FALSE(result.has_value());
+        // THIS is what guards the early-exit: drop the size check and the per-byte loop runs to
+        // completion, so decoded_count reaches 5000 != 81 and the code becomes WrongLength, not
+        // InputTooLarge.
         REQUIRE(result.error().code == ParseError::InputTooLarge);
-        REQUIRE(elapsed < std::chrono::milliseconds(10));
+        // The timing bound is only a coarse runaway guard — it does NOT discriminate the regression
+        // (the per-byte loop over 5000 bytes is microseconds, so no bound in this range separates
+        // early-exit from full parse). Widened 10ms -> 1s purely so the per-PR ASan job's
+        // instrumentation overhead cannot flake it; nothing is lost, because the bound was never
+        // the signal. The SECTION's "returns fast" refers to the InputTooLarge assertion above.
+        REQUIRE(elapsed < std::chrono::seconds(1));
     }
 
     SECTION("Empty string → Empty") {

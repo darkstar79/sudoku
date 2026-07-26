@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// Per-state findStep probing audit for the last-resort strategy tier (rating >= 7.0).
+// Per-state findStep probing audit for the last-resort strategy tier (see kAuditedStrategies).
 //
 // Why this exists: the [.][strategy][correctness] harness only validates a deduction when
 // solvePuzzle's first-applicable chain actually fires it. The last-resort tier is registered
@@ -51,10 +51,23 @@ using namespace sudoku::core;
 
 namespace {
 
-// A strategy is "last-resort" iff its difficulty rating clears this threshold. The next strategy
-// below the tier is Grouped X-Cycles at 6.8, so 7.0 selects exactly the intended 13 (ALS / forcing-
-// chain / Kraken / Exocet / Nice-Loop families). Filtering by rating — rather than a hardcoded list
-// — auto-covers any future last-resort strategy; the name-set assertion below makes a drift loud.
+// The audited tier: the heavy ALS / forcing-chain / Kraken / Exocet / Nice-Loop families that
+// solvePuzzle's replay effectively never reaches, so this per-state findStep probe is their only
+// standing soundness net.
+//
+// Pinned BY NAME, not by rating. The original >= 7.0 rating cut silently shrank the probe set when
+// 6880593 (story 0b.3, SE realignment) retuned ALS-XZ 7.5 -> 6.8 and Sue de Coq 7.5 -> 6.6: both
+// fell out of the audit while the harness itself sat manual-only, so nothing reported it. Which
+// strategies deserve auditing is a property of their search shape, not of the (re-tunable) rating
+// table — so the list is the contract and the rating is only a tripwire (see kLastResortRating).
+constexpr std::array<std::string_view, 13> kAuditedStrategies{
+    "ALS-XZ",        "Sue de Coq",           "ALS-XY-Wing",          "Death Blossom", "ALS Chain",
+    "Forcing Chain", "Unit Forcing Chain",   "Region Forcing Chain", "Kraken Fish",   "Junior Exocet",
+    "Nice Loop",     "Continuous Nice Loop", "Grouped Nice Loop"};
+
+// Tripwire only: any strategy rated at or above this that is NOT in kAuditedStrategies is a newly
+// added last-resort technique that nobody decided about. Preserves the "auto-covers a future
+// last-resort strategy" property the old rating filter had, as a loud failure instead of silence.
 constexpr double kLastResortRating = 7.0;
 
 // Cap reproducer dumps per strategy so a common bug (e.g. #59 fired on 814 Hard puzzles) does not
@@ -248,25 +261,33 @@ void auditFixtures(const std::vector<ISolvingStrategy*>& probes, std::vector<Str
 // truths each elimination and placement. Run explicitly: unit_tests "[lastresort][audit]".
 // NOLINTNEXTLINE(readability-function-cognitive-complexity) — diagnostic harness with summary loop
 TEST_CASE("Last-resort strategies emit no unsound deductions across a probed corpus", "[.][lastresort][audit]") {
-    // The chain advances the replay; the same instances (filtered by rating) are probed directly.
+    // The chain advances the replay; the same instances (selected by name) are probed directly.
     auto chain = sudoku::testing::createStrategyChain();
     std::vector<ISolvingStrategy*> probes;
     for (const auto& s : chain) {
-        if (s->getDifficultyRating() >= kLastResortRating) {
+        if (std::ranges::contains(kAuditedStrategies, s->getName())) {
             probes.push_back(s.get());
         }
     }
 
-    // Guard against tier drift: a rating retune must not silently add/drop a probed strategy.
-    const std::set<std::string_view> expected_tier{
-        "ALS-XZ",        "Sue de Coq",           "ALS-XY-Wing",          "Death Blossom", "ALS Chain",
-        "Forcing Chain", "Unit Forcing Chain",   "Region Forcing Chain", "Kraken Fish",   "Junior Exocet",
-        "Nice Loop",     "Continuous Nice Loop", "Grouped Nice Loop"};
+    // Drift guard 1 — every audited name must still exist in the chain. A rename or a removal
+    // would otherwise shrink the probe set silently, which is exactly how ALS-XZ and Sue de Coq
+    // were lost before (see kAuditedStrategies).
+    const std::set<std::string_view> expected_tier(kAuditedStrategies.begin(), kAuditedStrategies.end());
     std::set<std::string_view> actual_tier;
     for (auto* p : probes) {
         actual_tier.insert(p->getName());
     }
     REQUIRE(actual_tier == expected_tier);
+
+    // Drift guard 2 — a newly added strategy rated into the last-resort band must be consciously
+    // added to (or excluded from) kAuditedStrategies, never silently left unaudited.
+    for (const auto& s : chain) {
+        if (s->getDifficultyRating() >= kLastResortRating) {
+            INFO("strategy rated >= " << kLastResortRating << " but not audited: " << s->getName());
+            REQUIRE(std::ranges::contains(kAuditedStrategies, s->getName()));
+        }
+    }
 
     AuditTotals totals;
     totals.per_strategy.reserve(probes.size());

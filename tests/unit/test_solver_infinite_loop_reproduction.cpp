@@ -65,8 +65,11 @@ TEST_CASE("PuzzleRater - Easy puzzle completes without timeout", "[puzzle_rater]
     auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
 
     // Assertions
-    REQUIRE(result.has_value());                 // Should succeed
-    REQUIRE(elapsed < std::chrono::seconds(5));  // Should be fast
+    REQUIRE(result.has_value());  // Should succeed
+    // Runaway guard, not a latency SLA: use the file's sanitizer-aware budget (60s under ASan,
+    // 10s plain) so the per-PR ASan job cannot flake on instrumentation overhead. A fixed 5s here
+    // was the one bound in this file that ignored kRatingTimeoutSeconds.
+    REQUIRE(elapsed < std::chrono::seconds(kRatingTimeoutSeconds));
 
     // Memory assertion (only on Linux where monitoring works)
     size_t memory_increase = memory.getMemoryIncrease();
@@ -189,8 +192,7 @@ TEST_CASE("PuzzleRater - Inkala 2012 (pathological case)", "[puzzle_rater][patho
 // Test Case 4: Pathological Puzzle Detection
 // ============================================================================
 
-TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)",
-          "[puzzle_rater][reproduction][pathological][.][slow]") {
+TEST_CASE("PuzzleRater - Minimal clue puzzle (pathological case)", "[puzzle_rater][reproduction][pathological][.]") {
     // Test with a very sparse puzzle (only 17 clues - minimum for unique solution)
     // This could trigger deep recursion in countSolutionsHelper during rating
 

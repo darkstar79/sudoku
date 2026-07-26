@@ -750,17 +750,26 @@ cmake --build --preset release
 export ASAN_OPTIONS="detect_leaks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1:halt_on_error=1"
 export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=1"
 
-./build/Release/bin/tests/unit_tests "~[slow]~[pathological]"
+./build/Release/bin/tests/unit_tests "~[pathological]"
 ./build/Release/bin/tests/integration_tests
 ```
 
-The `~[slow]~[pathological]` filter excludes tests that are too expensive under sanitizer instrumentation (the unsolvable-board solver test takes 10+ minutes normally).
+**Tag convention:** `[pathological]` marks tests deliberately excluded from *instrumented* runs
+(coverage and sanitizer builds); they still run in the plain full-suite jobs. The filter is
+load-bearing rather than cosmetic — it is the only thing keeping the one non-hidden `[pathological]`
+test, `PuzzleGenerator - hasUniqueSolution on pathological puzzles`
+(`tests/unit/test_solver_infinite_loop_reproduction.cpp`), out of the sanitizer and coverage runs,
+where its deep `countSolutionsHelper` recursion costs minutes. Every other `[pathological]` test is
+additionally `[.]`-hidden.
+
+(Historical note: this filter was `~[slow]~[pathological]`. The `~[slow]` half was a no-op — the only
+`[slow]`-tagged test was also `[.]`-hidden — so story 8-5 removed the tag and that half of the filter.)
 
 ### CI Configuration
 
 The nightly `sanitizer-check` job (`.github/workflows/nightly.yml`) runs:
 
-- Unit tests with `~[slow]~[pathological]` filter
+- Unit tests with `~[pathological]` filter
 - All integration tests
 - Timeout: 45 minutes
 
