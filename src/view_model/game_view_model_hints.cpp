@@ -43,8 +43,6 @@
 
 namespace sudoku::viewmodel {
 
-inline constexpr int kDefaultMaxHints = 10;
-
 namespace {
 
 struct CoachingCheckResult {
@@ -525,7 +523,10 @@ int GameViewModel::getHintCount() const {
     }
 
     int max_hints = settings_manager_ ? settings_manager_->getSettings().max_hints : kDefaultMaxHints;
-    return max_hints - stats_result->hints_used;
+    // Floor at 0 (story 8.1): hints_used can legitimately exceed max_hints — a resumed save carries
+    // the count it was saved with, and the budget setting may have been lowered since — and it can
+    // also be an unvalidated hostile value. Neither may produce a negative budget.
+    return std::max(0, max_hints - stats_result->hints_used);
 }
 
 void GameViewModel::requestCoachingHint() {

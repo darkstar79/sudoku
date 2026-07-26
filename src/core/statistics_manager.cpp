@@ -42,6 +42,14 @@
 
 namespace sudoku::core {
 
+namespace {
+
+[[nodiscard]] constexpr int clampSeededCounter(int value) {
+    return std::clamp(value, 0, MAX_PROGRESS_COUNTER);
+}
+
+}  // namespace
+
 StatisticsManager::StatisticsManager(std::filesystem::path stats_directory,
                                      std::shared_ptr<ITimeProvider> time_provider)
     : time_provider_(std::move(time_provider)) {
@@ -75,7 +83,11 @@ StatisticsManager::~StatisticsManager() {
     // End any active sessions as incomplete
     for (auto& [session_id, stats] : active_sessions_) {
         stats.end_time = time_provider_->systemNow();
-        stats.time_played = std::chrono::duration_cast<std::chrono::milliseconds>(stats.end_time - stats.start_time);
+        // ADD, mirroring endGame(): a session seeded from a restored save already carries the play
+        // time accumulated before the app was closed. Overwriting here would make the same session
+        // report a different duration depending on whether it ended via endGame() or via shutdown.
+        // time_played is 0 for every non-seeded session, so this is unchanged for a normal game.
+        stats.time_played += std::chrono::duration_cast<std::chrono::milliseconds>(stats.end_time - stats.start_time);
         stats.completed = false;
 
         if (collect_detailed_stats_) {
@@ -147,6 +159,25 @@ std::expected<void, StatisticsError> StatisticsManager::recordHint(uint64_t game
     return {};
 }
 
+std::expected<void, StatisticsError> StatisticsManager::seedSessionProgress(uint64_t game_id, int moves_made,
+                                                                            int hints_used, int mistakes,
+                                                                            std::chrono::milliseconds prior_play_time) {
+    if (!isValidGameSession(game_id)) {
+        return std::unexpected(StatisticsError::GameNotStarted);
+    }
+
+    auto& stats = active_sessions_[game_id];
+    stats.moves_made = clampSeededCounter(moves_made);
+    stats.hints_used = clampSeededCounter(hints_used);
+    stats.mistakes = clampSeededCounter(mistakes);
+    stats.time_played = std::max(prior_play_time, std::chrono::milliseconds{0});
+
+    spdlog::debug("Seeded session {} from a restored save: moves={}, hints={}, mistakes={}, prior_time={}ms", game_id,
+                  stats.moves_made, stats.hints_used, stats.mistakes, stats.time_played.count());
+
+    return {};
+}
+
 std::expected<GameStats, StatisticsError> StatisticsManager::endGame(uint64_t game_id, bool completed) {
     if (!isValidGameSession(game_id)) {
         return std::unexpected(StatisticsError::GameNotStarted);
@@ -154,7 +185,10 @@ std::expected<GameStats, StatisticsError> StatisticsManager::endGame(uint64_t ga
 
     auto& stats = active_sessions_[game_id];
     stats.end_time = time_provider_->systemNow();
-    stats.time_played = std::chrono::duration_cast<std::chrono::milliseconds>(stats.end_time - stats.start_time);
+    // ADD the active span rather than overwrite: a session seeded from a restored save already
+    // carries the play time accumulated before the app was closed (story 8.1). time_played is 0 for
+    // every non-seeded session, so this is numerically identical for a normally-started game.
+    stats.time_played += std::chrono::duration_cast<std::chrono::milliseconds>(stats.end_time - stats.start_time);
     stats.completed = completed;
 
     // Buffer the session if collection is enabled (flushed on app exit)

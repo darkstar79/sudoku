@@ -555,3 +555,158 @@ TEST_CASE("StatisticsManager - getStatsForDifficulty propagates aggregate error"
     REQUIRE(result.has_value());
     REQUIRE(result->total_games == 0);
 }
+
+// ============================================================================
+// Story 8.1 (SAVE-2/SAVE-3): seedSessionProgress — the restore-only API that
+// re-seats a resumed game's counters and prior play time onto a fresh session.
+// Without it, a resumed game restarted at 0 hints used / 0 moves / 0 mistakes
+// and reported only the post-resume span as its play time.
+// ============================================================================
+
+TEST_CASE("StatisticsManager - seedSessionProgress seeds counters and prior play time", "[statistics_extra][restore]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    auto id = mgr.startGame(Difficulty::Hard, 0, 5.5);
+    REQUIRE(id.has_value());
+
+    REQUIRE(mgr.seedSessionProgress(*id, 12, 3, 2, std::chrono::seconds(90)).has_value());
+
+    auto stats = mgr.getGameStats(*id);
+    REQUIRE(stats.has_value());
+    REQUIRE(stats->moves_made == 12);
+    REQUIRE(stats->hints_used == 3);
+    REQUIRE(stats->mistakes == 2);
+    REQUIRE(stats->time_played == std::chrono::seconds(90));
+}
+
+TEST_CASE("StatisticsManager - seedSessionProgress rejects an unknown session", "[statistics_extra][restore]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    auto result = mgr.seedSessionProgress(9999, 1, 1, 1, std::chrono::seconds(1));
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == StatisticsError::GameNotStarted);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 SECTIONs expand to nested conditionals
+TEST_CASE("StatisticsManager - seedSessionProgress clamps hostile counter values", "[statistics_extra][restore]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    SECTION("Negative counters and negative prior time clamp to zero") {
+        auto id = mgr.startGame(Difficulty::Easy, 0, 0.0);
+        REQUIRE(id.has_value());
+
+        REQUIRE(mgr.seedSessionProgress(*id, -5, -7, -9, std::chrono::seconds(-42)).has_value());
+
+        auto stats = mgr.getGameStats(*id);
+        REQUIRE(stats.has_value());
+        REQUIRE(stats->moves_made == 0);
+        REQUIRE(stats->hints_used == 0);
+        REQUIRE(stats->mistakes == 0);
+        REQUIRE(stats->time_played.count() == 0);
+    }
+
+    SECTION("Absurdly large counters clamp to the sane maximum") {
+        auto id = mgr.startGame(Difficulty::Easy, 0, 0.0);
+        REQUIRE(id.has_value());
+
+        constexpr int kAbsurd = 2'000'000'000;
+        REQUIRE(mgr.seedSessionProgress(*id, kAbsurd, kAbsurd, kAbsurd, std::chrono::seconds(0)).has_value());
+
+        auto stats = mgr.getGameStats(*id);
+        REQUIRE(stats.has_value());
+        REQUIRE(stats->moves_made < kAbsurd);
+        REQUIRE(stats->hints_used < kAbsurd);
+        REQUIRE(stats->mistakes < kAbsurd);
+        REQUIRE(stats->moves_made >= 0);
+    }
+}
+
+TEST_CASE("StatisticsManager - endGame adds the active span on top of seeded prior time",
+          "[statistics_extra][restore]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    auto id = mgr.startGame(Difficulty::Medium, 0, 0.0);
+    REQUIRE(id.has_value());
+    REQUIRE(mgr.seedSessionProgress(*id, 4, 1, 0, std::chrono::seconds(90)).has_value());
+
+    time->advanceSystemTime(std::chrono::seconds(30));  // post-resume play
+    auto ended = mgr.endGame(*id, true);
+
+    REQUIRE(ended.has_value());
+    REQUIRE(ended->time_played == std::chrono::seconds(120));  // 90 seeded + 30 played
+    REQUIRE(ended->moves_made == 4);
+    REQUIRE(ended->hints_used == 1);
+    REQUIRE(ended->completed);
+}
+
+TEST_CASE("StatisticsManager - endGame on a non-seeded session reports the active span unchanged",
+          "[statistics_extra][restore]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    auto id = mgr.startGame(Difficulty::Medium, 0, 0.0);
+    REQUIRE(id.has_value());
+
+    time->advanceSystemTime(std::chrono::seconds(30));
+    auto ended = mgr.endGame(*id, true);
+
+    REQUIRE(ended.has_value());
+    REQUIRE(ended->time_played == std::chrono::seconds(30));  // AC9e: numerically unchanged
+}
+
+TEST_CASE("StatisticsManager - shutdown abandons a seeded session with the same total as endGame",
+          "[statistics_extra][restore]") {
+    // The destructor is the cross-process exit path (quit while a resumed game is in progress).
+    // It must agree with endGame(): both ADD the active span to the seeded prior time. Before this
+    // was aligned, the same session reported 30 s via shutdown and 120 s via endGame — the kind of
+    // "same input, two stored numbers" divergence that later reads as a flake.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+
+    {
+        StatisticsManager mgr(tmp.path().string(), time);
+        mgr.setCollectDetailedStats(true);
+        auto id = mgr.startGame(Difficulty::Medium, 0, 0.0);
+        REQUIRE(id.has_value());
+        REQUIRE(mgr.seedSessionProgress(*id, 4, 1, 0, std::chrono::seconds(90)).has_value());
+        time->advanceSystemTime(std::chrono::seconds(30));
+    }  // destructor ends the session as abandoned and flushes
+
+    StatisticsManager reopened(tmp.path().string(), time);
+    auto sessions = reopened.getAllSessions();
+    REQUIRE(sessions.has_value());
+    REQUIRE(sessions->size() == 1);
+    REQUIRE(sessions->front().time_played == std::chrono::seconds(120));  // 90 seeded + 30 played
+    REQUIRE(!sessions->front().completed);
+    REQUIRE(sessions->front().moves_made == 4);
+}
+
+TEST_CASE("StatisticsManager - shutdown of a non-seeded session reports the active span unchanged",
+          "[statistics_extra][restore]") {
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+
+    {
+        StatisticsManager mgr(tmp.path().string(), time);
+        mgr.setCollectDetailedStats(true);
+        auto id = mgr.startGame(Difficulty::Medium, 0, 0.0);
+        REQUIRE(id.has_value());
+        time->advanceSystemTime(std::chrono::seconds(30));
+    }
+
+    StatisticsManager reopened(tmp.path().string(), time);
+    auto sessions = reopened.getAllSessions();
+    REQUIRE(sessions.has_value());
+    REQUIRE(sessions->size() == 1);
+    REQUIRE(sessions->front().time_played == std::chrono::seconds(30));  // unchanged for normal games
+}

@@ -52,6 +52,10 @@ public:
 
     std::expected<void, StatisticsError> recordHint(uint64_t game_id) override;
 
+    [[nodiscard]] std::expected<void, StatisticsError>
+    seedSessionProgress(uint64_t game_id, int moves_made, int hints_used, int mistakes,
+                        std::chrono::milliseconds prior_play_time) override;
+
     std::expected<GameStats, StatisticsError> endGame(uint64_t game_id, bool completed) override;
 
     // Statistics retrieval

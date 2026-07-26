@@ -193,37 +193,96 @@ void GameViewModel::loadGame(const std::string& save_id) {
     spdlog::info("Game loaded successfully");
 }
 
-void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
-    // Corruption heuristics below key off move_history (emptiness / presence) as a corruption tell.
-    // That signal is only valid for MANUAL saves, which persist the full forward log. Auto-saves are
-    // deliberately written WITHOUT history (SaveManager::autoSave sets include_history = false), so an
-    // empty move_history is their normal state and says nothing about integrity. Applying these
-    // guards to auto-saves discards every in-progress auto-save and breaks resume-on-restart entirely
+void GameViewModel::applyProgressCounters(core::SavedGame& saved_game) const {
+    if (current_game_session_ == 0) {
+        return;  // No session (e.g. no game in progress) — leave the defaults at 0.
+    }
+
+    auto stats = stats_manager_->getGameStats(current_game_session_);
+    if (!stats) {
+        spdlog::warn("Could not read session progress for save: {}", statisticsErrorToString(stats.error()));
+        return;
+    }
+
+    saved_game.moves_made = stats->moves_made;
+    saved_game.hints_used = stats->hints_used;
+    saved_game.mistakes = stats->mistakes;
+}
+
+void GameViewModel::startRestoredSession(const core::SavedGame& saved_game) {
+    // Story 8.1 / SAVE-3: restore used to start no session at all, so current_game_session_ stayed
+    // 0 — getHintCount() returned 0 (dead hint button), recordMove skipped statistics entirely, and
+    // completion's endGameSession(true) was a no-op, i.e. a finished resumed game never counted.
+    //
+    // Call order matters: the caller must have restored current_puzzle_rating_ first, or the stats
+    // record carries rating 0.0. This mirrors the import paths' "analyze before startGameSession"
+    // ordering. The corruption-guard early returns in restoreGameState route through startNewGame,
+    // which starts its own session — deliberately none is started for a rejected save.
+    startGameSession();
+    if (current_game_session_ == 0) {
+        return;  // startGameSession can fail silently; every other stats call guards the same way.
+    }
+
+    // A resumed game continues its predecessor's progress: seed the counters and the prior play
+    // time so the hint budget survives a restart and completion reports true play time.
+    //
+    // hints_used is seeded VERBATIM (only StatisticsManager's [0, MAX_PROGRESS_COUNTER] clamp
+    // applies). Deliberately NOT clamped to the configured max_hints: the seeded value is written
+    // back out by the next save (applyProgressCounters), so clamping here would let a settings
+    // round-trip destroy it — spend 8 of 10 hints, lower max_hints to 3, resume, auto-save, raise
+    // it back to 10, and the player is handed 7 hints instead of 2. The budget is floored at the
+    // consumer instead: getHintCount() is the only reader and clamps at 0 there.
+    auto seed_result =
+        stats_manager_->seedSessionProgress(current_game_session_, saved_game.moves_made, saved_game.hints_used,
+                                            saved_game.mistakes, saved_game.elapsed_time);
+    if (!seed_result) {
+        // Log and continue, matching the recordHint style: the game stays playable, only the
+        // carried-over counters are lost.
+        spdlog::warn("Failed to seed restored session progress: {}", statisticsErrorToString(seed_result.error()));
+    }
+}
+
+bool GameViewModel::isCorruptedManualSave(const core::SavedGame& saved_game) {
+    // These heuristics key off move_history (emptiness / presence) as a corruption tell. That signal
+    // is only valid for MANUAL saves, which persist the full forward log. Auto-saves are deliberately
+    // written WITHOUT history (SaveManager::autoSave sets include_history = false), so an empty
+    // move_history is their normal state and says nothing about integrity. Applying these guards to
+    // auto-saves discards every in-progress auto-save and breaks resume-on-restart entirely
     // (Story 6.5). Gate both checks on !is_auto_save so manual-save protection is preserved while
     // auto-saves with real progress resume.
-    if (!saved_game.is_auto_save) {
-        // Detect corrupted saves: if original_puzzle == current_state but the game had any
-        // progress indicators, the save was created by a bug that marked all cells as given.
-        // Note: the old bug also prevented number entry and timer start, so move_history and
-        // elapsed_time may both be empty/zero. Check notes as an additional progress indicator.
-        bool has_any_notes = !saved_game.notes.empty();
-        if (saved_game.original_puzzle == saved_game.current_state &&
-            (!saved_game.move_history.empty() || has_any_notes)) {
-            spdlog::warn("Corrupted save detected (original_puzzle == current_state with game progress), "
-                         "starting new game instead");
-            startNewGame(saved_game.difficulty);
-            return;
-        }
+    if (saved_game.is_auto_save) {
+        return false;
+    }
 
-        // Detect phantom-value corruption: user values exist in current_state but move_history is empty.
-        // This happens when a bug placed values during startup without recording them as moves.
-        bool has_user_values = saved_game.original_puzzle != saved_game.current_state;
-        if (has_user_values && saved_game.move_history.empty()) {
-            spdlog::warn("Corrupted save detected (user values present but empty move history), "
-                         "starting new game instead");
-            startNewGame(saved_game.difficulty);
-            return;
-        }
+    // Detect corrupted saves: if original_puzzle == current_state but the game had any
+    // progress indicators, the save was created by a bug that marked all cells as given.
+    // Note: the old bug also prevented number entry and timer start, so move_history and
+    // elapsed_time may both be empty/zero. Check notes as an additional progress indicator.
+    bool has_any_notes = !saved_game.notes.empty();
+    if (saved_game.original_puzzle == saved_game.current_state && (!saved_game.move_history.empty() || has_any_notes)) {
+        spdlog::warn("Corrupted save detected (original_puzzle == current_state with game progress), "
+                     "starting new game instead");
+        return true;
+    }
+
+    // Detect phantom-value corruption: user values exist in current_state but move_history is empty.
+    // This happens when a bug placed values during startup without recording them as moves.
+    bool has_user_values = saved_game.original_puzzle != saved_game.current_state;
+    if (has_user_values && saved_game.move_history.empty()) {
+        spdlog::warn("Corrupted save detected (user values present but empty move history), "
+                     "starting new game instead");
+        return true;
+    }
+
+    return false;
+}
+
+void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
+    if (isCorruptedManualSave(saved_game)) {
+        // startNewGame begins its own statistics session — deliberately none is started for the
+        // rejected save, so this path counts exactly one session (story 8.1 AC9a).
+        startNewGame(saved_game.difficulty);
+        return;
     }
 
     // Create a GameState from the saved game
@@ -257,8 +316,21 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
 
     gameState.set(loaded_state);
 
-    // Start timer via update() to ensure Observable internal state has timer_running_ = true
-    gameState.update([](model::GameState& state) { state.startTimer(); });
+    // Re-seat the accumulated play time and mistake counter, then start the clock — all in ONE
+    // update() lambda. GameState::operator== compares neither elapsed_time_ nor start_time_, so an
+    // update that only re-seats the clock would not notify observers; startTimer()'s timer_running_
+    // flip is what guarantees the notification here. (Do not add the timer fields to operator== —
+    // that would make every tick a "change".) Story 8.1 / SAVE-2: before this, restore left
+    // elapsed_time_ at 0 and the next auto-save wrote that zero over the stored value.
+    gameState.update([&saved_game](model::GameState& state) {
+        state.setElapsedTime(saved_game.elapsed_time);
+        // Clamp the upper bound here too, not just the negative one setMistakeCount applies: this
+        // counter is read straight out of an unvalidated save field (story 7-1 range-validates
+        // board/move/note fields but NOT the progress counters) and is rendered verbatim in the
+        // game-info dialog. Without this, a save claiming 2e9 mistakes displays 2e9.
+        state.setMistakeCount(std::min(saved_game.mistakes, core::MAX_PROGRESS_COUNTER));
+        state.startTimer();
+    });
 
     // Restore move history if available
     move_history_ = saved_game.move_history;
@@ -288,6 +360,9 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
         current_puzzle_techniques_.insert(static_cast<core::SolvingTechnique>(id));
     }
     current_puzzle_origin_ = saved_game.origin;
+
+    // Must run AFTER the rating fields above are restored (see the function's contract).
+    startRestoredSession(saved_game);
 
     updateUIState();
     spdlog::debug("Game state restored: {} moves in history", move_history_.size());
@@ -327,6 +402,11 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
     }
     saved_game.origin = current_puzzle_origin_;
 
+    // Progress counters live in the statistics session (hints_used exists nowhere else). Story 8.1
+    // / SAVE-2: these three keys already round-tripped through the serializer but no producer ever
+    // wrote them, so every save carried zeros.
+    applyProgressCounters(saved_game);
+
     saved_game.display_name = name;
 
     auto save_result = save_manager_->saveGame(saved_game, core::manualSaveSettings(name));
@@ -360,6 +440,7 @@ void GameViewModel::autoSave() {
             auto_save_game.puzzle_technique_ids.push_back(static_cast<int>(tech));
         }
         auto_save_game.origin = current_puzzle_origin_;
+        applyProgressCounters(auto_save_game);
 
         // Extract notes
         core::forEachCell(

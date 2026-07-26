@@ -80,6 +80,13 @@ struct AggregateStats {
     std::chrono::system_clock::time_point last_game_date;
 };
 
+/// Upper bound for a progress counter carried in from a save file. Far above anything real play
+/// produces (an 81-cell board with heavy erasing stays in the thousands), yet low enough that a
+/// hostile value cannot overflow the int64 aggregates it later feeds, nor render as an absurd
+/// figure in the game-info dialog. Shared by IStatisticsManager::seedSessionProgress and the
+/// ViewModel's restore path, which are the only two sinks these unvalidated fields reach.
+inline constexpr int MAX_PROGRESS_COUNTER = 1'000'000;
+
 /// Error types for statistics operations
 enum class StatisticsError : std::uint8_t {
     InvalidGameData,
@@ -112,6 +119,28 @@ public:
     /// Records a hint used during the game
     /// @param game_id Active game session ID
     [[nodiscard]] virtual std::expected<void, StatisticsError> recordHint(uint64_t game_id) = 0;
+
+    /// Seeds a freshly started session with progress carried over from a saved game.
+    ///
+    /// Restore-only contract: a resumed game is a continuation, not a new game, so its session must
+    /// start from the counters and play time the player already accumulated. Without this, a resumed
+    /// game's hint budget resets on every relaunch and its completion under-reports play time
+    /// (findings SAVE-2 / SAVE-3). Call once, immediately after startGame().
+    ///
+    /// All counters are clamped to a sane non-negative range — the values originate in a save file
+    /// and are not otherwise validated, so a hostile file must not be able to drive a hint budget
+    /// negative. @p prior_play_time is stored as the session's starting play time; endGame() adds
+    /// the active span on top of it.
+    ///
+    /// @param game_id Active game session ID
+    /// @param moves_made Moves already made before the save
+    /// @param hints_used Hints already consumed before the save
+    /// @param mistakes Mistakes already made before the save
+    /// @param prior_play_time Play time accumulated before the save
+    /// @return Success, or GameNotStarted if @p game_id is not an active session
+    [[nodiscard]] virtual std::expected<void, StatisticsError>
+    seedSessionProgress(uint64_t game_id, int moves_made, int hints_used, int mistakes,
+                        std::chrono::milliseconds prior_play_time) = 0;
 
     /// Ends a game session
     /// @param game_id Active game session ID
