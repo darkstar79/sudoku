@@ -76,6 +76,31 @@ jobs:
           # marker. Backs the #24 determinism contract. No build required — pure source grep.
           ./scripts/check_determinism.sh
 
+  # Kept out of the Determinism Gate on purpose: that job is a fast, zero-dependency source grep,
+  # and the apt-get install here costs ~20-30s. As a sibling job the install runs in parallel, so
+  # PR wall-time is unchanged and a metadata failure surfaces under its own check name.
+  metadata-check:
+    name: Packaging Metadata Validation
+    runs-on: ubuntu-24.04
+    needs: format-check
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install AppStream and desktop-file validators
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y appstream desktop-file-utils
+
+      - name: Validate AppStream metainfo and desktop entry
+        run: |
+          # Packaging metadata is consumed by all four OBS namespaces and Flathub's buildbot runs
+          # this same class of check (REL-4). --no-net is mandatory: the screenshot URLs point at
+          # raw.githubusercontent.com paths that may not exist yet, and CI must not depend on fetches.
+          appstreamcli validate --no-net resources/linux/io.github.darkstar79.Sudoku.metainfo.xml
+          desktop-file-validate resources/linux/io.github.darkstar79.Sudoku.desktop
+
   i18n-check:
     name: Translation Completeness
     runs-on: ubuntu-24.04
