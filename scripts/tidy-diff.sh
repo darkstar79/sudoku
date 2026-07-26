@@ -93,19 +93,85 @@ fi
 CHANGED=$(echo "$DIFF" | grep '^+++ b/' | sed 's|^+++ b/||' | grep -E '\.(cpp|h|hpp)$' | wc -l)
 echo -e "${YELLOW}[tidy-diff] Checking $CHANGED file(s) — $MODE...${NC}"
 
-OUTPUT=$(echo "$DIFF" | python3 "$CLANG_TIDY_DIFF" \
-    -clang-tidy-binary "$TIDY_BIN" \
+# Gate on the EXIT CODE, exactly as the CI job does (.github/workflows/ci.yml,
+# "Run clang-tidy on changed lines").
+#
+# clang-tidy exits 0 even when it reports findings, so the flag has to be forced on.
+# clang-tidy-diff.py forwards only a fixed set of flags and rejects an explicit
+# -warnings-as-errors, hence the binary shim -- same trick, same reason, as CI.
+# clang-tidy-diff.py then returns non-zero if ANY child failed, which covers findings,
+# compile errors, crashes and timeouts alike.
+#
+# Do NOT go back to grepping the output for "warning:"/"error:" to decide pass/fail:
+#   1. It cannot tell "clean" from "never analyzed" -- a translation unit that fails to
+#      COMPILE emits no findings at all, which read as success.
+#   2. `echo "$OUT" | grep -q ...` silently LOSES matches under `set -o pipefail`:
+#      grep -q exits at the first match, echo then takes SIGPIPE, and pipefail turns
+#      that successful match into a failed pipeline. It breaks once the output exceeds
+#      the 64 KiB pipe buffer -- i.e. exactly on the large diffs that matter most.
+# Explicit templates: BSD/macOS mktemp requires a template or -t prefix and rejects a
+# bare invocation, and named files are identifiable when auditing TMPDIR.
+TIDY_SHIM=$(mktemp -t tidy-diff-shim.XXXXXX)
+trap 'rm -f "$TIDY_SHIM" "$TIDY_LOG"' EXIT
+TIDY_LOG=$(mktemp -t tidy-diff-log.XXXXXX)
+
+# Quoted heredoc + exported variable: a TIDY_BIN path containing a quote would otherwise
+# generate a syntactically broken shim, and one containing $(...) would be evaluated when
+# the shim runs.
+cat > "$TIDY_SHIM" <<'SHIM'
+#!/bin/sh
+exec "$REAL_TIDY" --warnings-as-errors='*' "$@"
+SHIM
+chmod +x "$TIDY_SHIM"
+export REAL_TIDY="$TIDY_BIN"
+
+# The shim is a hard dependency of the gate, and clang-tidy-diff.py SWALLOWS a failure to
+# exec it: its `except Exception` handler prints "Failed: ..." but never records the file,
+# so the driver still exits 0 and every file goes unanalyzed. A noexec TMPDIR (common
+# hardening) or an SELinux/AppArmor denial would thus turn this gate into a permanent,
+# silent pass. Prove the shim actually runs before trusting anything it reports.
+if ! "$TIDY_SHIM" --version >/dev/null 2>&1; then
+    echo -e "${RED}[tidy-diff] The generated clang-tidy shim could not be executed.${NC}"
+    echo "            TMPDIR is most likely mounted noexec (or exec is blocked by"
+    echo "            SELinux/AppArmor). Re-run with a TMPDIR that permits exec:"
+    echo "              TMPDIR=\"\$(git rev-parse --show-toplevel)/build\" $0 $*"
+    exit 1
+fi
+
+TIDY_RC=0
+echo "$DIFF" | python3 "$CLANG_TIDY_DIFF" \
+    -clang-tidy-binary "$TIDY_SHIM" \
     -p1 \
     -path "$BUILD_DIR" \
-    -quiet \
-    -j "$(nproc)" 2>&1 || true)
+    -j "$(nproc)" > "$TIDY_LOG" 2>&1 || TIDY_RC=$?
 
-if [ -n "$OUTPUT" ]; then
-    echo "$OUTPUT"
-    if echo "$OUTPUT" | grep -q "warning:\|error:"; then
-        echo -e "${RED}[tidy-diff] Warnings found in changed lines.${NC}"
-        exit 1
+cat "$TIDY_LOG" || true
+
+# Belt and braces for the same swallowed-launch class from any other cause (binary removed
+# mid-run, fork failure): those files were never analyzed, but the exit code alone says 0.
+if grep -q '^Failed: ' "$TIDY_LOG"; then
+    echo -e "${RED}[tidy-diff] clang-tidy could not be launched for at least one file (see${NC}"
+    echo -e "${RED}            'Failed:' above) — those files were NOT analyzed. Treating as failure.${NC}"
+    exit 1
+fi
+
+if [ "$TIDY_RC" -ne 0 ]; then
+    echo -e "${RED}[tidy-diff] clang-tidy gate FAILED (exit ${TIDY_RC}) — this is what CI will fail on.${NC}"
+    # Only an explanatory hint; the exit code above already decided the outcome. Grep the
+    # FILE (never a pipe) so this cannot hit the SIGPIPE trap described above, and anchor
+    # at column 0 so an echoed source line containing the phrase can't masquerade as one.
+    if grep -q '^Error while processing' "$TIDY_LOG"; then
+        echo -e "${RED}            A translation unit failed to COMPILE, so checks never ran on it —${NC}"
+        echo -e "${RED}            the findings above are incomplete, not a clean bill of health.${NC}"
+        echo "            Two common causes:"
+        echo "              * A missing GENERATED source (e.g. a Qt '*.moc'): build the target"
+        echo "                first, or configure with -DSUDOKU_ENABLE_UI_TESTS=ON for UI tests."
+        echo "              * ${BUILD_DIR}/compile_commands.json carrying flags clang rejects"
+        echo "                (e.g. GCC-only warning names from a local -DCMAKE_CXX_FLAGS"
+        echo "                workaround) — look for 'unknown warning option' / 'unknown"
+        echo "                argument' above, then: cmake --preset release"
     fi
+    exit 1
 fi
 
 echo -e "${GREEN}[tidy-diff] OK${NC}"
