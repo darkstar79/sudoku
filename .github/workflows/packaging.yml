@@ -22,6 +22,11 @@ env:
   # string across Flatpak/AppImage/DMG and CPack's NSIS name
   # (Sudoku-${PROJECT_VERSION}-win64, CMakeLists.txt). GHA expressions have
   # no replace() function, so the substitution has to happen in shell.
+  # Pre-release tags: only the leading 'v' is stripped, so v1.0.0-rc2 yields
+  # 1.0.0-rc2 in the Flatpak/AppImage/DMG names. The NSIS name would default
+  # to CPack's suffix-less PROJECT_VERSION, so on tag refs the installer job
+  # overrides CPACK_PACKAGE_FILE_NAME via `cpack -D` with this same tag-derived
+  # string — all artifact names carry one identical version string, rc or final.
   VERSION: ${{ github.ref_name || 'dev' }}
 
 jobs:
@@ -39,9 +44,10 @@ jobs:
           REF: ${{ github.ref }}
           REF_NAME: ${{ github.ref_name }}
         run: |
-          # On a tag push, run in tag mode (asserts tag == v<PROJECT_VERSION> and a fresh
-          # metainfo release date); on any other trigger (workflow_dispatch from a branch)
-          # run consistency-only mode. A mismatch fails here, before any artifact is built.
+          # On a tag push, run in tag mode: asserts tag == v<PROJECT_VERSION> plus a fresh
+          # metainfo release date, or accepts v<PROJECT_VERSION>-rc<N> (pre-release; date
+          # window skipped). On any other trigger (workflow_dispatch from a branch) run
+          # consistency-only mode. A mismatch fails here, before any artifact is built.
           if [[ "$REF" == refs/tags/* ]]; then
             ./scripts/check_release_consistency.sh "$REF_NAME"
           else
@@ -214,7 +220,21 @@ jobs:
         run: cmake --build build/Release --config Release
 
       - name: Package installer
-        run: cpack --config build/Release/CPackConfig.cmake -G NSIS -C Release -B build/Release
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+        shell: bash
+        run: |
+          # On tag refs, name the installer from the tag (leading 'v' stripped) exactly like the
+          # Flatpak/AppImage jobs, so a pre-release tag's -rcN suffix reaches the .exe name too —
+          # CPack's PROJECT_VERSION carries no suffix. `cpack -D` overrides the CPACK_PACKAGE_FILE_NAME
+          # baked into CPackConfig.cmake. Non-tag runs keep the CMake-derived name.
+          if [ "$REF_TYPE" = "tag" ]; then
+            version_safe="${VERSION#v}"
+            cpack --config build/Release/CPackConfig.cmake -G NSIS -C Release -B build/Release \
+              -D "CPACK_PACKAGE_FILE_NAME=Sudoku-${version_safe}-win64"
+          else
+            cpack --config build/Release/CPackConfig.cmake -G NSIS -C Release -B build/Release
+          fi
 
       - name: Upload installer
         uses: actions/upload-artifact@v7
