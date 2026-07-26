@@ -21,6 +21,7 @@
 
 #include "../../src/core/puzzle_rating.h"  // RATING_MODEL_VERSION
 #include "../../src/core/save_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <chrono>
 #include <filesystem>
@@ -54,9 +55,11 @@ public:
     RatingModelCompatFixture(RatingModelCompatFixture&&) = delete;
     RatingModelCompatFixture& operator=(RatingModelCompatFixture&&) = delete;
 
-    // Drops a raw YAML save in the fixture dir under the given id; returns the load result.
-    [[nodiscard]] std::expected<SavedGame, SaveError> loadRawYaml(const std::string& save_id,
+    // Drops a raw YAML save in the fixture dir under the given label; returns the load result.
+    // The label is mapped to a conforming 16-hex id because SaveManager rejects anything else.
+    [[nodiscard]] std::expected<SavedGame, SaveError> loadRawYaml(const std::string& label,
                                                                   const std::string& yaml) const {
+        const auto save_id = sudoku::test::saveIdFor(label);
         auto save_path = fs::path(test_dir_) / (save_id + ".yaml");
         std::ofstream out(save_path, std::ios::binary);
         REQUIRE(out.is_open());
@@ -241,9 +244,9 @@ progress:
   is_complete: false
 )";
 
-SavedGame makeRatedGame(const std::string& id) {
+SavedGame makeRatedGame(const std::string& label) {
     SavedGame game;
-    game.save_id = id;
+    game.save_id = sudoku::test::saveIdFor(label);
     game.display_name = "Round-trip game";
     game.original_puzzle = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
                             {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},

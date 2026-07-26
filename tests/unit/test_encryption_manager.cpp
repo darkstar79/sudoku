@@ -20,6 +20,7 @@
 #include <type_traits>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 using namespace sudoku::core;
 
@@ -525,4 +526,104 @@ TEST_CASE("EncryptionManager edge cases", "[encryption_manager]") {
         REQUIRE(EncryptionManager::isEncrypted(complete));
         REQUIRE_FALSE(EncryptionManager::isEncrypted(almost));
     }
+}
+
+// ============================================================================
+// Stable machine salt + key memoisation (story 8-4 / SAVE-5)
+//
+// Listing N encrypted saves used to cost N Argon2id derivations because every file carried its own
+// random salt. New files share one deterministic per-machine salt so the derived key can be
+// memoised, turning that into one derivation per process. The on-disk format is unchanged: the
+// salt field is still written and still read, only its value is now deterministic.
+// ============================================================================
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("EncryptionManager writes a stable per-machine salt", "[encryption_manager][kdf_cache]") {
+    const std::string text = "salt stability";
+    const std::vector<uint8_t> plaintext(text.begin(), text.end());
+
+    auto first = EncryptionManager::encrypt(plaintext);
+    auto second = EncryptionManager::encrypt(plaintext);
+    REQUIRE(first.has_value());
+    REQUIRE(second.has_value());
+
+    // Salt occupies bytes [6, 38) — magic(4) + version(1) + flags(1) then the salt.
+    constexpr size_t SALT_OFFSET = 6;
+    constexpr size_t SALT_LEN = 32;
+    const std::vector<uint8_t> salt_a(first->begin() + SALT_OFFSET, first->begin() + SALT_OFFSET + SALT_LEN);
+    const std::vector<uint8_t> salt_b(second->begin() + SALT_OFFSET, second->begin() + SALT_OFFSET + SALT_LEN);
+
+    REQUIRE(salt_a == salt_b);
+    // A stable salt must not collapse into an all-zero or otherwise degenerate value.
+    REQUIRE_FALSE(std::ranges::all_of(salt_a, [](uint8_t b) { return b == 0; }));
+
+    // Ciphertexts must still differ: the per-file random nonce, not the salt, is what makes two
+    // encryptions of the same plaintext distinct.
+    REQUIRE(*first != *second);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables,readability-function-cognitive-complexity) — Catch2 TEST_CASE macro expansion; every REQUIRE adds branches
+TEST_CASE("EncryptionManager memoised key is not reused across KDF tiers", "[encryption_manager][kdf_cache]") {
+    const std::string text = "tier isolation";
+    const std::vector<uint8_t> plaintext(text.begin(), text.end());
+
+    // Both tiers now write the same salt, so the tier must be part of the memo's key.
+    //
+    // A plain round-trip CANNOT prove that: within one process the same lookup runs on both the
+    // encrypt and the decrypt side, so a tier-blind cache stays self-consistent and every
+    // round-trip still succeeds. The discriminator has to make the two sides disagree about the
+    // tier — flipping the file's KDF-tier flag does exactly that, because decrypt() selects the
+    // cost level from that byte. Correct code derives a different key and fails; a tier-blind
+    // cache hands back the same key and would succeed.
+    auto moderate = EncryptionManager::encrypt(plaintext);
+    auto interactive = EncryptionManager::encryptInteractive(plaintext);
+    REQUIRE(moderate.has_value());
+    REQUIRE(interactive.has_value());
+    REQUIRE(EncryptionManager::decrypt(*moderate).value() == plaintext);
+    REQUIRE(EncryptionManager::decrypt(*interactive).value() == plaintext);
+
+    constexpr size_t FLAGS_OFFSET = 5;
+    constexpr uint8_t FLAG_INTERACTIVE = 0x01;
+    REQUIRE(((*moderate)[FLAGS_OFFSET] & FLAG_INTERACTIVE) == 0);
+    REQUIRE(((*interactive)[FLAGS_OFFSET] & FLAG_INTERACTIVE) != 0);
+
+    // Claim the MODERATE blob was written at INTERACTIVE cost. Its ciphertext is unchanged, so
+    // only the key the reader derives can make this fail.
+    auto mislabelled = *moderate;
+    mislabelled[FLAGS_OFFSET] = static_cast<uint8_t>(mislabelled[FLAGS_OFFSET] | FLAG_INTERACTIVE);
+
+    auto result = EncryptionManager::decrypt(mislabelled);
+
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error() == EncryptionError::DecryptionFailed);
+
+    // ...and the correctly-labelled blobs still decrypt afterwards, so the cache survived intact.
+    REQUIRE(EncryptionManager::decrypt(*moderate).value() == plaintext);
+    REQUIRE(EncryptionManager::decrypt(*interactive).value() == plaintext);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("EncryptionManager derives afresh for a salt that is not the machine salt",
+          "[encryption_manager][kdf_cache]") {
+    const std::string text = "foreign salt";
+    const std::vector<uint8_t> plaintext(text.begin(), text.end());
+
+    auto blob = EncryptionManager::encrypt(plaintext);
+    REQUIRE(blob.has_value());
+    REQUIRE(EncryptionManager::decrypt(*blob).has_value());  // primes the memoised key
+
+    // A file carrying any other salt — a legacy random-salt save, or a tampered one — must be keyed
+    // from ITS salt, not from whatever the cache happens to hold. Flipping a salt byte therefore
+    // has to break decryption; if the cached key were applied blindly it would still succeed.
+    auto foreign = *blob;
+    constexpr size_t SALT_OFFSET = 6;
+    foreign[SALT_OFFSET] = static_cast<uint8_t>(foreign[SALT_OFFSET] ^ 0xFF);
+
+    auto result = EncryptionManager::decrypt(foreign);
+
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error() == EncryptionError::DecryptionFailed);
+
+    // ...and the cache is still intact for the real salt afterwards.
+    REQUIRE(EncryptionManager::decrypt(*blob).value() == plaintext);
 }

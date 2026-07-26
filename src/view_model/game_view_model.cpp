@@ -41,11 +41,11 @@ GameViewModel::GameViewModel(
     std::shared_ptr<core::ISudokuSolver> solver, std::shared_ptr<core::IStatisticsManager> stats_manager,
     std::shared_ptr<core::ISaveManager> save_manager, std::shared_ptr<core::ISettingsManager> settings_manager,
     std::shared_ptr<core::IPuzzleAnalyzer> analyzer, std::shared_ptr<core::IClipboardProvider> clipboard)
-    : gameState(model::GameState{}), uiState(UIState{}), statistics(StatsDisplay{}),
-      recentSaves(std::vector<std::string>{}), errorMessage(std::string{}), hintMessage(std::string{}),
-      coachingState(viewmodel::CoachingState{}), validator_(std::move(validator)), generator_(std::move(generator)),
-      solver_(std::move(solver)), stats_manager_(std::move(stats_manager)), save_manager_(std::move(save_manager)),
-      settings_manager_(std::move(settings_manager)), analyzer_(std::move(analyzer)), clipboard_(std::move(clipboard)) {
+    : gameState(model::GameState{}), uiState(UIState{}), statistics(StatsDisplay{}), errorMessage(std::string{}),
+      hintMessage(std::string{}), coachingState(viewmodel::CoachingState{}), validator_(std::move(validator)),
+      generator_(std::move(generator)), solver_(std::move(solver)), stats_manager_(std::move(stats_manager)),
+      save_manager_(std::move(save_manager)), settings_manager_(std::move(settings_manager)),
+      analyzer_(std::move(analyzer)), clipboard_(std::move(clipboard)) {
     // Apply initial settings if available
     if (settings_manager_) {
         const auto& settings = settings_manager_->getSettings();
@@ -62,7 +62,6 @@ GameViewModel::GameViewModel(
     spdlog::debug("GameViewModel initialized with dependencies");
     updateUIState();
     refreshStatistics();
-    refreshRecentSaves();
 }
 
 std::string GameViewModel::statisticsErrorToString(core::StatisticsError error) const {
@@ -330,18 +329,12 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
 
     saved_game.display_name = name;
 
-    core::SaveSettings settings;
-    settings.encrypt = true;
-    settings.compress = true;
-    settings.custom_name = name;
-
-    auto save_result = save_manager_->saveGame(saved_game, settings);
+    auto save_result = save_manager_->saveGame(saved_game, core::manualSaveSettings(name));
     if (!save_result) {
         handleError(core::loc("Sudoku", "Failed to save game"));
         return false;
     }
 
-    refreshRecentSaves();
     spdlog::info("Game saved successfully with ID: {}", *save_result);
     return true;
 }

@@ -24,9 +24,21 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace sudoku::test {
+
+// ============================================================================
+// Save-id helpers
+// ============================================================================
+
+/// Map a descriptive label to a save id SaveManager will accept: exactly 16 lowercase hex chars
+/// (the alphabet generateSaveId() emits — see SaveManager::isValidSaveIdFormat). Fixtures that
+/// write `<id>.yaml` by hand and then load it back need a conforming id, and this keeps the label
+/// visible at the call site instead of scattering opaque hex literals through the tests.
+/// Stable within a process, which is all a write-then-read fixture requires.
+[[nodiscard]] std::string saveIdFor(std::string_view label);
 
 // ============================================================================
 // RAII Cleanup Utilities

@@ -465,6 +465,13 @@ jobs:
         # forwards a fixed set of flags to clang-tidy and rejects an explicit
         # `-warnings-as-errors`, so inject the flag via a binary shim. This
         # matches the gate that nightly's `tidy.sh check` applies.
+        #
+        # Deliberately NO `-config-file`: it pins one config for every translation
+        # unit and so defeats the per-directory lookup that `tests/.clang-tidy`
+        # relies on (it suppresses checks that only misfire inside Catch2's own
+        # macro expansion). Letting clang-tidy search from each file's directory
+        # finds the same root `.clang-tidy` for `src/`, and is what
+        # `scripts/tidy-diff.sh` does — so local runs and CI agree.
         run: |
           set -o pipefail
           cat > /tmp/clang-tidy-werror.sh <<'SHIM'
@@ -480,7 +487,6 @@ jobs:
                 -p1 \
                 -path build/RelWithDebInfo \
                 -clang-tidy-binary /tmp/clang-tidy-werror.sh \
-                -config-file .clang-tidy \
                 -j "$(nproc)" \
                 -use-color
 

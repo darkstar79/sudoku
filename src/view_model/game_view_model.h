@@ -178,7 +178,6 @@ public:
     core::Observable<model::GameState> gameState;
     core::Observable<UIState> uiState;
     core::Observable<StatsDisplay> statistics;
-    core::Observable<std::vector<std::string>> recentSaves;
     core::Observable<std::string> errorMessage;
     core::Observable<std::string> hintMessage;      // Educational hint explanation
     core::Observable<CoachingState> coachingState;  // Progressive coaching hint state
@@ -322,7 +321,6 @@ public:
 
     // Statistics
     void refreshStatistics();
-    void refreshRecentSaves();
     void exportStatistics(const std::string& file_path);
 
     // Data accessors for dialogs (non-observable snapshots)

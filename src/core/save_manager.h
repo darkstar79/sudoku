@@ -87,6 +87,11 @@ private:
 
     // Helper methods
     [[nodiscard]] static std::string generateSaveId();
+
+    /// True when `save_id` matches exactly what generateSaveId() emits: 16 lowercase hex chars.
+    /// save_id is read verbatim from file content, so it is untrusted input; every public entry
+    /// that can reach getSavePath() must screen it here *before* a path is formed (SAVE-8).
+    [[nodiscard]] static bool isValidSaveIdFormat(const std::string& save_id);
     [[nodiscard]] std::filesystem::path getSavePath(const std::string& save_id) const;
     [[nodiscard]] std::expected<void, SaveError> ensureDirectoryExists() const;
 

@@ -22,8 +22,22 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
+#include <functional>
+#include <string_view>
+
+#include <fmt/format.h>
 
 namespace sudoku::test {
+
+// ============================================================================
+// Save-id helpers
+// ============================================================================
+
+std::string saveIdFor(std::string_view label) {
+    // 64-bit hash rendered as exactly 16 zero-padded lowercase hex digits — the shape
+    // SaveManager::isValidSaveIdFormat requires.
+    return fmt::format("{:016x}", std::hash<std::string_view>{}(label));
+}
 
 // ============================================================================
 // RAII Cleanup Utilities
@@ -297,7 +311,8 @@ core::SavedGame createTestSavedGame(core::Difficulty difficulty) {
     }
 
     core::SavedGame game;
-    game.save_id = "test_save_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    game.save_id =
+        saveIdFor("test_save_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()));
     game.display_name = "Test Game";
     game.created_time = std::chrono::system_clock::now();
     game.last_modified = std::chrono::system_clock::now();
@@ -324,7 +339,8 @@ core::SavedGame createCompleteSavedGame() {
     auto solution = getSolution(getEasyPuzzleWithPatterns());
 
     core::SavedGame game;
-    game.save_id = "test_complete_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    game.save_id =
+        saveIdFor("test_complete_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count()));
     game.display_name = "Complete Game";
     game.created_time = std::chrono::system_clock::now();
     game.last_modified = std::chrono::system_clock::now();

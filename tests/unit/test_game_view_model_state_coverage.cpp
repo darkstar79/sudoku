@@ -168,12 +168,6 @@ TEST_CASE("GameViewModel - data accessors and session-history helpers", "[game_v
         REQUIRE(recent.size() <= 5);
     }
 
-    SECTION("refreshRecentSaves publishes to the observable") {
-        fixture.view_model->refreshRecentSaves();
-        // Empty store → empty list, but the call must have run without error.
-        REQUIRE(fixture.view_model->recentSaves.get().empty());
-    }
-
     SECTION("deleteSessionHistory and flushStatsSessions are callable") {
         REQUIRE_NOTHROW(fixture.view_model->deleteSessionHistory());
         REQUIRE_NOTHROW(fixture.view_model->flushStatsSessions());

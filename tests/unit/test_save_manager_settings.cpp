@@ -45,7 +45,7 @@ TEST_CASE("SaveManager - Pre-existing save_id is reused", "[save_manager_setting
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeValidGame();
-    game.save_id = "my-custom-id";
+    game.save_id = sudoku::test::saveIdFor("my-custom-id");
 
     SaveSettings settings;
     settings.compress = false;
@@ -53,10 +53,10 @@ TEST_CASE("SaveManager - Pre-existing save_id is reused", "[save_manager_setting
     auto result = mgr.saveGame(game, settings);
     REQUIRE(result.has_value());
     // The returned save_id must match the one we set
-    REQUIRE(*result == "my-custom-id");
+    REQUIRE(*result == sudoku::test::saveIdFor("my-custom-id"));
 
     // And the file should exist at that id location
-    REQUIRE(fs::exists(tmp.path() / "my-custom-id.yaml"));
+    REQUIRE(fs::exists(tmp.path() / (sudoku::test::saveIdFor("my-custom-id") + ".yaml")));
 }
 
 TEST_CASE("SaveManager - is_complete=true is serialized correctly", "[save_manager_settings]") {

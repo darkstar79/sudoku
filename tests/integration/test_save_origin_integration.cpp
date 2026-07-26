@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/save_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <chrono>
 #include <filesystem>
@@ -49,7 +50,7 @@ public:
 // Hand-crafted pre-feature save YAML — captures the schema before the `origin` field existed.
 // Stored verbatim so the deserializer's "missing key → default Generated" path is exercised.
 constexpr const char* kLegacyYamlNoOrigin = R"(version: "1.0"
-save_id: "legacy_test"
+save_id: 00000000legacy01
 display_name: "Legacy save"
 created_time: 1747350000
 last_modified: 1747350000
@@ -91,7 +92,7 @@ TEST_CASE("Loading a pre-feature save (no origin field) yields origin == Generat
     OriginTestFixture fixture;
 
     // Arrange: drop a plain YAML save in the fixture's save directory.
-    const std::string save_id = "legacy_test";
+    const std::string save_id = sudoku::test::saveIdFor("legacy_test");
     auto save_path = fs::path(fixture.test_dir_) / (save_id + ".yaml");
     {
         std::ofstream out(save_path, std::ios::binary);
@@ -112,7 +113,7 @@ TEST_CASE("Saving and loading a SavedGame round-trips the origin field", "[integ
 
     // Arrange
     SavedGame game;
-    game.save_id = "imported_test";
+    game.save_id = sudoku::test::saveIdFor("imported_test");
     game.display_name = "Imported test";
     game.original_puzzle = {{5, 3, 0, 0, 7, 0, 0, 0, 0}, {6, 0, 0, 1, 9, 5, 0, 0, 0}, {0, 9, 8, 0, 0, 0, 0, 6, 0},
                             {8, 0, 0, 0, 6, 0, 0, 0, 3}, {4, 0, 0, 8, 0, 3, 0, 0, 1}, {7, 0, 0, 0, 2, 0, 0, 0, 6},
@@ -145,7 +146,7 @@ TEST_CASE("Default-constructed SavedGame has origin == Generated", "[save_manage
 // must NOT fail the load. The deserializer's default arm falls back to Generated and logs a
 // warning — exercise that arm so it isn't silently broken by future enum churn.
 constexpr const char* kFutureYamlUnknownOrigin = R"(version: "1.1"
-save_id: "future_test"
+save_id: 00000000future01
 display_name: "Future-origin save"
 created_time: 1747350000
 last_modified: 1747350000
@@ -185,7 +186,7 @@ TEST_CASE("Loading a save with an unknown PuzzleOrigin value falls back to Gener
           "[integration][save_manager][origin][regression]") {
     OriginTestFixture fixture;
 
-    const std::string save_id = "future_test";
+    const std::string save_id = sudoku::test::saveIdFor("future_test");
     auto save_path = fs::path(fixture.test_dir_) / (save_id + ".yaml");
     {
         std::ofstream out(save_path, std::ios::binary);
