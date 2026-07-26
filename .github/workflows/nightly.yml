@@ -112,9 +112,11 @@ jobs:
   safety-net-harnesses:
     name: Safety-Net Harnesses
     # Regression sentinels and soundness harnesses that were written but never scheduled
-    # (findings NET-1 / NET-2). Every test selected here is [.]-hidden, so it runs in NO
-    # other job — naming its tag explicitly is what selects it (same mechanism as the
-    # [bucket_migration] step above). Deliberately a separate job from strategy-correctness:
+    # (findings NET-1 / NET-2). The tests that matter here are Catch2 [.]-hidden, so they run
+    # in NO other job; naming a tag explicitly is what selects a hidden test (same mechanism
+    # as the [bucket_migration] step above). Note the specs are not hidden-only — [timeout]
+    # deliberately also picks up 11 fast non-hidden tests that already run per-PR; the wider
+    # net is the point. Deliberately a separate job from strategy-correctness:
     # that one already fills its 150-min budget, and nightly jobs run in parallel, so this
     # adds no wall-clock to the nightly while restoring the same rwdi-nocov caches.
     #

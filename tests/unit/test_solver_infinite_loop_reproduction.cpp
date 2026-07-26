@@ -26,18 +26,32 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
-// Sanitizers add significant overhead (2-5x), so relax timing thresholds
-#if defined(__SANITIZE_ADDRESS__)
-inline constexpr int kRatingTimeoutSeconds = 60;
-#elif defined(__has_feature)
+// Sanitizers add significant overhead (2-5x), so relax timing thresholds.
+// One predicate, so a threshold below cannot drift out of sync with the detection logic.
+#if defined(__SANITIZE_ADDRESS__)  // GCC
+inline constexpr bool kUnderAsan = true;
+#elif defined(__has_feature)  // Clang
 #    if __has_feature(address_sanitizer)
-inline constexpr int kRatingTimeoutSeconds = 60;
+inline constexpr bool kUnderAsan = true;
 #    else
-inline constexpr int kRatingTimeoutSeconds = 10;
+inline constexpr bool kUnderAsan = false;
 #    endif
 #else
-inline constexpr int kRatingTimeoutSeconds = 10;
+inline constexpr bool kUnderAsan = false;
 #endif
+
+// Budget for the heavy rating paths (Medium/Hard/Expert, pathological boards). Unchanged.
+inline constexpr int kRatingTimeoutSeconds = kUnderAsan ? 60 : 10;
+
+// Runaway guard for the *Easy*-board rating path only. Sized to the operation rather than to the
+// sanitizer: that whole TEST_CASE measures ~16 ms under ASan and < 0.5 ms plain, so this leaves
+// ~300x / ~125x headroom — ample against instrumentation overhead and a loaded shared runner, while
+// still failing on a 100x regression. Reusing kRatingTimeoutSeconds here (as this site briefly did)
+// would be ~3800x the measured ASan time and would abandon exactly the 2-16 s band where a
+// livelock-class regression in this file's history actually lands. Note a true *hang* is caught by
+// the job timeout, not by this line; the timeout contract itself is proven deterministically with
+// MockTimeProvider in test_puzzle_rater.cpp.
+inline constexpr int kEasyRatingRunawaySeconds = kUnderAsan ? 5 : 2;
 
 using namespace sudoku::core;
 using namespace sudoku::test;
@@ -66,10 +80,10 @@ TEST_CASE("PuzzleRater - Easy puzzle completes without timeout", "[puzzle_rater]
 
     // Assertions
     REQUIRE(result.has_value());  // Should succeed
-    // Runaway guard, not a latency SLA: use the file's sanitizer-aware budget (60s under ASan,
-    // 10s plain) so the per-PR ASan job cannot flake on instrumentation overhead. A fixed 5s here
-    // was the one bound in this file that ignored kRatingTimeoutSeconds.
-    REQUIRE(elapsed < std::chrono::seconds(kRatingTimeoutSeconds));
+    // Runaway guard, not a latency SLA — and unlike the other NET-7 sites, this bound IS the only
+    // signal here (REQUIRE(result.has_value()) cannot see slowness), so it is sized to the Easy
+    // rating path instead of to the file's heavy-path budget. See kEasyRatingRunawaySeconds.
+    REQUIRE(elapsed < std::chrono::seconds(kEasyRatingRunawaySeconds));
 
     // Memory assertion (only on Linux where monitoring works)
     size_t memory_increase = memory.getMemoryIncrease();
