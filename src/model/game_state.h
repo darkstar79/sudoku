@@ -92,6 +92,13 @@ public:
 
     // Time tracking
     [[nodiscard]] std::chrono::milliseconds getElapsedTime() const;
+
+    /// Re-seats the accumulated play time — the restore path's counterpart to resetTimer().
+    /// A running timer is re-anchored to "now" so the in-flight span is discarded rather than
+    /// added on top of @p elapsed. Negative input clamps to 0 (sink-side defense against a
+    /// corrupt save; range validation of the YAML field itself is the deserializer's job).
+    void setElapsedTime(std::chrono::milliseconds elapsed);
+
     void startTimer();
     void pauseTimer();
     void resumeTimer();
@@ -110,6 +117,10 @@ public:
 
     void incrementMoves();
     void incrementMistakes();
+
+    /// Re-seats the mistake counter when resuming a saved game so the game-info dialog reports
+    /// the true lifetime count. Negative input clamps to 0.
+    void setMistakeCount(int count);
 
     // Board operations
     void clearBoard();

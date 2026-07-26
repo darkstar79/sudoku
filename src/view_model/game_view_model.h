@@ -63,6 +63,10 @@ enum class InputMode : std::uint8_t {
 /// A domain value, not board geometry — there are six palette entries (see SudokuBoardColors).
 inline constexpr int kColorPaletteSize = 6;
 
+/// Hint budget used when no ISettingsManager is injected. Lives here rather than in the hints
+/// translation unit because the restore path also needs it, to clamp a save's hints_used.
+inline constexpr int kDefaultMaxHints = 10;
+
 /// Commands that can be executed from the UI
 enum class GameCommand : std::uint8_t {
     NewGame,
@@ -386,6 +390,19 @@ private:
     void updateUIState();
     void updateTimeDisplay();
     void startGameSession();
+
+    /// Copies the active session's moves/hints/mistakes onto an outgoing save. Leaves the
+    /// defaults at 0 when no session exists. Shared by saveCurrentGame() and autoSave().
+    void applyProgressCounters(core::SavedGame& saved_game) const;
+
+    /// Starts the statistics session for a game being restored and seeds it with the save's
+    /// carried-over progress. Must be called only after current_puzzle_rating_ has been restored,
+    /// or the recorded session carries rating 0.0.
+    void startRestoredSession(const core::SavedGame& saved_game);
+
+    /// Whether a save carries the signature of the "all cells marked given" corruption bug.
+    /// Only ever true for MANUAL saves — see the implementation for why auto-saves are exempt.
+    [[nodiscard]] static bool isCorruptedManualSave(const core::SavedGame& saved_game);
     void endGameSession(bool completed);
     void recordMove(const core::Move& move, bool is_mistake = false);
     /// First application of a freshly-created move (forward edit). Runs the note-cleanup and

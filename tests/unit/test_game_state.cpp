@@ -114,6 +114,101 @@ TEST_CASE("GameState - Timer Operations", "[game_state][timer]") {
     }
 }
 
+// Story 8.1 AC#1 (SAVE-2): restoring a save has to re-seat the accumulated play time. Before this
+// story GameState exposed no way to do that at all — only resetTimer() — so every resume silently
+// restarted the clock at 00:00:00 and the next auto-save wrote that zero over the stored value.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 SECTIONs expand to nested conditionals
+TEST_CASE("GameState - setElapsedTime seeds accumulated play time", "[game_state][timer][restore]") {
+    auto mock_time = std::make_shared<MockTimeProvider>();
+    GameState state(mock_time);
+
+    SECTION("Sets the accumulated base while the timer is stopped") {
+        state.setElapsedTime(std::chrono::seconds(90));
+
+        REQUIRE(state.getElapsedTime() == std::chrono::milliseconds(90000));
+        REQUIRE(!state.isTimerRunning());  // seeding alone does not start the clock
+    }
+
+    SECTION("A subsequent startTimer accrues on top of the seeded base") {
+        state.setElapsedTime(std::chrono::seconds(90));
+        state.startTimer();
+        mock_time->advanceSystemTime(std::chrono::seconds(5));
+
+        REQUIRE(state.getElapsedTime() == std::chrono::seconds(95));
+    }
+
+    SECTION("Pausing after seeding retains the seeded base plus the played span") {
+        state.setElapsedTime(std::chrono::seconds(90));
+        state.startTimer();
+        mock_time->advanceSystemTime(std::chrono::seconds(5));
+        state.pauseTimer();
+
+        REQUIRE(state.getElapsedTime() == std::chrono::seconds(95));
+    }
+
+    SECTION("Seeding a running timer re-anchors so the running span is not double-counted") {
+        state.startTimer();
+        mock_time->advanceSystemTime(std::chrono::seconds(7));  // span that must be discarded
+
+        state.setElapsedTime(std::chrono::seconds(90));
+        REQUIRE(state.getElapsedTime() == std::chrono::seconds(90));  // re-anchored, not 97
+
+        mock_time->advanceSystemTime(std::chrono::seconds(3));
+        REQUIRE(state.getElapsedTime() == std::chrono::seconds(93));
+    }
+
+    SECTION("Negative input clamps to zero (defense in depth against a hostile save)") {
+        state.setElapsedTime(std::chrono::seconds(-42));
+
+        REQUIRE(state.getElapsedTime().count() == 0);
+    }
+
+    SECTION("resetTimer still zeroes a seeded base") {
+        state.setElapsedTime(std::chrono::seconds(90));
+        state.resetTimer();
+
+        REQUIRE(state.getElapsedTime().count() == 0);
+    }
+
+    SECTION("Marks the state dirty so the next auto-save picks it up") {
+        state.clearDirty();
+        state.setElapsedTime(std::chrono::seconds(90));
+
+        REQUIRE(state.isDirty());
+    }
+}
+
+// Story 8.1 AC#8: the mistake counter is restored from the save so the game-info dialog is truthful.
+TEST_CASE("GameState - setMistakeCount restores the mistake counter", "[game_state][restore]") {
+    GameState state;
+
+    SECTION("Sets the counter") {
+        state.setMistakeCount(2);
+
+        REQUIRE(state.getMistakeCount() == 2);
+    }
+
+    SECTION("Negative input clamps to zero") {
+        state.setMistakeCount(-5);
+
+        REQUIRE(state.getMistakeCount() == 0);
+    }
+
+    SECTION("Marks the state dirty") {
+        state.clearDirty();
+        state.setMistakeCount(3);
+
+        REQUIRE(state.isDirty());
+    }
+
+    SECTION("incrementMistakes continues from the restored value") {
+        state.setMistakeCount(2);
+        state.incrementMistakes();
+
+        REQUIRE(state.getMistakeCount() == 3);
+    }
+}
+
 TEST_CASE("GameState - Difficulty Management", "[game_state][difficulty]") {
     GameState state;
 

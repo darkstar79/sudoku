@@ -23,6 +23,7 @@
 #include "core/i_time_provider.h"
 #include "core/observable.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace sudoku::model {
@@ -39,6 +40,16 @@ std::chrono::milliseconds GameState::getElapsedTime() const {
         return elapsed_time_ + current_session;
     }
     return elapsed_time_;
+}
+
+void GameState::setElapsedTime(std::chrono::milliseconds elapsed) {
+    elapsed_time_ = std::max(elapsed, std::chrono::milliseconds{0});
+    if (timer_running_) {
+        // Re-anchor: the span accrued since the last start belongs to the state we are replacing,
+        // so getElapsedTime() must resume counting from the new base rather than add to it.
+        start_time_ = time_provider_->systemNow();
+    }
+    markDirty();
 }
 
 void GameState::startTimer() {
@@ -124,6 +135,11 @@ void GameState::incrementMoves() {
 
 void GameState::incrementMistakes() {
     ++mistake_count_;
+    markDirty();
+}
+
+void GameState::setMistakeCount(int count) {
+    mistake_count_ = std::max(count, 0);
     markDirty();
 }
 
