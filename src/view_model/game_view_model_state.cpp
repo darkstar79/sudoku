@@ -229,17 +229,6 @@ void GameViewModel::refreshStatistics() {
     }
 }
 
-void GameViewModel::refreshRecentSaves() {
-    auto saves_result = save_manager_->listSaves();
-    if (saves_result) {
-        std::vector<std::string> save_names;
-        for (const auto& save : *saves_result) {
-            save_names.push_back(save.display_name);
-        }
-        recentSaves.set(save_names);
-    }
-}
-
 std::vector<core::SavedGame> GameViewModel::getSaveList() const {
     auto result = save_manager_->listSaves();
     return result ? *result : std::vector<core::SavedGame>{};

@@ -17,11 +17,15 @@
 #include "encryption_manager.h"
 
 #include <algorithm>
+#include <array>
 #include <fstream>
+#include <optional>
+#include <string_view>
 
 #include <fmt/base.h>
 #include <fmt/format.h>
 #include <sodium/core.h>
+#include <sodium/crypto_generichash.h>
 #include <sodium/crypto_pwhash.h>
 #include <sodium/crypto_secretbox.h>
 #include <sodium/randombytes.h>
@@ -43,6 +47,41 @@
 #endif
 
 namespace sudoku::core {
+
+namespace {
+
+/// One memoised Argon2id result per KDF tier, valid only for the salt it was derived from.
+///
+/// Argon2id dominates the cost of reading an encrypted file (measured on the dev machine:
+/// ~196 ms MODERATE, ~27 ms INTERACTIVE per call), so listing N saves used to cost N derivations.
+/// Every new file now carries the same machine salt, which makes the result reusable.
+///
+/// Keyed on the salt rather than assumed: a file written before the fixed salt existed carries its
+/// own random salt and must be keyed from *that* salt. Storing the salt alongside the key is what
+/// makes that impossible to get wrong. (A file copied from another machine now carries the same
+/// salt but was keyed with that machine's identifier, so it correctly fails to decrypt here — the
+/// keys differ because the Argon2id password does.)
+///
+/// This is why the class no longer claims to hold no key material between calls: one key per tier
+/// stays in process memory for the process lifetime. The key derives from public machine facts
+/// (hostname, username, machine-id), so anything able to read this process's memory could
+/// re-derive it regardless. Single-threaded app — no locking needed.
+struct DerivedKeyEntry {
+    std::vector<uint8_t> salt;
+    std::vector<uint8_t> key;
+};
+
+DerivedKeyEntry& derivedKeyEntry(bool interactive) {
+    static std::array<DerivedKeyEntry, 2> cache;
+    return cache[interactive ? 1 : 0];
+}
+
+std::optional<std::vector<uint8_t>>& encryptionSaltCache() {
+    static std::optional<std::vector<uint8_t>> salt;
+    return salt;
+}
+
+}  // namespace
 
 std::expected<void, EncryptionError> EncryptionManager::ensureInitialized() {
     // sodium_init() is idempotent: returns 0 on first success, 1 if already
@@ -77,8 +116,14 @@ EncryptionManager::encryptWithFlags(const std::vector<uint8_t>& plaintext, uint8
 
     bool interactive = (flags & FLAG_INTERACTIVE_KDF) != 0;
 
-    // Generate random salt and nonce
-    auto salt = generateRandomBytes(SALT_SIZE);
+    // Fixed salt (so the derived key is reusable across files), random nonce per file (so
+    // identical plaintexts still produce distinct ciphertext, and no nonce is ever reused under
+    // the shared key — with the salt fixed, the nonce is the only thing separating two files).
+    auto salt_result = encryptionSalt();
+    if (!salt_result) {
+        return std::unexpected(salt_result.error());
+    }
+    auto salt = *salt_result;
     auto nonce = generateRandomBytes(NONCE_SIZE);
 
     // Derive encryption key from system identifiers
@@ -196,11 +241,53 @@ bool EncryptionManager::isEncrypted(const std::vector<uint8_t>& data) {
     return std::equal(MAGIC_BYTES.begin(), MAGIC_BYTES.end(), data.begin());
 }
 
+std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::encryptionSalt() {
+    auto& cache = encryptionSaltCache();
+    if (cache) {
+        return *cache;
+    }
+
+    if (auto init = ensureInitialized(); !init) {
+        return std::unexpected(init.error());
+    }
+
+    // Derived from a fixed application constant, NOT from the system identifier.
+    //
+    // Deriving it from the identifier would be the obvious way to get a stable salt, but the
+    // identifier is also the KDF password — so the salt would become a cheaply verifiable function
+    // of the very thing it protects. Anyone holding a save file (a bug-report attachment, a synced
+    // folder) could confirm a guessed hostname/username/machine-id with a single BLAKE2b instead
+    // of a full Argon2id. That matters most on Windows, where the identifier's only high-entropy
+    // component is a 32-bit volume serial. A constant salt leaks nothing about the machine, and
+    // the key is still machine-specific because the Argon2id password is.
+    static constexpr std::string_view SALT_DOMAIN = "sudoku-save-encryption-salt-v1";
+
+    std::vector<uint8_t> salt(SALT_SIZE);
+    const int result =
+        crypto_generichash(salt.data(), salt.size(), reinterpret_cast<const unsigned char*>(SALT_DOMAIN.data()),
+                           SALT_DOMAIN.size(), nullptr, 0);
+
+    if (result != 0) {
+        spdlog::error("Salt derivation failed");
+        return std::unexpected(EncryptionError::KeyDerivationFailed);
+    }
+
+    cache = salt;
+    return salt;
+}
+
 std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::deriveKey(const std::vector<uint8_t>& salt,
                                                                                   bool interactive) {
     if (salt.size() != SALT_SIZE) {
         spdlog::error("Invalid salt size: {}", salt.size());
         return std::unexpected(EncryptionError::KeyDerivationFailed);
+    }
+
+    // Reuse the memoised key only for the exact salt it was derived from, so a legacy or foreign
+    // salt can never be keyed with someone else's key.
+    auto& cached = derivedKeyEntry(interactive);
+    if (!cached.salt.empty() && cached.salt == salt) {
+        return cached.key;
     }
 
     // Get system identifier
@@ -229,11 +316,22 @@ std::expected<std::vector<uint8_t>, EncryptionError> EncryptionManager::deriveKe
     }
 
     spdlog::debug("Derived encryption key from system identifiers (interactive={})", interactive);
+
+    // Memoise only the machine salt's key. Caching legacy/foreign salts too would let a directory
+    // of old saves evict the one entry that actually repeats, giving back the per-file cost.
+    if (auto stable = encryptionSalt(); stable && *stable == salt) {
+        cached.salt = salt;
+        cached.key = key;
+    }
+
     return key;
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-// Justification: Kept as member function for potential future caching/configuration
+// Justification: kept as a member function for symmetry with the other helpers.
+// MUST NOT be made deterministic: the salt is now fixed per machine, so the random nonce is
+// the only thing keeping two files distinct under a shared key. A deterministic nonce would
+// mean keystream reuse and Poly1305 forgery.
 std::expected<std::string, EncryptionError> EncryptionManager::getSystemIdentifier() {
     std::string identifier;
 

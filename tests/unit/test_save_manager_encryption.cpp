@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include "../../src/core/encryption_manager.h"
 #include "../../src/core/save_manager.h"
 #include "../helpers/test_utils.h"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
+#include <string>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -399,4 +404,162 @@ TEST_CASE("SaveManager export with encryption", "[save_manager][encryption]") {
         REQUIRE(loaded.has_value());
         REQUIRE(gamesAreEqual(game, *loaded));
     }
+}
+
+// ============================================================================
+// Persistence policy (story 8-4 / SAVE-6): every write path that produces a manual save must
+// agree on the encryption state, and the KDF tier is INTERACTIVE.
+// ============================================================================
+
+namespace {
+
+// Reads the encryption envelope's header bytes: "SDKE" magic, version, flags.
+struct SaveEnvelope {
+    bool encrypted{false};
+    bool interactive_kdf{false};
+};
+
+SaveEnvelope readEnvelope(const fs::path& path) {
+    std::ifstream in(path, std::ios::binary);
+    REQUIRE(in.is_open());
+    std::array<char, 6> header{};
+    in.read(header.data(), header.size());
+    REQUIRE(in.gcount() == static_cast<std::streamsize>(header.size()));
+
+    SaveEnvelope envelope;
+    envelope.encrypted = header[0] == 'S' && header[1] == 'D' && header[2] == 'K' && header[3] == 'E';
+    envelope.interactive_kdf = envelope.encrypted && (static_cast<unsigned char>(header[5]) & 0x01U) != 0;
+    return envelope;
+}
+
+}  // namespace
+
+TEST_CASE("SaveManager writes manual saves with the INTERACTIVE KDF tier", "[save_manager][encryption][policy]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    SaveSettings settings;
+    settings.encrypt = true;
+    settings.compress = true;
+    auto id = mgr.saveGame(createTestGame(), settings);
+    REQUIRE(id.has_value());
+
+    auto envelope = readEnvelope(tmp.path() / (*id + ".yaml"));
+
+    REQUIRE(envelope.encrypted);
+    REQUIRE(envelope.interactive_kdf);
+}
+
+TEST_CASE("SaveManager rename preserves the encrypted state of a save", "[save_manager][encryption][policy]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    SaveSettings settings;
+    settings.encrypt = true;
+    settings.compress = true;
+    auto id = mgr.saveGame(createTestGame(), settings);
+    REQUIRE(id.has_value());
+    REQUIRE(readEnvelope(tmp.path() / (*id + ".yaml")).encrypted);
+
+    // Before 8-4 this re-saved with default SaveSettings and silently rewrote the file as
+    // plaintext — an encrypted save quietly losing its encryption on a rename.
+    auto renamed = mgr.renameSave(*id, "Renamed");
+    REQUIRE(renamed.has_value());
+
+    auto envelope = readEnvelope(tmp.path() / (*id + ".yaml"));
+
+    REQUIRE(envelope.encrypted);
+    REQUIRE(envelope.interactive_kdf);
+
+    auto loaded = mgr.loadGame(*id);
+    REQUIRE(loaded.has_value());
+    REQUIRE(loaded->display_name == "Renamed");
+}
+
+TEST_CASE("SaveManager import stores the imported save under the manual-save policy",
+          "[save_manager][encryption][policy]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // Export writes a portable plaintext file by design; importing it must still land an encrypted
+    // save in the save directory, matching every other manual save.
+    SaveSettings settings;
+    settings.encrypt = true;
+    auto id = mgr.saveGame(createTestGame(), settings);
+    REQUIRE(id.has_value());
+
+    const auto exported = tmp.path() / "exported_save.yaml";
+    REQUIRE(mgr.exportSave(*id, exported.string()).has_value());
+    REQUIRE_FALSE(readEnvelope(exported).encrypted);  // portability: export stays plaintext
+
+    auto imported_id = mgr.importSave(exported.string(), "Imported");
+    REQUIRE(imported_id.has_value());
+
+    auto envelope = readEnvelope(tmp.path() / (*imported_id + ".yaml"));
+
+    REQUIRE(envelope.encrypted);
+    REQUIRE(envelope.interactive_kdf);
+}
+
+TEST_CASE("SaveManager loads saves written with either KDF tier", "[save_manager][encryption][policy]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // Back-compat: the tier lives in the flags byte and decrypt() dispatches on it, so a save
+    // written with the older MODERATE cost keeps loading alongside new INTERACTIVE ones.
+    SaveSettings settings;
+    settings.encrypt = true;
+    settings.compress = false;
+    auto id = mgr.saveGame(createTestGame(), settings);
+    REQUIRE(id.has_value());
+
+    const auto interactive_path = tmp.path() / (*id + ".yaml");
+    std::vector<uint8_t> plain;
+    {
+        std::ifstream in(interactive_path, std::ios::binary);
+        const std::vector<uint8_t> blob((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        auto decrypted = EncryptionManager::decrypt(blob);
+        REQUIRE(decrypted.has_value());
+        plain = *decrypted;
+    }
+
+    // Re-encrypt the very same payload at MODERATE cost and drop it in as a second save.
+    auto moderate_blob = EncryptionManager::encrypt(plain);
+    REQUIRE(moderate_blob.has_value());
+    const std::string moderate_id = sudoku::test::saveIdFor("moderate_legacy");
+    {
+        std::ofstream out(tmp.path() / (moderate_id + ".yaml"), std::ios::binary);
+        out.write(reinterpret_cast<const char*>(moderate_blob->data()),
+                  static_cast<std::streamsize>(moderate_blob->size()));
+    }
+
+    auto interactive_loaded = mgr.loadGame(*id);
+    auto moderate_loaded = mgr.loadGame(moderate_id);
+
+    REQUIRE(interactive_loaded.has_value());
+    REQUIRE(moderate_loaded.has_value());
+    REQUIRE(gamesAreEqual(*interactive_loaded, *moderate_loaded));
+}
+
+TEST_CASE("SaveManager rename brings a plaintext save under the manual-save policy",
+          "[save_manager][encryption][policy]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // Deliberate: the policy is applied, not merely preserved, so the save directory converges on
+    // one encryption state. The change is an upgrade (plaintext -> encrypted) and never the
+    // reverse, which is the silent downgrade this story exists to remove.
+    SaveSettings plaintext;
+    plaintext.encrypt = false;
+    plaintext.compress = false;
+    auto id = mgr.saveGame(createTestGame(), plaintext);
+    REQUIRE(id.has_value());
+    REQUIRE_FALSE(readEnvelope(tmp.path() / (*id + ".yaml")).encrypted);
+
+    REQUIRE(mgr.renameSave(*id, "Now Encrypted").has_value());
+
+    auto envelope = readEnvelope(tmp.path() / (*id + ".yaml"));
+
+    REQUIRE(envelope.encrypted);
+    REQUIRE(envelope.interactive_kdf);
 }

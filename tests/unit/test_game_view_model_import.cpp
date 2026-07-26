@@ -235,7 +235,7 @@ TEST_CASE("importPuzzleFromString persists origin through save/load round-trip",
     // Save with inspectable settings.
     const auto& current = fixture.view_model->gameState.get();
     SavedGame to_save;
-    to_save.save_id = "import_origin_test";
+    to_save.save_id = sudoku::test::saveIdFor("import_origin_test");
     to_save.display_name = "Import origin test";
     to_save.original_puzzle = current.extractGivenNumbers();
     to_save.current_state = current.extractNumbers();

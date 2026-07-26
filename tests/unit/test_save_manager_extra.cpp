@@ -21,13 +21,18 @@
 /// - saveGame with pre-existing save_id (reuses id)
 /// - saveGame empty display_name auto-generates name with localtime
 
+#include "../../src/core/i_time_provider.h"
 #include "../../src/core/save_manager.h"
 #include "../helpers/test_utils.h"
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <random>
+#include <string>
+#include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
@@ -144,6 +149,87 @@ TEST_CASE("SaveManager - listSaves returns multiple saves sorted newest first", 
     auto list_result = mgr.listSaves();
     REQUIRE(list_result.has_value());
     REQUIRE(list_result->size() == 2);
+}
+
+// ============================================================================
+// listSaves: unreadable entries never suppress readable ones
+// ============================================================================
+
+// Pins the per-entry skip contract: a file that fails to parse must cost only itself, never
+// truncate the listing or abort the directory walk. Load-bearing for any change to how listSaves
+// decides an entry is listable.
+TEST_CASE("SaveManager - listSaves skips unparseable files but still returns the valid ones", "[save_manager_extra]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    std::vector<std::string> valid_ids;
+    for (int i = 0; i < 3; ++i) {
+        auto game = makeGame();
+        game.display_name = "Valid " + std::to_string(i);
+        auto id = mgr.saveGame(game, {});
+        REQUIRE(id.has_value());
+        valid_ids.push_back(*id);
+    }
+
+    {
+        std::ofstream garbage(tmp.path() / "aaa_garbage.yaml", std::ios::binary);
+        garbage << "\x01\x02\x03 not yaml at all: [[[\n";
+    }
+    {
+        std::ofstream wrong_shape(tmp.path() / "zzz_wrong_shape.yaml");
+        wrong_shape << "name: not-a-save\nvalue: 42\n";
+    }
+    {
+        std::ofstream text(tmp.path() / "readme.txt");
+        text << "ignore me\n";
+    }
+
+    auto list_result = mgr.listSaves();
+
+    REQUIRE(list_result.has_value());
+    REQUIRE(list_result->size() == valid_ids.size());
+    for (const auto& expected_id : valid_ids) {
+        const bool found =
+            std::ranges::any_of(*list_result, [&expected_id](const SavedGame& s) { return s.save_id == expected_id; });
+        REQUIRE(found);
+    }
+}
+
+// ============================================================================
+// listSaves: newest-first ordering
+// ============================================================================
+
+// The existing "sorted newest first" case only asserts the count. This pins the actual order,
+// using MockTimeProvider so the three saves get distinct, deterministic last_modified stamps.
+TEST_CASE("SaveManager - listSaves orders saves newest first", "[save_manager_extra]") {
+    TempTestDir tmp;
+    auto mock_time = std::make_shared<MockTimeProvider>();
+    SaveManager mgr(tmp.path().string(), mock_time);
+
+    auto oldest = makeGame();
+    oldest.display_name = "Oldest";
+    auto oldest_id = mgr.saveGame(oldest, {});
+    REQUIRE(oldest_id.has_value());
+
+    mock_time->advanceSystemTime(std::chrono::hours(1));
+    auto middle = makeGame();
+    middle.display_name = "Middle";
+    auto middle_id = mgr.saveGame(middle, {});
+    REQUIRE(middle_id.has_value());
+
+    mock_time->advanceSystemTime(std::chrono::hours(1));
+    auto newest = makeGame();
+    newest.display_name = "Newest";
+    auto newest_id = mgr.saveGame(newest, {});
+    REQUIRE(newest_id.has_value());
+
+    auto list_result = mgr.listSaves();
+
+    REQUIRE(list_result.has_value());
+    REQUIRE(list_result->size() == 3);
+    REQUIRE((*list_result)[0].save_id == *newest_id);
+    REQUIRE((*list_result)[1].save_id == *middle_id);
+    REQUIRE((*list_result)[2].save_id == *oldest_id);
 }
 
 // ============================================================================

@@ -415,7 +415,7 @@ TEST_CASE("GameViewModel - Save/Load Error Paths", "[game_view_model][save]") {
     EdgeCaseTestFixture fixture;
 
     SECTION("Load non-existent game") {
-        fixture.view_model->loadGame("nonexistent_id_12345");
+        fixture.view_model->loadGame(sudoku::test::saveIdFor("nonexistent_id_12345"));
 
         // Should handle error gracefully
         const auto& error = fixture.view_model->errorMessage.get();

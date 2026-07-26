@@ -1,10 +1,16 @@
 # Test-specific clang-tidy overrides — inherits all parent settings.
 # Suppresses checks that produce unavoidable false positives in Catch2 test code.
+#
+# EnumCastOutOfRange fires inside Catch2's own REQUIRE expansion, which builds a
+# ResultDisposition::Flags value by casting a combination of bit flags — legitimate for a flags
+# enum, but outside the enumerators' declared range. Reported at the Catch2 header, so it is not
+# NOLINT-able from our test sources.
 
 InheritParentConfig: true
 
 Checks: '
   -bugprone-chained-comparison,
   -bugprone-unchecked-optional-access,
-  -cert-err58-cpp
+  -cert-err58-cpp,
+  -clang-analyzer-optin.core.EnumCastOutOfRange
 '

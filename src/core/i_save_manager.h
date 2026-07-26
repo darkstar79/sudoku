@@ -25,6 +25,7 @@
 #include <expected>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace sudoku::core {
@@ -108,9 +109,25 @@ struct SavedGame {
 struct SaveSettings {
     bool compress{true};         // Compress save data
     bool include_history{true};  // Include move history
-    bool encrypt{false};         // Encrypt save file (future feature)
-    std::string custom_name;     // Custom save name (empty for auto-generated)
+    /// Encrypt the save file. Live, not a future feature: manual saves set this, and the key is
+    /// derived from machine identity — see EncryptionManager and SECURITY.md for what that means
+    /// for portability. The default stays false so auto-save, export and any new caller opt in
+    /// deliberately rather than inheriting encryption by accident.
+    bool encrypt{false};
+    std::string custom_name;  // Custom save name (empty for auto-generated)
 };
+
+/// The single definition of how a manual save is persisted.
+///
+/// Every path that writes a manual save — creating one, renaming one, importing one — must use
+/// this. They used to build SaveSettings independently, so renaming or importing an encrypted save
+/// silently rewrote it as plaintext (the default is `encrypt{false}`). Deliberately NOT used by:
+/// auto-save, which is never encrypted, and exportSave, which writes plaintext and uncompressed on
+/// purpose so an exported file is portable to another machine.
+[[nodiscard]] inline SaveSettings manualSaveSettings(std::string custom_name = {}) {
+    return SaveSettings{
+        .compress = true, .include_history = true, .encrypt = true, .custom_name = std::move(custom_name)};
+}
 
 /// Error types for save/load operations
 enum class SaveError : std::uint8_t {
@@ -121,6 +138,9 @@ enum class SaveError : std::uint8_t {
     UnsupportedVersion,
     DiskFull,
     SaveIdExists,
+    /// The supplied save id is not the 16-lowercase-hex form generateSaveId() produces. Save ids
+    /// are read verbatim from file content, so they are untrusted input and are screened before
+    /// any filesystem path is built from them.
     InvalidSaveId,
     SerializationError,
     CompressionError,
@@ -167,13 +187,18 @@ public:
     /// @return Success or error
     [[nodiscard]] virtual std::expected<void, SaveError> deleteSave(const std::string& save_id) = 0;
 
-    /// Lists all available saved games
-    /// @return Vector of save metadata (without full game data)
+    /// Lists all available saved games.
+    /// Each entry is a fully loaded SavedGame: everything the listing shows (name, difficulty,
+    /// timestamps, rating) lives inside the possibly-compressed, possibly-encrypted blob, so there
+    /// is no cheap metadata-only read. Cost is therefore proportional to the number of saves.
+    /// @return Vector of saved games, newest first; entries that fail to parse are skipped
     [[nodiscard]] virtual std::expected<std::vector<SavedGame>, SaveError> listSaves() const = 0;
 
-    /// Gets quick info about a save without loading full data
-    /// @param save_id Save ID to query
-    /// @return Save metadata or error
+    /// Loads a single save by id.
+    /// @note Despite the name this is NOT a cheap metadata read — it performs a full load,
+    ///       identical in cost to loadGame(). No cheap metadata path exists (see listSaves).
+    /// @param save_id Save ID to query; must be 16 lowercase hex chars or InvalidSaveId is returned
+    /// @return The loaded save or error
     [[nodiscard]] virtual std::expected<SavedGame, SaveError> getSaveInfo(const std::string& save_id) const = 0;
 
     /// Renames a saved game

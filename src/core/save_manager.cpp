@@ -67,6 +67,17 @@ SaveManager::SaveManager(std::filesystem::path save_directory, std::shared_ptr<I
 
 std::expected<std::string, SaveError> SaveManager::saveGame(const SavedGame& game, const SaveSettings& settings) {
     try {
+        // Validated before ensureDirectoryExists() so an unwritable save directory cannot mask a
+        // malformed id as FileAccessError, and so a bad id causes no side effects at all.
+        // A non-empty id here came from a loaded file (renameSave feeds one straight back), so it is
+        // untrusted. Reject rather than silently regenerate: regeneration would launder a tampered
+        // id into a fresh save. saveCurrentGame always passes an empty id, so the normal path is
+        // unaffected.
+        if (!game.save_id.empty() && !isValidSaveIdFormat(game.save_id)) {
+            spdlog::error("Rejected save with malformed save id");
+            return std::unexpected(SaveError::InvalidSaveId);
+        }
+
         auto result = ensureDirectoryExists();
         if (!result) {
             return std::unexpected(SaveError::FileAccessError);
@@ -121,6 +132,11 @@ std::expected<std::string, SaveError> SaveManager::saveGame(const SavedGame& gam
 
 std::expected<SavedGame, SaveError> SaveManager::loadGame(const std::string& save_id) const {
     try {
+        if (!isValidSaveIdFormat(save_id)) {
+            spdlog::warn("Rejected load for malformed save id");
+            return std::unexpected(SaveError::InvalidSaveId);
+        }
+
         auto save_path = getSavePath(save_id);
 
         if (!std::filesystem::exists(save_path)) {
@@ -225,6 +241,11 @@ std::expected<void, SaveError> SaveManager::clearAutoSave() {
 
 std::expected<void, SaveError> SaveManager::deleteSave(const std::string& save_id) {
     try {
+        if (!isValidSaveIdFormat(save_id)) {
+            spdlog::warn("Rejected delete for malformed save id");
+            return std::unexpected(SaveError::InvalidSaveId);
+        }
+
         auto save_path = getSavePath(save_id);
 
         if (!std::filesystem::exists(save_path)) {
@@ -255,11 +276,12 @@ std::expected<std::vector<SavedGame>, SaveError> SaveManager::listSaves() const 
                     continue;  // Skip auto-save file in listing
                 }
 
-                if (isValidSaveFile(entry.path())) {
-                    auto load_result = deserializeFromYaml(entry.path());
-                    if (load_result) {
-                        saves.push_back(*load_result);
-                    }
+                // Parse exactly once: a failed parse is itself the "not a save file" verdict.
+                // isValidSaveFile() is a full deserializeFromYaml(), so pre-checking doubled the
+                // per-file cost — including a second Argon2id key derivation on encrypted saves.
+                auto load_result = deserializeFromYaml(entry.path());
+                if (load_result) {
+                    saves.push_back(*load_result);
                 }
             }
         }
@@ -290,8 +312,7 @@ std::expected<void, SaveError> SaveManager::renameSave(const std::string& save_i
     game.display_name = new_name;
     game.last_modified = time_provider_->systemNow();
 
-    SaveSettings settings;
-    auto save_result = saveGame(game, settings);
+    auto save_result = saveGame(game, manualSaveSettings());
     if (!save_result) {
         return std::unexpected(save_result.error());
     }
@@ -306,8 +327,13 @@ std::expected<void, SaveError> SaveManager::exportSave(const std::string& save_i
     }
 
     try {
+        // Deliberately NOT manualSaveSettings(): an export is meant to be portable, so it is
+        // written uncompressed and unencrypted. Encryption is machine-bound, which would make an
+        // exported file unreadable on the machine it was exported for. importSave puts the save
+        // back under the manual-save policy.
         SaveSettings settings;
-        settings.compress = false;  // Don't compress exports for portability
+        settings.compress = false;
+        settings.encrypt = false;
 
         auto result = serializeToYaml(*load_result, file_path, settings);
         if (!result) {
@@ -345,8 +371,7 @@ std::expected<std::string, SaveError> SaveManager::importSave(const std::string&
             game.display_name += " (Imported)";
         }
 
-        SaveSettings settings;
-        auto save_result = saveGame(game, settings);
+        auto save_result = saveGame(game, manualSaveSettings());
         if (!save_result) {
             return std::unexpected(save_result.error());
         }
@@ -365,6 +390,10 @@ std::string SaveManager::getSaveDirectory() const {
 }
 
 bool SaveManager::validateSave(const std::string& save_id) const {
+    if (!isValidSaveIdFormat(save_id)) {
+        return false;
+    }
+
     auto save_path = getSavePath(save_id);
     return isValidSaveFile(save_path);
 }
@@ -439,6 +468,13 @@ std::string SaveManager::generateSaveId() {
     }
 
     return save_id;
+}
+
+bool SaveManager::isValidSaveIdFormat(const std::string& save_id) {
+    // Spelled out rather than via <cctype>: the alphabet must match generateSaveId() exactly and
+    // stay locale-independent (std::islower would also reject the digits half of the alphabet).
+    return save_id.size() == SAVE_ID_LENGTH &&
+           std::ranges::all_of(save_id, [](char ch) { return (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f'); });
 }
 
 std::filesystem::path SaveManager::getSavePath(const std::string& save_id) const {

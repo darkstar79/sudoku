@@ -32,6 +32,7 @@
 #include <functional>
 #include <iterator>
 #include <random>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -129,7 +130,6 @@ void requireRoundTripEqual(const SavedGame& original, const SavedGame& loaded) {
     }
     REQUIRE(loaded.current_move_index == original.current_move_index);
 }
-
 }  // namespace
 
 // #24 Task 9.1 — property/fuzz round-trip. A randomized save (board + notes + move history +
@@ -173,13 +173,13 @@ TEST_CASE("SaveManager - corrupt save is archived aside and never overwritten",
 
     // Unparseable YAML → SerializationError on load.
     const std::string corrupt_bytes = "version: '1.1'\nputrid: {unclosed\n  junk: [1, 2\n";
-    const auto save_path = tmp.path() / "corrupt.yaml";
+    const auto save_path = tmp.path() / (sudoku::test::saveIdFor("corrupt") + ".yaml");
     {
         std::ofstream out(save_path);
         out << corrupt_bytes;
     }
 
-    auto result = mgr.loadGame("corrupt");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("corrupt"));
     REQUIRE(!result.has_value());
     REQUIRE(result.error() == SaveError::SerializationError);
 
@@ -189,7 +189,7 @@ TEST_CASE("SaveManager - corrupt save is archived aside and never overwritten",
     // ...and exactly one archive must hold the original bytes intact.
     std::vector<fs::path> archives;
     for (const auto& entry : fs::directory_iterator(tmp.path())) {
-        if (entry.path().filename().string().starts_with("corrupt.yaml.corrupt-")) {
+        if (entry.path().filename().string().starts_with(save_path.filename().string() + ".corrupt-")) {
             archives.push_back(entry.path());
         }
     }
@@ -216,7 +216,7 @@ namespace {
 // the on-disk file path is deterministic (getSavePath = dir / (save_id + ".yaml")).
 SavedGame makeValidGameWithMove() {
     SavedGame game;
-    game.save_id = "victim";
+    game.save_id = sudoku::test::saveIdFor("victim");
     game.display_name = "Victim";
     game.difficulty = Difficulty::Easy;
     for (size_t r = 0; r < BOARD_SIZE; ++r) {
@@ -258,6 +258,32 @@ std::expected<SavedGame, SaveError> poisonRoundTrip(SaveManager& mgr, const fs::
         out << root;
     }
     return mgr.loadGame(*id);
+}
+
+// Legitimate save ids are exactly this many lowercase hex chars (SaveManager::generateSaveId).
+constexpr size_t SAVE_ID_HEX_LENGTH = 16;
+constexpr int GENERATED_ID_ROUNDS = 100;
+
+// One round of the generated-id property: save with an EMPTY id so generateSaveId() actually runs,
+// then prove the id it emitted both round-trips and passes the new format validation. Returns the
+// id so the caller can assert the rounds produced distinct values.
+//
+// Clearing the id is load-bearing: makeValidGameWithMove() carries a fixed id and saveGame reuses a
+// non-empty one, so leaving it set would exercise that single literal every round and never reach
+// generateSaveId() at all.
+std::string saveWithGeneratedIdAndVerify(SaveManager& mgr) {
+    SaveSettings settings;
+    settings.compress = false;
+    SavedGame game = makeValidGameWithMove();
+    game.save_id.clear();
+
+    auto id = mgr.saveGame(game, settings);
+    REQUIRE(id.has_value());
+    REQUIRE(id->size() == SAVE_ID_HEX_LENGTH);
+    REQUIRE(mgr.loadGame(*id).has_value());
+    REQUIRE(mgr.validateSave(*id));
+
+    return *id;
 }
 
 }  // namespace
@@ -362,4 +388,163 @@ TEST_CASE("SaveManager - malicious save with out-of-range current_move_index is 
 
     REQUIRE(!result.has_value());
     REQUIRE(result.error() == SaveError::InvalidSaveData);
+}
+
+// ============================================================================
+// Save-id format validation (SAVE-8): the id is read from file *content*, so it is untrusted
+// input and must never reach a filesystem path unchecked. Legitimate ids are exactly 16 lowercase
+// hex characters (generateSaveId), so strict validation breaks no existing save.
+// ============================================================================
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - traversal save-id is rejected before any path is formed",
+          "[save_manager][persistence][security][regression][bug-save-id-traversal]") {
+    // The save dir is a SUBdirectory of the temp dir, so "outside the save directory" is still
+    // inside this test's own unique tree. Writing the decoy to the shared system temp dir instead
+    // would collide with concurrent runs of this test and let one run delete another's decoy.
+    TempTestDir tmp;
+    const auto saves_dir = tmp.path() / "saves";
+    SaveManager mgr(saves_dir.string());
+
+    // A decoy outside the save directory: nothing below may read, write or delete it.
+    const auto outside = tmp.path() / "decoy.yaml";
+    {
+        std::ofstream decoy(outside, std::ios::trunc);
+        REQUIRE(decoy.is_open());
+        decoy << "untouched\n";
+    }
+
+    const std::string traversal_id = "../decoy";
+
+    auto load_result = mgr.loadGame(traversal_id);
+    REQUIRE(!load_result.has_value());
+    REQUIRE(load_result.error() == SaveError::InvalidSaveId);
+
+    auto delete_result = mgr.deleteSave(traversal_id);
+    REQUIRE(!delete_result.has_value());
+    REQUIRE(delete_result.error() == SaveError::InvalidSaveId);
+
+    auto rename_result = mgr.renameSave(traversal_id, "pwned");
+    REQUIRE(!rename_result.has_value());
+    REQUIRE(rename_result.error() == SaveError::InvalidSaveId);
+
+    auto export_result = mgr.exportSave(traversal_id, (tmp.path() / "exported.yaml").string());
+    REQUIRE(!export_result.has_value());
+    REQUIRE(export_result.error() == SaveError::InvalidSaveId);
+
+    REQUIRE_FALSE(mgr.validateSave(traversal_id));
+
+    // The decoy still exists and still holds its original bytes.
+    REQUIRE(fs::exists(outside));
+    {
+        std::ifstream decoy(outside);
+        std::string contents;
+        std::getline(decoy, contents);
+        REQUIRE(contents == "untouched");
+    }
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - planted content save-id cannot escape the save directory",
+          "[save_manager][persistence][security][regression][bug-save-id-traversal]") {
+    TempTestDir tmp;
+    const auto saves_dir = tmp.path() / "saves";
+    SaveManager mgr(saves_dir.string());
+
+    const auto outside = tmp.path() / "planted.yaml";
+    {
+        std::ofstream decoy(outside, std::ios::trunc);
+        REQUIRE(decoy.is_open());
+        decoy << "untouched\n";
+    }
+
+    // Write a structurally valid save, then rewrite its save_id field to a traversal path — this is
+    // exactly the shape a hostile save file takes, since deserializeFromYaml reads save_id verbatim.
+    SaveSettings settings;
+    settings.compress = false;
+    auto id = mgr.saveGame(makeValidGameWithMove(), settings);
+    REQUIRE(id.has_value());
+
+    const auto path = saves_dir / (*id + ".yaml");
+    YAML::Node root = YAML::LoadFile(path.string());
+    root["save_id"] = "../planted";
+    {
+        std::ofstream out(path, std::ios::trunc);
+        out << root;
+    }
+
+    // listSaves surfaces the planted id...
+    auto listed = mgr.listSaves();
+    REQUIRE(listed.has_value());
+    REQUIRE(listed->size() == 1);
+    const std::string planted_id = (*listed)[0].save_id;
+
+    // ...and every operation taking it fails closed rather than touching the decoy.
+    auto load_result = mgr.loadGame(planted_id);
+    REQUIRE(!load_result.has_value());
+    REQUIRE(load_result.error() == SaveError::InvalidSaveId);
+
+    auto delete_result = mgr.deleteSave(planted_id);
+    REQUIRE(!delete_result.has_value());
+    REQUIRE(delete_result.error() == SaveError::InvalidSaveId);
+
+    REQUIRE(fs::exists(outside));
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - save-id normalisation tricks are rejected",
+          "[save_manager][persistence][security][regression][bug-save-id-traversal]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // Each of these either escapes the directory or aliases a file the id alphabet cannot name.
+    const auto bad_id = GENERATE(as<std::string>{}, "a/../autosave", "../../evil", "autosave", "",
+                                 "0123456789ABCDEF",   // uppercase hex is not in generateSaveId's alphabet
+                                 "0123456789abcde",    // 15 chars
+                                 "0123456789abcdef0",  // 17 chars
+                                 "0123456789abcde/", "0123456789abcde.", "0123456789abcdeg");
+
+    auto result = mgr.deleteSave(bad_id);
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == SaveError::InvalidSaveId);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - every generated save-id survives the new validation",
+          "[save_manager][persistence][security]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // Property: whatever generateSaveId() emits must round-trip through save -> load. Guards against
+    // a validation rule stricter than the id alphabet it is meant to describe.
+    std::set<std::string> generated;
+    for (int round = 0; round < GENERATED_ID_ROUNDS; ++round) {
+        generated.insert(saveWithGeneratedIdAndVerify(mgr));
+    }
+
+    // Distinct ids prove generateSaveId() really ran each time rather than an id being reused.
+    REQUIRE(generated.size() == GENERATED_ID_ROUNDS);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
+TEST_CASE("SaveManager - saveGame rejects a non-empty malformed save-id rather than regenerating",
+          "[save_manager][persistence][security][regression][bug-save-id-traversal]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // Rejection (not silent regeneration) so a tampered id flowing back through renameSave fails
+    // closed. saveCurrentGame always builds a fresh SavedGame with an empty id, so the normal save
+    // path is unaffected — proven by the empty-id case below.
+    SavedGame poisoned = makeValidGameWithMove();
+    poisoned.save_id = "../escape";
+
+    auto result = mgr.saveGame(poisoned, {});
+
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == SaveError::InvalidSaveId);
+
+    SavedGame fresh = makeValidGameWithMove();
+    fresh.save_id.clear();
+    REQUIRE(mgr.saveGame(fresh, {}).has_value());
 }

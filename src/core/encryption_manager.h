@@ -45,13 +45,15 @@ enum class EncryptionError : std::uint8_t {
 /// File Format:
 /// - Magic bytes: "SDKE" (4 bytes)
 /// - Version: 1 byte
-/// - Flags: 1 byte (reserved)
+/// - Flags: 1 byte (bit 0 selects the KDF cost tier: INTERACTIVE when set, else MODERATE)
 /// - Salt: 32 bytes
 /// - Nonce: 24 bytes
 /// - Ciphertext + MAC: variable length
 ///
-/// This is a stateless static utility — it holds no key material between calls
-/// (keys are derived per-operation and zeroed immediately). libsodium is
+/// Stateless apart from one deliberate exception: the key derived for the machine salt is
+/// memoised per KDF cost tier for the lifetime of the process, because deriving it per file made
+/// listing saves cost seconds (see deriveKey / encryptionSalt and SECURITY.md). Keys for any other
+/// salt are still derived per-operation and zeroed immediately. libsodium is
 /// initialized lazily on first use; an init failure is reported as
 /// EncryptionError::InitializationFailed rather than thrown, so callers can
 /// degrade gracefully (e.g. disable save/load) instead of crashing (#28).
@@ -114,12 +116,29 @@ private:
     [[nodiscard]] static std::expected<std::vector<uint8_t>, EncryptionError>
     encryptWithFlags(const std::vector<uint8_t>& plaintext, uint8_t flags);
 
-    /// Derives encryption key from system identifiers using Argon2id
-    /// @param salt Random salt for this encryption
+    /// Derives encryption key from system identifiers using Argon2id.
+    /// Memoised for the fixed salt (see encryptionSalt) so reading many saves costs one derivation
+    /// per KDF tier per process instead of one per file; any other salt derives afresh.
+    /// @param salt Salt read from the file being decrypted, or encryptionSalt() when encrypting
     /// @param interactive Use INTERACTIVE (fast) instead of MODERATE (secure) KDF cost
     /// @return 32-byte encryption key
     [[nodiscard]] static std::expected<std::vector<uint8_t>, EncryptionError>
     deriveKey(const std::vector<uint8_t>& salt, bool interactive = false);
+
+    /// The fixed salt written into every new encrypted file: BLAKE2b over a constant application
+    /// domain string. Deterministic on purpose — a random per-file salt forces a fresh Argon2id
+    /// derivation for every file read, which is what made listing saves cost seconds.
+    ///
+    /// Deliberately NOT derived from the system identifier, even though that would also be stable:
+    /// the identifier is the KDF password, so such a salt would let anyone holding a save file
+    /// confirm a guessed machine identity with one cheap hash instead of a full Argon2id.
+    ///
+    /// What a fixed salt gives up is cross-machine precomputation resistance — one table could in
+    /// principle serve many machines. Not reachable in practice: the identifier includes a 128-bit
+    /// random machine id on Linux and macOS, and any table still costs one Argon2id per candidate.
+    /// Files carrying any other salt still decrypt normally.
+    /// @return 32-byte salt (computed once, then cached)
+    [[nodiscard]] static std::expected<std::vector<uint8_t>, EncryptionError> encryptionSalt();
 
     /// Retrieves system-specific identifier string
     /// Combines machine-id, hostname, and username for key derivation

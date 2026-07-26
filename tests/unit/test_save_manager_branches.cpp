@@ -67,7 +67,7 @@ TEST_CASE("SaveManager - loadGame with non-existent save_id returns FileNotFound
     TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
-    auto result = mgr.loadGame("does-not-exist");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("does-not-exist"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::FileNotFound);
 }
@@ -113,7 +113,7 @@ TEST_CASE("SaveManager - deleteSave with non-existent save_id returns FileNotFou
     TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
-    auto result = mgr.deleteSave("nonexistent-id");
+    auto result = mgr.deleteSave(sudoku::test::saveIdFor("nonexistent-id"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::FileNotFound);
 }
@@ -159,7 +159,7 @@ TEST_CASE("SaveManager - renameSave with non-existent save_id returns error", "[
     TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
-    auto result = mgr.renameSave("nonexistent-id", "New Name");
+    auto result = mgr.renameSave(sudoku::test::saveIdFor("nonexistent-id"), "New Name");
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::FileNotFound);
 }
@@ -191,7 +191,7 @@ TEST_CASE("SaveManager - exportSave with non-existent save_id returns error", "[
     TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
-    auto result = mgr.exportSave("nonexistent-id", (tmp.path() / "export.yaml").string());
+    auto result = mgr.exportSave(sudoku::test::saveIdFor("nonexistent-id"), (tmp.path() / "export.yaml").string());
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::FileNotFound);
 }
@@ -343,7 +343,7 @@ TEST_CASE("SaveManager - validateSave returns false for non-existent save", "[sa
     TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
-    REQUIRE_FALSE(mgr.validateSave("nonexistent-id"));
+    REQUIRE_FALSE(mgr.validateSave(sudoku::test::saveIdFor("nonexistent-id")));
 }
 
 TEST_CASE("SaveManager - validateSave returns true for valid save", "[save_manager_branches]") {
@@ -414,7 +414,7 @@ TEST_CASE("SaveManager - backward compat: load YAML without hint_revealed_cells"
 
     // Write a YAML file that is valid but lacks the hint_revealed_cells key
     // (simulates an older save format)
-    auto save_path = tmp.path() / "compat-no-hints.yaml";
+    auto save_path = tmp.path() / (sudoku::test::saveIdFor("compat-no-hints") + ".yaml");
     {
         std::ofstream f(save_path);
         f << "version: '1.0'\n"
@@ -442,7 +442,7 @@ TEST_CASE("SaveManager - backward compat: load YAML without hint_revealed_cells"
           << "  is_complete: false\n";
     }
 
-    auto result = mgr.loadGame("compat-no-hints");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("compat-no-hints"));
     REQUIRE(result.has_value());
     // Backward compat path should leave hint_revealed_cells as all-false (default)
     REQUIRE(result->hint_revealed_cells.empty());
@@ -535,16 +535,16 @@ TEST_CASE("SaveManager - saveGame with pre-set save_id reuses the same ID", "[sa
     SaveManager mgr(tmp.path().string());
 
     SavedGame game = makeMinimalGame();
-    game.save_id = "my-custom-save-id";  // Non-empty → uses existing ID
+    game.save_id = sudoku::test::saveIdFor("my-custom-save-id");  // Non-empty → uses existing ID
 
     SaveSettings settings;
     settings.compress = false;
     auto result = mgr.saveGame(game, settings);
     REQUIRE(result.has_value());
-    REQUIRE(*result == "my-custom-save-id");
+    REQUIRE(*result == sudoku::test::saveIdFor("my-custom-save-id"));
 
     // Load back and verify
-    auto loaded = mgr.loadGame("my-custom-save-id");
+    auto loaded = mgr.loadGame(sudoku::test::saveIdFor("my-custom-save-id"));
     REQUIRE(loaded.has_value());
     REQUIRE(loaded->display_name == game.display_name);
 }

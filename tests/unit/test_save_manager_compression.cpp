@@ -330,7 +330,7 @@ TEST_CASE("Decompression refuses zlib bombs above the cap",
 
     // Build a 65 MiB block of zeros — one byte above the 64 MiB cap.
     // Zeros compress to a few-hundred-byte zlib stream (~1000:1 ratio),
-    // so the on-disk "bomb" file stays tiny while the decompressed
+    // so the on-disk bomb file stays tiny while the decompressed
     // payload would blow past the cap. The 65 MiB plaintext is also small
     // enough to be allocatable by `compress2` on any CI runner.
     constexpr size_t kBombPlaintextBytes = (64UL * 1024 * 1024) + (1UL * 1024 * 1024);  // 65 MiB
@@ -349,14 +349,14 @@ TEST_CASE("Decompression refuses zlib bombs above the cap",
 
     // Write as an unencrypted save file. Deserialization will sniff the
     // zlib magic byte and route into decompressData.
-    auto bomb_path = tmp.path() / "bomb.yaml";
+    auto bomb_path = tmp.path() / (sudoku::test::saveIdFor("bomb") + ".yaml");
     {
         std::ofstream f(bomb_path, std::ios::binary);
         REQUIRE(f.is_open());
         f.write(reinterpret_cast<const char*>(compressed.data()), static_cast<std::streamsize>(compressed.size()));
     }
 
-    auto result = mgr.loadGame("bomb");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("bomb"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::CompressionError);
 }
@@ -366,7 +366,7 @@ TEST_CASE("Decompression handles malformed data", "[save_manager][compression]")
     SaveManager save_manager(temp_dir.path().string());
 
     // Create a file with valid zlib magic bytes but corrupted data
-    auto malformed_file = temp_dir.path() / "malformed_save.yaml";
+    auto malformed_file = temp_dir.path() / (sudoku::test::saveIdFor("malformed_save") + ".yaml");
 
     {
         std::ofstream file(malformed_file, std::ios::binary);

@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/save_manager.h"
+#include "../helpers/test_utils.h"
 
 #include <filesystem>
 #include <fstream>
@@ -248,17 +249,18 @@ TEST_CASE("SaveManager - File I/O Integration", "[save_manager][integration]") {
         REQUIRE(fixture.save_manager_.validateSave(save_id));
 
         // Validate non-existent save
-        REQUIRE_FALSE(fixture.save_manager_.validateSave("nonexistent_id"));
+        REQUIRE_FALSE(fixture.save_manager_.validateSave(sudoku::test::saveIdFor("nonexistent_id")));
     }
 
     SECTION("Error handling - load non-existent file") {
-        auto load_result = fixture.save_manager_.loadGame("nonexistent_id");
+        auto load_result = fixture.save_manager_.loadGame(sudoku::test::saveIdFor("nonexistent_id"));
         REQUIRE(!load_result.has_value());
         REQUIRE(load_result.error() == SaveError::FileNotFound);
     }
 
     SECTION("Error handling - export non-existent save") {
-        auto export_result = fixture.save_manager_.exportSave("nonexistent_id", "/tmp/test.yaml");
+        auto export_result = fixture.save_manager_.exportSave(sudoku::test::saveIdFor("nonexistent_id"),
+                                                              (fs::path(fixture.test_dir_) / "export.yaml").string());
         REQUIRE(!export_result.has_value());
         REQUIRE(export_result.error() == SaveError::FileNotFound);
     }
@@ -415,7 +417,7 @@ TEST_CASE("SaveManager - Filesystem Error Paths", "[save_manager][integration][e
         SaveManagerTestFixture fixture;
 
         // Create a corrupted YAML file
-        std::string save_id = "corrupted_yaml_test";
+        std::string save_id = sudoku::test::saveIdFor("corrupted_yaml_test");
         auto save_path = fs::path(fixture.test_dir_) / (save_id + ".yaml");
 
         std::ofstream file(save_path);
@@ -433,7 +435,7 @@ TEST_CASE("SaveManager - Filesystem Error Paths", "[save_manager][integration][e
     SECTION("Missing required field (current_state)") {
         SaveManagerTestFixture fixture;
 
-        std::string save_id = "missing_field_test";
+        std::string save_id = sudoku::test::saveIdFor("missing_field_test");
         auto save_path = fs::path(fixture.test_dir_) / (save_id + ".yaml");
 
         // Create minimal YAML missing critical field
@@ -465,7 +467,7 @@ TEST_CASE("SaveManager - Filesystem Error Paths", "[save_manager][integration][e
     SECTION("Invalid data types in YAML") {
         SaveManagerTestFixture fixture;
 
-        std::string save_id = "invalid_types_test";
+        std::string save_id = sudoku::test::saveIdFor("invalid_types_test");
         auto save_path = fs::path(fixture.test_dir_) / (save_id + ".yaml");
 
         std::ofstream file(save_path);
@@ -539,7 +541,7 @@ TEST_CASE("SaveManager - Filesystem Error Paths", "[save_manager][integration][e
     SECTION("Out-of-range difficulty value") {
         SaveManagerTestFixture fixture;
 
-        std::string save_id = "invalid_difficulty";
+        std::string save_id = sudoku::test::saveIdFor("invalid_difficulty");
         auto save_path = fs::path(fixture.test_dir_) / (save_id + ".yaml");
 
         // Create YAML with invalid difficulty enum value
@@ -580,7 +582,7 @@ TEST_CASE("SaveManager - Filesystem Error Paths", "[save_manager][integration][e
     SECTION("Board dimension mismatch (not 9x9)") {
         SaveManagerTestFixture fixture;
 
-        std::string save_id = "wrong_dimensions";
+        std::string save_id = sudoku::test::saveIdFor("wrong_dimensions");
         auto save_path = fs::path(fixture.test_dir_) / (save_id + ".yaml");
 
         std::ofstream file(save_path);

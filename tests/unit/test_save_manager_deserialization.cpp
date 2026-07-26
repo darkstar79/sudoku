@@ -85,14 +85,14 @@ TEST_CASE("SaveManager - deserialize: YAML missing puzzle_data → Serialization
     TempTestDir tmp;
     SaveManager mgr(tmp.path().string());
 
-    writeYaml(tmp.path(), "no-puzzle-data",
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("no-puzzle-data"),
               "version: '1.0'\n"
               "save_id: no-puzzle-data\n"
               "display_name: Test\n"
               "created_time: 1000000000\n"
               "last_modified: 1000000000\n");
 
-    auto result = mgr.loadGame("no-puzzle-data");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("no-puzzle-data"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::SerializationError);
 }
@@ -116,9 +116,9 @@ TEST_CASE("SaveManager - deserialize: YAML missing current_state → Serializati
     yaml += nineRowBoard("original_puzzle");
     // No current_state key
 
-    writeYaml(tmp.path(), "no-current-state", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("no-current-state"), yaml);
 
-    auto result = mgr.loadGame("no-current-state");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("no-current-state"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::SerializationError);
 }
@@ -142,9 +142,9 @@ TEST_CASE("SaveManager - deserialize: YAML missing original_puzzle → Serializa
     yaml += nineRowBoard("current_state");
     // No original_puzzle key
 
-    writeYaml(tmp.path(), "no-orig-puzzle", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("no-orig-puzzle"), yaml);
 
-    auto result = mgr.loadGame("no-orig-puzzle");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("no-orig-puzzle"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::SerializationError);
 }
@@ -168,9 +168,9 @@ TEST_CASE("SaveManager - deserialize: invalid difficulty value → InvalidSaveDa
     yaml += nineRowBoard("original_puzzle");
     yaml += nineRowBoard("current_state");
 
-    writeYaml(tmp.path(), "bad-difficulty", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("bad-difficulty"), yaml);
 
-    auto result = mgr.loadGame("bad-difficulty");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("bad-difficulty"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::InvalidSaveData);
 }
@@ -198,9 +198,9 @@ TEST_CASE("SaveManager - deserialize: Master difficulty (4) loads successfully",
     yaml += nineRowBoard("original_puzzle");
     yaml += nineRowBoard("current_state");
 
-    writeYaml(tmp.path(), "master-save", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("master-save"), yaml);
 
-    auto result = mgr.loadGame("master-save");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("master-save"));
     REQUIRE(result.has_value());
     REQUIRE(result.value().difficulty == Difficulty::Master);
 }
@@ -227,9 +227,9 @@ TEST_CASE("SaveManager - deserialize: current_state has 8 rows → InvalidSaveDa
         yaml += "    - [0, 0, 0, 0, 0, 0, 0, 0, 0]\n";
     }
 
-    writeYaml(tmp.path(), "bad-row-count", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("bad-row-count"), yaml);
 
-    auto result = mgr.loadGame("bad-row-count");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("bad-row-count"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::InvalidSaveData);
 }
@@ -252,9 +252,9 @@ TEST_CASE("SaveManager - deserialize: original_puzzle has 8 rows → InvalidSave
     }
     yaml += nineRowBoard("current_state");
 
-    writeYaml(tmp.path(), "bad-orig-rows", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("bad-orig-rows"), yaml);
 
-    auto result = mgr.loadGame("bad-orig-rows");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("bad-orig-rows"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::InvalidSaveData);
 }
@@ -282,9 +282,9 @@ TEST_CASE("SaveManager - deserialize: current_state row has 8 cols → InvalidSa
         yaml += "    - [0, 0, 0, 0, 0, 0, 0, 0, 0]\n";
     }
 
-    writeYaml(tmp.path(), "bad-col-count", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("bad-col-count"), yaml);
 
-    auto result = mgr.loadGame("bad-col-count");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("bad-col-count"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::InvalidSaveData);
 }
@@ -308,9 +308,9 @@ TEST_CASE("SaveManager - deserialize: original_puzzle row has 8 cols → Invalid
     }
     yaml += nineRowBoard("current_state");
 
-    writeYaml(tmp.path(), "bad-orig-cols", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("bad-orig-cols"), yaml);
 
-    auto result = mgr.loadGame("bad-orig-cols");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("bad-orig-cols"));
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error() == SaveError::InvalidSaveData);
 }
@@ -324,13 +324,13 @@ TEST_CASE("SaveManager - deserialize: invalid YAML content → SerializationErro
     SaveManager mgr(tmp.path().string());
 
     // Write invalid YAML (tabs mixed with spaces, unclosed brackets, etc.)
-    writeYaml(tmp.path(), "invalid-yaml",
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("invalid-yaml"),
               "version: '1.0'\n"
               "puzzle_data:\n"
               "  broken: {unclosed\n"
               "  junk: [1, 2\n");
 
-    auto result = mgr.loadGame("invalid-yaml");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("invalid-yaml"));
     REQUIRE_FALSE(result.has_value());
     // YAML parse errors map to SerializationError
     REQUIRE(result.error() == SaveError::SerializationError);
@@ -379,9 +379,10 @@ TEST_CASE("SaveManager - Master save loads with and without the dropped move tim
     SaveManager mgr(tmp.path().string());
 
     SECTION("current 1.1 Master save without the dropped timestamp key") {
-        writeYaml(tmp.path(), "master-current", masterSaveYaml("master-current", "1.1", /*with_timestamp=*/false));
+        writeYaml(tmp.path(), sudoku::test::saveIdFor("master-current"),
+                  masterSaveYaml(sudoku::test::saveIdFor("master-current"), "1.1", /*with_timestamp=*/false));
 
-        auto result = mgr.loadGame("master-current");
+        auto result = mgr.loadGame(sudoku::test::saveIdFor("master-current"));
         REQUIRE(result.has_value());
         REQUIRE(result->difficulty == Difficulty::Master);
         REQUIRE(result->move_history.size() == 1);
@@ -390,9 +391,10 @@ TEST_CASE("SaveManager - Master save loads with and without the dropped move tim
     }
 
     SECTION("older Master save still carrying the timestamp key loads (key ignored)") {
-        writeYaml(tmp.path(), "master-legacy", masterSaveYaml("master-legacy", "1.1", /*with_timestamp=*/true));
+        writeYaml(tmp.path(), sudoku::test::saveIdFor("master-legacy"),
+                  masterSaveYaml(sudoku::test::saveIdFor("master-legacy"), "1.1", /*with_timestamp=*/true));
 
-        auto result = mgr.loadGame("master-legacy");
+        auto result = mgr.loadGame(sudoku::test::saveIdFor("master-legacy"));
         REQUIRE(result.has_value());
         REQUIRE(result->difficulty == Difficulty::Master);
         REQUIRE(result->move_history.size() == 1);
@@ -425,9 +427,9 @@ TEST_CASE("SaveManager - deserialize: YAML with move_history is loaded correctly
             // no timestamp field → covers L750 false
             "current_move_index: 1\n";  // covers L758 true
 
-    writeYaml(tmp.path(), "with-move-history", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("with-move-history"), yaml);
 
-    auto result = mgr.loadGame("with-move-history");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("with-move-history"));
     REQUIRE(result.has_value());
     REQUIRE(result->move_history.size() == 2);
     REQUIRE(result->move_history[0].position.row == 0);
@@ -452,9 +454,9 @@ TEST_CASE("SaveManager - deserialize: YAML without optional metadata loads with 
     yaml += nineRowBoard("original_puzzle");
     yaml += nineRowBoard("current_state");
 
-    writeYaml(tmp.path(), "minimal-yaml", yaml);
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("minimal-yaml"), yaml);
 
-    auto result = mgr.loadGame("minimal-yaml");
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("minimal-yaml"));
     REQUIRE(result.has_value());
     REQUIRE(result->difficulty == Difficulty::Hard);
     REQUIRE(result->puzzle_seed == 99);

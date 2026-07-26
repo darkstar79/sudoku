@@ -187,9 +187,12 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
             data = std::move(*compressed);
         }
 
-        // 4. Optionally encrypt
+        // 4. Optionally encrypt. INTERACTIVE rather than MODERATE cost: reading a save has to
+        //    derive the key too, and at MODERATE that made listing N saves cost N x ~196 ms. The
+        //    tier is recorded in the file's flags byte and decrypt() dispatches on it, so saves
+        //    written at the old cost keep loading.
         if (settings.encrypt) {
-            auto encrypted = EncryptionManager::encrypt(data);
+            auto encrypted = EncryptionManager::encryptInteractive(data);
             if (!encrypted) {
                 spdlog::error("Encryption failed");
                 return std::unexpected(SaveError::EncryptionError);
@@ -232,7 +235,15 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
         if (is_encrypted) {
             auto decrypted = EncryptionManager::decrypt(data);
             if (!decrypted) {
-                spdlog::error("Decryption failed");
+                // Name the overwhelmingly likely cause. Save encryption keys are derived from
+                // machine identity (hostname, username, machine-id), so this file is far more
+                // likely to have come from a different machine — or from this one before a
+                // hostname change, a username change, or an OS reinstall — than to be corrupt.
+                // Such a save cannot be recovered on this machine; see SECURITY.md.
+                spdlog::error("Decryption failed for {} — this save was most likely encrypted on a different machine, "
+                              "or on this machine before its hostname/username/machine-id changed. Encrypted saves "
+                              "are bound to the machine that wrote them and cannot be recovered elsewhere.",
+                              file_path.string());
                 return std::unexpected(SaveError::EncryptionError);
             }
             data = std::move(*decrypted);
