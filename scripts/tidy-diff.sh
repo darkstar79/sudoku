@@ -109,15 +109,34 @@ echo -e "${YELLOW}[tidy-diff] Checking $CHANGED file(s) — $MODE...${NC}"
 #      grep -q exits at the first match, echo then takes SIGPIPE, and pipefail turns
 #      that successful match into a failed pipeline. It breaks once the output exceeds
 #      the 64 KiB pipe buffer -- i.e. exactly on the large diffs that matter most.
-TIDY_SHIM=$(mktemp)
-TIDY_LOG=$(mktemp)
+# Explicit templates: BSD/macOS mktemp requires a template or -t prefix and rejects a
+# bare invocation, and named files are identifiable when auditing TMPDIR.
+TIDY_SHIM=$(mktemp -t tidy-diff-shim.XXXXXX)
 trap 'rm -f "$TIDY_SHIM" "$TIDY_LOG"' EXIT
+TIDY_LOG=$(mktemp -t tidy-diff-log.XXXXXX)
 
-cat > "$TIDY_SHIM" <<SHIM
+# Quoted heredoc + exported variable: a TIDY_BIN path containing a quote would otherwise
+# generate a syntactically broken shim, and one containing $(...) would be evaluated when
+# the shim runs.
+cat > "$TIDY_SHIM" <<'SHIM'
 #!/bin/sh
-exec "$TIDY_BIN" --warnings-as-errors='*' "\$@"
+exec "$REAL_TIDY" --warnings-as-errors='*' "$@"
 SHIM
 chmod +x "$TIDY_SHIM"
+export REAL_TIDY="$TIDY_BIN"
+
+# The shim is a hard dependency of the gate, and clang-tidy-diff.py SWALLOWS a failure to
+# exec it: its `except Exception` handler prints "Failed: ..." but never records the file,
+# so the driver still exits 0 and every file goes unanalyzed. A noexec TMPDIR (common
+# hardening) or an SELinux/AppArmor denial would thus turn this gate into a permanent,
+# silent pass. Prove the shim actually runs before trusting anything it reports.
+if ! "$TIDY_SHIM" --version >/dev/null 2>&1; then
+    echo -e "${RED}[tidy-diff] The generated clang-tidy shim could not be executed.${NC}"
+    echo "            TMPDIR is most likely mounted noexec (or exec is blocked by"
+    echo "            SELinux/AppArmor). Re-run with a TMPDIR that permits exec:"
+    echo "              TMPDIR=\"\$(git rev-parse --show-toplevel)/build\" $0 $*"
+    exit 1
+fi
 
 TIDY_RC=0
 echo "$DIFF" | python3 "$CLANG_TIDY_DIFF" \
@@ -126,7 +145,15 @@ echo "$DIFF" | python3 "$CLANG_TIDY_DIFF" \
     -path "$BUILD_DIR" \
     -j "$(nproc)" > "$TIDY_LOG" 2>&1 || TIDY_RC=$?
 
-cat "$TIDY_LOG"
+cat "$TIDY_LOG" || true
+
+# Belt and braces for the same swallowed-launch class from any other cause (binary removed
+# mid-run, fork failure): those files were never analyzed, but the exit code alone says 0.
+if grep -q '^Failed: ' "$TIDY_LOG"; then
+    echo -e "${RED}[tidy-diff] clang-tidy could not be launched for at least one file (see${NC}"
+    echo -e "${RED}            'Failed:' above) — those files were NOT analyzed. Treating as failure.${NC}"
+    exit 1
+fi
 
 if [ "$TIDY_RC" -ne 0 ]; then
     echo -e "${RED}[tidy-diff] clang-tidy gate FAILED (exit ${TIDY_RC}) — this is what CI will fail on.${NC}"
@@ -136,10 +163,13 @@ if [ "$TIDY_RC" -ne 0 ]; then
     if grep -q '^Error while processing' "$TIDY_LOG"; then
         echo -e "${RED}            A translation unit failed to COMPILE, so checks never ran on it —${NC}"
         echo -e "${RED}            the findings above are incomplete, not a clean bill of health.${NC}"
-        echo "            Usual cause: ${BUILD_DIR}/compile_commands.json carries flags clang"
-        echo "            rejects, e.g. GCC-only warning names from a local -DCMAKE_CXX_FLAGS"
-        echo "            workaround. Look for 'unknown warning option' / 'unknown argument'"
-        echo "            above, then regenerate it with: cmake --preset release"
+        echo "            Two common causes:"
+        echo "              * A missing GENERATED source (e.g. a Qt '*.moc'): build the target"
+        echo "                first, or configure with -DSUDOKU_ENABLE_UI_TESTS=ON for UI tests."
+        echo "              * ${BUILD_DIR}/compile_commands.json carrying flags clang rejects"
+        echo "                (e.g. GCC-only warning names from a local -DCMAKE_CXX_FLAGS"
+        echo "                workaround) — look for 'unknown warning option' / 'unknown"
+        echo "                argument' above, then: cmake --preset release"
     fi
     exit 1
 fi
