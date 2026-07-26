@@ -93,19 +93,41 @@ fi
 CHANGED=$(echo "$DIFF" | grep '^+++ b/' | sed 's|^+++ b/||' | grep -E '\.(cpp|h|hpp)$' | wc -l)
 echo -e "${YELLOW}[tidy-diff] Checking $CHANGED file(s) — $MODE...${NC}"
 
-OUTPUT=$(echo "$DIFF" | python3 "$CLANG_TIDY_DIFF" \
+# Capture via a file rather than $(...) so output written directly by the parallel
+# clang-tidy children lands in the same place as the driver's own output.
+TIDY_LOG=$(mktemp -t tidy-diff.XXXXXX)
+trap 'rm -f "$TIDY_LOG"' EXIT
+
+echo "$DIFF" | python3 "$CLANG_TIDY_DIFF" \
     -clang-tidy-binary "$TIDY_BIN" \
     -p1 \
     -path "$BUILD_DIR" \
     -quiet \
-    -j "$(nproc)" 2>&1 || true)
+    -j "$(nproc)" > "$TIDY_LOG" 2>&1 || true
+
+OUTPUT=$(cat "$TIDY_LOG")
 
 if [ -n "$OUTPUT" ]; then
     echo "$OUTPUT"
-    if echo "$OUTPUT" | grep -q "warning:\|error:"; then
-        echo -e "${RED}[tidy-diff] Warnings found in changed lines.${NC}"
-        exit 1
-    fi
+fi
+
+# A translation unit that fails to COMPILE yields no check findings at all, so a clean
+# result here means "never analyzed", not "clean". Report that as a failure: a gate that
+# could not run must never claim success -- silent vacuous passes are how a branch reaches
+# CI with errors the local gate said were absent.
+if echo "$OUTPUT" | grep -q "Found compiler error\|Error while processing"; then
+    echo -e "${RED}[tidy-diff] clang-tidy could NOT analyze -- this result is meaningless.${NC}"
+    echo -e "${RED}            At least one translation unit failed to compile, so no checks ran.${NC}"
+    echo "            Usual cause: ${BUILD_DIR}/compile_commands.json carries flags clang rejects,"
+    echo "            e.g. GCC-only warning names injected via -DCMAKE_CXX_FLAGS. Look for"
+    echo "            'unknown warning option' / 'unknown argument' above, then regenerate it:"
+    echo "              cmake --preset release"
+    exit 1
+fi
+
+if echo "$OUTPUT" | grep -q "warning:\|error:"; then
+    echo -e "${RED}[tidy-diff] Warnings found in changed lines.${NC}"
+    exit 1
 fi
 
 echo -e "${GREEN}[tidy-diff] OK${NC}"
