@@ -337,7 +337,12 @@ jobs:
             UNIT_TESTS="build/Release/bin/tests/unit_tests"
           fi
           echo "Running: $UNIT_TESTS"
-          "$UNIT_TESTS" "~[slow]~[pathological]"
+          # Tag convention: [pathological] = deliberately excluded from instrumented
+          # (coverage/sanitizer) runs, still runs in the plain full-suite jobs. The
+          # exclusion is load-bearing here — it keeps the non-hidden deep-recursion
+          # test (test_solver_infinite_loop_reproduction.cpp, "hasUniqueSolution on
+          # pathological puzzles") out of this ASan+UBSan run.
+          "$UNIT_TESTS" "~[pathological]"
 
   clang-tidy-diff:
     name: clang-tidy (diff)
@@ -564,7 +569,10 @@ jobs:
         # QT_QPA_PLATFORM=offscreen environment already set per-test in
         # tests/ui/CMakeLists.txt. The "^test_" regex matches only the UI
         # tests (unit_tests / integration_tests don't share that prefix).
-        run: ctest --test-dir build/Release -R "^test_" --output-on-failure
+        # --no-tests=error (NET-6): without it ctest exits 0 on "No tests were
+        # found", so dropping -DSUDOKU_ENABLE_UI_TESTS=ON above would silently
+        # turn this step green while running nothing.
+        run: ctest --test-dir build/Release -R "^test_" --output-on-failure --no-tests=error
         shell: cmd
 
       - name: Re-run failed UI tests with QTest file logger
@@ -660,7 +668,10 @@ jobs:
         run: ./build/Release/bin/tests/integration_tests
 
       - name: Run UI tests (offscreen)
-        run: QT_QPA_PLATFORM=offscreen ctest --test-dir build/Release -R "^test_" --output-on-failure
+        # --no-tests=error (NET-6): ctest exits 0 on "No tests were found", so
+        # without it a configure that drops -DSUDOKU_ENABLE_UI_TESTS=ON would
+        # turn this step green while running zero tests.
+        run: QT_QPA_PLATFORM=offscreen ctest --test-dir build/Release -R "^test_" --output-on-failure --no-tests=error
 
       - name: Upload CTest log on failure
         if: failure()

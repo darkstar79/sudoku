@@ -170,7 +170,8 @@ TEST_CASE("BacktrackingSolver - Edge Cases", "[backtracking_solver]") {
 // steady_clock::now() call. The mock clock is advanced an hour ahead of the real wall clock and the
 // deadline is set just behind the mock's "now". Only an implementation that reads
 // time_provider_->steadyNow() sees the deadline as already-passed and bails immediately; one still
-// reading the real clock would view the deadline as a future point and grind the AI-Escargot board.
+// reading the real clock would view the deadline as a future point, solve the board normally, and
+// therefore return true — which is what REQUIRE(!result) below actually catches.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables) — Catch2 TEST_CASE macro expansion
 TEST_CASE("BacktrackingSolver short-circuits a passed deadline via the injected clock",
           "[backtracking_solver][timeout]") {
@@ -178,7 +179,7 @@ TEST_CASE("BacktrackingSolver short-circuits a passed deadline via the injected 
     auto mock_time = std::make_shared<MockTimeProvider>();
     BacktrackingSolver solver(validator, mock_time);
 
-    // AI Escargot — 17-clue, no logical path, would otherwise consume seconds of backtracking.
+    // AI Escargot — 17-clue, no logical path, so it can only be finished by search.
     BoardData board = {{1, 0, 0, 0, 0, 7, 0, 9, 0}, {0, 3, 0, 0, 2, 0, 0, 0, 8}, {0, 0, 9, 6, 0, 0, 5, 0, 0},
                        {0, 0, 5, 3, 0, 0, 9, 0, 0}, {0, 1, 0, 0, 8, 0, 0, 0, 2}, {6, 0, 0, 0, 0, 4, 0, 0, 0},
                        {3, 0, 0, 0, 0, 0, 0, 1, 0}, {0, 4, 0, 0, 0, 0, 0, 0, 7}, {0, 0, 7, 0, 0, 0, 3, 0, 0}};
@@ -192,9 +193,15 @@ TEST_CASE("BacktrackingSolver short-circuits a passed deadline via the injected 
     bool result = solver.solve(board, ValueSelectionStrategy::MostConstrained, /*rng*/ nullptr, past_deadline);
     auto elapsed = std::chrono::steady_clock::now() - t0;
 
+    // THIS is the discriminator for the #24 contract: a real-clock implementation sees an
+    // hour-in-the-future deadline, solves the board, and returns true.
     REQUIRE(!result);
-    // Must exit essentially immediately — backtracking should not have meaningfully started.
-    REQUIRE(elapsed < std::chrono::milliseconds(50));
+    // The timing bound is only a coarse runaway guard — it does NOT discriminate the regression
+    // (search on this board completes in well under a millisecond either way, so no bound in this
+    // range separates the two paths). Do not delete REQUIRE(!result) on the theory that this bound
+    // covers it. Widened 50ms -> 1s purely so the per-PR ASan job's instrumentation overhead cannot
+    // flake it; nothing is lost, because the bound was never the signal.
+    REQUIRE(elapsed < std::chrono::seconds(1));
 }
 
 // In-recursion deadline enforcement is exercised end-to-end by the AI-Escargot timeout test

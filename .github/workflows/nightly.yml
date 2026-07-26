@@ -109,6 +109,140 @@ jobs:
           echo "::error::Push a fix or use workflow_dispatch to re-run."
           exit 1
 
+  safety-net-harnesses:
+    name: Safety-Net Harnesses
+    # Regression sentinels and soundness harnesses that were written but never scheduled
+    # (findings NET-1 / NET-2). The tests that matter here are Catch2 [.]-hidden, so they run
+    # in NO other job; naming a tag explicitly is what selects a hidden test (same mechanism
+    # as the [bucket_migration] step above). Note the specs are not hidden-only — [timeout]
+    # deliberately also picks up 11 fast non-hidden tests that already run per-PR; the wider
+    # net is the point. Deliberately a separate job from strategy-correctness:
+    # that one already fills its 150-min budget, and nightly jobs run in parallel, so this
+    # adds no wall-clock to the nightly while restoring the same rwdi-nocov caches.
+    #
+    # Budget: measured locally on RelWithDebInfo/coverage-OFF — [timeout] 0.2s,
+    # [kraken][mining] 2m04s, [lastresort][audit] 1m37s => ~3m45s of tests, plus ~10 min
+    # warm-cache build. 45 min leaves well over the 25% headroom the measurements call for,
+    # covering a slower runner and a cold-cache build, while still failing fast on a hang.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check for recent changes
+        id: check
+        uses: ./.github/actions/check-nightly-skip
+        with:
+          job-name: Safety-Net Harnesses
+
+      - name: Install system dependencies
+        if: steps.check.outputs.skip != 'true'
+        uses: ./.github/actions/install-qt-deps
+
+      - name: Install Conan
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          pip3 install conan
+          conan profile detect --force
+
+      - name: Cache Conan packages
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.conan2
+          # Same key flavor as strategy-correctness: both jobs build RelWithDebInfo, so this
+          # restores warm. A duplicate save against an identical key is a harmless warning.
+          key: conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}-${{ github.sha }}
+          restore-keys: |
+            conan-${{ runner.os }}-relwithdebinfo-${{ hashFiles('conanfile.py') }}-
+            conan-${{ runner.os }}-relwithdebinfo-
+
+      - name: Cache ccache
+        if: steps.check.outputs.skip != 'true'
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ccache
+          # Key is identical to strategy-correctness', deliberately: both jobs compile the same
+          # rwdi-nocov object set, so sharing maximizes hits. Both also race to SAVE it — this job
+          # finishes in minutes and the 2-hour one then logs a benign "Cache already exists".
+          # Contents are equivalent either way, so whichever write lands first is fine.
+          key: ccache-${{ runner.os }}-rwdi-nocov-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-rwdi-nocov-
+
+      - name: Configure ccache
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          ccache --set-config=max_size=1Gi
+          ccache --zero-stats
+
+      - name: Install dependencies
+        if: steps.check.outputs.skip != 'true'
+        run: conan install . --build=missing -s build_type=RelWithDebInfo -s compiler.cppstd=gnu23
+
+      - name: Build
+        if: steps.check.outputs.skip != 'true'
+        # Coverage OFF and no sanitizers, deliberately: the [timeout] sentinels assert real
+        # wall-clock ceilings (1s / 500ms) that only hold for an optimized, uninstrumented
+        # build, and the corpus harnesses below are backtracking-heavy. Shares the rwdi-nocov
+        # ccache flavor with strategy-correctness.
+        run: |
+          cmake --preset relwithdebinfo -DSUDOKU_ENABLE_COVERAGE=OFF
+          cmake --build --preset relwithdebinfo
+
+      - name: Show ccache stats
+        if: steps.check.outputs.skip != 'true'
+        run: ccache --show-stats
+
+      # Ordered fastest-first so a budget overrun on the corpus sweeps below can never mask
+      # a regression in the cheap livelock sentinels.
+      - name: Run solver livelock sentinels
+        if: steps.check.outputs.skip != 'true'
+        # NET-1: the guards written after the AI-Escargot solvePuzzle livelock. Both are
+        # [.integration]-hidden ("solvePuzzle bails out on AI Escargot within wall-clock
+        # budget", "solvePuzzle propagates deadline into backtracking fallback") and were
+        # invoked by nothing in .github/ or scripts/ — a resolved production livelock with a
+        # dormant regression net. The tag also picks up the fast [game_view_model] and
+        # [backtracking_solver] timeout tests; that wider net is intentional. Seconds to run.
+        run: |
+          UNIT_TESTS=$(find build/RelWithDebInfo -name unit_tests -type f | head -1)
+          echo "Running: $UNIT_TESTS [timeout]"
+          "$UNIT_TESTS" "[timeout]"
+
+      - name: Run Kraken Fish mining sweep
+        if: steps.check.outputs.skip != 'true'
+        # NET-2: the issue #59 regression baseline ([.][kraken][mining]) — a Hard 600 /
+        # Expert 600 / Master 400 sweep asserting no inverted Kraken elimination. Manual-only
+        # until now. Corpus sizes are hardcoded in the test and are the baseline; do not scale.
+        run: |
+          UNIT_TESTS=$(find build/RelWithDebInfo -name unit_tests -type f | head -1)
+          echo "Running: $UNIT_TESTS [kraken][mining]"
+          "$UNIT_TESTS" "[kraken][mining]"
+
+      - name: Run last-resort strategy audit
+        if: steps.check.outputs.skip != 'true'
+        # NET-2: the [.][lastresort][audit] harness — probes all 13 last-resort strategies'
+        # findStep per intermediate state and ground-truths every elimination and placement.
+        # This is the tier that produced issues #40 and #59, and solvePuzzle's replay does not
+        # reach it, so this is its only standing net. Run at the committed default corpus
+        # (Hard 200 / Expert 100 / Master 50) — the SUDOKU_AUDIT_* env knobs are for local
+        # widening only; overriding them here would change the regression baseline.
+        run: |
+          UNIT_TESTS=$(find build/RelWithDebInfo -name unit_tests -type f | head -1)
+          echo "Running: $UNIT_TESTS [lastresort][audit]"
+          "$UNIT_TESTS" "[lastresort][audit]"
+
+      - name: Propagate previous failure
+        if: steps.check.outputs.previous-failed == 'true'
+        run: |
+          echo "::error::No new commits since the last real nightly run, which FAILED for this job."
+          echo "::error::Push a fix or use workflow_dispatch to re-run."
+          exit 1
+
   sanitizer-check:
     name: ASan + UBSan
     runs-on: ubuntu-24.04
@@ -191,7 +325,12 @@ jobs:
             UNIT_TESTS="build/Release/bin/tests/unit_tests"
           fi
           echo "Running: $UNIT_TESTS"
-          "$UNIT_TESTS" "~[slow]~[pathological]"
+          # Tag convention: [pathological] = deliberately excluded from instrumented
+          # (coverage/sanitizer) runs, still runs in the plain full-suite jobs. The
+          # exclusion is load-bearing here — it keeps the non-hidden deep-recursion
+          # test (test_solver_infinite_loop_reproduction.cpp, "hasUniqueSolution on
+          # pathological puzzles") out of this ASan+UBSan run.
+          "$UNIT_TESTS" "~[pathological]"
 
       - name: Run integration tests under ASan + UBSan
         if: steps.check.outputs.skip != 'true'
