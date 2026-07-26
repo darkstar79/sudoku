@@ -35,6 +35,7 @@
 #include <fstream>
 #include <iterator>
 #include <random>
+#include <utility>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -775,6 +776,9 @@ TEST_CASE("StatisticsManager - hostile session difficulty is quarantined at star
 // exercises the same unified whole-file writer the encrypt-failure fallback uses.
 // ============================================================================
 
+// Catch2 TEST_CASE with multiple REQUIRE checks across nested manager scopes; complexity is
+// inherent to test coverage.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("StatisticsManager - plain flush preserves encrypted on-disk history and merges pending",
           "[statistics_manager_branches][review1]") {
     TempTestDir tmp;
@@ -824,6 +828,9 @@ TEST_CASE("StatisticsManager - plain flush preserves encrypted on-disk history a
 // and a later flush after the failure cause is removed must persist them.
 // ============================================================================
 
+// Catch2 TEST_CASE with multiple REQUIRE checks across two SECTIONs; complexity is inherent to
+// test coverage.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("StatisticsManager - flushSessions retains pending sessions when the write fails",
           "[statistics_manager_branches][stat3]") {
 #ifdef _WIN32
@@ -831,17 +838,24 @@ TEST_CASE("StatisticsManager - flushSessions retains pending sessions when the w
 #else
     TempTestDir tmp;
     auto time = std::make_shared<MockTimeProvider>();
-    const fs::path stats_dir = tmp.path();
+    const fs::path& stats_dir = tmp.path();
     const fs::path sessions_file = stats_dir / "game_sessions.yaml";
 
     // Restore permissions no matter how the test exits, so temp-dir cleanup works.
     struct PermGuard {
         fs::path dir;
+        explicit PermGuard(fs::path d) : dir(std::move(d)) {
+        }
+        PermGuard(const PermGuard&) = delete;
+        PermGuard& operator=(const PermGuard&) = delete;
+        PermGuard(PermGuard&&) = delete;
+        PermGuard& operator=(PermGuard&&) = delete;
         ~PermGuard() {
             std::error_code ec;
             fs::permissions(dir, fs::perms::owner_all, ec);
         }
-    } guard{stats_dir};
+    };
+    PermGuard guard{stats_dir};
 
     SECTION("plain mode") {
         StatisticsManager mgr(stats_dir.string(), time);

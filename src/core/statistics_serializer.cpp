@@ -246,59 +246,73 @@ std::expected<void, StatisticsError> serializeGameStatsToYaml(const GameStats& s
     }
 }
 
+namespace {
+
+/// Parses one session node into a GameStats. Every field is optional — a missing field keeps the
+/// GameStats default — except that a *present* `difficulty` must be in range.
+///
+/// The difficulty range check runs on the raw int BEFORE the cast (STAT-2): Difficulty's underlying
+/// type is uint8_t, so static_cast wraps modulo-256 (e.g. 260 → 4/Master), which would silently
+/// launder hostile values. Rejecting propagates out of deserializeGameStatsFromNode and routes the
+/// file through getAllSessions()'s fail-closed latch into the issue-#26 archive flow — never
+/// silently skip a session, because a skipped session would be destroyed on the next flush rewrite.
+[[nodiscard]] std::expected<GameStats, StatisticsError> parseSessionNode(const YAML::Node& session_node) {
+    GameStats stats;
+
+    if (session_node["difficulty"]) {
+        const int diff_val = session_node["difficulty"].as<int>();
+        if (diff_val < 0 || diff_val >= static_cast<int>(DIFFICULTY_COUNT)) {
+            spdlog::error("Session difficulty out of range: {} (valid 0..{})", diff_val,
+                          static_cast<int>(DIFFICULTY_COUNT) - 1);
+            return std::unexpected(StatisticsError::SerializationError);
+        }
+        stats.difficulty = static_cast<Difficulty>(diff_val);
+    }
+    if (session_node["puzzle_rating"]) {
+        stats.puzzle_rating = session_node["puzzle_rating"].as<double>();
+    }
+    if (session_node["start_time"]) {
+        auto seconds = session_node["start_time"].as<long long>();
+        stats.start_time = std::chrono::system_clock::time_point(std::chrono::seconds(seconds));
+    }
+    if (session_node["end_time"]) {
+        auto seconds = session_node["end_time"].as<long long>();
+        stats.end_time = std::chrono::system_clock::time_point(std::chrono::seconds(seconds));
+    }
+    if (session_node["time_played"]) {
+        stats.time_played = std::chrono::milliseconds(session_node["time_played"].as<long long>());
+    }
+    if (session_node["completed"]) {
+        stats.completed = session_node["completed"].as<bool>();
+    }
+    if (session_node["moves_made"]) {
+        stats.moves_made = session_node["moves_made"].as<int>();
+    }
+    if (session_node["hints_used"]) {
+        stats.hints_used = session_node["hints_used"].as<int>();
+    }
+    if (session_node["mistakes"]) {
+        stats.mistakes = session_node["mistakes"].as<int>();
+    }
+    if (session_node["puzzle_seed"]) {
+        stats.puzzle_seed = session_node["puzzle_seed"].as<uint32_t>();
+    }
+
+    return stats;
+}
+
+}  // namespace
+
 std::expected<std::vector<GameStats>, StatisticsError> deserializeGameStatsFromNode(const YAML::Node& sessions_node) {
     try {
         std::vector<GameStats> result;
 
         for (const auto& session_node : sessions_node) {
-            GameStats stats;
-
-            if (session_node["difficulty"]) {
-                // Range-check the raw int BEFORE the cast (STAT-2): Difficulty's underlying
-                // type is uint8_t, so static_cast wraps modulo-256 (e.g. 260 → 4/Master),
-                // which would silently launder hostile values. Reject the whole node parse on
-                // any out-of-range value so it routes through getAllSessions()'s fail-closed
-                // latch into the issue-#26 archive flow (never silently skip a session — a
-                // skipped session would be destroyed on the next flush rewrite).
-                const int diff_val = session_node["difficulty"].as<int>();
-                if (diff_val < 0 || diff_val >= static_cast<int>(DIFFICULTY_COUNT)) {
-                    spdlog::error("Session difficulty out of range: {} (valid 0..{})", diff_val,
-                                  static_cast<int>(DIFFICULTY_COUNT) - 1);
-                    return std::unexpected(StatisticsError::SerializationError);
-                }
-                stats.difficulty = static_cast<Difficulty>(diff_val);
+            auto stats = parseSessionNode(session_node);
+            if (!stats) {
+                return std::unexpected(stats.error());
             }
-            if (session_node["puzzle_rating"]) {
-                stats.puzzle_rating = session_node["puzzle_rating"].as<double>();
-            }
-            if (session_node["start_time"]) {
-                auto seconds = session_node["start_time"].as<long long>();
-                stats.start_time = std::chrono::system_clock::time_point(std::chrono::seconds(seconds));
-            }
-            if (session_node["end_time"]) {
-                auto seconds = session_node["end_time"].as<long long>();
-                stats.end_time = std::chrono::system_clock::time_point(std::chrono::seconds(seconds));
-            }
-            if (session_node["time_played"]) {
-                stats.time_played = std::chrono::milliseconds(session_node["time_played"].as<long long>());
-            }
-            if (session_node["completed"]) {
-                stats.completed = session_node["completed"].as<bool>();
-            }
-            if (session_node["moves_made"]) {
-                stats.moves_made = session_node["moves_made"].as<int>();
-            }
-            if (session_node["hints_used"]) {
-                stats.hints_used = session_node["hints_used"].as<int>();
-            }
-            if (session_node["mistakes"]) {
-                stats.mistakes = session_node["mistakes"].as<int>();
-            }
-            if (session_node["puzzle_seed"]) {
-                stats.puzzle_seed = session_node["puzzle_seed"].as<uint32_t>();
-            }
-
-            result.push_back(stats);
+            result.push_back(*stats);
         }
 
         return result;

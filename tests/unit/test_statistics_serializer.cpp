@@ -378,6 +378,9 @@ TEST_CASE("StatisticsSerializer - serializeStatsToYaml is atomic", "[statistics_
 // boundary (before the uint8_t-backed static_cast can wrap hostile values).
 // ============================================================================
 
+// Catch2 TEST_CASE with multiple REQUIRE checks across four SECTIONs; complexity is inherent to
+// test coverage.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("StatisticsSerializer - session difficulty out of range is rejected", "[statistics_serializer][stat2]") {
     auto make_node = [](int difficulty_value) {
         YAML::Node session;
