@@ -236,6 +236,59 @@ jobs:
             cpack --config build/Release/CPackConfig.cmake -G NSIS -C Release -B build/Release
           fi
 
+      - name: Verify the installer ships the C++ runtime and installs per-user
+        shell: bash
+        run: |
+          # Two silent-regression guards for the failure that made 1.0.0-rc1 unusable.
+          #
+          # 1. Bundled CRT. rc1 shipped no C++ runtime, so sudoku.exe bound to whatever MSVCP140.dll
+          #    sat in System32 — 14.22 on the machine that reported it, below the >= 14.40 a VS 2022
+          #    17.10+ binary needs — and faulted inside the CRT before the first log line, with no
+          #    window and no message. CMakeLists.txt fails at configure time if the redist DLLs cannot
+          #    be FOUND; this step proves they actually reached the package. Only the DLLs
+          #    InstallRequiredSystemLibraries adds unconditionally are required, so a toolset that
+          #    stops shipping an optional one (msvcp140_1, _2, _atomic_wait, _codecvt_ids,
+          #    vcruntime140_1) cannot fail the build spuriously — they are listed, not asserted.
+          #
+          # 2. Per-user manifest. CPack's NSIS template hardcodes `RequestExecutionLevel admin`, and an
+          #    elevated installer makes NSIS resolve $LOCALAPPDATA to %ProgramData% — that is how rc1
+          #    installed itself to C:\ProgramData\Sudoku. Dropping CPACK_NSIS_DEFINES would silently
+          #    reintroduce it, so assert the shipped manifest really requests asInvoker.
+          set -euo pipefail
+
+          staged=$(find build/Release/_CPack_Packages -maxdepth 3 -type d -name 'Sudoku-*-win64' | head -1)
+          if [ -z "$staged" ]; then
+            echo "::error::CPack staging directory not found — the bundled runtime could not be verified."
+            exit 1
+          fi
+          echo "Staged install tree: $staged"
+          # Informational: never the thing that decides the outcome, so the explicit checks below own
+          # the error messages even when the tree has no DLLs at all.
+          ls -l "$staged"/*.dll || true
+
+          missing=0
+          for dll in msvcp140.dll vcruntime140.dll concrt140.dll; do
+            if [ ! -f "$staged/$dll" ]; then
+              echo "::error::$dll is missing from the install tree — the installer would depend on the target machine's System32 copy."
+              missing=1
+            fi
+          done
+
+          installer=$(find build/Release -maxdepth 1 -name 'Sudoku-*-win64.exe' | head -1)
+          if [ -z "$installer" ]; then
+            echo "::error::No installer .exe found in build/Release."
+            exit 1
+          fi
+          # The manifest lives uncompressed in the PE resources, so a plain binary grep reaches it.
+          level=$(grep -a -o -m1 'requestedExecutionLevel level="[a-zA-Z]*"' "$installer" || true)
+          echo "Installer manifest: ${level:-<none found>}"
+          if [ "$level" != 'requestedExecutionLevel level="asInvoker"' ]; then
+            echo "::error::Installer does not request asInvoker — it would elevate, and an elevated NSIS install resolves \$LOCALAPPDATA to %ProgramData%."
+            missing=1
+          fi
+
+          [ "$missing" -eq 0 ]
+
       - name: Upload installer
         uses: actions/upload-artifact@v7
         with:
