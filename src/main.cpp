@@ -159,7 +159,9 @@ std::string setupLogging() {
     auto exe_dir = sudoku::infrastructure::toFilesystemPath(QCoreApplication::applicationDirPath());
     auto log_path = exe_dir / "sudoku_debug.log";
 
-    auto install_logger = [&console_sink](const spdlog::sinks_init_list sinks) {
+    // No capture: the sinks arrive as a parameter, and an unused capture is an error under
+    // apple-clang's -Wunused-lambda-capture (which GCC and MSVC do not diagnose).
+    auto install_logger = [](const spdlog::sinks_init_list sinks) {
         auto logger = std::make_shared<spdlog::logger>("sudoku", sinks);
         logger->set_level(spdlog::level::debug);
         logger->flush_on(spdlog::level::debug);
