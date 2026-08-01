@@ -1,0 +1,38 @@
+// Windows resource script — configured by CMake (see the WIN32 branch in CMakeLists.txt).
+// Do not edit the generated copy in the build tree, and do not hardcode a version here:
+// project(VERSION ...) in CMakeLists.txt is the single source of truth.
+
+#include <winver.h>
+
+// Explorer/taskbar icon. Absolute path: the configured .rc lives in the build tree, while
+// rc.exe resolves ICON paths relative to the .rc file's own directory.
+IDI_ICON1 ICON "@SUDOKU_RC_ICON_PATH@"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION    @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+PRODUCTVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+FILEFLAGS      0x0L
+FILEOS         VOS_NT_WINDOWS32
+FILETYPE       VFT_APP
+FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"  // US English, Unicode
+        BEGIN
+            VALUE "CompanyName",      "Alexander Bendlin (darkstar79)"
+            VALUE "FileDescription",  "Sudoku"
+            VALUE "FileVersion",      "@PROJECT_VERSION@"
+            VALUE "InternalName",     "sudoku"
+            VALUE "LegalCopyright",   "Copyright (C) 2025-2026 Alexander Bendlin (darkstar79). GPL-3.0-or-later."
+            VALUE "OriginalFilename", "sudoku.exe"
+            VALUE "ProductName",      "Sudoku"
+            VALUE "ProductVersion",   "@PROJECT_VERSION@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200  // US English, Unicode (matches the block above)
+    END
+END

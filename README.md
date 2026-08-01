@@ -127,6 +127,11 @@ Requires [NSIS](https://nsis.sourceforge.io/Download) (`winget install NSIS.NSIS
 .\scripts\create_installer.ps1
 ```
 
+The result is a **per-user** installer: it installs to `%LOCALAPPDATA%\Programs\Sudoku` without a UAC
+prompt, and bundles the Visual C++ runtime DLLs so it does not depend on the redistributable version
+present on the target machine. Saved games, statistics and settings live separately in
+`%APPDATA%\Sudoku` and survive uninstalling.
+
 **Pre-commit hook:** [scripts/setup-hooks.sh](scripts/setup-hooks.sh) is bash-only; run it from Git Bash, or skip on Windows (CI re-checks formatting on push).
 
 ### Build Configurations

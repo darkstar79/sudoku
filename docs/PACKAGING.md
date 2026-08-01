@@ -31,7 +31,7 @@ What `make install` lands under `${CMAKE_INSTALL_PREFIX}` (typically `/usr`):
 | `share/metainfo/io.github.darkstar79.Sudoku.metainfo.xml`                 | [resources/linux/...](../resources/linux/io.github.darkstar79.Sudoku.metainfo.xml) |
 | `share/icons/hicolor/scalable/apps/io.github.darkstar79.Sudoku.svg`       | [resources/icons/...](../resources/icons/io.github.darkstar79.Sudoku.svg) |
 
-The Linux install rules live in [CMakeLists.txt](../CMakeLists.txt#L262-L274).
+The Linux install rules live in [CMakeLists.txt](../CMakeLists.txt#L379-L390).
 The reverse-DNS app ID (`io.github.darkstar79.Sudoku`) is the only
 non-trivial filename in the tree; everything else is named `sudoku*`.
 
