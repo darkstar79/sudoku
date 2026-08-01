@@ -274,6 +274,32 @@ jobs:
             fi
           done
 
+          # 3. The generated NSIS script. The installer's own header is compressed, so the compiled
+          #    InstallDir cannot be read back out of the .exe — but project.nsi is plain text right
+          #    here. Assert the vendored template (cmake/NSIS.template.in) was the one used and that
+          #    its delta survived: a silent fall back to CPack's stock template would still produce a
+          #    working installer, just one defaulting to $DOCUMENTS\Sudoku, which is how a 1.0.0-rc1
+          #    test install ended up in D:\Dokumente\Sudoku.
+          nsi=$(find build/Release/_CPack_Packages -maxdepth 3 -name 'project.nsi' | head -1)
+          if [ -z "$nsi" ]; then
+            echo "::error::Generated project.nsi not found — the install location could not be verified."
+            exit 1
+          fi
+          grep -n 'InstallDir\|RequestExecutionLevel' "$nsi" || true
+          if ! grep -q 'SUDOKU-VENDORED-NSIS-TEMPLATE' "$nsi"; then
+            echo "::error::project.nsi was generated from CPack's stock template, not cmake/NSIS.template.in — check CMAKE_MODULE_PATH."
+            missing=1
+          fi
+          # `\\` per backslash: grep's BRE unescapes it to the single backslash the .nsi contains.
+          if ! grep -q 'InstallDir "\$LOCALAPPDATA\\Programs\\Sudoku"' "$nsi"; then
+            echo "::error::project.nsi does not default to \$LOCALAPPDATA\\Programs\\Sudoku."
+            missing=1
+          fi
+          if grep -q 'StrCpy \$INSTDIR "\$DOCUMENTS' "$nsi"; then
+            echo "::error::project.nsi still falls back to \$DOCUMENTS — a per-user install would land in the user's Documents folder."
+            missing=1
+          fi
+
           installer=$(find build/Release -maxdepth 1 -name 'Sudoku-*-win64.exe' | head -1)
           if [ -z "$installer" ]; then
             echo "::error::No installer .exe found in build/Release."

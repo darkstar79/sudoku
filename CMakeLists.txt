@@ -404,19 +404,22 @@ if(WIN32)
     # Per-user install to %LOCALAPPDATA%\Programs\Sudoku — no elevation, no machine-wide footprint,
     # the convention modern per-user installers follow (VS Code User Setup, Python's per-user default).
     #
-    # Two non-obvious details, both load-bearing:
-    #  * CPack's NSIS template hardcodes `RequestExecutionLevel admin`, and there is no CPack variable
-    #    for it. CPACK_NSIS_DEFINES is injected immediately after that line, so the directive below
-    #    wins. Without it the installer always elevates, the template's .onInit sees an Admin token and
-    #    switches to all-users shell context — in which NSIS resolves `$LOCALAPPDATA` to %ProgramData%.
-    #    That is how 1.0.0-rc1 installed itself to C:\ProgramData\Sudoku.
-    #  * `$%LOCALAPPDATA%` (environment-variable form) instead of `$LOCALAPPDATA` (shell constant): the
-    #    env form is independent of shell-var context, so an install from an admin account cannot
-    #    relocate the tree even if the context flips. The quadrupled backslash is the CPack round-trip:
-    #    the value is written raw into CPackConfig.cmake, so it must arrive there as `\\` to read back
-    #    as the single `\` the .nsi needs (same escaping as CPACK_NSIS_CREATE_ICONS_EXTRA below).
-    set(CPACK_NSIS_DEFINES                "RequestExecutionLevel user")
-    set(CPACK_NSIS_INSTALL_ROOT           "$%LOCALAPPDATA%\\\\Programs")
+    # This needs the vendored template in cmake/NSIS.template.in, which CPack picks up ahead of its
+    # own via CPACK_MODULE_PATH (seeded from CMAKE_MODULE_PATH near the top of this file). CPack's
+    # stock template cannot express a per-user install at a chosen location: it hardcodes
+    # `RequestExecutionLevel admin`, and it applies CPACK_NSIS_INSTALL_ROOT only in the all-users
+    # branch of .onInit — the non-elevated branch hardcodes $DOCUMENTS\<dir>. Both defaults were
+    # observed in the field: rc1 landed in C:\ProgramData\Sudoku when elevated, and in
+    # D:\Dokumente\Sudoku once the manifest was switched to asInvoker without patching the template.
+    # See that file's header for the exact two-line delta.
+    #
+    # `$LOCALAPPDATA` is the NSIS shell constant, resolved at RUN time on the target machine. Do not
+    # "harden" this into the `$%LOCALAPPDATA%` environment form: NSIS expands `$%VAR%` at COMPILE
+    # time, which bakes the build machine's own profile path into the installer (on CI that is
+    # C:\Users\runneradmin\AppData\Local\Programs). The quadrupled backslash is the CPack round-trip:
+    # the value is written raw into CPackConfig.cmake, so it must arrive there as `\\` to read back as
+    # the single `\` the .nsi needs (same escaping as CPACK_NSIS_CREATE_ICONS_EXTRA below).
+    set(CPACK_NSIS_INSTALL_ROOT           "$LOCALAPPDATA\\\\Programs")
     set(CPACK_NSIS_EXECUTABLES_DIRECTORY  ".")
     # Note: the template's uninstall-before-install check reads the UninstallString from HKLM, while a
     # per-user install records it under HKCU (SHCTX). It therefore no longer finds a previous install
