@@ -303,6 +303,13 @@ jobs:
             echo "::error::project.nsi still falls back to \$DOCUMENTS — a per-user install would land in the user's Documents folder."
             missing=1
           fi
+          # README.md and CHANGELOG.md both state that the installer refuses to install below
+          # Windows 10 1809 (Qt 6.8's floor). Assert the guard is actually compiled in, so the
+          # promise cannot outlive the code.
+          if ! grep -q 'WinVerGetBuild' "$nsi" || ! grep -q '17763' "$nsi"; then
+            echo "::error::project.nsi has no Windows-version guard — README and CHANGELOG promise the installer enforces Windows 10 1809 or newer."
+            missing=1
+          fi
           # The vendored template is pinned to one CMake version's variable set, while the runner's
           # cpack floats. CPack substitutes an unknown @CPACK_…@ with EMPTY TEXT rather than failing,
           # so a renamed or newly added variable would silently degrade the installer. Catch it here.

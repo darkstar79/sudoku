@@ -16,6 +16,13 @@ First tagged release (in preparation). Adds the custom-puzzle feature suite on t
 - **Supported platforms for this release are Linux and Windows.** Linux ships
   as an AppImage and a Flatpak; Windows ships as an NSIS installer. These are the
   packages attached to tagged releases.
+- **Windows requires version 10 1809 (build 17763) or newer, 64-bit.** The floor is
+  inherited from Qt 6.8, which the release is built against and which supports
+  Windows 10 1809 or later on `x86_64`; older releases of Windows cannot load the Qt
+  libraries. The installer checks the Windows build number and stops with a clear
+  message rather than installing an application that would fail to start. No
+  Visual C++ redistributable is required — the runtime ships inside the installer
+  (see *Fixed*), so an offline machine needs nothing downloaded.
 - **macOS support is experimental and not shipped in 1.0.0.** The application
   builds and runs on macOS 13+ — an app bundle (`sudoku.app`) with `Info.plist`
   is produced, application data lives in `~/Library/Application Support/Sudoku/`,
@@ -140,7 +147,7 @@ The following features are compiled in but hidden by default. Enable them under 
 
 - **Linux (Fedora)** — primary development platform; full interactive use by the maintainer.
 - **Linux (Ubuntu 24.04)** — built and full test suite run in CI on every push.
-- **Windows 11** — installer artifact attached to the release. Built and tested in CI on `windows-2025` (per push to `main` and on demand); smoke-tested by the maintainer on Win11 before tagging.
+- **Windows 10 1809+ and Windows 11, 64-bit** — installer artifact attached to the release. Built in CI on `windows-2025` (on demand); smoke-tested by the maintainer on Win11 before tagging, and the 1.0.0 installer was verified on a Windows 10 machine. The minimum version is Qt 6.8's; the installer enforces it.
 - **Linux (openSUSE)** — RPM snapshots produced downstream via the openSUSE Build Service (not built directly by the project).
 - **macOS** — not supported in 1.0; out of scope.
 

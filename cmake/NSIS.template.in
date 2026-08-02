@@ -1,4 +1,4 @@
-﻿; SUDOKU-VENDORED-NSIS-TEMPLATE — do not "clean up" this file; it is upstream code with five
+﻿; SUDOKU-VENDORED-NSIS-TEMPLATE — do not "clean up" this file; it is upstream code with six
 ; deliberate deltas. CPack's NSIS generator searches CPACK_MODULE_PATH (seeded from
 ; CMAKE_MODULE_PATH, see CMakeLists.txt) for NSIS.template.in before its own copy, so this file wins.
 ;
@@ -22,14 +22,15 @@
 ;      predecessor, and Aborts when its admin-manifested uninstaller cannot be launched unelevated.
 ;
 ; The deltas (search for SUDOKU-DELTA below):
-;   1/5  RequestExecutionLevel user                                    (was: admin)
-;   2/5  .onInit JustMe branch uses CPACK_NSIS_INSTALL_ROOT            (was: $DOCUMENTS)
-;   3/5  uninstall-before-install reads SHCTX                          (was: HKLM)
-;   4/5  .onInit pins current-user context and SV_ALLUSERS=JustMe      (new)
-;   5/5  un.onInit pins current-user context                           (new)
+;   1/6  RequestExecutionLevel user                                    (was: admin)
+;   2/6  .onInit JustMe branch uses CPACK_NSIS_INSTALL_ROOT            (was: $DOCUMENTS)
+;   3/6  uninstall-before-install reads SHCTX                          (was: HKLM)
+;   4/6  .onInit pins current-user context and SV_ALLUSERS=JustMe      (new)
+;   5/6  un.onInit pins current-user context                           (new)
+;   6/6  .onInit refuses Windows older than 10 1809 (Qt 6.8's floor)   (new, + WinVer.nsh include)
 ;
 ; Re-syncing after a CMake upgrade: diff this file against the CMake version's own
-; Modules/Internal/CPack/NSIS.template.in and re-apply the five changes. The packaging workflow
+; Modules/Internal/CPack/NSIS.template.in and re-apply the six changes. The packaging workflow
 ; asserts the generated project.nsi still carries this marker, the expected InstallDir, and no
 ; unresolved CPack placeholders, so a silent fall back to the stock template — or a variable this
 ; vendored copy predates — fails CI instead of shipping.
@@ -63,6 +64,9 @@
 ;Include Modern UI
 
   !include "MUI.nsh"
+  ;SUDOKU-DELTA 6/6 (support file): WinVerGetBuild for the Windows-version guard in .onInit.
+  ;WinVer.nsh pulls in LogicLib itself; both ship with NSIS, so this adds no build dependency.
+  !include "WinVer.nsh"
 
   ;Default installation folder
   InstallDir "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
@@ -966,6 +970,22 @@ SectionEnd
 ; "Program Files" for AllUsers, "My Documents" for JustMe...
 
 Function .onInit
+  ;SUDOKU-DELTA 6/6: refuse to install on an unsupported Windows. The floor is Qt's, not ours: Qt 6.8
+  ;(what the release is built against) supports "Windows 10 (1809 or later)" and Windows 11 on x86_64.
+  ;Below that the Qt DLLs fail to resolve imports, so without this the user gets an "entry point not
+  ;found" box naming a DLL they have never heard of, or nothing at all — after a successful install.
+  ;GetVersionEx reports the true build only because the NSIS 3 exehead manifest declares supportedOS
+  ;for Windows 10; do not strip those entries. /SD IDOK so a silent (/S) install fails instead of
+  ;blocking on a dialog no one can see.
+  ${WinVerGetBuild} $R9
+  IntCmp $R9 17763 sudoku_os_supported sudoku_os_too_old sudoku_os_supported
+sudoku_os_too_old:
+  MessageBox MB_OK|MB_ICONSTOP \
+    "Sudoku requires Windows 10 version 1809 (build 17763) or newer.$\n$\nThis machine reports build $R9." \
+    /SD IDOK
+  Abort
+sudoku_os_supported:
+
   StrCmp "@CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL@" "ON" 0 inst
 
   ;SUDOKU-DELTA 3/5: read the previous install from SHCTX, not HKLM. Nothing has called
