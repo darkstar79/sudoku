@@ -1,30 +1,42 @@
-﻿; SUDOKU-VENDORED-NSIS-TEMPLATE — do not "clean up" this file; it is upstream code with a
-; deliberate two-line delta. CPack's NSIS generator searches CPACK_MODULE_PATH (seeded from
+﻿; SUDOKU-VENDORED-NSIS-TEMPLATE — do not "clean up" this file; it is upstream code with five
+; deliberate deltas. CPack's NSIS generator searches CPACK_MODULE_PATH (seeded from
 ; CMAKE_MODULE_PATH, see CMakeLists.txt) for NSIS.template.in before its own copy, so this file wins.
 ;
 ; Vendored from CMake 4.4.1: Modules/Internal/CPack/NSIS.template.in
 ;
-; Why: the stock template cannot produce a per-user install at a chosen location.
+; Why: CPack's template assumes a machine-wide, elevated install throughout. It cannot express a
+; per-user install at a chosen location, and switching the manifest alone is not enough — the
+; per-user code paths were never the supported ones, so they carry their own assumptions.
 ;   1. It hardcodes `RequestExecutionLevel admin`, so every install elevates. An elevated NSIS
 ;      install runs in all-users shell context, where $LOCALAPPDATA resolves to %ProgramData% —
 ;      that is how 1.0.0-rc1 installed itself to C:\ProgramData\Sudoku.
 ;   2. CPACK_NSIS_INSTALL_ROOT is honored ONLY in the all-users branch of .onInit. Without
 ;      elevation the template hardcodes $DOCUMENTS\<dir> and ignores the configured root entirely,
 ;      which put a 1.0.0-rc1 test install in D:\Dokumente\Sudoku.
+;   3. `RequestExecutionLevel user` is a floor, not a ceiling: right-click "Run as administrator"
+;      (or UAC disabled) still yields an unfiltered admin token, and the account-type probe then
+;      switches to all-users context anyway — re-creating problem 1 with a writable install tree.
+;   4. Registry and Start Menu reads/writes follow that same context, so an elevated *uninstall*
+;      looks in HKLM for keys a per-user install wrote to HKCU.
+;   5. The uninstall-before-install check reads HKLM unconditionally, finds a machine-wide
+;      predecessor, and Aborts when its admin-manifested uninstaller cannot be launched unelevated.
 ;
-; The delta (search for SUDOKU-DELTA below):
-;   * RequestExecutionLevel user  (was: admin)
-;   * the JustMe branch of .onInit uses CPACK_NSIS_INSTALL_ROOT  (was: $DOCUMENTS)
+; The deltas (search for SUDOKU-DELTA below):
+;   1/5  RequestExecutionLevel user                                    (was: admin)
+;   2/5  .onInit JustMe branch uses CPACK_NSIS_INSTALL_ROOT            (was: $DOCUMENTS)
+;   3/5  uninstall-before-install reads SHCTX                          (was: HKLM)
+;   4/5  .onInit pins current-user context and SV_ALLUSERS=JustMe      (new)
+;   5/5  un.onInit pins current-user context                           (new)
 ;
 ; Re-syncing after a CMake upgrade: diff this file against the CMake version's own
-; Modules/Internal/CPack/NSIS.template.in and re-apply the two changes. The packaging workflow
-; asserts the generated project.nsi still carries this marker and the expected InstallDir, so a
-; silent fall back to the stock template fails CI instead of shipping.
+; Modules/Internal/CPack/NSIS.template.in and re-apply the five changes. The packaging workflow
+; asserts the generated project.nsi still carries this marker, the expected InstallDir, and no
+; unresolved CPack placeholders, so a silent fall back to the stock template — or a variable this
+; vendored copy predates — fails CI instead of shipping.
 ;
-; Known residual, deliberately NOT patched (keeping the delta reviewable): the
-; uninstall-before-install check reads the UninstallString from HKLM, while a per-user install
-; records it under HKCU (SHCTX). Upgrades therefore install over the top instead of uninstalling
-; first. Harmless for same-version file sets; noted in CHANGELOG.md for rc1 upgraders.
+; Consequence worth knowing: because delta 3 looks in HKCU, a machine-wide 1.0.0-rc1 install is not
+; detected and is left in place. That is deliberate (the alternative is aborting the install) and is
+; documented for rc1 upgraders in CHANGELOG.md.
 
 ; CPack install script designed for a nmake build
 
@@ -809,6 +821,12 @@ Function un.onInit
     ;Get installation folder from registry if available
 
   done:
+  ;SUDOKU-DELTA 5/5: mirror of delta 4 for the uninstaller. An elevated uninstall (or an admin
+  ;account with UAC off) would otherwise run in all-users context, so SHCTX becomes HKLM: the
+  ;DeleteRegKey calls would target keys that do not exist, leaving the real HKCU Add/Remove Programs
+  ;entry behind pointing at a deleted uninstaller, and the Start Menu cleanup would read an empty
+  ;folder name and walk the *common* Programs directory instead of the user's.
+  SetShellVarContext current
 
 FunctionEnd
 
@@ -950,10 +968,20 @@ SectionEnd
 Function .onInit
   StrCmp "@CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL@" "ON" 0 inst
 
-  ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "UninstallString"
+  ;SUDOKU-DELTA 3/5: read the previous install from SHCTX, not HKLM. Nothing has called
+  ;SetShellVarContext yet at this point in .onInit, so SHCTX is the default (current user) = HKCU,
+  ;which is where a per-user install records itself. Upstream reads HKLM unconditionally, which finds
+  ;a *machine-wide* predecessor — e.g. 1.0.0-rc1 in C:\ProgramData\Sudoku — and then ExecWaits its
+  ;uninstaller. That uninstaller carries `RequestExecutionLevel admin`, and NSIS Exec* uses
+  ;CreateProcess, which does not auto-elevate: it fails with ERROR_ELEVATION_REQUIRED, and the
+  ;`uninst_failed` branch below Aborts the whole installation. A silent (/S) install takes the
+  ;/SD IDYES default and dies outright — on exactly the machines that need the upgrade. Reading HKCU
+  ;means a machine-wide rc1 is not detected and simply stays behind (documented in CHANGELOG.md),
+  ;while upgrades over a previous *per-user* install do uninstall first, as intended.
+  ReadRegStr $0 SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "UninstallString"
   StrCmp $0 "" inst
 
-  ReadRegStr $1 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "DisplayName"
+  ReadRegStr $1 SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "DisplayName"
   MessageBox MB_YESNOCANCEL|MB_ICONEXCLAMATION \
   "$1 is already installed. $\n$\nDo you want to uninstall the old version before installing the new one?" \
   /SD IDYES IDYES uninst IDNO inst
@@ -1027,6 +1055,19 @@ inst:
     ;Get installation folder from registry if available
 
   done:
+  ;SUDOKU-DELTA 4/5: this installer is per-user, unconditionally. Undo any context switch the
+  ;account-type probe above performed, and pin SV_ALLUSERS so the AllUsers reassignment below cannot
+  ;fire. Without this, `RequestExecutionLevel user` is only a floor: an admin with UAC disabled, or
+  ;anyone using right-click "Run as administrator", still gets an unfiltered token, so
+  ;UserInfo::GetAccountType reports Admin, SetShellVarContext all runs, and the line below rewrites
+  ;$INSTDIR with $LOCALAPPDATA resolved in all-users context — i.e. C:\ProgramData\Programs\Sudoku.
+  ;That directory grants BUILTIN\Users create-file rights by inheritance, and this install tree
+  ;carries app-local msvcp140.dll / vcruntime140.dll / concrt140.dll and the Qt plugin directories,
+  ;all loaded from the application directory: a low-privilege user could plant a DLL there for an
+  ;administrator to load. Pinning the context also keeps SHCTX = HKCU, so the Add/Remove Programs
+  ;entry, the Start Menu folder and the uninstaller all agree on one location.
+  SetShellVarContext current
+  StrCpy $SV_ALLUSERS "JustMe"
   StrCmp $SV_ALLUSERS "AllUsers" 0 +3
     StrCmp "$IS_DEFAULT_INSTALLDIR" "1" 0 +2
       StrCpy $INSTDIR "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"

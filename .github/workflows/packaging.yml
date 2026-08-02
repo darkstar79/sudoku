@@ -250,13 +250,17 @@ jobs:
           #    stops shipping an optional one (msvcp140_1, _2, _atomic_wait, _codecvt_ids,
           #    vcruntime140_1) cannot fail the build spuriously — they are listed, not asserted.
           #
-          # 2. Per-user manifest. CPack's NSIS template hardcodes `RequestExecutionLevel admin`, and an
+          # 2. Per-user manifest. CPack's stock template hardcodes `RequestExecutionLevel admin`, and an
           #    elevated installer makes NSIS resolve $LOCALAPPDATA to %ProgramData% — that is how rc1
-          #    installed itself to C:\ProgramData\Sudoku. Dropping CPACK_NSIS_DEFINES would silently
-          #    reintroduce it, so assert the shipped manifest really requests asInvoker.
+          #    installed itself to C:\ProgramData\Sudoku. The vendored template (checked below) is what
+          #    requests asInvoker; assert it reached the shipped binary.
+          #
+          # 3./4. See inline below: the generated NSIS script, and the version resource.
           set -euo pipefail
 
-          staged=$(find build/Release/_CPack_Packages -maxdepth 3 -type d -name 'Sudoku-*-win64' | head -1)
+          # `-print -quit` rather than `| head -1`: under `pipefail` a SIGPIPEd `find` returns 141 and
+          # would kill the step with no ::error:: annotation, defeating the explicit checks below.
+          staged=$(find build/Release/_CPack_Packages -maxdepth 3 -type d -name 'Sudoku-*-win64' -print -quit)
           if [ -z "$staged" ]; then
             echo "::error::CPack staging directory not found — the bundled runtime could not be verified."
             exit 1
@@ -280,7 +284,7 @@ jobs:
           #    its delta survived: a silent fall back to CPack's stock template would still produce a
           #    working installer, just one defaulting to $DOCUMENTS\Sudoku, which is how a 1.0.0-rc1
           #    test install ended up in D:\Dokumente\Sudoku.
-          nsi=$(find build/Release/_CPack_Packages -maxdepth 3 -name 'project.nsi' | head -1)
+          nsi=$(find build/Release/_CPack_Packages -maxdepth 3 -name 'project.nsi' -print -quit)
           if [ -z "$nsi" ]; then
             echo "::error::Generated project.nsi not found — the install location could not be verified."
             exit 1
@@ -299,18 +303,46 @@ jobs:
             echo "::error::project.nsi still falls back to \$DOCUMENTS — a per-user install would land in the user's Documents folder."
             missing=1
           fi
+          # The vendored template is pinned to one CMake version's variable set, while the runner's
+          # cpack floats. CPack substitutes an unknown @CPACK_…@ with EMPTY TEXT rather than failing,
+          # so a renamed or newly added variable would silently degrade the installer. Catch it here.
+          if grep -q '@CPACK_' "$nsi"; then
+            echo "::error::project.nsi has unresolved @CPACK_…@ placeholders — cmake/NSIS.template.in is out of sync with this CMake version:"
+            grep -n -o '@CPACK_[A-Z_0-9]*@' "$nsi" | sort -u
+            missing=1
+          fi
 
-          installer=$(find build/Release -maxdepth 1 -name 'Sudoku-*-win64.exe' | head -1)
+          installer=$(find build/Release -maxdepth 1 -name 'Sudoku-*-win64.exe' -print -quit)
           if [ -z "$installer" ]; then
             echo "::error::No installer .exe found in build/Release."
             exit 1
           fi
           # The manifest lives uncompressed in the PE resources, so a plain binary grep reaches it.
+          # Matched by content rather than as one exact string: NSIS could legitimately reformat the
+          # XML (attribute order, quoting) without changing the requested level, and a spurious
+          # failure here would be the same over-strictness avoided for the optional DLLs above.
           level=$(grep -a -o -m1 'requestedExecutionLevel level="[a-zA-Z]*"' "$installer" || true)
           echo "Installer manifest: ${level:-<none found>}"
-          if [ "$level" != 'requestedExecutionLevel level="asInvoker"' ]; then
-            echo "::error::Installer does not request asInvoker — it would elevate, and an elevated NSIS install resolves \$LOCALAPPDATA to %ProgramData%."
+          case "$level" in
+            *asInvoker*) ;;
+            *) echo "::error::Installer does not request asInvoker (got '${level:-none}') — it would elevate, and an elevated NSIS install resolves \$LOCALAPPDATA to %ProgramData%."
+               missing=1 ;;
+          esac
+
+          # 4. The version resource. sudoku.exe used to report 0.0.0.0 because it carried no
+          #    VERSIONINFO, which made field crash reports impossible to tie to a build. VERSIONINFO
+          #    strings are UTF-16, so strip NUL bytes before grepping. Expected value comes from
+          #    CPackConfig (i.e. from project(VERSION ...)), never hardcoded here.
+          version=$(sed -n 's/^set(CPACK_PACKAGE_VERSION "\(.*\)")$/\1/p' build/Release/CPackConfig.cmake | head -1)
+          exe_strings=$(tr -d '\0' < "$staged/sudoku.exe")
+          if [ -z "$version" ]; then
+            echo "::error::Could not read CPACK_PACKAGE_VERSION from CPackConfig.cmake."
             missing=1
+          elif ! printf '%s' "$exe_strings" | grep -q 'FileVersion' || ! printf '%s' "$exe_strings" | grep -qF "$version"; then
+            echo "::error::sudoku.exe carries no VERSIONINFO resource naming version $version — Explorer and Windows Error Reporting would show 0.0.0.0."
+            missing=1
+          else
+            echo "Version resource: FileVersion $version present in sudoku.exe"
           fi
 
           [ "$missing" -eq 0 ]
