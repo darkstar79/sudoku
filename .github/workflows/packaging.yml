@@ -236,6 +236,128 @@ jobs:
             cpack --config build/Release/CPackConfig.cmake -G NSIS -C Release -B build/Release
           fi
 
+      - name: Verify the installer ships the C++ runtime and installs per-user
+        shell: bash
+        run: |
+          # Two silent-regression guards for the failure that made 1.0.0-rc1 unusable.
+          #
+          # 1. Bundled CRT. rc1 shipped no C++ runtime, so sudoku.exe bound to whatever MSVCP140.dll
+          #    sat in System32 — 14.22 on the machine that reported it, below the >= 14.40 a VS 2022
+          #    17.10+ binary needs — and faulted inside the CRT before the first log line, with no
+          #    window and no message. CMakeLists.txt fails at configure time if the redist DLLs cannot
+          #    be FOUND; this step proves they actually reached the package. Only the DLLs
+          #    InstallRequiredSystemLibraries adds unconditionally are required, so a toolset that
+          #    stops shipping an optional one (msvcp140_1, _2, _atomic_wait, _codecvt_ids,
+          #    vcruntime140_1) cannot fail the build spuriously — they are listed, not asserted.
+          #
+          # 2. Per-user manifest. CPack's stock template hardcodes `RequestExecutionLevel admin`, and an
+          #    elevated installer makes NSIS resolve $LOCALAPPDATA to %ProgramData% — that is how rc1
+          #    installed itself to C:\ProgramData\Sudoku. The vendored template (checked below) is what
+          #    requests asInvoker; assert it reached the shipped binary.
+          #
+          # 3./4. See inline below: the generated NSIS script, and the version resource.
+          set -euo pipefail
+
+          # `-print -quit` rather than `| head -1`: under `pipefail` a SIGPIPEd `find` returns 141 and
+          # would kill the step with no ::error:: annotation, defeating the explicit checks below.
+          staged=$(find build/Release/_CPack_Packages -maxdepth 3 -type d -name 'Sudoku-*-win64' -print -quit)
+          if [ -z "$staged" ]; then
+            echo "::error::CPack staging directory not found — the bundled runtime could not be verified."
+            exit 1
+          fi
+          echo "Staged install tree: $staged"
+          # Informational: never the thing that decides the outcome, so the explicit checks below own
+          # the error messages even when the tree has no DLLs at all.
+          ls -l "$staged"/*.dll || true
+
+          missing=0
+          for dll in msvcp140.dll vcruntime140.dll concrt140.dll; do
+            if [ ! -f "$staged/$dll" ]; then
+              echo "::error::$dll is missing from the install tree — the installer would depend on the target machine's System32 copy."
+              missing=1
+            fi
+          done
+
+          # 3. The generated NSIS script. The installer's own header is compressed, so the compiled
+          #    InstallDir cannot be read back out of the .exe — but project.nsi is plain text right
+          #    here. Assert the vendored template (cmake/NSIS.template.in) was the one used and that
+          #    its delta survived: a silent fall back to CPack's stock template would still produce a
+          #    working installer, just one defaulting to $DOCUMENTS\Sudoku, which is how a 1.0.0-rc1
+          #    test install ended up in D:\Dokumente\Sudoku.
+          nsi=$(find build/Release/_CPack_Packages -maxdepth 3 -name 'project.nsi' -print -quit)
+          if [ -z "$nsi" ]; then
+            echo "::error::Generated project.nsi not found — the install location could not be verified."
+            exit 1
+          fi
+          grep -n 'InstallDir\|RequestExecutionLevel' "$nsi" || true
+          if ! grep -q 'SUDOKU-VENDORED-NSIS-TEMPLATE' "$nsi"; then
+            echo "::error::project.nsi was generated from CPack's stock template, not cmake/NSIS.template.in — check CMAKE_MODULE_PATH."
+            missing=1
+          fi
+          # `\\` per backslash: grep's BRE unescapes it to the single backslash the .nsi contains.
+          if ! grep -q 'InstallDir "\$LOCALAPPDATA\\Programs\\Sudoku"' "$nsi"; then
+            echo "::error::project.nsi does not default to \$LOCALAPPDATA\\Programs\\Sudoku."
+            missing=1
+          fi
+          if grep -q 'StrCpy \$INSTDIR "\$DOCUMENTS' "$nsi"; then
+            echo "::error::project.nsi still falls back to \$DOCUMENTS — a per-user install would land in the user's Documents folder."
+            missing=1
+          fi
+          # README.md and CHANGELOG.md both state that the installer refuses to install below
+          # Windows 10 1809 (Qt 6.8's floor). Assert the guard is actually compiled in, so the
+          # promise cannot outlive the code.
+          if ! grep -q 'WinVerGetBuild' "$nsi" || ! grep -q '17763' "$nsi"; then
+            echo "::error::project.nsi has no Windows-version guard — README and CHANGELOG promise the installer enforces Windows 10 1809 or newer."
+            missing=1
+          fi
+          # The vendored template is pinned to one CMake version's variable set, while the runner's
+          # cpack floats. CPack substitutes an unknown @CPACK_…@ with EMPTY TEXT rather than failing,
+          # so a renamed or newly added variable would silently degrade the installer. Catch it here.
+          if grep -q '@CPACK_' "$nsi"; then
+            echo "::error::project.nsi has unresolved @CPACK_…@ placeholders — cmake/NSIS.template.in is out of sync with this CMake version:"
+            grep -n -o '@CPACK_[A-Z_0-9]*@' "$nsi" | sort -u
+            missing=1
+          fi
+
+          installer=$(find build/Release -maxdepth 1 -name 'Sudoku-*-win64.exe' -print -quit)
+          if [ -z "$installer" ]; then
+            echo "::error::No installer .exe found in build/Release."
+            exit 1
+          fi
+          # The manifest lives uncompressed in the PE resources, so a plain binary grep reaches it.
+          # Matched by content rather than as one exact string: NSIS could legitimately reformat the
+          # XML (attribute order, quoting) without changing the requested level, and a spurious
+          # failure here would be the same over-strictness avoided for the optional DLLs above.
+          level=$(grep -a -o -m1 'requestedExecutionLevel level="[a-zA-Z]*"' "$installer" || true)
+          echo "Installer manifest: ${level:-<none found>}"
+          case "$level" in
+            *asInvoker*) ;;
+            *) echo "::error::Installer does not request asInvoker (got '${level:-none}') — it would elevate, and an elevated NSIS install resolves \$LOCALAPPDATA to %ProgramData%."
+               missing=1 ;;
+          esac
+
+          # 4. The version resource. sudoku.exe used to report 0.0.0.0 because it carried no
+          #    VERSIONINFO, which made field crash reports impossible to tie to a build. VERSIONINFO
+          #    strings are UTF-16, so strip NUL bytes before grepping. Expected value comes from
+          #    CPackConfig (i.e. from project(VERSION ...)), never hardcoded here.
+          # LC_ALL=C and a temp file, not a shell variable: the exe is binary, so a UTF-8 locale makes
+          # tr abort with "Illegal byte sequence" on the first invalid sequence, and grep needs -a to
+          # treat the result as text at all.
+          version=$(sed -n 's/^set(CPACK_PACKAGE_VERSION "\(.*\)")$/\1/p' build/Release/CPackConfig.cmake | head -1)
+          LC_ALL=C tr -d '\0' < "$staged/sudoku.exe" > build/Release/exe_strings.txt
+          if [ -z "$version" ]; then
+            echo "::error::Could not read CPACK_PACKAGE_VERSION from CPackConfig.cmake."
+            missing=1
+          elif ! LC_ALL=C grep -qa 'FileVersion' build/Release/exe_strings.txt \
+            || ! LC_ALL=C grep -qaF "$version" build/Release/exe_strings.txt; then
+            echo "::error::sudoku.exe carries no VERSIONINFO resource naming version $version — Explorer and Windows Error Reporting would show 0.0.0.0."
+            missing=1
+          else
+            echo "Version resource: $(LC_ALL=C grep -oa 'FileVersion.\{0,12\}' build/Release/exe_strings.txt | head -1)"
+          fi
+
+          [ "$missing" -eq 0 ]
+
       - name: Upload installer
         uses: actions/upload-artifact@v7
         with:

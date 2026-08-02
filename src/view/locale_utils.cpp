@@ -17,6 +17,7 @@
 #include "locale_utils.h"
 
 #include "../core/locale_utils.h"
+#include "infrastructure/path_utils.h"
 
 #include <algorithm>
 
@@ -26,7 +27,10 @@
 namespace sudoku::view {
 
 std::filesystem::path findTranslationsDir() {
-    const auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
+    // Native encoding, not UTF-8 bytes: on Windows a narrow string is decoded with the active code
+    // page, so a non-ASCII account name in the per-user install path would mangle every candidate
+    // below — no translations found, and the language list silently collapses to English.
+    const auto exe_dir = sudoku::infrastructure::toFilesystemPath(QCoreApplication::applicationDirPath());
     for (const auto& candidate : {exe_dir / "translations", exe_dir / ".." / "share" / "sudoku" / "translations"}) {
         if (std::filesystem::exists(candidate)) {
             return candidate;

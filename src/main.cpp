@@ -42,6 +42,8 @@
 #include "core/training_exercise_generator.h"
 #include "core/training_statistics_manager.h"
 #include "infrastructure/app_directory_manager.h"
+#include "infrastructure/log_sink_factory.h"
+#include "infrastructure/path_utils.h"
 #include "infrastructure/qt_clipboard_provider.h"
 #include "sudoku/version.h"
 #include "view/main_window.h"
@@ -53,6 +55,7 @@
 #include <expected>
 #include <filesystem>
 #include <memory>
+#include <optional>
 
 #include <QApplication>
 #include <QMessageBox>
@@ -148,24 +151,61 @@ std::shared_ptr<sudoku::viewmodel::GameViewModel> createViewModel() {
                                                               settings_manager, analyzer, clipboard);
 }
 
-// Configure the multi-sink logger (console + truncated debug log file) and return the resolved
-// log-file path. In sandboxed environments (Flatpak) the executable directory is read-only, so the
-// log goes to the data directory; we detect that by absence of bundled translations next to the exe.
-std::string setupLogging() {
-    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    auto exe_dir = std::filesystem::path(QCoreApplication::applicationDirPath().toStdString());
-    auto log_path = exe_dir / "sudoku_debug.log";
-    if (!std::filesystem::exists(exe_dir / "translations")) {
-        auto log_dir = sudoku::infrastructure::AppDirectoryManager::getDefaultDirectory(
-            sudoku::infrastructure::DirectoryType::Logs);
-        std::filesystem::create_directories(log_dir);
-        log_path = log_dir / "sudoku_debug.log";
+// Resolve where the debug log belongs: next to the executable, except in sandboxed environments
+// (Flatpak) where that directory is read-only — detected by the absence of bundled translations.
+// error_code overloads throughout: a mangled or inaccessible path must report, never throw.
+std::filesystem::path preferredLogPath() {
+    // toFilesystemPath, not path(QString::toStdString()): on Windows a narrow string is decoded with
+    // the active code page, which would mangle a non-ASCII profile name in the per-user install path.
+    const auto exe_dir = sudoku::infrastructure::toFilesystemPath(QCoreApplication::applicationDirPath());
+    std::error_code ec;
+    if (std::filesystem::exists(exe_dir / "translations", ec)) {
+        return exe_dir / "sudoku_debug.log";
     }
-    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path.string(), true);  // truncate=true
-    auto logger = std::make_shared<spdlog::logger>("sudoku", spdlog::sinks_init_list{console_sink, file_sink});
-    logger->set_level(spdlog::level::debug);
-    logger->flush_on(spdlog::level::debug);
-    spdlog::set_default_logger(logger);
+    auto log_dir =
+        sudoku::infrastructure::AppDirectoryManager::getDefaultDirectory(sudoku::infrastructure::DirectoryType::Logs);
+    std::filesystem::create_directories(log_dir, ec);
+    return log_dir / "sudoku_debug.log";
+}
+
+// Configure the multi-sink logger (console + truncated debug log file) and return the resolved
+// log-file path, or nullopt when no file could be opened and logging is console-only.
+std::optional<std::string> setupLogging() {
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+
+    // No capture: the sinks arrive as a parameter, and an unused capture is an error under
+    // apple-clang's -Wunused-lambda-capture (which GCC and MSVC do not diagnose).
+    auto install_logger = [](const spdlog::sinks_init_list sinks) {
+        auto logger = std::make_shared<spdlog::logger>("sudoku", sinks);
+        logger->set_level(spdlog::level::debug);
+        logger->flush_on(spdlog::level::debug);
+        spdlog::set_default_logger(logger);
+    };
+
+    // A log file we cannot open must never cost the user the application: this runs before the main
+    // window exists, so an escaping exception would reach main()'s handler, which reports through
+    // spdlog — with no logger installed and no console attached on a GUI binary, that is a silent
+    // exit with no window at all. Try the preferred location, then the per-user data directory
+    // (which stays writable when the install tree is not), and only then give up on file logging.
+    auto log_path = preferredLogPath();
+    auto file_sink = sudoku::infrastructure::makeTruncatingFileSink(log_path);
+    if (!file_sink) {
+        std::error_code ec;
+        auto fallback_dir = sudoku::infrastructure::AppDirectoryManager::getDefaultDirectory(
+            sudoku::infrastructure::DirectoryType::Logs);
+        std::filesystem::create_directories(fallback_dir, ec);
+        auto fallback_path = fallback_dir / "sudoku_debug.log";
+        if (file_sink = sudoku::infrastructure::makeTruncatingFileSink(fallback_path); file_sink) {
+            log_path = fallback_path;
+        }
+    }
+
+    if (!file_sink) {
+        install_logger({console_sink});
+        return std::nullopt;
+    }
+    install_logger({console_sink, file_sink});
+    // Safe: makeTruncatingFileSink already performed this same narrow conversion successfully.
     return log_path.string();
 }
 
@@ -204,11 +244,12 @@ int main(int argc, char* argv[]) {
         QApplication::setApplicationName("Sudoku");
         QApplication::setApplicationVersion(sudoku::kAppVersion);
 
-        // Setup multi-sink logger: console + debug log file (truncated each launch)
+        // Setup multi-sink logger: console + debug log file (truncated each launch). nullopt means no
+        // log file could be opened anywhere and logging is console-only; the app still runs.
         const auto log_path = setupLogging();
 
         spdlog::info("Starting Sudoku application with Qt6 + MVVM architecture...");
-        spdlog::info("Debug log: {}", log_path);
+        spdlog::info("Debug log: {}", log_path.value_or("disabled (console only)"));
 
         setupDependencies();
 

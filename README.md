@@ -33,7 +33,7 @@ The lines below describe *different strengths of claim*. "Tested" means the main
 
 - **Linux (Fedora)** — primary development platform. All interactive testing by the maintainer happens here.
 - **Linux (Ubuntu 24.04)** — built and full test suite run in GitHub Actions CI on every push. Not interactively exercised by the maintainer.
-- **Windows 11** — installer artifact attached to each release. Built and tested in CI on `windows-2025` (per push to `main` and on demand); smoke-tested by the maintainer on a Win11 secondary machine before each release tag. Not a daily-driver environment — please file issues if you hit anything.
+- **Windows 10 (version 1809 / build 17763 or newer) and Windows 11, 64-bit** — installer artifact attached to each release. The minimum comes from Qt: Qt 6.8, which the release is built against, supports [Windows 10 1809 or later](https://doc.qt.io/qt-6.8/supported-platforms.html) on `x86_64`. The installer checks the Windows build and refuses to install below it rather than leaving you with an executable that cannot start. Built in CI on `windows-2025` (on demand); smoke-tested by the maintainer on a Win11 secondary machine before each release tag, and the 1.0.0 installer was verified on a Windows 10 machine. Not a daily-driver environment — please file issues if you hit anything.
 - **Linux (openSUSE)** — RPM snapshots produced downstream via the [openSUSE Build Service](https://build.opensuse.org/) (namespace `home:AndnoVember:LXQt:Qt6`). Built and validated by the downstream packager, not directly by the project.
 - **macOS** — **not a supported release platform for 1.0.** Builds and runs (Homebrew Qt6, apple-clang); exercised on-demand in CI as a development target, but not interactively tested or shipped. See [docs/PACKAGING.md](docs/PACKAGING.md#macos).
 
@@ -126,6 +126,11 @@ Requires [NSIS](https://nsis.sourceforge.io/Download) (`winget install NSIS.NSIS
 ```powershell
 .\scripts\create_installer.ps1
 ```
+
+The result is a **per-user** installer: it installs to `%LOCALAPPDATA%\Programs\Sudoku` without a UAC
+prompt, and bundles the Visual C++ runtime DLLs so it does not depend on the redistributable version
+present on the target machine. Saved games, statistics and settings live separately in
+`%APPDATA%\Sudoku` and survive uninstalling.
 
 **Pre-commit hook:** [scripts/setup-hooks.sh](scripts/setup-hooks.sh) is bash-only; run it from Git Bash, or skip on Windows (CI re-checks formatting on push).
 

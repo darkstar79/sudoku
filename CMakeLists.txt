@@ -208,12 +208,20 @@ if(WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES
         WIN32_EXECUTABLE TRUE
     )
-    # Embed application icon into the .exe so Explorer/taskbar/Alt-Tab show it.
-    # rc.exe resolves ICON paths relative to the .rc file's directory.
+    # Embed application icon + VERSIONINFO into the .exe so Explorer/taskbar/Alt-Tab show the icon
+    # and Explorer's Details tab, Add/Remove Programs and Windows Error Reporting show a real version
+    # (without VERSIONINFO the exe reports 0.0.0.0, so a field crash report can't identify the build).
+    # The .rc is configured from PROJECT_VERSION — never hardcode the version here. Because the
+    # configured copy lands in the build tree and rc.exe resolves ICON paths relative to the .rc file's
+    # directory, the icon is substituted as an absolute path.
     enable_language(RC)
-    target_sources(${PROJECT_NAME} PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.rc"
+    set(SUDOKU_RC_ICON_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.ico")
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.rc.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/sudoku.rc"
+        @ONLY
     )
+    target_sources(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/sudoku.rc")
 elseif(APPLE)
     # macOS: build as an app bundle
     set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -303,6 +311,31 @@ if(WIN32)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.ico"
         DESTINATION ".")
 
+    # Ship the MSVC C++ runtime app-local (msvcp140*.dll, vcruntime140*.dll, concrt140.dll) instead of
+    # depending on whatever VC++ redistributable happens to sit in System32. We link /MD
+    # (conanfile.py: CMAKE_MSVC_RUNTIME_LIBRARY=...DLL, required for the Qt6 shared libs), and a binary
+    # from the VS 2022 17.10+ toolset needs msvcp140.dll >= 14.40; a machine carrying an older copy
+    # faults inside the CRT during startup, before the first log line is written. Offline machines
+    # can't just fetch the redistributable, so the DLLs travel with the installer. Safe here because
+    # the install tree is per-user (CPACK_NSIS_INSTALL_ROOT below) — no elevation boundary is crossed,
+    # unlike a machine-wide or ProgramData tree where a low-privilege user could plant a DLL for an
+    # administrator to load. UCRT is deliberately NOT shipped: it is an OS component on Windows 10+,
+    # which is our floor, and app-local UCRT deployment is discouraged there.
+    if(MSVC)
+        set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ".")
+        set(CMAKE_INSTALL_UCRT_LIBRARIES FALSE)
+        include(InstallRequiredSystemLibraries)
+        # Fail loudly at configure time rather than shipping a CRT-less installer that only breaks on
+        # an end user's machine — the exact failure mode this block exists to prevent.
+        if(NOT CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
+            message(FATAL_ERROR
+                "InstallRequiredSystemLibraries found no MSVC runtime DLLs to bundle. The installer "
+                "would depend on the target machine's System32 copy. Build from a Visual Studio "
+                "developer environment (vcvarsall.bat / msvc-dev-cmd) so the VC redist directory is "
+                "discoverable.")
+        endif()
+    endif()
+
     # Qt runtime via windeployqt
     # QT6_DIR is set as an environment variable by the build scripts; read it with $ENV{}
     if(NOT "$ENV{QT6_DIR}" STREQUAL "")
@@ -368,14 +401,39 @@ if(WIN32)
     # NSIS-specific settings (Windows only)
     set(CPACK_NSIS_DISPLAY_NAME           "Sudoku")
     set(CPACK_NSIS_PACKAGE_NAME           "Sudoku ${PROJECT_VERSION}")
-    set(CPACK_NSIS_INSTALL_ROOT           "$LOCALAPPDATA")
+    # Per-user install to %LOCALAPPDATA%\Programs\Sudoku — no elevation, no machine-wide footprint,
+    # the convention modern per-user installers follow (VS Code User Setup, Python's per-user default).
+    #
+    # This needs the vendored template in cmake/NSIS.template.in, which CPack picks up ahead of its
+    # own via CPACK_MODULE_PATH (seeded from CMAKE_MODULE_PATH near the top of this file). CPack's
+    # stock template cannot express a per-user install at a chosen location: it hardcodes
+    # `RequestExecutionLevel admin`, and it applies CPACK_NSIS_INSTALL_ROOT only in the all-users
+    # branch of .onInit — the non-elevated branch hardcodes $DOCUMENTS\<dir>. Both defaults were
+    # observed in the field: rc1 landed in C:\ProgramData\Sudoku when elevated, and in
+    # D:\Dokumente\Sudoku once the manifest was switched to asInvoker without patching the template.
+    # See that file's header for the exact two-line delta.
+    #
+    # `$LOCALAPPDATA` is the NSIS shell constant, resolved at RUN time on the target machine. Do not
+    # "harden" this into the `$%LOCALAPPDATA%` environment form: NSIS expands `$%VAR%` at COMPILE
+    # time, which bakes the build machine's own profile path into the installer (on CI that is
+    # C:\Users\runneradmin\AppData\Local\Programs). The quadrupled backslash is the CPack round-trip:
+    # the value is written raw into CPackConfig.cmake, so it must arrive there as `\\` to read back as
+    # the single `\` the .nsi needs (same escaping as CPACK_NSIS_CREATE_ICONS_EXTRA below).
+    set(CPACK_NSIS_INSTALL_ROOT           "$LOCALAPPDATA\\\\Programs")
     set(CPACK_NSIS_EXECUTABLES_DIRECTORY  ".")
+    # Note: the template's uninstall-before-install check reads the UninstallString from HKLM, while a
+    # per-user install records it under HKCU (SHCTX). It therefore no longer finds a previous install
+    # and upgrades write over the top instead of uninstalling first. Harmless for same-version file
+    # sets; anyone upgrading from the machine-wide 1.0.0-rc1 tree should uninstall it first (CHANGELOG).
     set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
     set(CPACK_NSIS_CREATE_ICONS_EXTRA
         "CreateShortcut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk' '$INSTDIR\\\\${PROJECT_NAME}.exe'")
     set(CPACK_NSIS_DELETE_ICONS_EXTRA
         "Delete '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Sudoku.lnk'")
-    set(CPACK_NSIS_MUI_FINISHPAGE_RUN     "${PROJECT_NAME}.exe")
+    # No CPACK_NSIS_MUI_FINISHPAGE_RUN: the finish-page checkbox launches the app as a child of the
+    # installer and inherits its token, so any elevated install (or a hand-elevated setup.exe) would
+    # give the first run an administrator token — writing settings and saves to that account's %APPDATA%
+    # instead of the user's. Start the app from the Start Menu shortcut instead.
     # Branding: same icon as AppImage/Flatpak (rasterized from the SVG).
     set(CPACK_NSIS_MUI_ICON               "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.ico")
     set(CPACK_NSIS_MUI_UNIICON            "${CMAKE_CURRENT_SOURCE_DIR}/resources/windows/sudoku.ico")
