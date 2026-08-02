@@ -340,16 +340,20 @@ jobs:
           #    VERSIONINFO, which made field crash reports impossible to tie to a build. VERSIONINFO
           #    strings are UTF-16, so strip NUL bytes before grepping. Expected value comes from
           #    CPackConfig (i.e. from project(VERSION ...)), never hardcoded here.
+          # LC_ALL=C and a temp file, not a shell variable: the exe is binary, so a UTF-8 locale makes
+          # tr abort with "Illegal byte sequence" on the first invalid sequence, and grep needs -a to
+          # treat the result as text at all.
           version=$(sed -n 's/^set(CPACK_PACKAGE_VERSION "\(.*\)")$/\1/p' build/Release/CPackConfig.cmake | head -1)
-          exe_strings=$(tr -d '\0' < "$staged/sudoku.exe")
+          LC_ALL=C tr -d '\0' < "$staged/sudoku.exe" > build/Release/exe_strings.txt
           if [ -z "$version" ]; then
             echo "::error::Could not read CPACK_PACKAGE_VERSION from CPackConfig.cmake."
             missing=1
-          elif ! printf '%s' "$exe_strings" | grep -q 'FileVersion' || ! printf '%s' "$exe_strings" | grep -qF "$version"; then
+          elif ! LC_ALL=C grep -qa 'FileVersion' build/Release/exe_strings.txt \
+            || ! LC_ALL=C grep -qaF "$version" build/Release/exe_strings.txt; then
             echo "::error::sudoku.exe carries no VERSIONINFO resource naming version $version — Explorer and Windows Error Reporting would show 0.0.0.0."
             missing=1
           else
-            echo "Version resource: FileVersion $version present in sudoku.exe"
+            echo "Version resource: $(LC_ALL=C grep -oa 'FileVersion.\{0,12\}' build/Release/exe_strings.txt | head -1)"
           fi
 
           [ "$missing" -eq 0 ]
