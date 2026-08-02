@@ -375,6 +375,12 @@ private:
     std::vector<core::Move> move_history_;
     int move_history_index_{-1};
     int last_valid_state_index_{-1};  // Index of last conflict-free board state
+    /// True while move_history_ is a complete forward log back to the original puzzle. Every path
+    /// that starts a game from a known-original board (new, reset, edit-mode commit, import) clears
+    /// the log and sets this true; the restore path inherits the incoming save's flag, so a game
+    /// resumed from a history-less auto-save stays marked incomplete for as long as it lives — and
+    /// so does any manual save taken from it (story 8.16 / D2, SavedGame::history_complete).
+    bool move_history_complete_{true};
     bool auto_save_enabled_{true};
     double current_puzzle_rating_{0.0};  // Rating of current puzzle (SE scale)
     std::set<core::SolvingTechnique> current_puzzle_techniques_;
@@ -404,6 +410,16 @@ private:
     /// Only ever true for MANUAL saves — see the implementation for why auto-saves are exempt.
     [[nodiscard]] static bool isCorruptedManualSave(const core::SavedGame& saved_game);
     void endGameSession(bool completed);
+
+    /// Drops the undo/redo log and marks it complete — the correct state for every path that starts
+    /// a game from its own original board (new game, reset, edit-mode entry, edit-mode commit,
+    /// import). The restore path does NOT use this: it inherits the incoming save's flag instead.
+    ///
+    /// One choke point rather than five copies of the same three assignments, so a future start
+    /// path cannot reset the log and leave move_history_complete_ stale — which would mark a fresh
+    /// game's save as history-less and quietly exempt it from the corruption guard (story 8.16).
+    void resetMoveHistory();
+
     void recordMove(const core::Move& move, bool is_mistake = false);
     /// First application of a freshly-created move (forward edit). Runs the note-cleanup and
     /// records the exact peer-note delta into `move` so revert/redo replay it verbatim — no

@@ -177,6 +177,16 @@ void GameViewModel::checkSolution() {
     }
 }
 
+void GameViewModel::resetMoveHistory() {
+    move_history_.clear();
+    move_history_index_ = -1;
+    last_valid_state_index_ = -1;  // Reset last valid state tracker
+    // An empty log on a board that IS its original puzzle is a complete account of that board —
+    // there is simply nothing to account for yet. Contrast the restore path, where an empty log
+    // sits under a board that already carries the player's progress (story 8.16 / D2).
+    move_history_complete_ = true;
+}
+
 void GameViewModel::recordMove(const core::Move& move, bool is_mistake) {
     // Add to history (truncate any redo moves)
     if (move_history_index_ + 1 < static_cast<int>(move_history_.size())) {

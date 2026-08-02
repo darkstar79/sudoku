@@ -149,4 +149,21 @@ bool allCells(Predicate&& pred) {
     return true;
 }
 
+/**
+ * @brief True if the board still has at least one cell to fill.
+ *
+ * A board with no empty cell is not a playable puzzle, and one with no clue at all is not a puzzle
+ * either — both shapes are refused by the puzzle-import and edit-mode-commit paths, and by the
+ * manual-save corruption guard on load (story 8.16). Uniqueness checking does not catch the first
+ * case: a completely filled grid has exactly one solution.
+ */
+[[nodiscard]] inline bool hasEmptyCell(const BoardData& board) {
+    return anyCell([&](size_t row, size_t col) { return board[row][col] == EMPTY_CELL; });
+}
+
+/// True if the board has at least one clue. Counterpart to hasEmptyCell() — see its note.
+[[nodiscard]] inline bool hasAnyGiven(const BoardData& board) {
+    return anyCell([&](size_t row, size_t col) { return board[row][col] != EMPTY_CELL; });
+}
+
 }  // namespace sudoku::core

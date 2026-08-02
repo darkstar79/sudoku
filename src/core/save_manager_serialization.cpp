@@ -149,6 +149,13 @@ std::expected<void, SaveError> SaveManager::serializeToYaml(const SavedGame& gam
             root["current_move_index"] = game.current_move_index;
         }
 
+        // Story 8.16 / D2: record whether the log this file carries is a complete account of the
+        // board. Derived, not copied: a save is only self-explanatory if the source game's log was
+        // complete AND this write actually persisted it. Auto-saves drop history by design, so they
+        // are always incomplete. Written unconditionally (a `false` must survive) — the reader
+        // defaults a missing key to true, which is the pre-8.16 behaviour for older saves.
+        root["history_complete"] = game.history_complete && settings.include_history;
+
         // Auto-save info
         if (game.is_auto_save) {
             root["is_auto_save"] = true;
@@ -516,6 +523,18 @@ std::expected<SavedGame, SaveError> SaveManager::deserializeFromYaml(const std::
                 game.current_move_index = index;
             }
         }
+
+        // Story 8.16 / D2. Absent key → true, matching pre-8.16 saves, for which the corruption
+        // heuristic was the only available signal. Read outside the move_history block on purpose:
+        // the flag's whole point is to describe saves whose history is missing.
+        //
+        // as<bool>(fallback) rather than a bare as<bool>(): a malformed value (`history_complete: ~`
+        // or a sequence) would otherwise throw, and this deserializer's catch turns that into
+        // SerializationError — which makes SaveManager ARCHIVE the file out of the save directory.
+        // Story 7-1's validated fields deliberately return InvalidSaveData and leave the file in
+        // place; an optional, back-compatible key must certainly not be harsher than that. A value
+        // we cannot read means "this save tells us nothing", which is precisely the default.
+        game.history_complete = root["history_complete"].as<bool>(true);
 
         // Auto-save info
         if (root["is_auto_save"]) {
