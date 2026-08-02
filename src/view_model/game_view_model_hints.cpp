@@ -18,6 +18,7 @@
 #include "../core/solving_technique.h"
 #include "../core/technique_descriptions.h"
 #include "../core/training_hints.h"
+#include "core/board_utils.h"
 #include "core/i18n_helpers.h"
 #include "core/i_game_validator.h"
 #include "core/i_statistics_manager.h"
@@ -253,6 +254,17 @@ void GameViewModel::importPuzzleFromString(std::string_view input) {
         return;
     }
 
+    // A board with nothing left to fill is not a puzzle. Uniqueness would not catch it — a complete
+    // grid has exactly one solution — so it used to import successfully and produce an unplayable
+    // game whose save the manual-save corruption guard then rejects on reload, silently swapping in
+    // a random puzzle (story 8.16). Refusing it here is the honest place: the user finds out at
+    // paste time, with a message, instead of losing the board later.
+    if (!hasEmptyCell(*parsed)) {
+        errorMessage.set(std::string(core::loc("Sudoku", "Pasted puzzle has no empty cells")));
+        spdlog::warn("Import rejected: board has no empty cells");
+        return;
+    }
+
     // Uniqueness.
     auto uniqueness = analyzer_->checkUniqueness(*parsed);
     if (uniqueness != core::UniquenessResult::Unique) {
@@ -269,9 +281,7 @@ void GameViewModel::importPuzzleFromString(std::string_view input) {
     gameState.set(new_state);
     gameState.update([](model::GameState& state) { state.startTimer(); });
 
-    move_history_.clear();
-    move_history_index_ = -1;
-    last_valid_state_index_ = -1;
+    resetMoveHistory();
 
     // Seed rating fields to the unknown-defaults; applyDifficultyScore overwrites on success
     // and leaves them at defaults on timeout (silent fallback — see helper docs).
@@ -328,9 +338,7 @@ void GameViewModel::enterEditMode() {
     gameState.set(empty_state);
     gameState.update([](model::GameState& state) { state.startTimer(); });
 
-    move_history_.clear();
-    move_history_index_ = -1;
-    last_valid_state_index_ = -1;
+    resetMoveHistory();
 
     current_puzzle_rating_ = 0.0;
     current_puzzle_techniques_.clear();
@@ -381,6 +389,14 @@ void GameViewModel::commitEditedPuzzle() {
         return;
     }
 
+    // See the import path: a completely filled grid passes uniqueness (it has exactly one solution)
+    // but leaves nothing to play, and its save is rejected on reload. Refuse it at commit time.
+    if (!hasEmptyCell(board)) {
+        errorMessage.set(std::string(core::loc("Sudoku", "Puzzle has no empty cells")));
+        spdlog::warn("Edit-mode commit rejected: board has no empty cells");
+        return;
+    }
+
     // Uniqueness.
     auto uniqueness = analyzer_->checkUniqueness(board);
     if (uniqueness != core::UniquenessResult::Unique) {
@@ -396,9 +412,7 @@ void GameViewModel::commitEditedPuzzle() {
     gameState.set(locked);
     gameState.update([](model::GameState& state) { state.startTimer(); });
 
-    move_history_.clear();
-    move_history_index_ = -1;
-    last_valid_state_index_ = -1;
+    resetMoveHistory();
 
     // Seed rating fields to the unknown-defaults; applyDifficultyScore overwrites on success
     // and leaves them at defaults on timeout (silent fallback — see helper docs).

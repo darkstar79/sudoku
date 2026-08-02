@@ -340,18 +340,24 @@ TEST_CASE("GameViewModel - Restore session handling does not regress existing be
     const BoardData kPuzzle = makePuzzle();
 
     SECTION("AC9a: a rejected manual save falls through to a new game and starts exactly one session") {
+        // Corruption tell = an original_puzzle with no empty cells, i.e. the "all cells marked
+        // given" bug's unplayable board. Story 8.16 / D3 narrowed the check to that signature; this
+        // fixture used to be a playable board plus a pencil mark, which the guard no longer rejects
+        // (and never should have). What this case is really about — one session on the reject
+        // path — is unchanged.
         SavedGame corrupt;
-        corrupt.original_puzzle = kPuzzle;
-        corrupt.current_state = kPuzzle;
-        corrupt.notes[0][0].add(5);  // progress signal with original == current → corruption tell
+        corrupt.original_puzzle = makeSolvedExceptOneCell();
+        corrupt.original_puzzle[0][0] = 1;
+        corrupt.current_state = corrupt.original_puzzle;
         corrupt.difficulty = Difficulty::Easy;
         corrupt.is_auto_save = false;
         corrupt.hints_used = 4;  // must NOT leak into the fresh game
 
         fixture.view_model->restoreGameState(corrupt);
 
-        REQUIRE(fixture.view_model->gameState.get().extractGivenNumbers() != kPuzzle);  // fresh game
-        REQUIRE(fixture.view_model->getHintCount() == kMaxHints);                       // fresh budget, not seeded
+        // fresh game
+        REQUIRE(fixture.view_model->gameState.get().extractGivenNumbers() != corrupt.original_puzzle);
+        REQUIRE(fixture.view_model->getHintCount() == kMaxHints);  // fresh budget, not seeded
         // A second startGameSession() on the reject path would have ended the fresh game's session
         // as abandoned and pushed a record; nothing has ended, so the aggregate is still empty.
         auto aggregate = fixture.stats_manager->getAggregateStats();
@@ -380,10 +386,6 @@ TEST_CASE("GameViewModel - Restore session handling does not regress existing be
         REQUIRE(fixture.view_model->getMistakeCount() == 0);
     }
 
-    // Scoped to a generated game on purpose: resetGame() reads getSolutionBoard() unguarded
-    // (game_view_model.cpp:148) and therefore throws bad_optional_access on a *restored* game,
-    // which never carries a solution board. That is a pre-existing defect on the restore path,
-    // unrelated to SAVE-2/SAVE-3 and deliberately not absorbed by this story.
     SECTION("AC9b: resetGame still returns a generated game to 00:00:00 with a full budget") {
         fixture.view_model->startNewGame(Difficulty::Easy);
         auto empty = sudoku::test::findEmptyCell(fixture.view_model->gameState.get());
@@ -404,6 +406,26 @@ TEST_CASE("GameViewModel - Restore session handling does not regress existing be
         // sanitizer build can stretch past a second. resetTimer()'s exact semantics are already
         // pinned deterministically at the GameState layer under MockTimeProvider
         // (test_game_state.cpp, "Reset timer").
+    }
+
+    SECTION("AC9b: resetGame gives a RESTORED game the same clean slate as a generated one") {
+        // This case was scoped out of story 8-1: resetGame() read getSolutionBoard() unguarded, so
+        // it threw bad_optional_access on any restored game. Story 8.16 / D1 fixed the call site,
+        // and the seeded counters make the assertions sharper here than on a generated game —
+        // there is an actual spent budget and a real elapsed value for the reset to clear.
+        SavedGame seeded = makeAutoSave(kPuzzle);
+        seeded.elapsed_time = std::chrono::seconds(90);
+        seeded.hints_used = 3;
+        seeded.mistakes = 2;
+        fixture.view_model->restoreGameState(seeded);
+        REQUIRE(fixture.view_model->getHintCount() == kMaxHints - 3);  // the seeded budget
+
+        fixture.view_model->resetGame();
+
+        REQUIRE(fixture.view_model->getHintCount() == kMaxHints);  // fresh, unseeded session
+        REQUIRE(fixture.view_model->getMistakeCount() == 0);
+        REQUIRE(fixture.view_model->gameState.get().getElapsedTime() < std::chrono::seconds(90));
+        REQUIRE(fixture.view_model->gameState.get().extractGivenNumbers() == kPuzzle);  // same puzzle
     }
 
     SECTION("AC9c: restoring over a live game ends the prior session as abandoned — exactly once") {

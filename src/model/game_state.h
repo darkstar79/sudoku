@@ -169,8 +169,35 @@ public:
 
     // Solution access
     void setSolutionBoard(const core::BoardData& solution);
+
+    /// The solution board, or nullopt when this game has none. Games restored from a save and
+    /// custom-puzzle (edit-mode) games never carry one — the save format has no solution field and
+    /// commitEditedPuzzle does not run the solver — so a solution-less GameState is a supported
+    /// shape, not an error.
+    ///
+    /// Prefer this accessor at any call site that cannot establish hasSolution() on the two lines
+    /// above it. Story 8.16 / D1: resetGame() read getSolutionBoard() with no gate and threw
+    /// std::bad_optional_access out of a Qt slot the moment a player pressed Reset on a resumed
+    /// game — the default launch path. The reference accessor's precondition used to live only in a
+    /// comment, which is exactly the kind of contract one of three callers can quietly break.
+    [[nodiscard]] std::optional<core::BoardData> trySolutionBoard() const {
+        return solution_board_;
+    }
+
+    /// @pre hasSolution(). Throws std::bad_optional_access otherwise — use trySolutionBoard() when
+    /// the caller cannot guarantee the precondition locally. scripts/check_solution_access.sh pins
+    /// that every src/ caller of this overload sits behind a hasSolution() gate.
+    ///
+    /// Written as an explicit check rather than `solution_board_.value()` so that
+    /// bugprone-unchecked-optional-access can verify the access instead of being suppressed. The
+    /// NOLINT this replaces asserted a caller contract nothing enforced — and one of the three
+    /// callers had quietly broken it for as long as the comment existed (story 8.16 / D1).
+    /// Behaviour is unchanged: an absent solution still throws std::bad_optional_access.
     [[nodiscard]] const core::BoardData& getSolutionBoard() const {
-        return solution_board_.value();  // NOLINT(bugprone-unchecked-optional-access) — callers gate on hasSolution()
+        if (!solution_board_.has_value()) {
+            throw std::bad_optional_access{};
+        }
+        return *solution_board_;
     }
     [[nodiscard]] bool hasSolution() const {
         return solution_board_.has_value();

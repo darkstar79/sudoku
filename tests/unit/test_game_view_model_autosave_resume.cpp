@@ -91,18 +91,53 @@ TEST_CASE("GameViewModel - Auto-save resume on restart",
         REQUIRE(state.getNotes(0, 0).contains(7));
     }
 
-    SECTION("AC#3a: a *manual* save with original==current + notes is still rejected as corrupt") {
+    SECTION("AC#3a: a *manual* save whose every cell is a given is still rejected as corrupt") {
+        // The "all cells marked given" bug this guard exists for produced a board with nothing left
+        // to fill. Story 8.16 / D3 rewrote both the check and this fixture: the case used to assert
+        // that a PLAYABLE board (kPuzzle, 10 empty cells) plus a pencil mark was corrupt, which is
+        // not that bug's signature — it is an ordinary game in which the player has noted but not
+        // yet placed a digit. The old check therefore ate legitimate saves (see the D3 section
+        // below) while this test looked like it was protecting something. A completely filled
+        // original_puzzle is the real, unambiguous tell.
         SavedGame saved;
-        saved.original_puzzle = kPuzzle;
-        saved.current_state = kPuzzle;  // no digit progress but...
-        saved.notes[0][0].add(5);       // ...notes present → genuine "all-given" corruption signature
+        saved.original_puzzle = makeSolvedExceptOneCell();
+        saved.original_puzzle[0][0] = 1;  // ...and now every cell is a "given" — unplayable
+        saved.current_state = saved.original_puzzle;
         saved.difficulty = Difficulty::Easy;
-        saved.is_auto_save = false;  // manual save: empty/contradictory history IS a corruption tell
+        saved.is_auto_save = false;  // manual save: the corruption guard applies
+        // Deliberately NO notes and NO move history. The old check needed one of those to fire, so
+        // including either would let this case pass against the old code too — it would assert
+        // nothing about the narrowing. With both absent, only the new all-given test rejects it.
 
         fixture.view_model->restoreGameState(saved);
 
         // Guard fires → fresh game → the corrupt board is NOT resumed.
-        REQUIRE(fixture.view_model->gameState.get().extractGivenNumbers() != kPuzzle);
+        REQUIRE(fixture.view_model->gameState.get().extractGivenNumbers() != saved.original_puzzle);
+    }
+
+    SECTION("Story 8.16 / D3: a *manual* save carrying only pencil marks loads instead of being eaten") {
+        // The plainest possible data-loss path, and it needed no resume at all: start a game, write
+        // some pencil marks, Save Game, Load Game — and the board came back as a different, freshly
+        // generated puzzle. enterNote records moves, so original_puzzle == current_state with a
+        // non-empty history, which is exactly what the old first check called corruption.
+        fixture.view_model->startNewGame(Difficulty::Easy);
+        const auto givens = fixture.view_model->gameState.get().extractGivenNumbers();
+        auto empty = sudoku::test::findEmptyCell(fixture.view_model->gameState.get());
+        REQUIRE(empty.has_value());
+        if (empty.has_value()) {
+            const core::Position cell = empty.value();
+            fixture.view_model->enterNote(cell, 5);  // notes only — no digit placed
+            REQUIRE(fixture.view_model->saveCurrentGame("notes-only"));
+
+            auto listed = fixture.save_manager->listSaves();
+            REQUIRE(listed.has_value());
+            REQUIRE(listed->size() == 1);
+            fixture.view_model->loadGame(listed->front().save_id);
+
+            const auto& state = fixture.view_model->gameState.get();
+            REQUIRE(state.extractGivenNumbers() == givens);  // same puzzle, not a replacement
+            REQUIRE(state.getNotes(cell).contains(5));       // and the pencil mark came back
+        }
     }
 
     SECTION("AC#3b: a *manual* save with user values but empty history is still rejected as corrupt") {

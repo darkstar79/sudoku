@@ -952,6 +952,10 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Eingefügtes Rätsel verletzt die Sudoku-Regeln</translation>
     </message>
     <message>
+        <source>Pasted puzzle has no empty cells</source>
+        <translation>Eingefügtes Rätsel hat keine leeren Felder</translation>
+    </message>
+    <message>
         <source>Pasted puzzle has multiple solutions</source>
         <translation>Eingefügtes Rätsel hat mehrere Lösungen</translation>
     </message>
@@ -962,6 +966,10 @@ Der aktuelle Fortschritt geht verloren.</translation>
     <message>
         <source>Puzzle violates Sudoku rules</source>
         <translation>Rätsel verletzt die Sudoku-Regeln</translation>
+    </message>
+    <message>
+        <source>Puzzle has no empty cells</source>
+        <translation>Rätsel hat keine leeren Felder</translation>
     </message>
     <message>
         <source>Puzzle has multiple solutions</source>

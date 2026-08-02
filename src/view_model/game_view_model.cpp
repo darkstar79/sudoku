@@ -123,9 +123,7 @@ void GameViewModel::startNewGame(core::Difficulty difficulty) {
     gameState.update([](model::GameState& state) { state.startTimer(); });
 
     // Clear move history
-    move_history_.clear();
-    move_history_index_ = -1;
-    last_valid_state_index_ = -1;  // Reset last valid state tracker
+    resetMoveHistory();
 
     // Start statistics session
     startGameSession();
@@ -141,10 +139,22 @@ void GameViewModel::resetGame() {
 
     spdlog::info("Resetting current game to original puzzle state");
 
-    // Capture current puzzle data before resetting
+    // Capture current puzzle data before resetting.
+    //
+    // Story 8.16 / D1: the solution is read through trySolutionBoard() and copied only when one
+    // exists. A game restored from a save or built in custom-puzzle edit mode carries no solution
+    // board (the save format has no solution field; commitEditedPuzzle never runs the solver), and
+    // the unguarded read here used to throw std::bad_optional_access straight out of a Qt slot.
+    // Reset is gated on isGameActive() — merely "the timer is running" — which is true for a
+    // resumed game, so the control was enabled and the crash sat on the default launch path.
+    //
+    // Deliberately NOT recomputed when absent: solving here would put a solver run on the reset
+    // path and would flip hasSolution() semantics that story 6.8's hasPuzzle() work separated.
+    // Solution-less games stay solution-less, and enterNumber's conflict-only fallback keeps
+    // mistake detection working for them.
     const auto& current_state = gameState.get();
     auto original_puzzle = current_state.extractGivenNumbers();
-    auto solution = current_state.getSolutionBoard();
+    auto solution = current_state.trySolutionBoard();
     auto difficulty = current_state.getDifficulty();
 
     // End current stats session as abandoned (not completed)
@@ -154,7 +164,9 @@ void GameViewModel::resetGame() {
     model::GameState new_state;
     new_state.loadPuzzle(original_puzzle);
     new_state.setDifficulty(difficulty);
-    new_state.setSolutionBoard(solution);
+    if (solution.has_value()) {
+        new_state.setSolutionBoard(*solution);
+    }
 
     gameState.set(new_state);
 
@@ -162,9 +174,7 @@ void GameViewModel::resetGame() {
     gameState.update([](model::GameState& state) { state.startTimer(); });
 
     // Clear move history
-    move_history_.clear();
-    move_history_index_ = -1;
-    last_valid_state_index_ = -1;
+    resetMoveHistory();
 
     // Start fresh statistics session (same puzzle rating)
     startGameSession();
@@ -254,21 +264,44 @@ bool GameViewModel::isCorruptedManualSave(const core::SavedGame& saved_game) {
         return false;
     }
 
-    // Detect corrupted saves: if original_puzzle == current_state but the game had any
-    // progress indicators, the save was created by a bug that marked all cells as given.
-    // Note: the old bug also prevented number entry and timer start, so move_history and
-    // elapsed_time may both be empty/zero. Check notes as an additional progress indicator.
-    bool has_any_notes = !saved_game.notes.empty();
-    if (saved_game.original_puzzle == saved_game.current_state && (!saved_game.move_history.empty() || has_any_notes)) {
-        spdlog::warn("Corrupted save detected (original_puzzle == current_state with game progress), "
+    // Detect the "all cells marked given" corruption: a bug once wrote saves in which every cell
+    // was a clue, leaving a board that could not be played at all.
+    //
+    // The tell is that original_puzzle has NO empty cells. This check used to read "original_puzzle
+    // == current_state AND there is progress (a move log or any note)", which is not that bug's
+    // signature at all — it is the signature of an ordinary game in which the player has entered
+    // pencil marks but not yet placed a digit. Story 8.16 / D3: pencil-mark a generated game, Save
+    // Game, then load it back, and the guard fired and replaced the board with a fresh random
+    // puzzle. The Load dialog even listed the save with correct metadata first, so the loss looked
+    // like the app had simply started a new game. A real puzzle always leaves cells to fill, so the
+    // completely-filled test catches the corruption without touching any legitimate save.
+    // Same two predicates the import and edit-mode-commit paths refuse a board on, so a save can
+    // only reach this state by corruption or by predating those guards.
+    if (!core::hasEmptyCell(saved_game.original_puzzle)) {
+        spdlog::warn("Corrupted save detected (original_puzzle has no empty cells — every cell marked given), "
                      "starting new game instead");
+        return true;
+    }
+    // A puzzle with no clues at all is the other structurally impossible shape, and it is worse
+    // than merely unplayable: it restores with an empty givens_ set, so hasPuzzle() is false, and
+    // autoSave() — which gates on hasPuzzle() — then skips the game forever while the stale file is
+    // re-resumed on every launch. The old check only caught this when the save also carried notes.
+    if (!core::hasAnyGiven(saved_game.original_puzzle)) {
+        spdlog::warn("Corrupted save detected (original_puzzle has no givens at all), starting new game instead");
         return true;
     }
 
     // Detect phantom-value corruption: user values exist in current_state but move_history is empty.
     // This happens when a bug placed values during startup without recording them as moves.
+    //
+    // history_complete gates the inference (story 8.16 / D2). An empty log only implies corruption
+    // when the save claims to carry a full one. A game resumed from an auto-save legitimately has a
+    // short log — auto-saves are written without history by design (story 6.5) — and every manual
+    // save derived from it inherits that. Without this gate, saving a resumed game produced a file
+    // whose reload silently threw the player's board away. Pre-8.16 saves have no such key and
+    // default to true, so the guard still applies to them exactly as before.
     bool has_user_values = saved_game.original_puzzle != saved_game.current_state;
-    if (has_user_values && saved_game.move_history.empty()) {
+    if (has_user_values && saved_game.move_history.empty() && saved_game.history_complete) {
         spdlog::warn("Corrupted save detected (user values present but empty move history), "
                      "starting new game instead");
         return true;
@@ -335,6 +368,25 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
     // Restore move history if available
     move_history_ = saved_game.move_history;
     move_history_index_ = static_cast<int>(move_history_.size()) - 1;
+    // Derive this from what the save actually CONTAINS rather than inheriting the flag it carries.
+    // The question is only ever "does the log I now hold explain the board I now hold?", and both
+    // are right here — an empty log is a complete account exactly when the board still equals its
+    // original puzzle. Trusting the incoming flag instead gets it wrong in both directions:
+    //
+    //   * A pre-8.16 save has no history_complete key, so it defaults to true. A legacy auto-save
+    //     carrying real progress would therefore be resumed as "fully logged", and the first manual
+    //     save of that session would be rejected on reload all over again — reopening the exact D2
+    //     data loss for every user's first session after upgrading, and permanently for anyone with
+    //     auto-save turned off.
+    //   * Every auto-save is written history_complete = false. Quitting with no moves made and
+    //     relaunching would then exempt that whole session from the phantom-value guard, even
+    //     though the log it builds from that board is complete.
+    //
+    // The persisted key still matters, but for the other half of the problem: at load time the
+    // heuristic is judging a FILE, whose board and empty log look identical whether the log was
+    // truncated legitimately or never written by a bug. Only the writer knew which, so only the
+    // writer can say. Here we are the writer's successor and can just look.
+    move_history_complete_ = !move_history_.empty() || saved_game.original_puzzle == saved_game.current_state;
 
     // Recalculate last valid state and update conflict highlighting
     auto board = gameState.get().extractNumbers();
@@ -383,6 +435,7 @@ bool GameViewModel::saveCurrentGame(const std::string& name) {
     saved_game.difficulty = current_state.getDifficulty();
     saved_game.elapsed_time = current_state.getElapsedTime();
     saved_game.move_history = move_history_;
+    saved_game.history_complete = move_history_complete_;
     saved_game.created_time = std::chrono::system_clock::now();  // determinism-ok: persisted save wall-clock metadata
 
     // Extract notes
@@ -433,6 +486,11 @@ void GameViewModel::autoSave() {
         auto_save_game.difficulty = current_state.getDifficulty();
         auto_save_game.elapsed_time = current_state.getElapsedTime();
         auto_save_game.is_auto_save = true;
+        // Always false: this producer knows it is not writing a log (SaveManager::autoSave sets
+        // include_history = false), so the object must not claim otherwise even before the
+        // serializer's own AND catches it. Harmless for a game with no progress — the restore path
+        // derives completeness from the board, not from this flag.
+        auto_save_game.history_complete = false;
         auto_save_game.puzzle_rating = current_puzzle_rating_;
         auto_save_game.puzzle_requires_backtracking = current_puzzle_requires_backtracking_;
         auto_save_game.rating_model_version = current_puzzle_rating_model_version_;

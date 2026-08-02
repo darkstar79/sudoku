@@ -76,6 +76,14 @@ jobs:
           # marker. Backs the #24 determinism contract. No build required — pure source grep.
           ./scripts/check_determinism.sh
 
+      - name: Check for ungated GameState::getSolutionBoard() reads in src/
+        run: |
+          # Fails if a src/ caller dereferences the optional solution board without a hasSolution()
+          # gate. Restored and edit-mode games carry no solution, so an ungated read throws
+          # std::bad_optional_access (story 8.16 / D1). No build required — pure source grep, so it
+          # rides along in this job rather than paying for its own runner.
+          ./scripts/check_solution_access.sh
+
   # Kept out of the Determinism Gate on purpose: that job is a fast, zero-dependency source grep,
   # and the apt-get install here costs ~20-30s. As a sibling job the install runs in parallel, so
   # PR wall-time is unchanged and a metadata failure surfaces under its own check name.

@@ -950,6 +950,10 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Pasted puzzle has no empty cells</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Pasted puzzle has multiple solutions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -959,6 +963,10 @@ Current progress will be lost.</source>
     </message>
     <message>
         <source>Puzzle violates Sudoku rules</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Puzzle has no empty cells</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

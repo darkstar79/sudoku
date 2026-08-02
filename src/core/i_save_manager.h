@@ -100,6 +100,24 @@ struct SavedGame {
     std::vector<Move> move_history;
     int current_move_index{-1};  // For undo/redo functionality
 
+    /// False when move_history is NOT a complete forward log back to original_puzzle — i.e. the
+    /// board holds progress this save cannot explain. Auto-saves are written without history by
+    /// design (SaveManager::autoSave sets include_history = false, story 6.5), so a game resumed
+    /// from one, and every manual save later derived from it, has a truncated log through no fault
+    /// of its own.
+    ///
+    /// This exists because the manual-save corruption guard (isCorruptedManualSave) treats "user
+    /// values with an empty move history" as a phantom-value corruption tell. That inference is
+    /// only sound when the writer intended to persist a full log. Story 8.16 / D2: without this
+    /// flag, saving a resumed game produced a file the loader silently discarded, replacing the
+    /// player's board with a freshly generated puzzle.
+    ///
+    /// Additive and defaulted TRUE, so pre-8.16 saves — which carry no such key — keep being judged
+    /// by the heuristic exactly as before. Only a writer that knows its log is short says otherwise.
+    /// No SAVE_FILE_VERSION bump: an absent key reads as the old behaviour (same back-compat pattern
+    /// as `origin`), and the 1.0.0 format freeze holds.
+    bool history_complete{true};
+
     // Auto-save info
     bool is_auto_save{false};
     std::chrono::system_clock::time_point last_auto_save;

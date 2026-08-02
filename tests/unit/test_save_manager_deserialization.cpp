@@ -493,3 +493,67 @@ TEST_CASE("SaveManager - default constructor with empty string does not crash", 
         REQUIRE(list.has_value());  // May be empty or have saves; just must not error
     }());
 }
+
+// ============================================================================
+// history_complete (story 8.16 / D2) — the file-level back-compat contract.
+//
+// This key is the whole basis on which restoreGameState decides whether a save with an empty move
+// log may be judged as phantom-value corruption, so how a file WITHOUT it reads is load-bearing:
+// every save on disk written before 8.16 lacks it. The absence of exactly this test is what let an
+// upgrade-path regression through the first time (a legacy auto-save was resumed as "fully logged",
+// which reopened the D2 data loss for that whole session).
+// ============================================================================
+
+TEST_CASE("SaveManager - deserialize: a save with no history_complete key reads as complete",
+          "[save_manager_deser][bug-resumed-manual-save]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // validBaseYaml() is deliberately pre-8.16 shaped: it never writes the key.
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("legacy-no-key"), validBaseYaml());
+
+    auto result = mgr.loadGame(sudoku::test::saveIdFor("legacy-no-key"));
+    REQUIRE(result.has_value());
+    // Default TRUE, i.e. "judge me by the heuristic" — the pre-8.16 behaviour, preserved exactly.
+    REQUIRE(result->history_complete);
+}
+
+TEST_CASE("SaveManager - deserialize: history_complete round-trips both ways",
+          "[save_manager_deser][bug-resumed-manual-save]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("hc-false"), validBaseYaml() + "history_complete: false\n");
+    auto incomplete = mgr.loadGame(sudoku::test::saveIdFor("hc-false"));
+    REQUIRE(incomplete.has_value());
+    REQUIRE(!incomplete->history_complete);
+
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("hc-true"), validBaseYaml() + "history_complete: true\n");
+    auto complete = mgr.loadGame(sudoku::test::saveIdFor("hc-true"));
+    REQUIRE(complete.has_value());
+    REQUIRE(complete->history_complete);
+}
+
+TEST_CASE("SaveManager - deserialize: a malformed history_complete falls back instead of failing the load",
+          "[save_manager_deser][bug-resumed-manual-save]") {
+    TempTestDir tmp;
+    SaveManager mgr(tmp.path().string());
+
+    // A null value and a non-scalar node are both truthy YAML nodes, so a bare as<bool>() would
+    // THROW here — and this deserializer's catch turns a throw into SerializationError, which makes
+    // SaveManager archive the file out of the save directory entirely. An optional, additive,
+    // back-compatible key must never be more destructive than story 7-1's validated fields, which
+    // return InvalidSaveData and leave the file where it is. Unreadable → treat as "says nothing".
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("hc-null"), validBaseYaml() + "history_complete: ~\n");
+    auto null_valued = mgr.loadGame(sudoku::test::saveIdFor("hc-null"));
+    REQUIRE(null_valued.has_value());
+    REQUIRE(null_valued->history_complete);
+
+    writeYaml(tmp.path(), sudoku::test::saveIdFor("hc-seq"), validBaseYaml() + "history_complete: [1, 2]\n");
+    auto sequence_valued = mgr.loadGame(sudoku::test::saveIdFor("hc-seq"));
+    REQUIRE(sequence_valued.has_value());
+    REQUIRE(sequence_valued->history_complete);
+
+    // ...and the save file is still on disk, not archived aside.
+    REQUIRE(fs::exists(tmp.path() / (sudoku::test::saveIdFor("hc-null") + ".yaml")));
+}
