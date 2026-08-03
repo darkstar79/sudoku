@@ -417,3 +417,68 @@ TEST_CASE("StatisticsSerializer - session difficulty out of range is rejected", 
         REQUIRE(result.error() == StatisticsError::SerializationError);
     }
 }
+
+// ============================================================================
+// Story 8.18 (AC5): the segment-accounting fields are additive and defaulted.
+// A record written before they existed must parse as "no carried progress",
+// which is what makes it contribute exactly as much as it does today.
+// ============================================================================
+
+TEST_CASE("StatisticsSerializer - segment accounting fields round-trip", "[statistics_serializer][restore]") {
+    sudoku::test::TempTestDir tmp_dir;
+
+    GameStats original = sudoku::test::createTestGameStats(Difficulty::Hard, true);
+    original.continued_from_save = true;
+    original.carried_moves = 20;
+    original.carried_hints = 2;
+    original.carried_mistakes = 3;
+    original.carried_time_played = std::chrono::seconds(90);
+
+    auto file_path = tmp_dir.path() / "sessions_carried.yaml";
+    REQUIRE(serializeGameStatsToYaml(original, file_path, false).has_value());
+
+    auto read_result = deserializeGameStatsFromYaml(file_path);
+
+    REQUIRE(read_result.has_value());
+    REQUIRE(read_result.value().size() == 1);
+    const auto& loaded = read_result.value()[0];
+    REQUIRE(loaded.continued_from_save);
+    REQUIRE(loaded.carried_moves == original.carried_moves);
+    REQUIRE(loaded.carried_hints == original.carried_hints);
+    REQUIRE(loaded.carried_mistakes == original.carried_mistakes);
+    REQUIRE(loaded.carried_time_played == original.carried_time_played);
+    // The record still reports the puzzle's running totals (story 8.1 AC8) alongside them.
+    REQUIRE(loaded.moves_made == original.moves_made);
+    REQUIRE(loaded.time_played == original.time_played);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE("StatisticsSerializer - a session record without the carried fields loads as own-play",
+          "[statistics_serializer][restore]") {
+    // The shape every session written before story 8.18 has on disk. It must load without error and
+    // with zero carried progress — anything else would retroactively reinterpret existing history.
+    YAML::Node legacy;
+    YAML::Node node;
+    node["difficulty"] = static_cast<int>(Difficulty::Medium);
+    node["puzzle_rating"] = 5.5;
+    node["time_played"] = 90000;
+    node["completed"] = true;
+    node["moves_made"] = 20;
+    node["hints_used"] = 2;
+    node["mistakes"] = 3;
+    node["puzzle_seed"] = 4242;
+    legacy.push_back(node);
+
+    auto result = deserializeGameStatsFromNode(legacy);
+
+    REQUIRE(result.has_value());
+    REQUIRE(result.value().size() == 1);
+    const auto& loaded = result.value()[0];
+    REQUIRE(!loaded.continued_from_save);
+    REQUIRE(loaded.carried_moves == 0);
+    REQUIRE(loaded.carried_hints == 0);
+    REQUIRE(loaded.carried_mistakes == 0);
+    REQUIRE(loaded.carried_time_played.count() == 0);
+    REQUIRE(loaded.moves_made == 20);
+    REQUIRE(loaded.time_played == std::chrono::milliseconds(90000));
+}

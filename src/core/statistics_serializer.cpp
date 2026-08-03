@@ -189,6 +189,30 @@ deserializeStatsFromYaml(const std::filesystem::path& file_path) {
     }
 }
 
+YAML::Node sessionToYamlNode(const GameStats& stats) {
+    YAML::Node session;
+    session["difficulty"] = static_cast<int>(stats.difficulty);
+    session["puzzle_rating"] = stats.puzzle_rating;
+    session["start_time"] =
+        std::chrono::duration_cast<std::chrono::seconds>(stats.start_time.time_since_epoch()).count();
+    session["end_time"] = std::chrono::duration_cast<std::chrono::seconds>(stats.end_time.time_since_epoch()).count();
+    session["time_played"] = stats.time_played.count();
+    session["completed"] = stats.completed;
+    session["moves_made"] = stats.moves_made;
+    session["hints_used"] = stats.hints_used;
+    session["mistakes"] = stats.mistakes;
+    session["puzzle_seed"] = stats.puzzle_seed;
+    // Segment accounting (story 8.18). Additive keys: an older reader ignores them and a record
+    // written before they existed parses with them at 0, which means "this record is wholly its
+    // own segment's play" — exactly today's behaviour.
+    session["continued_from_save"] = stats.continued_from_save;
+    session["carried_moves"] = stats.carried_moves;
+    session["carried_hints"] = stats.carried_hints;
+    session["carried_mistakes"] = stats.carried_mistakes;
+    session["carried_time_played"] = stats.carried_time_played.count();
+    return session;
+}
+
 std::expected<void, StatisticsError> serializeGameStatsToYaml(const GameStats& stats,
                                                               const std::filesystem::path& file_path, bool append) {
     try {
@@ -206,22 +230,7 @@ std::expected<void, StatisticsError> serializeGameStatsToYaml(const GameStats& s
             sessions = YAML::Node(YAML::NodeType::Sequence);
         }
 
-        // Create new session entry
-        YAML::Node session;
-        session["difficulty"] = static_cast<int>(stats.difficulty);
-        session["puzzle_rating"] = stats.puzzle_rating;
-        session["start_time"] =
-            std::chrono::duration_cast<std::chrono::seconds>(stats.start_time.time_since_epoch()).count();
-        session["end_time"] =
-            std::chrono::duration_cast<std::chrono::seconds>(stats.end_time.time_since_epoch()).count();
-        session["time_played"] = stats.time_played.count();
-        session["completed"] = stats.completed;
-        session["moves_made"] = stats.moves_made;
-        session["hints_used"] = stats.hints_used;
-        session["mistakes"] = stats.mistakes;
-        session["puzzle_seed"] = stats.puzzle_seed;
-
-        sessions.push_back(session);
+        sessions.push_back(sessionToYamlNode(stats));
 
         // Rewrite the whole sessions file atomically (tmp + fsync + rename, #25):
         // an in-place rewrite that crashes mid-write would truncate accumulated
@@ -296,6 +305,21 @@ namespace {
     }
     if (session_node["puzzle_seed"]) {
         stats.puzzle_seed = session_node["puzzle_seed"].as<uint32_t>();
+    }
+    if (session_node["continued_from_save"]) {
+        stats.continued_from_save = session_node["continued_from_save"].as<bool>();
+    }
+    if (session_node["carried_moves"]) {
+        stats.carried_moves = session_node["carried_moves"].as<int>();
+    }
+    if (session_node["carried_hints"]) {
+        stats.carried_hints = session_node["carried_hints"].as<int>();
+    }
+    if (session_node["carried_mistakes"]) {
+        stats.carried_mistakes = session_node["carried_mistakes"].as<int>();
+    }
+    if (session_node["carried_time_played"]) {
+        stats.carried_time_played = std::chrono::milliseconds(session_node["carried_time_played"].as<long long>());
     }
 
     return stats;
@@ -431,8 +455,14 @@ std::expected<void, StatisticsError> exportGameSessionsCsv(const std::vector<Gam
             return std::unexpected(StatisticsError::FileAccessError);
         }
 
-        // Write header row
-        file << "Session_ID,Date,Time,Difficulty,Rating,Completed,Duration_Seconds,Moves,Hints,Mistakes,Puzzle_Seed\n";
+        // Write header row. The Carried_* columns are appended rather than inserted so existing
+        // column positions are stable for anything already parsing this export. Each row reports the
+        // puzzle's running totals at the end of that sitting (story 8.1); the carried columns say how
+        // much of that an earlier sitting already contributed, so summing (Duration_Seconds −
+        // Carried_Duration_Seconds) over the rows reproduces the lifetime total the statistics screen
+        // shows, which summing Duration_Seconds alone does not (story 8.18).
+        file << "Session_ID,Date,Time,Difficulty,Rating,Completed,Duration_Seconds,Moves,Hints,Mistakes,Puzzle_Seed,"
+                "Carried_Duration_Seconds,Carried_Moves,Carried_Hints,Carried_Mistakes\n";
 
         // Difficulty names for CSV output
         constexpr std::array<std::string_view, DIFFICULTY_COUNT> csv_difficulty_names = {"Easy", "Medium", "Hard",
@@ -484,7 +514,15 @@ std::expected<void, StatisticsError> exportGameSessionsCsv(const std::vector<Gam
             file << session.mistakes << ",";
 
             // Puzzle seed
-            file << session.puzzle_seed << "\n";
+            file << session.puzzle_seed << ",";
+
+            // Carried baseline: 0 across the board for a normally-played game and for every
+            // session recorded before these fields existed.
+            double carried_seconds = static_cast<double>(session.carried_time_played.count()) / 1000.0;
+            file << carried_seconds << ",";
+            file << session.carried_moves << ",";
+            file << session.carried_hints << ",";
+            file << session.carried_mistakes << "\n";
         }
 
         file.close();

@@ -174,8 +174,10 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Export game sessions
     REQUIRE_THAT(lines[0], Catch::Matchers::ContainsSubstring("Mistakes"));
     REQUIRE_THAT(lines[0], Catch::Matchers::ContainsSubstring("Puzzle_Seed"));
 
-    // Verify first session row has correct number of columns (including Rating)
-    REQUIRE(countCsvColumns(lines[1]) == 11);
+    // Verify first session row has correct number of columns (including Rating and the four
+    // story-8.18 Carried_* columns, which are appended so earlier positions stay put)
+    REQUIRE(countCsvColumns(lines[1]) == 15);
+    REQUIRE(countCsvColumns(lines[0]) == 15);
 
     // Verify session IDs are sequential (1, 2, 3, ...)
     REQUIRE_THAT(lines[1], Catch::Matchers::StartsWith("1,"));
@@ -486,4 +488,62 @@ TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - Zero rating handling
     REQUIRE(stats.average_ratings[0] == 0);
     REQUIRE(stats.min_ratings[0] == std::numeric_limits<double>::max());  // Not updated
     REQUIRE(stats.max_ratings[0] == 0);                                   // Not updated
+}
+
+// ============================================================================
+// Story 8.18: the session export must be reconcilable with the aggregate.
+// A record reports the puzzle's RUNNING totals (story 8.1), so summing the
+// rows of a puzzle played across several sittings counts its progress once per
+// sitting — while the lifetime aggregate now counts it once. Exporting the
+// carried baseline alongside each row is what lets a reader tell the two apart.
+// ============================================================================
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE_METHOD(CsvExportTestFixture, "StatisticsManager - session CSV carries the resumed baseline",
+                 "[statistics][csv_export][restore]") {
+    using namespace sudoku::core;
+
+    // Sitting 1: 2 moves over 60 s, then quit.
+    auto first = stats_manager_.startGame(Difficulty::Medium, 4242, 5.5);
+    REQUIRE(first.has_value());
+    REQUIRE(stats_manager_.recordMove(*first, false).has_value());
+    REQUIRE(stats_manager_.recordMove(*first, true).has_value());
+    mock_time_->advanceSystemTime(std::chrono::seconds(60));
+    REQUIRE(stats_manager_.endGame(*first, false).has_value());
+
+    // Sitting 2: resume carrying that progress, add 1 move over 30 s, finish.
+    auto second = stats_manager_.startGame(Difficulty::Medium, 4242, 5.5);
+    REQUIRE(second.has_value());
+    REQUIRE(stats_manager_.seedSessionProgress(*second, 2, 0, 1, std::chrono::seconds(60)).has_value());
+    REQUIRE(stats_manager_.recordMove(*second, false).has_value());
+    mock_time_->advanceSystemTime(std::chrono::seconds(30));
+    REQUIRE(stats_manager_.endGame(*second, true).has_value());
+
+    auto export_path = test_dir_.path() / "resumed_sessions.csv";
+    REQUIRE(stats_manager_.exportGameSessionsCsv(export_path.string()).has_value());
+
+    auto lines = readCsvLines(export_path.string());
+
+    REQUIRE(lines.size() == 3);  // header + 2 sittings
+    REQUIRE_THAT(lines[0], Catch::Matchers::ContainsSubstring("Carried_Duration_Seconds"));
+    REQUIRE_THAT(lines[0], Catch::Matchers::ContainsSubstring("Carried_Moves"));
+    REQUIRE_THAT(lines[0], Catch::Matchers::ContainsSubstring("Carried_Hints"));
+    REQUIRE_THAT(lines[0], Catch::Matchers::ContainsSubstring("Carried_Mistakes"));
+    REQUIRE(countCsvColumns(lines[0]) == countCsvColumns(lines[1]));
+
+    // Rows are newest-first. The resumed sitting reports the puzzle's running totals (90 s / 3
+    // moves / 1 mistake) and declares 60 s / 2 moves / 1 mistake of it as carried, so a reader can
+    // subtract to get this sitting's own 30 s / 1 move / 0 mistakes.
+    REQUIRE_THAT(lines[1], Catch::Matchers::ContainsSubstring(",90,"));
+    REQUIRE_THAT(lines[1], Catch::Matchers::ContainsSubstring(",60,"));
+
+    // The opening sitting carried nothing, so its own play is its whole row.
+    REQUIRE_THAT(lines[2], Catch::Matchers::ContainsSubstring(",0,0,0"));
+
+    // The point of the columns: summing (Duration - Carried_Duration) over the rows reproduces the
+    // aggregate's total, which summing Duration alone does not.
+    auto agg = stats_manager_.getAggregateStats();
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->total_time_played == std::chrono::seconds(90));
+    REQUIRE(agg->total_moves == 3);
 }
