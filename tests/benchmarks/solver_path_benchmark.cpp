@@ -51,8 +51,9 @@ using namespace sudoku::core;
 
 struct PathResult {
     // Every other member has a default initializer; `path` did not, so the `PathResult best`
-    // accumulator below entered the repeat loop with an indeterminate enum and would have been
-    // pushed into `results` unread-but-uninitialized had the loop body never assigned it.
+    // accumulator below entered the repeat loop with an indeterminate enum, and had the loop
+    // body never assigned it, that value would have been pushed into `results` and then read
+    // back as an enum by the scalar-baseline lookup.
     // GCC 16 reports this as -Wmaybe-uninitialized; --repeats is validated > 0 so it is not
     // reachable today, but the initializer is the honest fix. Story 8-17.
     SolverPath path{SolverPath::Auto};

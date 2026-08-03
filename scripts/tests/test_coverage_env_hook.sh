@@ -72,6 +72,12 @@ expect_args "quoted multi-word value stays one argument" "1" "${#args[@]}"
 expect_args "quoted multi-word value is unwrapped" \
     "-DCMAKE_CXX_FLAGS=-Wno-error=array-bounds -Wno-error=maybe-uninitialized" "${args[0]}"
 
+# 6. Unparseable value (unbalanced quote) must FAIL rather than silently drop the
+#    flags — a coverage run that quietly ignored them would look like it honored them.
+export SUDOKU_COVERAGE_CMAKE_ARGS='-DCMAKE_CXX_FLAGS="-Wno-error=array-bounds'
+get_extra_cmake_args > /dev/null 2>&1
+expect_args "unbalanced quote is reported, not swallowed" "1" "$?"
+
 unset SUDOKU_COVERAGE_CMAKE_ARGS
 
 if [ "$failures" -eq 0 ]; then

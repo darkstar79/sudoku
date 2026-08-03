@@ -77,8 +77,17 @@ function ensure_debug_build() {
         exit 1
     }
 
+    # Not `mapfile < <(...)`: process substitution discards the exit status, so an
+    # unparseable value would silently configure without the requested flags.
     local extra_cmake_args=()
-    mapfile -t extra_cmake_args < <(get_extra_cmake_args)
+    local parsed_args
+    if ! parsed_args="$(get_extra_cmake_args)"; then
+        echo -e "${RED}Could not parse SUDOKU_COVERAGE_CMAKE_ARGS (unbalanced quote?)${NC}"
+        exit 1
+    fi
+    if [ -n "$parsed_args" ]; then
+        mapfile -t extra_cmake_args <<< "$parsed_args"
+    fi
     if [ "${#extra_cmake_args[@]}" -gt 0 ]; then
         echo -e "${YELLOW}Extra CMake args from SUDOKU_COVERAGE_CMAKE_ARGS: ${extra_cmake_args[*]}${NC}"
     fi

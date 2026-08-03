@@ -552,16 +552,25 @@ Every potentially-throwing call gets implicit exception-cleanup branches. Unit t
 execute them by construction, so they are pure denominator — and **how many of them the compiler
 emits is a compiler property**. Measured on the same commit, same machine, same tests:
 
-| gcovr invocation | branches | denominator |
+| toolchain | as the config used to be | with `exclude-throw-branches` |
 |---|---|---|
-| GCC 16.1.1, as the config used to be | **53.7%** ❌ | 29,626 |
-| GCC 16.1.1, `exclude-throw-branches` | **65.9%** ✅ | 24,101 |
+| local GCC 16.1.1 | **53.7%** of 29,626 ❌ | **65.9%** of 24,101 ✅ |
+| CI GCC 13.3.0 | **58.1%** of 25,215 ✅ | **73.8%** of 19,709 ✅ |
 
-The 55% floor had been calibrated against a denominator of roughly 15,700, so a *newer compiler
-alone* pushed unmodified `main` under its own gate. The fix was to correct the measurement rather
-than the threshold: `.gcovr.cfg` now sets `exclude-throw-branches = yes`, which counts only
-branches the tests can actually reach and makes the figure far less sensitive to compiler
-version. The floor stayed where evidence put it, not where the number needed it to be.
+The 55% floor had been calibrated against a denominator of roughly 15,700 — a figure neither
+toolchain has been near for a long time — so a *newer compiler alone* pushed unmodified `main`
+under its own gate while CI stayed green on the same source. The fix was to correct the
+measurement rather than the threshold: `.gcovr.cfg` now sets `exclude-throw-branches = yes`,
+counting only branches the tests can actually reach. The floor stayed at 55.
+
+**Be precise about what that fixed.** It did *not* make the two toolchains agree — the gap
+between them widened, from 4.4 points to 7.9. What it did is lift both well clear of the floor,
+so the gate no longer sits inside the range where compilers disagree. The practical rule that
+follows:
+
+> A branch-coverage percentage is only comparable to another measurement **from the same
+> compiler**. Comparing your local number to a CI number, or to a number in a document, tells
+> you nothing.
 
 #### 3. Deciding whether a coverage failure is a real regression (A/B against the baseline)
 
