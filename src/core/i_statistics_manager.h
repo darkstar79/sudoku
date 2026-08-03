@@ -31,6 +31,14 @@
 namespace sudoku::core {
 
 /// Statistics for a single game session
+///
+/// A session covers one *play segment*. Quitting and resuming the same puzzle produces several
+/// records, and each one carries the progress that preceded it (see seedSessionProgress) so the
+/// per-game view — play time, hint budget, personal bests — stays truthful on its own. The
+/// carried_* fields below record how much of that total was already banked by an earlier segment,
+/// which is what lets the lifetime aggregate count each unit of play exactly once. They are 0 for
+/// a normally-started game and for every session recorded before they existed, so a record with no
+/// carried progress is wholly its own segment's play.
 struct GameStats {
     Difficulty difficulty{Difficulty::Medium};
     double puzzle_rating{0.0};  // Sudoku Explainer rating (SE 1.0-12.0 scale)
@@ -42,6 +50,19 @@ struct GameStats {
     int hints_used{0};
     int mistakes{0};
     uint32_t puzzle_seed{0};
+
+    /// True when this session resumed a saved game rather than starting a new one. The puzzle was
+    /// already counted as attempted by the segment that began it, so a continuation must not
+    /// increment games_played / total_games (nor contribute a second copy of the same puzzle's
+    /// rating to average_ratings, which divides by that count).
+    bool continued_from_save{false};
+
+    /// Progress inherited from earlier segments of the same puzzle. Subtracted from this record's
+    /// totals when folding it into the lifetime aggregate.
+    int carried_moves{0};
+    int carried_hints{0};
+    int carried_mistakes{0};
+    std::chrono::milliseconds carried_time_played{0};
 };
 
 /// Aggregate statistics across multiple games
@@ -131,6 +152,9 @@ public:
     /// and are not otherwise validated, so a hostile file must not be able to drive a hint budget
     /// negative. @p prior_play_time is stored as the session's starting play time; endGame() adds
     /// the active span on top of it.
+    ///
+    /// Also marks the session as a continuation and records the clamped values as GameStats
+    /// carried progress, so the lifetime aggregate can bank this segment's own play only.
     ///
     /// @param game_id Active game session ID
     /// @param moves_made Moves already made before the save

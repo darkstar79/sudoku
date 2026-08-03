@@ -710,3 +710,253 @@ TEST_CASE("StatisticsManager - shutdown of a non-seeded session reports the acti
     REQUIRE(sessions->size() == 1);
     REQUIRE(sessions->front().time_played == std::chrono::seconds(30));  // unchanged for normal games
 }
+
+// ============================================================================
+// Story 8.18: session-per-segment accounting. Story 8.1 made a resumed session
+// carry the progress accumulated before the save, which is right for the session
+// record but was then folded into the lifetime aggregate in full — so every
+// quit→resume cycle re-banked the whole history to date. These tests assert on
+// getAggregateStats(), the consumer 8.1 never looked at.
+// ============================================================================
+
+namespace {
+
+constexpr uint32_t kResumedSeed = 4242;
+constexpr double kResumedRating = 5.5;
+
+// The progress a save file carries for the "restore, play nothing, quit" cycles.
+constexpr int kSavedMoves = 20;
+constexpr int kSavedHints = 2;
+constexpr int kSavedMistakes = 3;
+constexpr auto kSavedElapsed = std::chrono::seconds(90);
+
+/// One resume segment in which the player touches nothing: restore the save, quit again.
+void replayWithoutPlaying(StatisticsManager& mgr) {
+    auto id = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+    REQUIRE(id.has_value());
+    REQUIRE(mgr.seedSessionProgress(*id, kSavedMoves, kSavedHints, kSavedMistakes, kSavedElapsed).has_value());
+    REQUIRE(mgr.endGame(*id, false).has_value());
+}
+
+/// Records @p moves moves — the first @p mistakes of them wrong — and @p hints hints, reporting
+/// whether every call succeeded. The result is collapsed into one value on purpose: a REQUIRE per
+/// iteration expands to a try/catch/do-while each time and blows the cognitive-complexity budget.
+[[nodiscard]] bool recordProgress(StatisticsManager& mgr, uint64_t id, int moves, int mistakes, int hints) {
+    bool ok = true;
+    for (int i = 0; i < moves; ++i) {
+        ok = ok && mgr.recordMove(id, i < mistakes).has_value();
+    }
+    for (int i = 0; i < hints; ++i) {
+        ok = ok && mgr.recordHint(id).has_value();
+    }
+    return ok;
+}
+
+/// Play the opening segment of the resumed puzzle, then quit: kSavedMoves moves,
+/// kSavedHints hints, kSavedMistakes mistakes over kSavedElapsed. Leaves exactly the
+/// progress that replayWithoutPlaying() then carries back in.
+void playOpeningSegment(StatisticsManager& mgr, MockTimeProvider& time) {
+    auto id = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+    REQUIRE(id.has_value());
+    REQUIRE(recordProgress(mgr, *id, kSavedMoves, kSavedMistakes, kSavedHints));
+
+    time.advanceSystemTime(kSavedElapsed);
+    REQUIRE(mgr.endGame(*id, false).has_value());
+}
+
+}  // namespace
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE("StatisticsManager - a resumed game banks each unit of play exactly once",
+          "[statistics_extra][restore][regression][bug-resumed-stats-inflation]") {
+    // Implementer probe from story 8.18: play 60 s / 2 moves, quit, resume, play 30 s / 1 move,
+    // finish. Both session records are individually correct — the second carries the first's totals
+    // per story 8.1 AC8 — but the aggregate used to add both in full and reported 150 s / 5 moves
+    // for 90 s / 3 moves of real play.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+    const int medium = static_cast<int>(Difficulty::Medium);
+
+    auto first = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+    REQUIRE(first.has_value());
+    REQUIRE(mgr.recordMove(*first, false).has_value());
+    REQUIRE(mgr.recordMove(*first, false).has_value());
+    time->advanceSystemTime(std::chrono::seconds(60));
+    REQUIRE(mgr.endGame(*first, false).has_value());
+
+    auto second = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+    REQUIRE(second.has_value());
+    REQUIRE(mgr.seedSessionProgress(*second, 2, 0, 0, std::chrono::seconds(60)).has_value());
+    REQUIRE(mgr.recordMove(*second, false).has_value());
+    time->advanceSystemTime(std::chrono::seconds(30));
+    REQUIRE(mgr.endGame(*second, true).has_value());
+
+    auto agg = mgr.getAggregateStats();
+
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->total_time_played == std::chrono::seconds(90));  // was 150 s
+    REQUIRE(agg->total_moves == 3);                               // was 5
+    // AC6 option (b): two segments of one puzzle are one game attempted.
+    REQUIRE(agg->total_games == 1);
+    REQUIRE(agg->games_played[medium] == 1);
+    REQUIRE(agg->total_completed == 1);
+    REQUIRE(agg->games_completed[medium] == 1);
+    // AC3: the completed record keeps its full seeded time, so the personal best is the whole
+    // puzzle (90 s) and not just the closing segment (30 s).
+    REQUIRE(agg->best_times[medium] == std::chrono::seconds(90));
+    REQUIRE(agg->average_times[medium] == std::chrono::seconds(90));
+    // AC6 knock-on: average_ratings divides by games_played, so a continuation segment must not
+    // contribute a second copy of the same puzzle's rating either.
+    REQUIRE(agg->average_ratings[medium] == kResumedRating);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE("StatisticsManager - restoring a save without playing does not move the aggregate",
+          "[statistics_extra][restore][regression][bug-resumed-stats-inflation]") {
+    // Adversarial-review probe from story 8.18: relaunch into the same save three times and touch
+    // nothing. Each restore used to re-bank the save's whole carried history, so lifetime totals
+    // grew purely from reopening the app.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+    const int medium = static_cast<int>(Difficulty::Medium);
+
+    playOpeningSegment(mgr, *time);
+    auto after_opening = mgr.getAggregateStats();
+    REQUIRE(after_opening.has_value());
+
+    replayWithoutPlaying(mgr);
+    replayWithoutPlaying(mgr);
+    replayWithoutPlaying(mgr);
+
+    auto agg = mgr.getAggregateStats();
+
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->total_time_played == after_opening->total_time_played);
+    REQUIRE(agg->total_moves == after_opening->total_moves);
+    REQUIRE(agg->total_hints == after_opening->total_hints);
+    REQUIRE(agg->total_mistakes == after_opening->total_mistakes);
+    REQUIRE(agg->total_games == after_opening->total_games);
+    REQUIRE(agg->games_played[medium] == after_opening->games_played[medium]);
+    // Absolute values, so a fix that zeroed both sides would not pass vacuously.
+    REQUIRE(agg->total_time_played == kSavedElapsed);
+    REQUIRE(agg->total_moves == kSavedMoves);
+    REQUIRE(agg->total_hints == kSavedHints);
+    REQUIRE(agg->total_mistakes == kSavedMistakes);
+    REQUIRE(agg->total_games == 1);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE("StatisticsManager - segment accounting survives a rebuild from the session log",
+          "[statistics_extra][restore][regression][bug-resumed-stats-inflation]") {
+    // AC4: recalculateAggregateStats() rebuilds the aggregate from the persisted records, so an
+    // in-memory-only fix is undone by the next rebuild. The records themselves must carry enough
+    // information to tell carried-in progress from progress made in that segment.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const int medium = static_cast<int>(Difficulty::Medium);
+
+    {
+        StatisticsManager mgr(tmp.path().string(), time);
+        mgr.setCollectDetailedStats(true);
+        playOpeningSegment(mgr, *time);
+        replayWithoutPlaying(mgr);
+        replayWithoutPlaying(mgr);
+        mgr.flushSessions();
+    }
+
+    // Drop the aggregate file so the reopened manager has to rebuild from game_sessions.yaml.
+    fs::path agg_file = tmp.path() / "aggregate_stats.yaml";
+    REQUIRE(fs::exists(agg_file));
+    fs::remove(agg_file);
+
+    StatisticsManager reopened(tmp.path().string(), time);
+    auto agg = reopened.getAggregateStats();
+
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->total_time_played == kSavedElapsed);
+    REQUIRE(agg->total_moves == kSavedMoves);
+    REQUIRE(agg->total_hints == kSavedHints);
+    REQUIRE(agg->total_mistakes == kSavedMistakes);
+    REQUIRE(agg->total_games == 1);
+    REQUIRE(agg->games_played[medium] == 1);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE("StatisticsManager - shutdown banks a resumed segment the same way endGame does",
+          "[statistics_extra][restore][regression][bug-resumed-stats-inflation]") {
+    // AC7: quitting the app with a resumed game in progress exits through ~StatisticsManager, not
+    // endGame(). The two paths must contribute identically, or the same play produces different
+    // lifetime totals depending on how the player left.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const int medium = static_cast<int>(Difficulty::Medium);
+
+    {
+        StatisticsManager mgr(tmp.path().string(), time);
+        mgr.setCollectDetailedStats(true);
+
+        auto first = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+        REQUIRE(first.has_value());
+        REQUIRE(mgr.recordMove(*first, false).has_value());
+        REQUIRE(mgr.recordMove(*first, false).has_value());
+        time->advanceSystemTime(std::chrono::seconds(60));
+        REQUIRE(mgr.endGame(*first, false).has_value());
+
+        auto second = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+        REQUIRE(second.has_value());
+        REQUIRE(mgr.seedSessionProgress(*second, 2, 0, 0, std::chrono::seconds(60)).has_value());
+        REQUIRE(mgr.recordMove(*second, false).has_value());
+        time->advanceSystemTime(std::chrono::seconds(30));
+    }  // destructor abandons the resumed session and folds it into the aggregate
+
+    StatisticsManager reopened(tmp.path().string(), time);
+    auto agg = reopened.getAggregateStats();
+
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->total_time_played == std::chrono::seconds(90));
+    REQUIRE(agg->total_moves == 3);
+    REQUIRE(agg->total_games == 1);
+    REQUIRE(agg->games_played[medium] == 1);
+    REQUIRE(agg->total_completed == 0);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE("StatisticsManager - a legacy session log rebuilds with its recorded totals intact",
+          "[statistics_extra][restore]") {
+    // AC5 end-to-end: a game_sessions.yaml written before story 8.18 has no carried_* keys at all.
+    // Rebuilding from it must produce the same aggregate it produces today — the new accounting
+    // must not retroactively reinterpret history it has no information about.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    const int medium = static_cast<int>(Difficulty::Medium);
+
+    fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+    std::ofstream(sessions_file) << R"(- difficulty: 1
+  puzzle_rating: 5.5
+  start_time: 1700000000
+  end_time: 1700000090
+  time_played: 90000
+  completed: true
+  moves_made: 20
+  hints_used: 2
+  mistakes: 3
+  puzzle_seed: 4242
+)";
+    REQUIRE(fs::exists(sessions_file));
+    REQUIRE(!fs::exists(tmp.path() / "aggregate_stats.yaml"));
+
+    StatisticsManager mgr(tmp.path().string(), time);
+    auto agg = mgr.getAggregateStats();
+
+    REQUIRE(agg.has_value());
+    REQUIRE(!mgr.hasUnreadableSessionHistory());  // no quarantine on the unknown-field-free file
+    REQUIRE(agg->total_time_played == std::chrono::milliseconds(90000));
+    REQUIRE(agg->total_moves == 20);
+    REQUIRE(agg->total_hints == 2);
+    REQUIRE(agg->total_mistakes == 3);
+    REQUIRE(agg->total_games == 1);
+    REQUIRE(agg->games_played[medium] == 1);
+    REQUIRE(agg->total_completed == 1);
+}

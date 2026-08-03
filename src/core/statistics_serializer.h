@@ -41,6 +41,14 @@ serializeStatsToYaml(const AggregateStats& stats, const std::filesystem::path& f
 [[nodiscard]] std::expected<AggregateStats, StatisticsError>
 deserializeStatsFromYaml(const std::filesystem::path& file_path);
 
+/// Builds the YAML node for one session record.
+///
+/// The single writer for the session on-disk shape: the append-one-record path here and
+/// StatisticsManager's whole-file rewrite (plain and encrypted) both go through it, so a new field
+/// cannot reach one at-rest format and silently miss the other. Every key it emits is optional on
+/// read — see deserializeGameStatsFromNode — which is what keeps added fields backward compatible.
+[[nodiscard]] YAML::Node sessionToYamlNode(const GameStats& stats);
+
 /// Serializes a single game session to a YAML file (appends to existing sessions)
 [[nodiscard]] std::expected<void, StatisticsError>
 serializeGameStatsToYaml(const GameStats& stats, const std::filesystem::path& file_path, bool append = true);

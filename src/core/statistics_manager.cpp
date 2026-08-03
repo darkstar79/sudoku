@@ -48,6 +48,25 @@ namespace {
     return std::clamp(value, 0, MAX_PROGRESS_COUNTER);
 }
 
+/// One segment's own contribution to a lifetime counter: the running total the record reports minus
+/// whatever an earlier segment of the same puzzle already banked (story 8.18).
+///
+/// Both operands are floored at zero. @p carried comes from the same clamped values as @p total for
+/// any session this process created, but a session record is read back from a file the user can
+/// edit, and a *negative* carried value would otherwise widen the delta and inflate the lifetime
+/// total — the very bug this function exists to close. A record with no carried progress (every
+/// normally-played game, and every session written before these fields existed) yields @p total
+/// unchanged.
+[[nodiscard]] constexpr int segmentDelta(int total, int carried) {
+    return std::max(0, total - std::max(0, carried));
+}
+
+[[nodiscard]] constexpr std::chrono::milliseconds segmentDelta(std::chrono::milliseconds total,
+                                                               std::chrono::milliseconds carried) {
+    constexpr std::chrono::milliseconds kNone{0};
+    return std::max(kNone, total - std::max(kNone, carried));
+}
+
 }  // namespace
 
 StatisticsManager::StatisticsManager(std::filesystem::path stats_directory,
@@ -171,6 +190,15 @@ std::expected<void, StatisticsError> StatisticsManager::seedSessionProgress(uint
     stats.hints_used = clampSeededCounter(hints_used);
     stats.mistakes = clampSeededCounter(mistakes);
     stats.time_played = std::max(prior_play_time, std::chrono::milliseconds{0});
+
+    // Remember what was carried in, from the clamped values rather than the arguments, so the
+    // aggregate subtracts exactly what this record reports (story 8.18). A hostile save that
+    // clamps down must not leave carried > total and turn a delta negative.
+    stats.continued_from_save = true;
+    stats.carried_moves = stats.moves_made;
+    stats.carried_hints = stats.hints_used;
+    stats.carried_mistakes = stats.mistakes;
+    stats.carried_time_played = stats.time_played;
 
     spdlog::debug("Seeded session {} from a restored save: moves={}, hints={}, mistakes={}, prior_time={}ms", game_id,
                   stats.moves_made, stats.hints_used, stats.mistakes, stats.time_played.count());
@@ -607,8 +635,14 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
     // Enum is 0-based and covers all DIFFICULTY_COUNT levels (Easy=0 … Master=4); matches array indexing
     int diff_index = static_cast<int>(completed_game.difficulty);
 
+    // A resumed segment continues a puzzle an earlier segment already counted as attempted
+    // (story 8.18 / AC6 option b). Skipping the attempt counters here is what collapses N segments
+    // into one game played; the rating block below is skipped with them because average_ratings
+    // divides by games_played, so contributing the rating without the count would skew it.
+    const bool counts_as_new_attempt = !completed_game.continued_from_save;
+
     // Update rating statistics BEFORE incrementing games_played (track for all games, not just completed)
-    if (completed_game.puzzle_rating > 0.0) {
+    if (counts_as_new_attempt && completed_game.puzzle_rating > 0.0) {
         // Get count BEFORE incrementing
         auto games_count_before = cached_stats_.games_played[diff_index];
 
@@ -628,7 +662,9 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
     }
 
     // Update per-difficulty stats
-    cached_stats_.games_played[diff_index]++;
+    if (counts_as_new_attempt) {
+        cached_stats_.games_played[diff_index]++;
+    }
     if (completed_game.completed) {
         cached_stats_.games_completed[diff_index]++;
 
@@ -645,7 +681,9 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
     }
 
     // Update overall stats
-    cached_stats_.total_games++;
+    if (counts_as_new_attempt) {
+        cached_stats_.total_games++;
+    }
     if (completed_game.completed) {
         cached_stats_.total_completed++;
         cached_stats_.current_win_streak++;
@@ -654,10 +692,15 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
         cached_stats_.current_win_streak = 0;
     }
 
-    cached_stats_.total_moves += completed_game.moves_made;
-    cached_stats_.total_hints += completed_game.hints_used;
-    cached_stats_.total_mistakes += completed_game.mistakes;
-    cached_stats_.total_time_played += completed_game.time_played;
+    // Bank this segment's own play only. The record deliberately reports the puzzle's running
+    // totals (story 8.1 AC8, which is what keeps best_times truthful for a resumed win), so adding
+    // it whole re-banks everything the previous segment already banked — an inflation that compounds
+    // with every quit→resume cycle and, because it is written into the session log, survives a
+    // rebuild. best_times / average_times above deliberately keep using the full time_played.
+    cached_stats_.total_moves += segmentDelta(completed_game.moves_made, completed_game.carried_moves);
+    cached_stats_.total_hints += segmentDelta(completed_game.hints_used, completed_game.carried_hints);
+    cached_stats_.total_mistakes += segmentDelta(completed_game.mistakes, completed_game.carried_mistakes);
+    cached_stats_.total_time_played += segmentDelta(completed_game.time_played, completed_game.carried_time_played);
 
     stats_cache_valid_ = true;
 }
@@ -784,20 +827,15 @@ std::vector<uint8_t> StatisticsManager::serializeSessionsToYaml(const std::vecto
     // Build one YAML sequence node from the full session set. The plain path writes these bytes
     // directly; the encrypted path encrypts them — same fields either way, so the two at-rest
     // formats round-trip through deserializeGameStatsFromNode identically.
+    //
+    // The node shape comes from statistics_serializer::sessionToYamlNode, shared with the
+    // append-one-record path. It used to be hand-duplicated here, which is a silent-divergence
+    // trap: story 8.18's added fields reached the append path and were dropped by this one, so a
+    // rebuild from the flushed log lost them and the field read as absent (i.e. as "no carried
+    // progress") for every session the flush path had written.
     YAML::Node sessions_node;
     for (const auto& s : sessions) {
-        YAML::Node node;
-        node["difficulty"] = static_cast<int>(s.difficulty);
-        node["puzzle_rating"] = s.puzzle_rating;
-        node["start_time"] = std::chrono::system_clock::to_time_t(s.start_time);
-        node["end_time"] = std::chrono::system_clock::to_time_t(s.end_time);
-        node["time_played"] = s.time_played.count();
-        node["completed"] = s.completed;
-        node["moves_made"] = s.moves_made;
-        node["hints_used"] = s.hints_used;
-        node["mistakes"] = s.mistakes;
-        node["puzzle_seed"] = s.puzzle_seed;
-        sessions_node.push_back(node);
+        sessions_node.push_back(statistics_serializer::sessionToYamlNode(s));
     }
     std::stringstream ss;
     ss << sessions_node;
