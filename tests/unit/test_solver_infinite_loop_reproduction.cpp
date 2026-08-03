@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/game_validator.h"
+#include "../../src/core/i_time_provider.h"
 #include "../../src/core/puzzle_generator.h"
 #include "../../src/core/puzzle_rater.h"
 #include "../../src/core/sudoku_solver.h"
@@ -64,7 +65,15 @@ TEST_CASE("PuzzleRater - Easy puzzle completes without timeout", "[puzzle_rater]
     // Setup
     auto validator = std::make_shared<GameValidator>();
     auto generator = std::make_shared<PuzzleGenerator>();
-    auto solver = std::make_shared<SudokuSolver>(validator);
+    // Frozen clock (story 8-23): the rater enforces a wall-clock solve budget, so on the real
+    // time source a loaded host can turn this into RatingError::Timeout and fail the
+    // has_value() assertion below for reasons unrelated to the code under test. This case is
+    // neither [.]-hidden nor [pathological], so it DOES run in the per-PR ASan job (filter
+    // "~[pathological]") — the same job story 8-23 exists to stabilise. The elapsed runaway
+    // guard is unaffected: it is measured by this test's own timer, not by the solver's.
+    // The pathological cases further down deliberately keep the real clock — there the budget
+    // is the thing under test and they already tolerate a Timeout verdict.
+    auto solver = std::make_shared<SudokuSolver>(validator, std::make_shared<MockTimeProvider>());
     PuzzleRater rater(solver);
 
     MemoryMonitor memory;
@@ -102,7 +111,15 @@ TEST_CASE("PuzzleRater - Easy puzzle completes without timeout", "[puzzle_rater]
 TEST_CASE("PuzzleRater - Medium/Hard puzzles complete safely", "[puzzle_rater][safety]") {
     auto validator = std::make_shared<GameValidator>();
     auto generator = std::make_shared<PuzzleGenerator>();
-    auto solver = std::make_shared<SudokuSolver>(validator);
+    // Frozen clock (story 8-23): the rater enforces a wall-clock solve budget, so on the real
+    // time source a loaded host can turn this into RatingError::Timeout and fail the
+    // has_value() assertion below for reasons unrelated to the code under test. This case is
+    // neither [.]-hidden nor [pathological], so it DOES run in the per-PR ASan job (filter
+    // "~[pathological]") — the same job story 8-23 exists to stabilise. The elapsed runaway
+    // guard is unaffected: it is measured by this test's own timer, not by the solver's.
+    // The pathological cases further down deliberately keep the real clock — there the budget
+    // is the thing under test and they already tolerate a Timeout verdict.
+    auto solver = std::make_shared<SudokuSolver>(validator, std::make_shared<MockTimeProvider>());
     PuzzleRater rater(solver);
 
     SECTION("Medium puzzle") {
