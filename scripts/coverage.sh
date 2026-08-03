@@ -1,6 +1,33 @@
 #!/bin/bash
 # Coverage analysis script for sudoku project
 # Usage: ./scripts/coverage.sh [clean|summary|html|xml|json|all|help] [--report-only]
+#
+# Environment:
+#   SUDOKU_COVERAGE_CMAKE_ARGS  Optional extra arguments appended to the CMake
+#                               configure step of the instrumented build. Unset
+#                               (the normal case, including CI) adds no arguments.
+#                               Quoted multi-word values survive as one argument:
+#
+#                                 SUDOKU_COVERAGE_CMAKE_ARGS='-DCMAKE_CXX_FLAGS="-Wfoo -Wbar"' \
+#                                     ./scripts/coverage.sh summary
+#
+#                               It exists so a local toolchain that needs extra
+#                               configure flags can be accommodated without
+#                               hand-priming the CMake cache first (story 8-17).
+#                               See docs/CODE_QUALITY.md, "Toolchain divergence".
+#
+#                               TWO SHARP EDGES, both by design of the tools involved:
+#                               (1) Values are split with `xargs`, which honours quotes but
+#                                   EATS BACKSLASHES — a Windows-style path comes through
+#                                   mangled, with no error. Avoid backslashes; an apostrophe
+#                                   aborts the run rather than corrupting it.
+#                               (2) CMake CACHES what you pass. Unsetting the variable later
+#                                   does NOT undo it: a build directory configured once with
+#                                   -DCMAKE_CXX_FLAGS keeps those flags on every subsequent
+#                                   run, silently, because the banner below only prints when
+#                                   the variable is set. To really undo it, delete the build
+#                                   directory. Treat any -Wno-error passed this way as
+#                                   temporary and remove the build dir when done.
 
 set -e
 
@@ -43,6 +70,16 @@ function print_usage() {
     echo "  $0 all              # Generate all formats"
 }
 
+# Split SUDOKU_COVERAGE_CMAKE_ARGS into one CMake argument per line, honoring
+# quotes so a multi-flag -DCMAKE_CXX_FLAGS="..." stays a single argument.
+# Prints nothing when the variable is unset or empty.
+function get_extra_cmake_args() {
+    if [ -z "${SUDOKU_COVERAGE_CMAKE_ARGS:-}" ]; then
+        return 0
+    fi
+    xargs -n1 printf '%s\n' <<< "${SUDOKU_COVERAGE_CMAKE_ARGS}"
+}
+
 function ensure_debug_build() {
     echo -e "${BLUE}Ensuring debug build for coverage analysis...${NC}"
 
@@ -53,7 +90,26 @@ function ensure_debug_build() {
         exit 1
     }
 
-    cmake --preset relwithdebinfo -DSUDOKU_ENABLE_UI_TESTS=ON || {
+    # Not `mapfile < <(...)`: process substitution discards the exit status, so an
+    # unparseable value would silently configure without the requested flags.
+    local extra_cmake_args=()
+    local parsed_args
+    if ! parsed_args="$(get_extra_cmake_args)"; then
+        echo -e "${RED}Could not parse SUDOKU_COVERAGE_CMAKE_ARGS (unbalanced quote?)${NC}"
+        exit 1
+    fi
+    # Plain read loop rather than `mapfile`, which needs bash >= 4: this script is
+    # documented to run on macOS too, where /bin/bash is still 3.2.
+    if [ -n "$parsed_args" ]; then
+        while IFS= read -r line; do
+            extra_cmake_args+=("$line")
+        done <<< "$parsed_args"
+    fi
+    if [ "${#extra_cmake_args[@]}" -gt 0 ]; then
+        echo -e "${YELLOW}Extra CMake args from SUDOKU_COVERAGE_CMAKE_ARGS: ${extra_cmake_args[*]}${NC}"
+    fi
+
+    cmake --preset relwithdebinfo -DSUDOKU_ENABLE_UI_TESTS=ON "${extra_cmake_args[@]}" || {
         echo -e "${RED}Failed to configure RelWithDebInfo build${NC}"
         exit 1
     }

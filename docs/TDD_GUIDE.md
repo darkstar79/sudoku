@@ -54,9 +54,16 @@ TEST_CASE("GameValidator validates positions", "[game_validator]") {
 
 ### Target Coverage Metrics
 
-- **Line Coverage:** ≥80% (currently 91.2%)
-- **Function Coverage:** ≥80% (currently 90.5%)
-- **Branch Coverage:** ≥60% (currently 59.8%)
+The enforced floors live in `.gcovr.cfg` — that file is the single source of truth for both CI
+and `scripts/coverage.sh`. As of 2026-08-03, measured on `main` under local GCC 16.1.1:
+
+- **Line Coverage:** ≥80% (currently 86.9%)
+- **Function Coverage:** ≥70% (currently 90.4%)
+- **Branch Coverage:** ≥60% (currently 65.9%)
+
+Branch percentages are compiler-specific and are not comparable across toolchains — see
+[CODE_QUALITY.md](CODE_QUALITY.md#toolchain-divergence-local-gcc-16-vs-ci-gcc-13) before reading
+anything into one.
 
 ### What to Test
 

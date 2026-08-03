@@ -233,6 +233,22 @@ jobs:
           ccache --set-config=max_size=1Gi
           ccache --zero-stats
 
+      # The branch denominator depends on the compiler, not only on this codebase: on the
+      # same commit, local GCC 16.1.1 reports ~4,400 more branches than this job's GCC 13.3
+      # (story 8-17 — and NOT because of exception edges, both emit ~5,500 of those).
+      # Printing the toolchain next to the numbers is what makes a local-vs-CI coverage
+      # comparison decidable instead of guesswork.
+      - name: Record toolchain versions
+        run: |
+          g++ --version | head -1
+          gcov --version | head -1
+          gcovr --version | head -1
+
+      - name: Test coverage.sh argument forwarding
+        # Guards the parsing contract of the SUDOKU_COVERAGE_CMAKE_ARGS hook, including
+        # that an unset variable (the CI case) yields zero extra CMake arguments.
+        run: ./scripts/tests/test_coverage_env_hook.sh
+
       - name: Build, test, and generate coverage report
         run: |
           ./scripts/coverage.sh xml
