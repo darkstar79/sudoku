@@ -43,40 +43,60 @@ function expect_args() {
 
 echo "Testing SUDOKU_COVERAGE_CMAKE_ARGS forwarding..."
 
+# Collect into `args` the way coverage.sh does. NOTE: the variable must be EXPORTED
+# by the caller, never set as a `VAR=x collect_args` prefix — a prefix assignment is
+# not visible inside a process substitution (bash forks it before applying the
+# temporary environment), which silently turns every such case into a re-run of the
+# unset case. That mistake made the empty-string test below pass vacuously.
+# Plain read loop, not `mapfile`: macOS /bin/bash is 3.2.
+function collect_args() {
+    args=()
+    local line
+    while IFS= read -r line; do
+        args+=("$line")
+    done < <(get_extra_cmake_args)
+}
+
 # 1. Unset -> no arguments at all.
 unset SUDOKU_COVERAGE_CMAKE_ARGS
-mapfile -t args < <(get_extra_cmake_args)
+collect_args
 expect_args "unset yields no extra arguments" "0" "${#args[@]}"
 
 # 2. Empty string -> no arguments (same as unset).
-SUDOKU_COVERAGE_CMAKE_ARGS="" mapfile -t args < <(get_extra_cmake_args)
+export SUDOKU_COVERAGE_CMAKE_ARGS=""
+collect_args
 expect_args "empty string yields no extra arguments" "0" "${#args[@]}"
 
 # 3. Single argument.
 export SUDOKU_COVERAGE_CMAKE_ARGS="-DSUDOKU_ENABLE_BENCHMARKS=OFF"
-mapfile -t args < <(get_extra_cmake_args)
+collect_args
 expect_args "single argument count" "1" "${#args[@]}"
 expect_args "single argument value" "-DSUDOKU_ENABLE_BENCHMARKS=OFF" "${args[0]}"
 
 # 4. Two whitespace-separated arguments.
 export SUDOKU_COVERAGE_CMAKE_ARGS="-DFOO=1 -DBAR=2"
-mapfile -t args < <(get_extra_cmake_args)
+collect_args
 expect_args "two arguments count" "2" "${#args[@]}"
 expect_args "second argument value" "-DBAR=2" "${args[1]}"
 
 # 5. A quoted multi-word value stays one argument. This is the case that
 #    matters: -DCMAKE_CXX_FLAGS carrying more than one flag.
 export SUDOKU_COVERAGE_CMAKE_ARGS='-DCMAKE_CXX_FLAGS="-Wno-error=array-bounds -Wno-error=maybe-uninitialized"'
-mapfile -t args < <(get_extra_cmake_args)
+collect_args
 expect_args "quoted multi-word value stays one argument" "1" "${#args[@]}"
 expect_args "quoted multi-word value is unwrapped" \
     "-DCMAKE_CXX_FLAGS=-Wno-error=array-bounds -Wno-error=maybe-uninitialized" "${args[0]}"
 
 # 6. Unparseable value (unbalanced quote) must FAIL rather than silently drop the
 #    flags — a coverage run that quietly ignored them would look like it honored them.
+#    Only "non-zero" is asserted; the exact status is an xargs implementation detail.
 export SUDOKU_COVERAGE_CMAKE_ARGS='-DCMAKE_CXX_FLAGS="-Wno-error=array-bounds'
-get_extra_cmake_args > /dev/null 2>&1
-expect_args "unbalanced quote is reported, not swallowed" "1" "$?"
+if get_extra_cmake_args > /dev/null 2>&1; then
+    unbalanced_result="accepted"
+else
+    unbalanced_result="rejected"
+fi
+expect_args "unbalanced quote is reported, not swallowed" "rejected" "$unbalanced_result"
 
 unset SUDOKU_COVERAGE_CMAKE_ARGS
 

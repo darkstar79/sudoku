@@ -5,7 +5,7 @@
 # Environment:
 #   SUDOKU_COVERAGE_CMAKE_ARGS  Optional extra arguments appended to the CMake
 #                               configure step of the instrumented build. Unset
-#                               (the normal case, including CI) changes nothing.
+#                               (the normal case, including CI) adds no arguments.
 #                               Quoted multi-word values survive as one argument:
 #
 #                                 SUDOKU_COVERAGE_CMAKE_ARGS='-DCMAKE_CXX_FLAGS="-Wfoo -Wbar"' \
@@ -14,7 +14,20 @@
 #                               It exists so a local toolchain that needs extra
 #                               configure flags can be accommodated without
 #                               hand-priming the CMake cache first (story 8-17).
-#                               See docs/TROUBLESHOOTING.md, "Local GCC 16 vs CI GCC 13".
+#                               See docs/CODE_QUALITY.md, "Toolchain divergence".
+#
+#                               TWO SHARP EDGES, both by design of the tools involved:
+#                               (1) Values are split with `xargs`, which honours quotes but
+#                                   EATS BACKSLASHES — a Windows-style path comes through
+#                                   mangled, with no error. Avoid backslashes; an apostrophe
+#                                   aborts the run rather than corrupting it.
+#                               (2) CMake CACHES what you pass. Unsetting the variable later
+#                                   does NOT undo it: a build directory configured once with
+#                                   -DCMAKE_CXX_FLAGS keeps those flags on every subsequent
+#                                   run, silently, because the banner below only prints when
+#                                   the variable is set. To really undo it, delete the build
+#                                   directory. Treat any -Wno-error passed this way as
+#                                   temporary and remove the build dir when done.
 
 set -e
 
@@ -85,8 +98,12 @@ function ensure_debug_build() {
         echo -e "${RED}Could not parse SUDOKU_COVERAGE_CMAKE_ARGS (unbalanced quote?)${NC}"
         exit 1
     fi
+    # Plain read loop rather than `mapfile`, which needs bash >= 4: this script is
+    # documented to run on macOS too, where /bin/bash is still 3.2.
     if [ -n "$parsed_args" ]; then
-        mapfile -t extra_cmake_args <<< "$parsed_args"
+        while IFS= read -r line; do
+            extra_cmake_args+=("$line")
+        done <<< "$parsed_args"
     fi
     if [ "${#extra_cmake_args[@]}" -gt 0 ]; then
         echo -e "${YELLOW}Extra CMake args from SUDOKU_COVERAGE_CMAKE_ARGS: ${extra_cmake_args[*]}${NC}"

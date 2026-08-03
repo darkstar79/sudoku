@@ -458,7 +458,7 @@ GCC 16.1.1, with `exclude-throw-branches` in effect:
 
 - **Line Coverage:** 86.9% (floor: 80%)
 - **Function Coverage:** 90.4% (floor: 70%)
-- **Branch Coverage:** 65.9% (floor: 55%)
+- **Branch Coverage:** 65.9% (floor: 60%)
 
 Branch coverage has a hard ceiling well below 100%: a large share of the remaining uncovered
 branches are compiler-generated edges that unit tests cannot reach. See
@@ -509,7 +509,7 @@ search-path = build/RelWithDebInfo
 # Minimum thresholds (the gate: gcovr exits non-zero below any of these)
 fail-under-line = 80
 fail-under-function = 70
-fail-under-branch = 55
+fail-under-branch = 60
 
 # Exception-cleanup edges are not counted in the branch denominator
 exclude-throw-branches = yes
@@ -548,9 +548,15 @@ blanket `-Wno-error`.
 
 #### 2. The branch-coverage denominator
 
-Every potentially-throwing call gets implicit exception-cleanup branches. Unit tests cannot
-execute them by construction, so they are pure denominator — and **how many of them the compiler
-emits is a compiler property**. Measured on the same commit, same machine, same tests:
+Two separate things inflate a branch denominator, and it is worth keeping them apart.
+
+**(a) Exception-cleanup edges.** Every potentially-throwing call gets implicit cleanup
+branches; reaching them needs OOM or a throw from inside libstdc++, so they are very nearly
+pure denominator (of the 5,525 excluded locally, 18 were covered — 0.3%).
+
+**(b) The compiler itself.** On the same commit, same tests, GCC 16.1.1 reports ~4,400 *more*
+branches than GCC 13.3.0. These are ordinary branches, not exception edges — both compilers
+emit almost identical numbers of those (5,525 vs 5,506). Measured:
 
 | toolchain | as the config used to be | with `exclude-throw-branches` |
 |---|---|---|
@@ -559,14 +565,19 @@ emits is a compiler property**. Measured on the same commit, same machine, same 
 
 The 55% floor had been calibrated against a denominator of roughly 15,700 — a figure neither
 toolchain has been near for a long time — so a *newer compiler alone* pushed unmodified `main`
-under its own gate while CI stayed green on the same source. The fix was to correct the
-measurement rather than the threshold: `.gcovr.cfg` now sets `exclude-throw-branches = yes`,
-counting only branches the tests can actually reach. The floor stayed at 55.
+under its own gate while CI stayed green on the same source.
 
-**Be precise about what that fixed.** It did *not* make the two toolchains agree — the gap
-between them widened, from 4.4 points to 7.9. What it did is lift both well clear of the floor,
-so the gate no longer sits inside the range where compilers disagree. The practical rule that
-follows:
+`.gcovr.cfg` now sets `exclude-throw-branches = yes`, which addresses **(a)**: it stops counting
+edges the tests cannot reach. **It does not address (b)**, and it is important not to claim
+otherwise — the gap between the toolchains actually *widened*, 4.4 points to 7.9, which is what
+a roughly uniform +12-point shift on two different bases looks like.
+
+That shift is also why **the floor moved up, 55 → 60**. Lifting both measurements ~12 points
+while leaving the floor alone would have cleared the gate exactly the way lowering the floor 12
+points would: CI's headroom would have gone from 3.1 points to 18.8, meaning ~3,700 branches
+could rot before the gate noticed, where ~600 used to be enough. 60 is the lower of the two
+measurements (65.9%) minus ~6 points of headroom — the same margin style the old 55 had, now on
+an honest basis. The practical rule that follows:
 
 > A branch-coverage percentage is only comparable to another measurement **from the same
 > compiler**. Comparing your local number to a CI number, or to a number in a document, tells
@@ -577,15 +588,17 @@ follows:
 A branch coverage number is only meaningful **relative to the same measurement on the commit you
 branched from**. Never compare it to a number written in a document — including this one.
 
-Every BMAD story file records the commit it was cut from as `baseline_commit` in its YAML
-frontmatter. Use it:
+The baseline is the commit your branch was cut from — `git merge-base HEAD origin/main`.
+(Maintainers working from the private planning artifacts will find the same value recorded as
+`baseline_commit` in the story file's frontmatter.)
 
 ```bash
 # 1. Measure your branch
 ./scripts/coverage.sh summary        # note the % AND the denominator
 
 # 2. Measure the baseline the same way, in a throwaway worktree
-git worktree add --detach ../sudoku-cpp-baseline <baseline_commit>
+BASE=$(git merge-base HEAD origin/main)
+git worktree add --detach ../sudoku-cpp-baseline "$BASE"
 cd ../sudoku-cpp-baseline
 ./scripts/coverage.sh summary        # note the % AND the denominator
 git worktree remove --force ../sudoku-cpp-baseline
@@ -613,9 +626,20 @@ SUDOKU_COVERAGE_CMAKE_ARGS='-DCMAKE_CXX_FLAGS="-Wno-error=some-new-warning"' \
     ./scripts/coverage.sh summary
 ```
 
-Unset (the CI case, and the normal local case) it changes nothing. Quoted multi-word values stay
-a single CMake argument; `scripts/tests/test_coverage_env_hook.sh` pins that contract and runs in
-CI.
+Unset — the CI case and the normal local case — it adds no arguments.
+`scripts/tests/test_coverage_env_hook.sh` pins that contract and runs in CI.
+
+Two edges to know about before reaching for it:
+
+- **Quoting.** A quoted multi-word value stays one CMake argument, which is the point. But the
+  splitting uses `xargs`, which *eats backslashes*: a Windows-style path arrives mangled with no
+  error. An apostrophe aborts the run instead (`unbalanced quote?`), which is at least loud.
+- **CMake caches what you pass, and unsetting the variable does not undo it.** A build directory
+  configured once with `-DCMAKE_CXX_FLAGS=...` keeps those flags on every later run, and the
+  "Extra CMake args" banner will *not* print, because it only fires when the variable is set. If
+  you use this to disable a `-Werror` diagnostic, that suppression silently outlives the command
+  that introduced it. Delete the build directory when you are done — that is the only reliable
+  undo. This is precisely the trap that made story 8-17 necessary in the first place.
 
 ### Coverage Exclusions
 
