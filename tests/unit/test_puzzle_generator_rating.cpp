@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "../../src/core/game_validator.h"
+#include "../../src/core/i_time_provider.h"
 #include "../../src/core/puzzle_generator.h"
 #include "../../src/core/puzzle_rater.h"
 #include "../../src/core/puzzle_rating.h"
@@ -27,7 +28,11 @@ using namespace sudoku::core;
 TEST_CASE("PuzzleGenerator - Rating Integration", "[puzzle_generator][rating]") {
     auto validator = std::make_shared<GameValidator>();
     auto generator_base = std::make_shared<PuzzleGenerator>();
-    auto solver = std::make_shared<SudokuSolver>(validator);
+    // Frozen clock (story 8-23): the rater's solve budget is measured against the solver's time
+    // source. Left on the real one, a slow host makes ratePuzzle return Timeout, and the generator
+    // then accepts the candidate UNRATED (rateAndValidatePuzzle logs and returns true) — so
+    // `puzzle.rating > 0` below fails for a reason that has nothing to do with the generator.
+    auto solver = std::make_shared<SudokuSolver>(validator, std::make_shared<MockTimeProvider>());
     auto rater = std::make_shared<PuzzleRater>(solver);
     PuzzleGenerator generator(rater);
 
@@ -55,7 +60,11 @@ TEST_CASE("PuzzleGenerator - Rating Integration", "[puzzle_generator][rating]") 
 TEST_CASE("PuzzleGenerator - Rating Validation", "[puzzle_generator][rating][validation]") {
     auto validator = std::make_shared<GameValidator>();
     auto generator_base = std::make_shared<PuzzleGenerator>();
-    auto solver = std::make_shared<SudokuSolver>(validator);
+    // Frozen clock (story 8-23): the rater's solve budget is measured against the solver's time
+    // source. Left on the real one, a slow host makes ratePuzzle return Timeout, and the generator
+    // then accepts the candidate UNRATED (rateAndValidatePuzzle logs and returns true) — so
+    // `puzzle.rating > 0` below fails for a reason that has nothing to do with the generator.
+    auto solver = std::make_shared<SudokuSolver>(validator, std::make_shared<MockTimeProvider>());
     auto rater = std::make_shared<PuzzleRater>(solver);
 
     GenerationSettings settings{

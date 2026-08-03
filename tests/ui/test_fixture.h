@@ -9,6 +9,7 @@
 #pragma once
 
 #include "core/game_validator.h"
+#include "core/i_time_provider.h"
 #include "core/puzzle_analyzer.h"
 #include "core/puzzle_generator.h"
 #include "core/puzzle_rater.h"
@@ -47,7 +48,12 @@ struct UITestContext {
         std::filesystem::create_directories(test_dir);
 
         validator = std::make_shared<core::GameValidator>();
-        solver = std::make_shared<core::SudokuSolver>(validator);
+        // Frozen clock (story 8-23): this solver backs the rater the generator uses, and the rater
+        // enforces a wall-clock solve budget. On the real time source a loaded machine turns that
+        // into RatingError::Timeout, which silently yields unrated/undifficulty-validated puzzles
+        // to every UI test built on this fixture. MockTimeProvider never advances, so the budget
+        // can never trip and generation depends on solving logic alone.
+        solver = std::make_shared<core::SudokuSolver>(validator, std::make_shared<core::MockTimeProvider>());
         auto rater = std::make_shared<core::PuzzleRater>(solver);
         generator = std::make_shared<core::PuzzleGenerator>(rater);
         save_manager = std::make_shared<core::SaveManager>(test_dir.string());
