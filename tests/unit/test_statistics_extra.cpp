@@ -960,3 +960,139 @@ TEST_CASE("StatisticsManager - a legacy session log rebuilds with its recorded t
     REQUIRE(agg->games_played[medium] == 1);
     REQUIRE(agg->total_completed == 1);
 }
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE("StatisticsManager - a completion always counts as an attempt",
+          "[statistics_extra][restore][regression][bug-resumed-stats-inflation]") {
+    // The opening segment reaches the aggregate only via endGame() or ~StatisticsManager, neither of
+    // which runs when the process is killed — while the auto-save the app resumes from is written by
+    // a timer. So a resumed completion can be a puzzle's only witness. Suppressing its attempt count
+    // as "already counted" would push games_completed above games_played, and getCompletionRates()
+    // divides one by the other: the review measured 0% and 200%.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+    const int medium = static_cast<int>(Difficulty::Medium);
+
+    auto honest = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+    REQUIRE(honest.has_value());
+    time->advanceSystemTime(std::chrono::seconds(60));
+    REQUIRE(mgr.endGame(*honest, true).has_value());
+
+    // The orphaned puzzle: no opening segment was ever folded in, only the resumed completion.
+    auto orphaned = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+    REQUIRE(orphaned.has_value());
+    REQUIRE(mgr.seedSessionProgress(*orphaned, kSavedMoves, kSavedHints, kSavedMistakes, kSavedElapsed).has_value());
+    time->advanceSystemTime(std::chrono::seconds(30));
+    REQUIRE(mgr.endGame(*orphaned, true).has_value());
+
+    auto agg = mgr.getAggregateStats();
+
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->games_completed[medium] <= agg->games_played[medium]);
+    REQUIRE(agg->total_completed <= agg->total_games);
+    REQUIRE(agg->games_played[medium] == 2);
+    REQUIRE(agg->games_completed[medium] == 2);
+    REQUIRE(mgr.getCompletionRates()[medium] <= 1.0);
+    // The orphaned puzzle counts as an attempt, so its rating must be averaged in with it — the
+    // denominator of average_ratings is games_played.
+    REQUIRE(agg->average_ratings[medium] == kResumedRating);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE("StatisticsManager - reopening a save without playing does not break a win streak",
+          "[statistics_extra][restore][regression][bug-resumed-stats-inflation]") {
+    // A resumed segment that ends un-played is not a second abandonment of the same puzzle, so it
+    // must not reset the streak. Before this, merely launching the app onto its auto-save and
+    // closing it again wiped the streak shown in the statistics dialog.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+    StatisticsManager mgr(tmp.path().string(), time);
+
+    auto first = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+    REQUIRE(first.has_value());
+    time->advanceSystemTime(std::chrono::seconds(60));
+    REQUIRE(mgr.endGame(*first, true).has_value());
+    auto after_win = mgr.getAggregateStats();
+    REQUIRE(after_win.has_value());
+    REQUIRE(after_win->current_win_streak == 1);
+
+    replayWithoutPlaying(mgr);
+    replayWithoutPlaying(mgr);
+
+    auto agg = mgr.getAggregateStats();
+
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->current_win_streak == 1);
+    REQUIRE(agg->best_win_streak == 1);
+    // Abandoning a puzzle for the first time still breaks it — unchanged behaviour.
+    auto fresh = mgr.startGame(Difficulty::Medium, kResumedSeed, kResumedRating);
+    REQUIRE(fresh.has_value());
+    REQUIRE(mgr.endGame(*fresh, false).has_value());
+    REQUIRE(mgr.getAggregateStats()->current_win_streak == 0);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity) — Catch2 TEST_CASE with many REQUIREs; complexity is inherent to test coverage
+TEST_CASE("StatisticsManager - a hostile session record cannot inflate or overflow the totals",
+          "[statistics_extra][restore][regression][bug-resumed-stats-inflation]") {
+    // carried_* and the running totals are read from a user-editable file and are NOT range-checked
+    // at the parse boundary (unlike difficulty, per story 8.2). segmentDelta floors both inputs
+    // before subtracting: a negative carried must not widen the delta, and a negative total against
+    // a positive carried must not overflow — signed overflow is fatal under the sanitizer build.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+
+    fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+    std::ofstream(sessions_file) << R"(- difficulty: 1
+  time_played: -9223372036854775808
+  completed: false
+  moves_made: -2147483648
+  hints_used: 5
+  mistakes: 5
+  continued_from_save: true
+  carried_moves: 2147483647
+  carried_hints: -2147483648
+  carried_mistakes: -1
+  carried_time_played: 9223372036854775807
+)";
+
+    StatisticsManager mgr(tmp.path().string(), time);
+    auto agg = mgr.getAggregateStats();
+
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->total_moves == 0);
+    REQUIRE(agg->total_time_played.count() == 0);
+    // A negative carried is floored, so it cannot widen the delta past the record's own total.
+    REQUIRE(agg->total_hints == 5);
+    REQUIRE(agg->total_mistakes == 5);
+}
+
+TEST_CASE("StatisticsManager - carried progress is ignored on a record that is not a continuation",
+          "[statistics_extra][restore]") {
+    // continued_from_save is the single source of truth. A record with carried_* set but the flag
+    // clear must contribute its play in full, so the two halves of the model cannot disagree.
+    TempTestDir tmp;
+    auto time = std::make_shared<MockTimeProvider>();
+
+    fs::path sessions_file = tmp.path() / "game_sessions.yaml";
+    std::ofstream(sessions_file) << R"(- difficulty: 1
+  time_played: 90000
+  completed: false
+  moves_made: 20
+  hints_used: 2
+  mistakes: 3
+  continued_from_save: false
+  carried_moves: 20
+  carried_hints: 2
+  carried_mistakes: 3
+  carried_time_played: 90000
+)";
+
+    StatisticsManager mgr(tmp.path().string(), time);
+    auto agg = mgr.getAggregateStats();
+
+    REQUIRE(agg.has_value());
+    REQUIRE(agg->total_moves == 20);
+    REQUIRE(agg->total_time_played == std::chrono::milliseconds(90000));
+    REQUIRE(agg->total_games == 1);
+}

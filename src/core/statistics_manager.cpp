@@ -51,20 +51,22 @@ namespace {
 /// One segment's own contribution to a lifetime counter: the running total the record reports minus
 /// whatever an earlier segment of the same puzzle already banked (story 8.18).
 ///
-/// Both operands are floored at zero. @p carried comes from the same clamped values as @p total for
-/// any session this process created, but a session record is read back from a file the user can
-/// edit, and a *negative* carried value would otherwise widen the delta and inflate the lifetime
-/// total — the very bug this function exists to close. A record with no carried progress (every
-/// normally-played game, and every session written before these fields existed) yields @p total
-/// unchanged.
+/// Both inputs are floored at zero *before* the subtraction, so the operands are always in
+/// [0, max] and the difference cannot overflow. That matters because these values are read back
+/// from a file the user can edit and are not range-validated at the parse boundary: a negative
+/// @p carried would otherwise widen the delta and re-open the inflation this function exists to
+/// close, and a negative @p total against a positive @p carried is signed-overflow UB — which the
+/// sanitizer build treats as fatal. A record with no carried progress (every normally-played game,
+/// and every session written before these fields existed) yields @p total unchanged.
 [[nodiscard]] constexpr int segmentDelta(int total, int carried) {
-    return std::max(0, total - std::max(0, carried));
+    return std::max(0, total) - std::min(std::max(0, carried), std::max(0, total));
 }
 
 [[nodiscard]] constexpr std::chrono::milliseconds segmentDelta(std::chrono::milliseconds total,
                                                                std::chrono::milliseconds carried) {
     constexpr std::chrono::milliseconds kNone{0};
-    return std::max(kNone, total - std::max(kNone, carried));
+    const auto floored_total = std::max(kNone, total);
+    return floored_total - std::min(std::max(kNone, carried), floored_total);
 }
 
 }  // namespace
@@ -639,7 +641,17 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
     // (story 8.18 / AC6 option b). Skipping the attempt counters here is what collapses N segments
     // into one game played; the rating block below is skipped with them because average_ratings
     // divides by games_played, so contributing the rating without the count would skew it.
-    const bool counts_as_new_attempt = !completed_game.continued_from_save;
+    //
+    // …unless this completion is the puzzle's only witness. The opening segment reaches the
+    // aggregate through endGame() or ~StatisticsManager, and neither runs if the process is killed
+    // (force-quit, OOM, power loss) — while the auto-save the app resumes from is written
+    // independently by a timer. Suppressing the attempt for a completion that no attempt precedes
+    // would leave games_completed above games_played, and the completion rate derived from them
+    // reads 0% or 200%. A completed puzzle is necessarily a puzzle attempted; enforce that here,
+    // where both counters are written, rather than clamping it at each of the two display sites.
+    const bool completion_needs_its_attempt =
+        completed_game.completed && cached_stats_.games_completed[diff_index] >= cached_stats_.games_played[diff_index];
+    const bool counts_as_new_attempt = !completed_game.continued_from_save || completion_needs_its_attempt;
 
     // Update rating statistics BEFORE incrementing games_played (track for all games, not just completed)
     if (counts_as_new_attempt && completed_game.puzzle_rating > 0.0) {
@@ -688,7 +700,10 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
         cached_stats_.total_completed++;
         cached_stats_.current_win_streak++;
         cached_stats_.best_win_streak = std::max(cached_stats_.best_win_streak, cached_stats_.current_win_streak);
-    } else {
+    } else if (counts_as_new_attempt) {
+        // Only a *new* abandonment breaks the streak. A resumed segment that ends un-played is not a
+        // second abandonment of the same puzzle — the abandonment was banked when the opening
+        // segment ended — so merely reopening the app and closing it again must not wipe a streak.
         cached_stats_.current_win_streak = 0;
     }
 
@@ -697,10 +712,26 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
     // it whole re-banks everything the previous segment already banked — an inflation that compounds
     // with every quit→resume cycle and, because it is written into the session log, survives a
     // rebuild. best_times / average_times above deliberately keep using the full time_played.
-    cached_stats_.total_moves += segmentDelta(completed_game.moves_made, completed_game.carried_moves);
-    cached_stats_.total_hints += segmentDelta(completed_game.hints_used, completed_game.carried_hints);
-    cached_stats_.total_mistakes += segmentDelta(completed_game.mistakes, completed_game.carried_mistakes);
-    cached_stats_.total_time_played += segmentDelta(completed_game.time_played, completed_game.carried_time_played);
+    //
+    // continued_from_save is the single source of truth for "this record continues an earlier
+    // segment"; carried_* is only its magnitude. A record that does not claim to be a continuation
+    // carries nothing whatever its other fields say, so the two halves of the model cannot key off
+    // different signals — and a hand-edited file cannot subtract play that was never banked.
+    int carried_moves = 0;
+    int carried_hints = 0;
+    int carried_mistakes = 0;
+    std::chrono::milliseconds carried_time{0};
+    if (completed_game.continued_from_save) {
+        carried_moves = completed_game.carried_moves;
+        carried_hints = completed_game.carried_hints;
+        carried_mistakes = completed_game.carried_mistakes;
+        carried_time = completed_game.carried_time_played;
+    }
+
+    cached_stats_.total_moves += segmentDelta(completed_game.moves_made, carried_moves);
+    cached_stats_.total_hints += segmentDelta(completed_game.hints_used, carried_hints);
+    cached_stats_.total_mistakes += segmentDelta(completed_game.mistakes, carried_mistakes);
+    cached_stats_.total_time_played += segmentDelta(completed_game.time_played, carried_time);
 
     stats_cache_valid_ = true;
 }
