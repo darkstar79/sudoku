@@ -117,7 +117,25 @@ public:
         : fake_system_time_(system_start), fake_steady_time_(steady_start) {
     }
 
+// GCC 16 false positive: -Warray-bounds fires on this defaulted destructor when it is
+// inlined into shared_ptr's _M_release, in a function that also make_shared's a *different*
+// ITimeProvider implementation (see tests/unit/test_time_provider.cpp, "Polymorphic usage").
+// The optimizer merges the two control-block allocations and reports destroying a
+// MockTimeProvider "partly outside array bounds of unsigned char [24]" — the 24 bytes being
+// SystemTimeProvider's smaller control block, which this path never actually destroys.
+// The suppression is deliberately wrapped around the destructor alone: it is defaulted and
+// trivial, so there is no real out-of-bounds access it could hide. The CI compiler
+// (GCC 13.3 on ubuntu-24.04) does not warn here, so the guard keeps the diagnostic at full
+// strength everywhere except the compiler that gets it wrong. Re-test and remove when the
+// local GCC no longer warns. Story 8-17.
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 16
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
     ~MockTimeProvider() override = default;
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 16
+#    pragma GCC diagnostic pop
+#endif
 
     // Prevent copy/move
     MockTimeProvider(const MockTimeProvider&) = delete;

@@ -453,9 +453,17 @@ Output is saved to `build/iwyu-report/iwyu.log`. A compiled build must exist fir
 
 ### Current Metrics
 
-- **Line Coverage:** 91.2% (target: 80%)
-- **Function Coverage:** 90.5% (target: 70%)
-- **Branch Coverage:** 59.8% (target: 55%)
+Measured on `main` @ `fb1c156`, 2026-08-03, local RelWithDebInfo + `-DSUDOKU_ENABLE_UI_TESTS=ON`,
+GCC 16.1.1, with `exclude-throw-branches` in effect:
+
+- **Line Coverage:** 86.9% (floor: 80%)
+- **Function Coverage:** 90.4% (floor: 70%)
+- **Branch Coverage:** 65.9% (floor: 55%)
+
+Branch coverage has a hard ceiling well below 100%: a large share of the remaining uncovered
+branches are compiler-generated edges that unit tests cannot reach. See
+[Toolchain divergence](#toolchain-divergence-local-gcc-16-vs-ci-gcc-13) below before reading
+anything into a branch number.
 
 ### Coverage Reports
 
@@ -494,17 +502,111 @@ Output is saved to `build/iwyu-report/iwyu.log`. A compiled build must exist fir
 Coverage analysis is configured through `.gcovr.cfg`:
 
 ```ini
-# Minimum thresholds
-fail-under-line = 80      # 80% line coverage required
-fail-under-branch = 70    # 70% branch coverage required
+# Only the instrumented build's data — stops a stale Debug build's .gcda
+# files from contaminating the measurement.
+search-path = build/RelWithDebInfo
 
-# HTML report thresholds
-html-medium-threshold = 75
-html-high-threshold = 90
+# Minimum thresholds (the gate: gcovr exits non-zero below any of these)
+fail-under-line = 80
+fail-under-function = 70
+fail-under-branch = 55
+
+# Exception-cleanup edges are not counted in the branch denominator
+exclude-throw-branches = yes
 
 # Exclusions
-exclude = tests/.*, build/.*, /usr/.*
+exclude = tests/.*
+exclude = build/.*
+exclude = src/view/.*     # requires a Qt6 rendering context
 ```
+
+`.gcovr.cfg` is the single source of truth for both CI and `scripts/coverage.sh` — CI runs the
+very same config, so a threshold is never defined twice.
+
+### Toolchain divergence: local GCC 16 vs CI GCC 13
+
+**Read this before concluding that a local quality-gate failure is your change.**
+
+The maintainer's machine (Fedora) ships **GCC 16.1.1**; CI runs `ubuntu-24.04` with the
+distribution's `build-essential`, i.e. **GCC 13.3**. That gap is not cosmetic — it changed the
+behavior of two different project gates, and both used to fail on an *unmodified* `main`.
+
+#### 1. `-Werror` diagnostics that only GCC 16 emits
+
+Two diagnostics appeared under GCC 16 `-O3` that GCC 13 does not produce. Both are fixed in
+tree (story 8-17); they are documented here so the next one is recognised for what it is:
+
+| Diagnostic | Site | Verdict | Fix |
+|---|---|---|---|
+| `-Werror=array-bounds` | `src/core/i_time_provider.h`, `~MockTimeProvider()` | **False positive.** GCC merges two `make_shared` control-block allocations of *different* `ITimeProvider` implementations in one function and reports the destructor as reaching outside the smaller one. | Narrow `#pragma GCC diagnostic ignored "-Warray-bounds"` around that defaulted destructor alone, guarded by `__GNUC__ >= 16`. |
+| `-Werror=maybe-uninitialized` | `tests/benchmarks/solver_path_benchmark.cpp`, `PathResult::path` | **Real defect**, merely unreachable: the member had no default initializer while every sibling had one. | Gave it one (`SolverPath path{SolverPath::Auto}`). |
+
+The lesson generalises: **a new-compiler warning is not automatically a false positive.** Read it
+before suppressing it — one of these two was a genuine uninitialized read that older compilers
+had simply never reported. `-Werror` stays globally enabled (`CMakeLists.txt`); do not add a
+blanket `-Wno-error`.
+
+#### 2. The branch-coverage denominator
+
+Every potentially-throwing call gets implicit exception-cleanup branches. Unit tests cannot
+execute them by construction, so they are pure denominator — and **how many of them the compiler
+emits is a compiler property**. Measured on the same commit, same machine, same tests:
+
+| gcovr invocation | branches | denominator |
+|---|---|---|
+| GCC 16.1.1, as the config used to be | **53.7%** ❌ | 29,626 |
+| GCC 16.1.1, `exclude-throw-branches` | **65.9%** ✅ | 24,101 |
+
+The 55% floor had been calibrated against a denominator of roughly 15,700, so a *newer compiler
+alone* pushed unmodified `main` under its own gate. The fix was to correct the measurement rather
+than the threshold: `.gcovr.cfg` now sets `exclude-throw-branches = yes`, which counts only
+branches the tests can actually reach and makes the figure far less sensitive to compiler
+version. The floor stayed where evidence put it, not where the number needed it to be.
+
+#### 3. Deciding whether a coverage failure is a real regression (A/B against the baseline)
+
+A branch coverage number is only meaningful **relative to the same measurement on the commit you
+branched from**. Never compare it to a number written in a document — including this one.
+
+Every BMAD story file records the commit it was cut from as `baseline_commit` in its YAML
+frontmatter. Use it:
+
+```bash
+# 1. Measure your branch
+./scripts/coverage.sh summary        # note the % AND the denominator
+
+# 2. Measure the baseline the same way, in a throwaway worktree
+git worktree add --detach ../sudoku-cpp-baseline <baseline_commit>
+cd ../sudoku-cpp-baseline
+./scripts/coverage.sh summary        # note the % AND the denominator
+git worktree remove --force ../sudoku-cpp-baseline
+```
+
+Then read the result:
+
+- **Baseline fails the same way** → not your change. It is the toolchain or a stale threshold;
+  fix the measurement, and say so with both numbers. Do not lower a gate to make a number green.
+- **Baseline passes, your branch fails** → a real regression; the delta is yours.
+- **Denominators differ by thousands** → you are comparing two compilers, not two commits.
+  Compare percentages only at equal denominators.
+
+Both runs must use the same build type — `search-path = build/RelWithDebInfo` in `.gcovr.cfg`
+exists precisely so a leftover Debug build cannot silently join the measurement.
+
+#### 4. Passing extra configure flags to `coverage.sh`
+
+`scripts/coverage.sh` re-configures the instrumented build itself, so there used to be no way to
+give that configure step a flag — the only route was priming `CMAKE_CXX_FLAGS` into the CMake
+cache by configuring by hand first. It now honours an optional environment variable:
+
+```bash
+SUDOKU_COVERAGE_CMAKE_ARGS='-DCMAKE_CXX_FLAGS="-Wno-error=some-new-warning"' \
+    ./scripts/coverage.sh summary
+```
+
+Unset (the CI case, and the normal local case) it changes nothing. Quoted multi-word values stay
+a single CMake argument; `scripts/tests/test_coverage_env_hook.sh` pins that contract and runs in
+CI.
 
 ### Coverage Exclusions
 

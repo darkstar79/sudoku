@@ -233,6 +233,21 @@ jobs:
           ccache --set-config=max_size=1Gi
           ccache --zero-stats
 
+      # The branch denominator is a property of the *compiler*, not of this codebase
+      # (story 8-17: GCC 16 emits ~2x the exception-cleanup edges GCC 13 does). Printing
+      # the toolchain next to the numbers is what makes a local-vs-CI coverage comparison
+      # decidable instead of guesswork.
+      - name: Record toolchain versions
+        run: |
+          g++ --version | head -1
+          gcov --version | head -1
+          gcovr --version | head -1
+
+      - name: Test coverage.sh argument forwarding
+        # Guards the SUDOKU_COVERAGE_CMAKE_ARGS hook: with the variable unset (the CI
+        # case) the configure step must stay byte-for-byte what it has always been.
+        run: ./scripts/tests/test_coverage_env_hook.sh
+
       - name: Build, test, and generate coverage report
         run: |
           ./scripts/coverage.sh xml

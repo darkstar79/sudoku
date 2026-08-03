@@ -1,6 +1,20 @@
 #!/bin/bash
 # Coverage analysis script for sudoku project
 # Usage: ./scripts/coverage.sh [clean|summary|html|xml|json|all|help] [--report-only]
+#
+# Environment:
+#   SUDOKU_COVERAGE_CMAKE_ARGS  Optional extra arguments appended to the CMake
+#                               configure step of the instrumented build. Unset
+#                               (the normal case, including CI) changes nothing.
+#                               Quoted multi-word values survive as one argument:
+#
+#                                 SUDOKU_COVERAGE_CMAKE_ARGS='-DCMAKE_CXX_FLAGS="-Wfoo -Wbar"' \
+#                                     ./scripts/coverage.sh summary
+#
+#                               It exists so a local toolchain that needs extra
+#                               configure flags can be accommodated without
+#                               hand-priming the CMake cache first (story 8-17).
+#                               See docs/TROUBLESHOOTING.md, "Local GCC 16 vs CI GCC 13".
 
 set -e
 
@@ -43,6 +57,16 @@ function print_usage() {
     echo "  $0 all              # Generate all formats"
 }
 
+# Split SUDOKU_COVERAGE_CMAKE_ARGS into one CMake argument per line, honoring
+# quotes so a multi-flag -DCMAKE_CXX_FLAGS="..." stays a single argument.
+# Prints nothing when the variable is unset or empty.
+function get_extra_cmake_args() {
+    if [ -z "${SUDOKU_COVERAGE_CMAKE_ARGS:-}" ]; then
+        return 0
+    fi
+    xargs -n1 printf '%s\n' <<< "${SUDOKU_COVERAGE_CMAKE_ARGS}"
+}
+
 function ensure_debug_build() {
     echo -e "${BLUE}Ensuring debug build for coverage analysis...${NC}"
 
@@ -53,7 +77,13 @@ function ensure_debug_build() {
         exit 1
     }
 
-    cmake --preset relwithdebinfo -DSUDOKU_ENABLE_UI_TESTS=ON || {
+    local extra_cmake_args=()
+    mapfile -t extra_cmake_args < <(get_extra_cmake_args)
+    if [ "${#extra_cmake_args[@]}" -gt 0 ]; then
+        echo -e "${YELLOW}Extra CMake args from SUDOKU_COVERAGE_CMAKE_ARGS: ${extra_cmake_args[*]}${NC}"
+    fi
+
+    cmake --preset relwithdebinfo -DSUDOKU_ENABLE_UI_TESTS=ON "${extra_cmake_args[@]}" || {
         echo -e "${RED}Failed to configure RelWithDebInfo build${NC}"
         exit 1
     }
