@@ -102,8 +102,8 @@ TEST_CASE("PuzzleRater - Rate Easy Puzzle", "[puzzle_rater]") {
 
         auto result = rater.ratePuzzle(board);
 
-        REQUIRE(result.has_value());
-        REQUIRE(result->se_rating == 1.0);  // One Full House (SE "Last value")
+        REQUIRE(ratingErrorName(result) == "<none>");  // AC5: names the RatingError on failure
+        REQUIRE(result->se_rating == 1.0);             // One Full House (SE "Last value")
         REQUIRE(result->solve_path.size() == 1);
         REQUIRE(result->solve_path[0].technique == SolvingTechnique::FullHouse);
         REQUIRE_FALSE(result->requires_backtracking);
@@ -121,8 +121,8 @@ TEST_CASE("PuzzleRater - Rate Complete Board", "[puzzle_rater]") {
 
         auto result = rater.ratePuzzle(board);
 
-        REQUIRE(result.has_value());
-        REQUIRE(result->se_rating == 0);  // No steps needed
+        REQUIRE(ratingErrorName(result) == "<none>");  // AC5: names the RatingError on failure
+        REQUIRE(result->se_rating == 0);               // No steps needed
         REQUIRE(result->solve_path.empty());
         REQUIRE_FALSE(result->requires_backtracking);
         REQUIRE(result->estimated_difficulty == Difficulty::Easy);  // 0 < 500
@@ -148,14 +148,20 @@ TEST_CASE("PuzzleRater - Generated Puzzle Rating", "[puzzle_rater]") {
     }
 
     SECTION("Rates generated Medium puzzle") {
-        // Fixed seed (story 8-23): with the clock frozen the verdict no longer depends on the host,
-        // but the *runtime* still does on the draw. Measured over 300 sanitized Medium draws: 294
-        // rated in under 0.1 s while 4 needed 8-37 s of backtracking, because a default-constructed
-        // PuzzleGenerator has no rater and so never verifies the board it labels "Medium" has a
-        // logical path. A seed makes the board — and therefore the cost — reproducible (~2 ms).
-        // The Easy sections stay unseeded on purpose: they showed no such tail over the same corpus
-        // (max 8 ms), so they keep asserting that an *arbitrary* generated board is rateable.
-        auto puzzle_result = generator->generatePuzzle({.difficulty = Difficulty::Medium, .seed = 20260823U});
+        // Deliberately UNSEEDED (story 8-23). The frozen clock above already guarantees the part
+        // that matters: the verdict is decided by solving logic, never by host speed, in every
+        // build configuration. What it does not bound is the *runtime* of an unlucky draw — over
+        // 300 sanitized Medium draws, 294 rated in under 0.1 s but 4 took 8-37 s of backtracking,
+        // because a default-constructed PuzzleGenerator has no rater and so never verifies that the
+        // board it labels "Medium" has a logical path at all.
+        //
+        // That cost is accepted rather than pinned with a seed. A seed does NOT transfer to the
+        // host this story exists to fix: generation consumes its RNG through std::shuffle, whose
+        // permutation for a given engine state is unspecified, so a seed selects one board under
+        // libc++ and a different, unmeasured one under libstdc++ on the Linux CI runner. It also
+        // silently re-rolls whenever generation's RNG consumption changes. A slow case is visible
+        // and diagnosable and is bounded by the job timeout; an intermittent red is neither.
+        auto puzzle_result = generator->generatePuzzle({.difficulty = Difficulty::Medium});
         REQUIRE(puzzle_result.has_value());
 
         auto rating = rater.ratePuzzle(puzzle_result->board);
@@ -203,7 +209,7 @@ TEST_CASE("PuzzleRater - Backtracking Flag", "[puzzle_rater]") {
         auto board = createEasyPuzzle();
         auto rating = rater.ratePuzzle(board);
 
-        REQUIRE(rating.has_value());
+        REQUIRE(ratingErrorName(rating) == "<none>");  // AC5: names the RatingError on failure
         REQUIRE_FALSE(rating->requires_backtracking);  // Easy puzzle solved logically
     }
 }
@@ -218,7 +224,7 @@ TEST_CASE("PuzzleRater - Difficulty Estimation", "[puzzle_rater]") {
         auto board = createEasyPuzzle();
         auto rating = rater.ratePuzzle(board);
 
-        REQUIRE(rating.has_value());
+        REQUIRE(ratingErrorName(rating) == "<none>");  // AC5: names the RatingError on failure
         REQUIRE(rating->estimated_difficulty == ratingToDifficulty(rating->se_rating));
     }
 }
@@ -233,7 +239,7 @@ TEST_CASE("PuzzleRater - Polymorphic Usage", "[puzzle_rater]") {
         auto board = createEasyPuzzle();
         auto rating = rater->ratePuzzle(board);
 
-        REQUIRE(rating.has_value());
+        REQUIRE(ratingErrorName(rating) == "<none>");  // AC5: names the RatingError on failure
         REQUIRE(rating->se_rating >= 0);
     }
 }

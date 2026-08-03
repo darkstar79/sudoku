@@ -87,8 +87,14 @@ TEST_CASE("PuzzleGenerator - Rating Validation", "[puzzle_generator][rating][val
             REQUIRE(puzzle.rating >= min_rating);
             REQUIRE(puzzle.rating < max_rating);
         } else {
-            // Generation may fail if validation rejects too many puzzles
-            REQUIRE(result.error() == GenerationError::TooManyAttempts);
+            // Generation may fail if validation rejects too many puzzles. The error is
+            // NoUniqueSolution: generatePuzzle returns that on attempt exhaustion
+            // (puzzle_generator.cpp), and GenerationError::TooManyAttempts — which this branch
+            // asserted until story 8-23 — is declared but never returned anywhere in src/, so the
+            // branch could only ever have failed. Freezing the clock above makes it reachable more
+            // often, because a rating Timeout used to be swallowed as "accept unrated" and ended
+            // generation early; now every candidate must genuinely rate inside the band.
+            REQUIRE(result.error() == GenerationError::NoUniqueSolution);
         }
     }
 }

@@ -48,13 +48,22 @@ struct UITestContext {
         std::filesystem::create_directories(test_dir);
 
         validator = std::make_shared<core::GameValidator>();
-        // Frozen clock (story 8-23): this solver backs the rater the generator uses, and the rater
-        // enforces a wall-clock solve budget. On the real time source a loaded machine turns that
-        // into RatingError::Timeout, which silently yields unrated/undifficulty-validated puzzles
-        // to every UI test built on this fixture. MockTimeProvider never advances, so the budget
-        // can never trip and generation depends on solving logic alone.
-        solver = std::make_shared<core::SudokuSolver>(validator, std::make_shared<core::MockTimeProvider>());
-        auto rater = std::make_shared<core::PuzzleRater>(solver);
+        solver = std::make_shared<core::SudokuSolver>(validator);
+
+        // The rater gets its OWN solver on a frozen clock (story 8-23), deliberately not the shared
+        // `solver` above. The rater enforces a wall-clock solve budget, and on the real time source
+        // a loaded machine turns that into RatingError::Timeout, which silently hands unrated,
+        // difficulty-unvalidated puzzles to every UI test built on this fixture. MockTimeProvider
+        // never advances, so that budget can never trip.
+        //
+        // Scoping it to a separate instance is load-bearing: the shared `solver` is also injected
+        // into PuzzleAnalyzer, GameViewModel (hint and coaching budgets) and
+        // TrainingExerciseGenerator below. Freezing the shared one would disable all four budgets
+        // across the whole UI suite and make their timeout paths unreachable, which is far more
+        // than this fix needs.
+        auto rating_solver =
+            std::make_shared<core::SudokuSolver>(validator, std::make_shared<core::MockTimeProvider>());
+        auto rater = std::make_shared<core::PuzzleRater>(rating_solver);
         generator = std::make_shared<core::PuzzleGenerator>(rater);
         save_manager = std::make_shared<core::SaveManager>(test_dir.string());
         stats_manager = std::make_shared<core::StatisticsManager>(test_dir.string());
