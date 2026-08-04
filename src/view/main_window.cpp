@@ -712,62 +712,53 @@ void MainWindow::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewMod
     }
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void MainWindow::setSettingsManager(std::shared_ptr<core::ISettingsManager> settings_manager) {
     settings_manager_ = std::move(settings_manager);
 
     if (settings_manager_) {
-        // Update auto-save interval from settings
-        if (auto_save_timer_) {
-            auto_save_timer_->setInterval(settings_manager_->getSettings().auto_save_interval_ms);
-        }
+        applySettings(settings_manager_->getSettings());
 
-        // Load the configured locale; Qt posts QEvent::LanguageChange to all
-        // top-level widgets, which retranslates the UI via changeEvent.
-        applyLocale(settings_manager_->getSettings().language);
-
-        // Apply initial visibility for experimental menu entries before the
-        // observer takes over (the observer only fires on subsequent changes).
-        if (training_mode_action_) {
-            training_mode_action_->setVisible(settings_manager_->getSettings().experimental_training_mode);
-        }
-        if (coaching_hint_action_) {
-            coaching_hint_action_->setVisible(settings_manager_->getSettings().experimental_coaching_hints);
-        }
-
-        // React to language changes from the Settings dialog. Compare against
-        // the previous locale so we only reload the translator when it
-        // actually changes (other settings — auto-save interval, hint
-        // visibility, experimental flags, etc. — also fire this observer).
+        // React to settings changes from the Settings dialog, via the SAME applySettings() the
+        // initial apply above uses — a new setting added to one and not the other is exactly the
+        // defect class story 8-19 closes.
         //
-        // Route through `observer_` (CompositeObserver) so the subscription is
-        // torn down in ~MainWindow. settings_manager_ is a shared_ptr owned by
-        // DIContainer and outlives MainWindow, so a direct subscribe() would
-        // leave a callback dereferencing a destroyed `this` on the next
-        // setSettings() (use-after-free).
-        observer_.observe(settings_manager_->settingsObservable(), [this](const core::Settings& s) {
-            if (auto_save_timer_) {
-                auto_save_timer_->setInterval(s.auto_save_interval_ms);
-            }
-            if (s.language != current_locale_) {
-                applyLocale(s.language);
-            }
-            if (training_mode_action_) {
-                training_mode_action_->setVisible(s.experimental_training_mode);
-            }
-            if (coaching_hint_action_) {
-                coaching_hint_action_->setVisible(s.experimental_coaching_hints);
-            }
-            if (session_time_label_) {
-                session_time_label_->setVisible(s.show_session_timer);
-                if (s.show_session_timer) {
-                    updateStatusBar();
-                }
-            }
-        });
+        // Route through `observer_` (CompositeObserver) so the subscription is torn down in
+        // ~MainWindow. settings_manager_ is a shared_ptr owned by DIContainer and outlives
+        // MainWindow, so a direct subscribe() would leave a callback dereferencing a destroyed
+        // `this` on the next setSettings() (use-after-free).
+        observer_.observe(settings_manager_->settingsObservable(),
+                          [this](const core::Settings& s) { applySettings(s); });
     }
 
     spdlog::debug("SettingsManager bound to MainWindow");
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+void MainWindow::applySettings(const core::Settings& s) {
+    if (auto_save_timer_) {
+        auto_save_timer_->setInterval(s.auto_save_interval_ms);
+    }
+
+    // Load the configured locale; Qt posts QEvent::LanguageChange to all top-level widgets, which
+    // retranslates the UI via changeEvent. Compare against the previous locale so we only reload
+    // the translator when it actually changes — current_locale_ starts empty, so the guard
+    // correctly lets the very first call through.
+    if (s.language != current_locale_) {
+        applyLocale(s.language);
+    }
+
+    if (training_mode_action_) {
+        training_mode_action_->setVisible(s.experimental_training_mode);
+    }
+    if (coaching_hint_action_) {
+        coaching_hint_action_->setVisible(s.experimental_coaching_hints);
+    }
+    if (session_time_label_) {
+        session_time_label_->setVisible(s.show_session_timer);
+        if (s.show_session_timer) {
+            updateStatusBar();
+        }
+    }
 }
 
 void MainWindow::setPlayLimitController(std::shared_ptr<viewmodel::PlayLimitController> controller) {
@@ -991,7 +982,10 @@ void MainWindow::updateStatusBar() {
     // independent of game state — kept above the !view_model_ early return
     // below so it stays accurate even before a puzzle is loaded. Hidden
     // unless the user enabled it in Settings -> Display.
-    if (session_time_label_ && session_time_label_->isVisible()) {
+    // isHidden() (not isVisible()) so the INITIAL apply — which runs before show() in main.cpp —
+    // still populates the label text; QWidget::isVisible() is false until every ancestor is shown,
+    // which would otherwise leave the label visible but blank for up to 1s (story 8-19).
+    if (session_time_label_ && !session_time_label_->isHidden()) {
         const auto session_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - session_start_time_);  // determinism-ok: UI session-timer label
         session_time_label_->setText(QString::fromStdString(viewmodel::GameViewModel::formatDuration(session_elapsed)));

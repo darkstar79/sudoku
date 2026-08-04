@@ -46,22 +46,29 @@ GameViewModel::GameViewModel(
       generator_(std::move(generator)), solver_(std::move(solver)), stats_manager_(std::move(stats_manager)),
       save_manager_(std::move(save_manager)), settings_manager_(std::move(settings_manager)),
       analyzer_(std::move(analyzer)), clipboard_(std::move(clipboard)) {
-    // Apply initial settings if available
+    // Apply initial settings, then subscribe applySettings() to every subsequent change — the
+    // SAME function both paths call, so a new setting cannot be wired into one and silently
+    // omitted from the other (story 8-19, mirrors MainWindow::applySettings()).
     if (settings_manager_) {
-        const auto& settings = settings_manager_->getSettings();
-        uiState.update([&settings](UIState& state) {
-            state.show_conflicts = settings.show_conflicts;
-            state.show_hints = settings.show_hints;
-        });
-        // Wire detailed stats settings to statistics manager
-        if (stats_manager_) {
-            stats_manager_->setCollectDetailedStats(settings.collect_detailed_stats);
-            stats_manager_->setEncryptSessions(settings.encrypt_detailed_stats);
-        }
+        applySettings(settings_manager_->getSettings());
+        settings_observer_.observe(settings_manager_->settingsObservable(),
+                                   [this](const core::Settings& s) { applySettings(s); });
     }
     spdlog::debug("GameViewModel initialized with dependencies");
     updateUIState();
     refreshStatistics();
+}
+
+void GameViewModel::applySettings(const core::Settings& s) {
+    uiState.update([&s](UIState& state) {
+        state.show_conflicts = s.show_conflicts;
+        state.show_hints = s.show_hints;
+    });
+    // Wire detailed stats settings to statistics manager
+    if (stats_manager_) {
+        stats_manager_->setCollectDetailedStats(s.collect_detailed_stats);
+        stats_manager_->setEncryptSessions(s.encrypt_detailed_stats);
+    }
 }
 
 std::string GameViewModel::statisticsErrorToString(core::StatisticsError error) const {

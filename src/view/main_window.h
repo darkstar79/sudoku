@@ -200,6 +200,11 @@ private:
     void retranslateUi();
     void applyLocale(const std::string& locale_code);
 
+    /// Single apply path for persisted settings, invoked from both setSettingsManager()'s initial
+    /// apply and the settingsObservable() callback — so a new setting cannot be wired into one path
+    /// and silently omitted from the other (story 8-19).
+    void applySettings(const core::Settings& s);
+
     // CSV export
     void exportAggregateStatsCsv();
     void exportGameSessionsCsv();
