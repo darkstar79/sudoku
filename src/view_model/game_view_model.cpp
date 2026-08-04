@@ -310,15 +310,7 @@ bool GameViewModel::isCorruptedManualSave(const core::SavedGame& saved_game) {
     return false;
 }
 
-void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
-    if (isCorruptedManualSave(saved_game)) {
-        // startNewGame begins its own statistics session — deliberately none is started for the
-        // rejected save, so this path counts exactly one session (story 8.1 AC9a).
-        startNewGame(saved_game.difficulty);
-        return;
-    }
-
-    // Create a GameState from the saved game
+model::GameState GameViewModel::buildRestoredGameState(const core::SavedGame& saved_game) {
     model::GameState loaded_state;
 
     // Load original puzzle (only clues get is_given = true)
@@ -347,7 +339,18 @@ void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
         });
     }
 
-    gameState.set(loaded_state);
+    return loaded_state;
+}
+
+void GameViewModel::restoreGameState(const core::SavedGame& saved_game) {
+    if (isCorruptedManualSave(saved_game)) {
+        // startNewGame begins its own statistics session — deliberately none is started for the
+        // rejected save, so this path counts exactly one session (story 8.1 AC9a).
+        startNewGame(saved_game.difficulty);
+        return;
+    }
+
+    gameState.set(buildRestoredGameState(saved_game));
 
     // Re-seat the accumulated play time and mistake counter, then start the clock — all in ONE
     // update() lambda. GameState::operator== compares neither elapsed_time_ nor start_time_, so an

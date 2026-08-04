@@ -655,22 +655,7 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
 
     // Update rating statistics BEFORE incrementing games_played (track for all games, not just completed)
     if (counts_as_new_attempt && completed_game.puzzle_rating > 0.0) {
-        // Get count BEFORE incrementing
-        auto games_count_before = cached_stats_.games_played[diff_index];
-
-        // Update min rating
-        cached_stats_.min_ratings[diff_index] =
-            std::min(cached_stats_.min_ratings[diff_index], completed_game.puzzle_rating);
-
-        // Update max rating
-        cached_stats_.max_ratings[diff_index] =
-            std::max(cached_stats_.max_ratings[diff_index], completed_game.puzzle_rating);
-
-        // Update average rating
-        auto current_rating_average = cached_stats_.average_ratings[diff_index];
-        cached_stats_.average_ratings[diff_index] =
-            (current_rating_average * static_cast<double>(games_count_before) + completed_game.puzzle_rating) /
-            static_cast<double>(games_count_before + 1);
+        updateRatingStats(diff_index, completed_game);
     }
 
     // Update per-difficulty stats
@@ -707,11 +692,37 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
         cached_stats_.current_win_streak = 0;
     }
 
-    // Bank this segment's own play only. The record deliberately reports the puzzle's running
-    // totals (story 8.1 AC8, which is what keeps best_times truthful for a resumed win), so adding
-    // it whole re-banks everything the previous segment already banked — an inflation that compounds
-    // with every quit→resume cycle and, because it is written into the session log, survives a
-    // rebuild. best_times / average_times above deliberately keep using the full time_played.
+    // Bank this segment's own play only — see updateCarriedTotals for why only the delta counts.
+    updateCarriedTotals(completed_game);
+
+    stats_cache_valid_ = true;
+}
+
+void StatisticsManager::updateRatingStats(int diff_index, const GameStats& completed_game) const {
+    // Get count BEFORE incrementing
+    auto games_count_before = cached_stats_.games_played[diff_index];
+
+    // Update min rating
+    cached_stats_.min_ratings[diff_index] =
+        std::min(cached_stats_.min_ratings[diff_index], completed_game.puzzle_rating);
+
+    // Update max rating
+    cached_stats_.max_ratings[diff_index] =
+        std::max(cached_stats_.max_ratings[diff_index], completed_game.puzzle_rating);
+
+    // Update average rating
+    auto current_rating_average = cached_stats_.average_ratings[diff_index];
+    cached_stats_.average_ratings[diff_index] =
+        (current_rating_average * static_cast<double>(games_count_before) + completed_game.puzzle_rating) /
+        static_cast<double>(games_count_before + 1);
+}
+
+void StatisticsManager::updateCarriedTotals(const GameStats& completed_game) const {
+    // The record deliberately reports the puzzle's running totals (story 8.1 AC8, which is what
+    // keeps best_times truthful for a resumed win), so adding it whole re-banks everything the
+    // previous segment already banked — an inflation that compounds with every quit→resume cycle
+    // and, because it is written into the session log, survives a rebuild. best_times /
+    // average_times in updateAggregateStats deliberately keep using the full time_played.
     //
     // continued_from_save is the single source of truth for "this record continues an earlier
     // segment"; carried_* is only its magnitude. A record that does not claim to be a continuation
@@ -732,8 +743,6 @@ void StatisticsManager::updateAggregateStats(const GameStats& completed_game) co
     cached_stats_.total_hints += segmentDelta(completed_game.hints_used, carried_hints);
     cached_stats_.total_mistakes += segmentDelta(completed_game.mistakes, carried_mistakes);
     cached_stats_.total_time_played += segmentDelta(completed_game.time_played, carried_time);
-
-    stats_cache_valid_ = true;
 }
 
 void StatisticsManager::invalidateStatsCache() {

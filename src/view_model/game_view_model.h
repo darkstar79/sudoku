@@ -406,6 +406,12 @@ private:
     /// or the recorded session carries rating 0.0.
     void startRestoredSession(const core::SavedGame& saved_game);
 
+    /// Rebuilds the board/notes/hint-revealed layers of a GameState from a save: loads the
+    /// original puzzle, overlays the user's entered values onto non-given cells, then restores
+    /// notes and hint-revealed markers. Pure construction — does not touch the view model's own
+    /// state (clock, move history, etc.), which restoreGameState re-seats afterward.
+    [[nodiscard]] static model::GameState buildRestoredGameState(const core::SavedGame& saved_game);
+
     /// Whether a save carries the signature of the "all cells marked given" corruption bug.
     /// Only ever true for MANUAL saves — see the implementation for why auto-saves are exempt.
     [[nodiscard]] static bool isCorruptedManualSave(const core::SavedGame& saved_game);
