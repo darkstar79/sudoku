@@ -143,6 +143,16 @@ private:
 
     // Statistics calculation
     void updateAggregateStats(const GameStats& completed_game) const;
+
+    /// Rating-only slice of updateAggregateStats: min/max/average for the difficulty's rating,
+    /// keyed off games_played BEFORE the caller increments it.
+    void updateRatingStats(int diff_index, const GameStats& completed_game) const;
+
+    /// Carried-progress slice of updateAggregateStats: derives this segment's own moves/hints/
+    /// mistakes/time (subtracting whatever an earlier segment already banked) and adds them to
+    /// the running totals. See updateAggregateStats for why only the segment delta is banked.
+    void updateCarriedTotals(const GameStats& completed_game) const;
+
     void invalidateStatsCache();
     std::expected<void, StatisticsError> recalculateAggregateStats() const;
 
