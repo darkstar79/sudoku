@@ -397,6 +397,11 @@ private:
     void updateTimeDisplay();
     void startGameSession();
 
+    /// Single apply path for persisted settings, invoked from both the constructor's initial apply
+    /// and the settingsObservable() callback — so a new setting cannot be wired into one path and
+    /// silently omitted from the other (story 8-19, mirrors MainWindow::applySettings()).
+    void applySettings(const core::Settings& s);
+
     /// Copies the active session's moves/hints/mistakes onto an outgoing save. Leaves the
     /// defaults at 0 when no session exists. Shared by saveCurrentGame() and autoSave().
     void applyProgressCounters(core::SavedGame& saved_game) const;
@@ -490,6 +495,12 @@ private:
     // Statistics helpers
     [[nodiscard]] StatsDisplay createStatsDisplay(const core::AggregateStats& stats) const;
     void updateStatisticsDisplay();
+
+    /// Subscription to settings_manager_->settingsObservable(). Declared LAST so it is destroyed
+    /// FIRST (reverse declaration order) — settings_manager_ is a shared_ptr owned by DIContainer
+    /// and outlives the ViewModel, so an un-torn-down subscription would leave applySettings()'s
+    /// callback dereferencing members (uiState, stats_manager_) that have already been destroyed.
+    core::CompositeObserver settings_observer_;
 };
 
 }  // namespace sudoku::viewmodel

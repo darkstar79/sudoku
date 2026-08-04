@@ -37,6 +37,8 @@ private slots:
     void enablingShowsLabel();
     void disablingHidesAgain();
     void enabledLabelHasNonEmptyTimestamp();
+    void startupAppliesPersistedVisibility();
+    void startupHidesWhenPersistedFalse();
 
 private:
     std::unique_ptr<test::UITestContext> ctx_;
@@ -123,6 +125,55 @@ void TestSessionTimer::enabledLabelHasNonEmptyTimestamp() {
     // when the flag flips on, so the label should be populated immediately —
     // no need to wait for the 1Hz clock tick.
     QVERIFY(!label->text().isEmpty());
+}
+
+// D1 regression (story 8-19): the fixture's shared window_ is built once in initTestCase(), before
+// any of the flag-toggling cases run — which is exactly why none of the four cases above can catch
+// a missing *initial* apply. These two build a FRESH MainWindow after the flag is already
+// persisted, reproducing the real startup sequence (setSettingsManager() before show()).
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+void TestSessionTimer::startupAppliesPersistedVisibility() {
+    settings_->setShowSessionTimer(true);
+    // RAII rather than a trailing statement: a QVERIFY failure below returns from this slot
+    // immediately, which would otherwise skip the reset (review finding, story 8-19).
+    struct ScopedTimerFlagReset {
+        std::shared_ptr<core::SettingsManager> settings;
+        explicit ScopedTimerFlagReset(std::shared_ptr<core::SettingsManager> s) : settings(std::move(s)) {
+        }
+        ~ScopedTimerFlagReset() {
+            settings->setShowSessionTimer(false);
+        }
+        ScopedTimerFlagReset(const ScopedTimerFlagReset&) = delete;
+        ScopedTimerFlagReset& operator=(const ScopedTimerFlagReset&) = delete;
+        ScopedTimerFlagReset(ScopedTimerFlagReset&&) = delete;
+        ScopedTimerFlagReset& operator=(ScopedTimerFlagReset&&) = delete;
+    } reset_flag{settings_};
+
+    view::MainWindow win;
+    ctx_->setupMainWindow(win);
+    win.setSettingsManager(settings_);
+    win.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&win));
+
+    auto* label = win.statusBar()->findChild<QLabel*>("sessionTimerLabel");
+    QVERIFY(label != nullptr);
+    QVERIFY(label->isVisible());
+    QVERIFY(!label->text().isEmpty());
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+void TestSessionTimer::startupHidesWhenPersistedFalse() {
+    settings_->setShowSessionTimer(false);
+
+    view::MainWindow win;
+    ctx_->setupMainWindow(win);
+    win.setSettingsManager(settings_);
+    win.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&win));
+
+    auto* label = win.statusBar()->findChild<QLabel*>("sessionTimerLabel");
+    QVERIFY(label != nullptr);
+    QVERIFY(!label->isVisible());
 }
 
 QTEST_MAIN(TestSessionTimer)
