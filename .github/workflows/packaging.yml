@@ -105,12 +105,12 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install system dependencies
+        uses: ./.github/actions/install-qt-deps
+
+      - name: Install AppImage-specific dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools libgl1-mesa-dev \
-            ninja-build ccache \
-            libfuse2
+          sudo apt-get install -y --no-install-recommends libfuse2
 
       - name: Install Conan
         run: |
