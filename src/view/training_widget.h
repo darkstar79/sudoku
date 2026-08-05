@@ -17,6 +17,7 @@
 #pragma once
 
 #include "../view_model/training_view_model.h"
+#include "board_painter.h"
 #include "core/observable.h"
 
 #include <memory>
@@ -54,6 +55,11 @@ public:
 
     void setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm);
 
+    /// Forwards to both training boards, including ones rebuilt later by rebuildPages() (story
+    /// 8-20). TrainingWidget has no ISettingsManager of its own — MainWindow is the single push
+    /// point (see applyHighlightOptions()).
+    void setHighlightOptions(HighlightOptions options);
+
 protected:
     void changeEvent(QEvent* event) override;
 
@@ -64,6 +70,7 @@ private:
     std::shared_ptr<viewmodel::TrainingViewModel> training_vm_;
     core::CompositeObserver observer_;
     QStackedWidget* pages_{nullptr};
+    HighlightOptions highlight_options_{};  ///< Applied to both boards, incl. ones rebuilt later (story 8-20)
     [[nodiscard]] static QString qstr(std::string_view sv) {
         return QString::fromUtf8(sv.data(), static_cast<qsizetype>(sv.size()));
     }

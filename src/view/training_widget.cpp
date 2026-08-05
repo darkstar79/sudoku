@@ -133,6 +133,25 @@ void TrainingWidget::rebuildPages() {
     buildExercisePage();
     buildFeedbackPage();
     buildLessonCompletePage();
+
+    // The two boards above are freshly constructed (default HighlightOptions) — re-push the
+    // currently applied options so a rebuild does not silently reset an aid a player turned off.
+    if (training_board_) {
+        training_board_->setHighlightOptions(highlight_options_);
+    }
+    if (feedback_board_) {
+        feedback_board_->setHighlightOptions(highlight_options_);
+    }
+}
+
+void TrainingWidget::setHighlightOptions(HighlightOptions options) {
+    highlight_options_ = options;
+    if (training_board_) {
+        training_board_->setHighlightOptions(options);
+    }
+    if (feedback_board_) {
+        feedback_board_->setHighlightOptions(options);
+    }
 }
 
 void TrainingWidget::setTrainingViewModel(std::shared_ptr<viewmodel::TrainingViewModel> training_vm) {

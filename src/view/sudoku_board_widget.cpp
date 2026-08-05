@@ -117,35 +117,21 @@ void SudokuBoardWidget::paintEvent(QPaintEvent* /*event*/) {
     auto highlight_source = hovered_cell_.has_value() ? hovered_cell_ : selected_cell_;
 
     int focus_value = 0;
-    size_t focus_box_row = 0;
-    size_t focus_box_col = 0;
     if (highlight_source.has_value()) {
         focus_value = board_[highlight_source->row][highlight_source->col].value;
-        focus_box_row = (highlight_source->row / core::BOX_SIZE) * core::BOX_SIZE;
-        focus_box_col = (highlight_source->col / core::BOX_SIZE) * core::BOX_SIZE;
     }
 
-    // Unified highlight: cell value takes priority, fallback to hovered candidate
-    int highlight_value = focus_value > 0 ? focus_value : hovered_candidate_;
+    int highlight_value = BoardPainter::noteHighlightValue(focus_value, hovered_candidate_, highlight_options_);
 
     for (size_t row = 0; row < core::BOARD_SIZE; ++row) {
         for (size_t col = 0; col < core::BOARD_SIZE; ++col) {
             const auto& cell = board_[row][col];
             bool is_selected = selected_cell_.has_value() && selected_cell_->row == row && selected_cell_->col == col;
 
-            bool is_region_highlight = false;
-            bool is_same_value_highlight = false;
-            if (highlight_source.has_value()) {
-                size_t cell_box_row = (row / core::BOX_SIZE) * core::BOX_SIZE;
-                size_t cell_box_col = (col / core::BOX_SIZE) * core::BOX_SIZE;
-                is_region_highlight = (row == highlight_source->row) || (col == highlight_source->col) ||
-                                      (cell_box_row == focus_box_row && cell_box_col == focus_box_col);
-                if (focus_value > 0 && cell.value == focus_value) {
-                    is_same_value_highlight = true;
-                }
-            }
+            auto flags = BoardPainter::cellHighlightFlags(row, col, highlight_source, focus_value, cell.value,
+                                                          highlight_options_);
 
-            paintCell(painter, cell, row, col, origin, cs, is_selected, is_region_highlight, is_same_value_highlight,
+            paintCell(painter, cell, row, col, origin, cs, is_selected, flags.region, flags.same_value,
                       highlight_value);
         }
     }
@@ -259,6 +245,17 @@ void SudokuBoardWidget::setSelectedCell(std::optional<core::Position> cell) {
     }
 }
 
+void SudokuBoardWidget::setHighlightOptions(HighlightOptions options) {
+    if (highlight_options_ != options) {
+        highlight_options_ = options;
+        update();
+    }
+}
+
+HighlightOptions SudokuBoardWidget::highlightOptions() const {
+    return highlight_options_;
+}
+
 std::optional<core::Position> SudokuBoardWidget::selectedCell() const {
     return selected_cell_;
 }
@@ -343,7 +340,7 @@ void SudokuBoardWidget::paintCell(QPainter& painter, const RenderCell& cell, siz
     painter.drawRect(cell_rect);
 
     // Hover highlight: subtle tint on cells sharing the hovered candidate
-    if (hovered_candidate_ > 0 && !is_selected && cell.value == 0) {
+    if (highlight_options_.same_numbers && hovered_candidate_ > 0 && !is_selected && cell.value == 0) {
         if (cell.candidates.contains(hovered_candidate_)) {
             painter_.paintHoverTint(painter, cell_rect);
         }
@@ -366,12 +363,8 @@ void SudokuBoardWidget::paintCellValue(QPainter& painter, const RenderCell& cell
     QFont font("Sans", BoardPainter::valueFontSize(static_cast<float>(cell_rect.height())), QFont::Bold);
     painter.setFont(font);
 
-    QColor text_color = BoardColors::TEXT_GIVEN;
-    if (cell.is_hint_revealed) {
-        text_color = SudokuBoardColors::TEXT_HINT;
-    } else if (!cell.is_given && !cell.is_found) {
-        text_color = cell.has_conflict ? SudokuBoardColors::TEXT_ERROR : SudokuBoardColors::TEXT_USER;
-    }
+    QColor text_color = BoardPainter::valueTextColor(cell.is_given, cell.is_found, cell.is_hint_revealed,
+                                                     cell.has_conflict, highlight_options_);
 
     painter.setPen(text_color);
     painter.drawText(cell_rect, Qt::AlignCenter, QString::number(cell.value));

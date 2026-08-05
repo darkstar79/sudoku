@@ -696,6 +696,22 @@ Der aktuelle Fortschritt geht verloren.</translation>
         <translation>Konflikte hervorheben</translation>
     </message>
     <message>
+        <source>Highlight row, column and box of the selected cell</source>
+        <translation>Zeile, Spalte und Block der ausgewählten Zelle hervorheben</translation>
+    </message>
+    <message>
+        <source>Tint every cell that shares a row, a column or a 3x3 box with the cell you are on.</source>
+        <translation>Färbt jede Zelle ein, die eine Zeile, eine Spalte oder einen 3x3-Block mit der aktuellen Zelle teilt.</translation>
+    </message>
+    <message>
+        <source>Highlight matching numbers</source>
+        <translation>Gleiche Zahlen hervorheben</translation>
+    </message>
+    <message>
+        <source>Tint cells holding the same number as the cell you are on, and emphasise matching pencil marks - including the pencil mark under the mouse pointer.</source>
+        <translation>Färbt Zellen ein, die dieselbe Zahl wie die aktuelle Zelle enthalten, und hebt passende Notizen hervor - einschließlich der Notiz unter dem Mauszeiger.</translation>
+    </message>
+    <message>
         <source>Show Hints</source>
         <translation>Hinweise anzeigen</translation>
     </message>

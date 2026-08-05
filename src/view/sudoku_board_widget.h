@@ -82,6 +82,10 @@ public:
     [[nodiscard]] std::optional<core::Position> selectedCell() const;
     void clearSelection();
 
+    /// Which of the three board highlight aids are enabled (story 8-20). Repaints only if changed.
+    void setHighlightOptions(HighlightOptions options);
+    [[nodiscard]] HighlightOptions highlightOptions() const;
+
     [[nodiscard]] QSize minimumSizeHint() const override;
     [[nodiscard]] QSize sizeHint() const override;
 
@@ -111,6 +115,7 @@ private:
     int hovered_candidate_{0};                     ///< Currently hovered candidate value (0 = none)
     std::optional<core::Position> hovered_cell_;   ///< Currently hovered cell (nullopt = mouse outside board)
     std::optional<core::Position> selected_cell_;  ///< Currently selected cell for editing
+    HighlightOptions highlight_options_{};         ///< Which board highlight aids are on (story 8-20)
 
     void paintCell(QPainter& painter, const RenderCell& cell, size_t row, size_t col, const QPointF& origin,
                    float cell_size, bool is_selected, bool is_region_highlight, bool is_same_value_highlight,

@@ -65,6 +65,22 @@ inline constexpr QColor COLOR_A{100, 149, 237};            // Cornflower blue
 inline constexpr QColor COLOR_B{60, 179, 113};             // Medium sea green
 }  // namespace AnnotationColors
 
+/// Which board highlight aids are enabled (story 8-20). All default true == pre-8-20 behavior,
+/// so any SudokuBoardWidget nobody configures renders exactly as before.
+struct HighlightOptions {
+    bool regions{true};       ///< display.highlight_regions      (new in 8-20)
+    bool same_numbers{true};  ///< display.highlight_same_numbers (new in 8-20)
+    bool conflicts{true};     ///< display.show_conflicts — pre-existing key, unwired until 8-20
+    bool operator==(const HighlightOptions&) const = default;
+};
+
+/// Per-cell highlight decision — pure, no paint state.
+struct CellHighlightFlags {
+    bool region{false};
+    bool same_value{false};
+    bool operator==(const CellHighlightFlags&) const = default;
+};
+
 /// Shared board geometry and painting utilities for Sudoku board widgets.
 /// Encapsulates cell size calculations, background painting, grid line rendering,
 /// and selection outline drawing — parameterized by board dimensions.
@@ -121,6 +137,20 @@ public:
 
     /// Map a player color index (1=A, 2=B) to a lightened background color
     [[nodiscard]] static QColor playerColorBackground(int player_color);
+
+    /// Per-cell region/same-value highlight decision, gated by `options` (story 8-20).
+    [[nodiscard]] static CellHighlightFlags cellHighlightFlags(size_t row, size_t col,
+                                                               std::optional<core::Position> focus, int focus_value,
+                                                               int cell_value, HighlightOptions options);
+
+    /// Value whose pencil marks render bold; 0 = none. Folds the focus-value-then-hovered-candidate
+    /// precedence AND the same_numbers gate into one testable place.
+    [[nodiscard]] static int noteHighlightValue(int focus_value, int hovered_candidate, HighlightOptions options);
+
+    /// Text color for a placed value. `conflicts` gates the red; givens and hint-revealed digits are
+    /// unaffected by it (they never render as conflicts today and must not start).
+    [[nodiscard]] static QColor valueTextColor(bool is_given, bool is_found, bool is_hint_revealed, bool has_conflict,
+                                               HighlightOptions options);
 
 private:
     Config config_;

@@ -694,6 +694,22 @@ Current progress will be lost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Highlight row, column and box of the selected cell</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tint every cell that shares a row, a column or a 3x3 box with the cell you are on.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Highlight matching numbers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tint cells holding the same number as the cell you are on, and emphasise matching pencil marks - including the pencil mark under the mouse pointer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Show Hints</source>
         <translation type="unfinished"></translation>
     </message>
