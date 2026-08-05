@@ -9,6 +9,18 @@ runs:
     # packages already declare their own runtime Depends on the xcb/X11
     # libs they need). find_package(Qt6 ... COMPONENTS Widgets Test
     # LinguistTools) in CMakeLists.txt is the full set of Qt modules used.
+    # /var/cache/apt/archives is root:root 755 by default: writable only by
+    # root. actions/cache's restore step runs as the unprivileged runner
+    # user, so extracting a hit back into that directory fails to create
+    # files there ("Cannot open: Permission denied") even though the files
+    # themselves are readable. Open the directory (not its contents) before
+    # the restore step touches it, sticky-bit style like /tmp.
+    - name: Prepare apt cache directory
+      shell: bash
+      run: |
+        sudo mkdir -p /var/cache/apt/archives
+        sudo chmod 1777 /var/cache/apt/archives
+
     # Cache only the downloaded .deb files (mode 644, world-readable), not
     # the whole archives dir: apt-get leaves lock/partial root-owned and
     # unreadable by the unprivileged runner user that actions/cache's save
