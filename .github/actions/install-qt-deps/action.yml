@@ -4,66 +4,47 @@ description: Install system packages required for Qt6 builds on ubuntu-24.04
 runs:
   using: composite
   steps:
+    # Packages actually needed to build this app against Ubuntu's prebuilt
+    # qt6-base/qt6-tools (not to build Qt itself from source — apt's Qt6
+    # packages already declare their own runtime Depends on the xcb/X11
+    # libs they need). find_package(Qt6 ... COMPONENTS Widgets Test
+    # LinguistTools) in CMakeLists.txt is the full set of Qt modules used.
+    # /var/cache/apt/archives is root:root 755 by default: writable only by
+    # root. actions/cache's restore step runs as the unprivileged runner
+    # user, so extracting a hit back into that directory fails to create
+    # files there ("Cannot open: Permission denied") even though the files
+    # themselves are readable. Open the directory (not its contents) before
+    # the restore step touches it, sticky-bit style like /tmp.
+    - name: Prepare apt cache directory
+      shell: bash
+      run: |
+        sudo mkdir -p /var/cache/apt/archives
+        sudo chmod 1777 /var/cache/apt/archives
+
+    # Cache only the downloaded .deb files (mode 644, world-readable), not
+    # the whole archives dir: apt-get leaves lock/partial root-owned and
+    # unreadable by the unprivileged runner user that actions/cache's save
+    # step runs as, and *any* later sudo apt-get in the same job (e.g. a
+    # clang-tidy install step) re-creates them — so excluding them via glob
+    # is robust where a one-off chmod isn't.
+    - name: Cache apt packages
+      uses: actions/cache@v5
+      with:
+        path: /var/cache/apt/archives/*.deb
+        key: apt-${{ runner.os }}-${{ hashFiles('.github/actions/install-qt-deps/action.yml') }}
+        restore-keys: |
+          apt-${{ runner.os }}-
+
     - name: Install system dependencies
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
+        sudo apt-get install -y --no-install-recommends \
           build-essential \
           cmake \
           ninja-build \
           ccache \
           qt6-base-dev \
-          qt6-base-private-dev \
           qt6-tools-dev \
           qt6-tools-dev-tools \
-          libgl1-mesa-dev \
-          libx11-dev \
-          libxrandr-dev \
-          libxinerama-dev \
-          libxcursor-dev \
-          libxi-dev \
-          libudev-dev \
-          libegl1-mesa-dev \
-          libdbus-1-dev \
-          libpulse-dev \
-          libwayland-dev \
-          libxkbcommon-dev \
-          libx11-xcb-dev \
-          libfontenc-dev \
-          libice-dev \
-          libsm-dev \
-          libxaw7-dev \
-          libxcomposite-dev \
-          libxdamage-dev \
-          libxkbfile-dev \
-          libxmu-dev \
-          libxmuu-dev \
-          libxpm-dev \
-          libxres-dev \
-          libxss-dev \
-          libxt-dev \
-          libxtst-dev \
-          libxv-dev \
-          libxxf86vm-dev \
-          libxcb-glx0-dev \
-          libxcb-render0-dev \
-          libxcb-render-util0-dev \
-          libxcb-xkb-dev \
-          libxcb-icccm4-dev \
-          libxcb-image0-dev \
-          libxcb-keysyms1-dev \
-          libxcb-randr0-dev \
-          libxcb-shape0-dev \
-          libxcb-sync-dev \
-          libxcb-xfixes0-dev \
-          libxcb-xinerama0-dev \
-          libxcb-dri3-dev \
-          libxcb-cursor-dev \
-          libxcb-dri2-0-dev \
-          libxcb-present-dev \
-          libxcb-composite0-dev \
-          libxcb-ewmh-dev \
-          libxcb-res0-dev \
-          libxcb-util-dev \
-          libxcb-util0-dev
+          libgl1-mesa-dev
