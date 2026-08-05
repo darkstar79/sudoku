@@ -30,3 +30,7 @@ runs:
           qt6-tools-dev \
           qt6-tools-dev-tools \
           libgl1-mesa-dev
+        # actions/cache saves the post-job step as the unprivileged runner
+        # user, but apt leaves lock/partial root-owned and unreadable —
+        # without this the save silently fails and every run is a cache miss.
+        sudo chmod -R a+rX /var/cache/apt/archives
