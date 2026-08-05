@@ -383,7 +383,7 @@ void SudokuBoardWidget::paintCellNotes(QPainter& painter, const RenderCell& cell
             if (note == highlight_value) {
                 QFont bold_font("Sans", layout.font_size, QFont::Bold);
                 painter.setFont(bold_font);
-                painter.setPen(SudokuBoardColors::TEXT_USER);
+                painter.setPen(BoardColors::TEXT_USER);
                 painter.drawText(note_rect, Qt::AlignCenter, QString::number(note));
                 painter.setFont(font);
             } else {

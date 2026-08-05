@@ -16,6 +16,7 @@
 #include "view/board_painter.h"
 #include "view/main_window.h"
 #include "view/sudoku_board_widget.h"
+#include "view/training_widget.h"
 
 #include <chrono>
 #include <filesystem>
@@ -29,14 +30,20 @@ using sudoku::core::Position;
 using sudoku::view::BoardPainter;
 using sudoku::view::CellHighlightFlags;
 using sudoku::view::HighlightOptions;
-namespace SudokuBoardColors = sudoku::view::SudokuBoardColors;
+namespace BoardColors = sudoku::view::BoardColors;
 
 class TestBoardHighlighting : public QObject {
     Q_OBJECT
 
     std::unique_ptr<test::UITestContext> ctx_;
     std::filesystem::path settings_dir_;
-    std::filesystem::path settings_file_;
+    int settings_file_counter_{0};
+
+    // Each widget-level test gets its own settings.yaml so a mid-test assertion failure in one
+    // test can never leak flipped settings into a later test via a shared file.
+    [[nodiscard]] std::filesystem::path uniqueSettingsFile() {
+        return settings_dir_ / ("settings_" + std::to_string(++settings_file_counter_) + ".yaml");
+    }
 
 private slots:
     // Pure decisions (Task 3 — RED before Task 4's BoardPainter helpers exist)
@@ -53,6 +60,7 @@ private slots:
     void toggleEachSettingUpdatesBoardWidget();
     void startupAppliesPersistedHighlightOptions();
     void startupAppliesConflictsFalseFromPersistedSettings();
+    void trainingBoardsFollowHighlightOptions();  // AC11
 };
 
 // --- Pure decisions -------------------------------------------------------
@@ -146,8 +154,8 @@ void TestBoardHighlighting::valueTextColorConflictGate() {
     HighlightOptions conflicts_on{.regions = true, .same_numbers = true, .conflicts = true};
     HighlightOptions conflicts_off{.regions = true, .same_numbers = true, .conflicts = false};
 
-    QCOMPARE(BoardPainter::valueTextColor(false, false, false, true, conflicts_on), SudokuBoardColors::TEXT_ERROR);
-    QCOMPARE(BoardPainter::valueTextColor(false, false, false, true, conflicts_off), SudokuBoardColors::TEXT_USER);
+    QCOMPARE(BoardPainter::valueTextColor(false, false, false, true, conflicts_on), BoardColors::TEXT_ERROR);
+    QCOMPARE(BoardPainter::valueTextColor(false, false, false, true, conflicts_off), BoardColors::TEXT_USER);
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
@@ -156,19 +164,19 @@ void TestBoardHighlighting::valueTextColorNonRegression() {
         HighlightOptions opts{.regions = true, .same_numbers = true, .conflicts = conflicts};
 
         // Hint-revealed always wins, regardless of conflict state.
-        QCOMPARE(BoardPainter::valueTextColor(false, false, true, true, opts), SudokuBoardColors::TEXT_HINT);
-        QCOMPARE(BoardPainter::valueTextColor(false, false, true, false, opts), SudokuBoardColors::TEXT_HINT);
+        QCOMPARE(BoardPainter::valueTextColor(false, false, true, true, opts), BoardColors::TEXT_HINT);
+        QCOMPARE(BoardPainter::valueTextColor(false, false, true, false, opts), BoardColors::TEXT_HINT);
 
         // Given stays TEXT_GIVEN even if (impossibly, but defensively) marked conflicted.
-        QCOMPARE(BoardPainter::valueTextColor(true, false, false, true, opts), sudoku::view::BoardColors::TEXT_GIVEN);
-        QCOMPARE(BoardPainter::valueTextColor(true, false, false, false, opts), sudoku::view::BoardColors::TEXT_GIVEN);
+        QCOMPARE(BoardPainter::valueTextColor(true, false, false, true, opts), BoardColors::TEXT_GIVEN);
+        QCOMPARE(BoardPainter::valueTextColor(true, false, false, false, opts), BoardColors::TEXT_GIVEN);
 
         // is_found falls through to TEXT_GIVEN, not a color of its own.
-        QCOMPARE(BoardPainter::valueTextColor(false, true, false, true, opts), sudoku::view::BoardColors::TEXT_GIVEN);
-        QCOMPARE(BoardPainter::valueTextColor(false, true, false, false, opts), sudoku::view::BoardColors::TEXT_GIVEN);
+        QCOMPARE(BoardPainter::valueTextColor(false, true, false, true, opts), BoardColors::TEXT_GIVEN);
+        QCOMPARE(BoardPainter::valueTextColor(false, true, false, false, opts), BoardColors::TEXT_GIVEN);
 
         // A plain user value with no conflict is always TEXT_USER.
-        QCOMPARE(BoardPainter::valueTextColor(false, false, false, false, opts), SudokuBoardColors::TEXT_USER);
+        QCOMPARE(BoardPainter::valueTextColor(false, false, false, false, opts), BoardColors::TEXT_USER);
     }
 }
 
@@ -202,7 +210,6 @@ void TestBoardHighlighting::initTestCase() {
         std::filesystem::temp_directory_path() /
         ("ui_test_board_highlighting_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(settings_dir_);
-    settings_file_ = settings_dir_ / "settings.yaml";
 
     ctx_ = std::make_unique<test::UITestContext>();
 }
@@ -216,7 +223,7 @@ void TestBoardHighlighting::cleanupTestCase() {
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void TestBoardHighlighting::toggleEachSettingUpdatesBoardWidget() {
-    auto settings = std::make_shared<core::SettingsManager>(settings_file_);
+    auto settings = std::make_shared<core::SettingsManager>(uniqueSettingsFile());
 
     view::MainWindow window;
     ctx_->setupMainWindow(window);
@@ -257,7 +264,7 @@ void TestBoardHighlighting::toggleEachSettingUpdatesBoardWidget() {
 // settings manager to a FRESH MainWindow, not just the toggle.
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void TestBoardHighlighting::startupAppliesPersistedHighlightOptions() {
-    auto settings = std::make_shared<core::SettingsManager>(settings_file_);
+    auto settings = std::make_shared<core::SettingsManager>(uniqueSettingsFile());
     settings->setHighlightRegions(false);
     settings->setHighlightSameNumbers(false);
 
@@ -271,15 +278,12 @@ void TestBoardHighlighting::startupAppliesPersistedHighlightOptions() {
     QVERIFY(board_widget != nullptr);
     QVERIFY(!board_widget->highlightOptions().regions);
     QVERIFY(!board_widget->highlightOptions().same_numbers);
-
-    settings->setHighlightRegions(true);
-    settings->setHighlightSameNumbers(true);
 }
 
 // Same startup-direction proof for `conflicts` — the one of the three flags with a persisted
 // `false` in real users' files today (the dead-toggle defect this story fixes).
 void TestBoardHighlighting::startupAppliesConflictsFalseFromPersistedSettings() {
-    auto settings = std::make_shared<core::SettingsManager>(settings_file_);
+    auto settings = std::make_shared<core::SettingsManager>(uniqueSettingsFile());
     settings->setShowConflicts(false);
 
     view::MainWindow window;
@@ -291,8 +295,55 @@ void TestBoardHighlighting::startupAppliesConflictsFalseFromPersistedSettings() 
     auto* board_widget = window.findChild<view::SudokuBoardWidget*>();
     QVERIFY(board_widget != nullptr);
     QVERIFY(!board_widget->highlightOptions().conflicts);
+}
 
-    settings->setShowConflicts(true);
+// AC11: TrainingWidget's two boards (training_board_, feedback_board_) must follow the same
+// three flags as the main game board — both directions (startup + on-change) — and must retain
+// the currently-applied options across rebuildPages() (triggered by a QEvent::LanguageChange),
+// since that rebuild constructs fresh SudokuBoardWidgets at their all-true defaults.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+void TestBoardHighlighting::trainingBoardsFollowHighlightOptions() {
+    auto settings = std::make_shared<core::SettingsManager>(uniqueSettingsFile());
+    settings->setHighlightRegions(false);
+
+    view::MainWindow window;
+    ctx_->setupMainWindow(window);
+    window.setSettingsManager(settings);
+    window.show();
+    QVERIFY(QTest::qWaitForWindowExposed(&window));
+
+    auto* training_widget = window.training_widget_;
+    QVERIFY(training_widget != nullptr);
+    auto* training_board = training_widget->training_board_;
+    auto* feedback_board = training_widget->feedback_board_;
+    QVERIFY(training_board != nullptr);
+    QVERIFY(feedback_board != nullptr);
+
+    // Startup direction: the persisted false value reached both training boards, not just the
+    // main game board.
+    QVERIFY(!training_board->highlightOptions().regions);
+    QVERIFY(!feedback_board->highlightOptions().regions);
+
+    // On-change direction.
+    settings->setHighlightSameNumbers(false);
+    QApplication::processEvents();
+    QVERIFY(!training_board->highlightOptions().same_numbers);
+    QVERIFY(!feedback_board->highlightOptions().same_numbers);
+
+    // Rebuild retention: TrainingWidget::changeEvent(QEvent::LanguageChange) tears down and
+    // reconstructs both boards via rebuildPages(). The freshly built boards must still carry the
+    // currently-applied options, not the struct's all-true default.
+    QEvent language_change(QEvent::LanguageChange);
+    QApplication::sendEvent(training_widget, &language_change);
+
+    auto* rebuilt_training_board = training_widget->training_board_;
+    auto* rebuilt_feedback_board = training_widget->feedback_board_;
+    QVERIFY(rebuilt_training_board != nullptr);
+    QVERIFY(rebuilt_feedback_board != nullptr);
+    QVERIFY(!rebuilt_training_board->highlightOptions().regions);
+    QVERIFY(!rebuilt_training_board->highlightOptions().same_numbers);
+    QVERIFY(!rebuilt_feedback_board->highlightOptions().regions);
+    QVERIFY(!rebuilt_feedback_board->highlightOptions().same_numbers);
 }
 
 QTEST_MAIN(TestBoardHighlighting)

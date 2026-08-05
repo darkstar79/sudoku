@@ -41,6 +41,9 @@ inline constexpr QColor CELL_BACKGROUND{255, 255, 255};
 inline constexpr QColor CELL_SELECTED{254, 243, 199};
 inline constexpr QColor CELL_SELECTION_OUTLINE{20, 20, 20};
 inline constexpr QColor TEXT_GIVEN{20, 20, 20};
+inline constexpr QColor TEXT_USER{0, 82, 204};
+inline constexpr QColor TEXT_ERROR{220, 38, 38};
+inline constexpr QColor TEXT_HINT{255, 165, 0};
 inline constexpr QColor HOVER_TINT{200, 220, 255, 80};        // Subtle blue overlay for candidate hover
 inline constexpr QColor HIGHLIGHT_REGION{220, 232, 245};      // Row/col/block of focus cell
 inline constexpr QColor HIGHLIGHT_SAME_VALUE{195, 218, 245};  // Same placed value as focus cell

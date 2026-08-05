@@ -37,10 +37,10 @@ class TestBoardInteraction;
 namespace sudoku::view {
 
 /// Game-specific color constants for cell values and analysis.
+/// TEXT_USER/TEXT_ERROR/TEXT_HINT live in BoardColors (board_painter.h) instead — BoardPainter's
+/// pure statics (e.g. valueTextColor, story 8-20) need them and must not depend on this widget's
+/// header.
 namespace SudokuBoardColors {
-inline constexpr QColor TEXT_USER{0, 82, 204};
-inline constexpr QColor TEXT_ERROR{220, 38, 38};
-inline constexpr QColor TEXT_HINT{255, 165, 0};
 inline constexpr QColor TEXT_NOTE{107, 107, 107};
 
 // Analysis colors for free-form cell coloring (1-6)

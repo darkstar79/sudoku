@@ -35,6 +35,7 @@ class QStackedWidget;
 
 #ifdef SUDOKU_UI_TESTING
 class TestTrainingWidget;
+class TestBoardHighlighting;
 #endif
 
 namespace sudoku::view {
@@ -97,6 +98,7 @@ private:
 
 #ifdef SUDOKU_UI_TESTING
     friend class ::TestTrainingWidget;
+    friend class ::TestBoardHighlighting;
 #endif
 };
 

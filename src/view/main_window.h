@@ -56,6 +56,7 @@ class TestTrainingWidget;
 class TestEditMode;
 class TestKeyboardShortcuts;
 class TestPauseMode;
+class TestBoardHighlighting;
 #endif
 
 namespace sudoku::view {
@@ -241,6 +242,7 @@ private:
     friend class ::TestEditMode;
     friend class ::TestKeyboardShortcuts;
     friend class ::TestPauseMode;
+    friend class ::TestBoardHighlighting;
 #endif
 };
 

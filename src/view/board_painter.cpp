@@ -17,7 +17,6 @@
 #include "board_painter.h"
 
 #include "core/constants.h"
-#include "sudoku_board_widget.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -232,12 +231,12 @@ int BoardPainter::noteHighlightValue(int focus_value, int hovered_candidate, Hig
 QColor BoardPainter::valueTextColor(bool is_given, bool is_found, bool is_hint_revealed, bool has_conflict,
                                     HighlightOptions options) {
     if (is_hint_revealed) {
-        return SudokuBoardColors::TEXT_HINT;
+        return BoardColors::TEXT_HINT;
     }
     if (is_given || is_found) {
         return BoardColors::TEXT_GIVEN;
     }
-    return (has_conflict && options.conflicts) ? SudokuBoardColors::TEXT_ERROR : SudokuBoardColors::TEXT_USER;
+    return (has_conflict && options.conflicts) ? BoardColors::TEXT_ERROR : BoardColors::TEXT_USER;
 }
 
 }  // namespace sudoku::view
