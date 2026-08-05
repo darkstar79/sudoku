@@ -9,10 +9,16 @@ runs:
     # packages already declare their own runtime Depends on the xcb/X11
     # libs they need). find_package(Qt6 ... COMPONENTS Widgets Test
     # LinguistTools) in CMakeLists.txt is the full set of Qt modules used.
+    # Cache only the downloaded .deb files (mode 644, world-readable), not
+    # the whole archives dir: apt-get leaves lock/partial root-owned and
+    # unreadable by the unprivileged runner user that actions/cache's save
+    # step runs as, and *any* later sudo apt-get in the same job (e.g. a
+    # clang-tidy install step) re-creates them — so excluding them via glob
+    # is robust where a one-off chmod isn't.
     - name: Cache apt packages
       uses: actions/cache@v5
       with:
-        path: /var/cache/apt/archives
+        path: /var/cache/apt/archives/*.deb
         key: apt-${{ runner.os }}-${{ hashFiles('.github/actions/install-qt-deps/action.yml') }}
         restore-keys: |
           apt-${{ runner.os }}-
@@ -30,7 +36,3 @@ runs:
           qt6-tools-dev \
           qt6-tools-dev-tools \
           libgl1-mesa-dev
-        # actions/cache saves the post-job step as the unprivileged runner
-        # user, but apt leaves lock/partial root-owned and unreadable —
-        # without this the save silently fails and every run is a cache miss.
-        sudo chmod -R a+rX /var/cache/apt/archives
