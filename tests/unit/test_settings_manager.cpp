@@ -37,6 +37,8 @@ TEST_CASE("SettingsManager - Default values when no file exists", "[settings]") 
     CHECK(s.show_conflicts == true);
     CHECK(s.show_hints == true);
     CHECK(s.show_session_timer == false);
+    CHECK(s.highlight_regions == true);
+    CHECK(s.highlight_same_numbers == true);
     CHECK(s.language == "en");
     CHECK(s.experimental_training_mode == false);
     CHECK(s.experimental_coaching_hints == false);
@@ -224,6 +226,76 @@ TEST_CASE("SettingsManager - setShowSessionTimer notifies observers on change on
     mgr.setShowSessionTimer(false);
     CHECK(notify_count == 2);
     CHECK(last_notified.show_session_timer == false);
+}
+
+TEST_CASE("SettingsManager - highlight_regions and highlight_same_numbers persist independently",
+          "[settings][highlight]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        std::ofstream out(path);
+        out << "display:\n"
+            << "  highlight_regions: false\n"
+            << "  highlight_same_numbers: false\n";
+    }
+
+    SettingsManager mgr(path);
+    CHECK(mgr.getSettings().highlight_regions == false);
+    CHECK(mgr.getSettings().highlight_same_numbers == false);
+}
+
+TEST_CASE("SettingsManager - display block without highlight keys keeps both aids on (back-compat)",
+          "[settings][highlight]") {
+    // Simulates a settings.yaml written by a pre-8.20 binary: a display block exists (other
+    // keys present) but neither highlight_regions nor highlight_same_numbers is known yet.
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        std::ofstream out(path);
+        out << "display:\n"
+            << "  show_conflicts: false\n"
+            << "  show_hints: true\n";
+    }
+
+    SettingsManager mgr(path);
+    const auto& s = mgr.getSettings();
+    CHECK(s.show_conflicts == false);  // sanity: the file did load
+    CHECK(s.highlight_regions == true);
+    CHECK(s.highlight_same_numbers == true);
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("SettingsManager - setHighlightRegions and setHighlightSameNumbers persist and notify",
+          "[settings][highlight]") {
+    sudoku::test::TempTestDir tmp;
+    auto path = tmp.path() / "settings.yaml";
+
+    {
+        SettingsManager mgr(path);
+        REQUIRE(mgr.getSettings().highlight_regions == true);
+        REQUIRE(mgr.getSettings().highlight_same_numbers == true);
+
+        int notify_count = 0;
+        mgr.settingsObservable().subscribe([&](const Settings&) { ++notify_count; });
+
+        mgr.setHighlightRegions(false);
+        CHECK(mgr.getSettings().highlight_regions == false);
+        CHECK(notify_count == 1);
+
+        // No-op transition: same value, no notification.
+        mgr.setHighlightRegions(false);
+        CHECK(notify_count == 1);
+
+        mgr.setHighlightSameNumbers(false);
+        CHECK(mgr.getSettings().highlight_same_numbers == false);
+        CHECK(notify_count == 2);
+    }
+
+    SettingsManager mgr2(path);
+    CHECK(mgr2.getSettings().highlight_regions == false);
+    CHECK(mgr2.getSettings().highlight_same_numbers == false);
 }
 
 TEST_CASE("SettingsManager - Save and load round-trip", "[settings]") {

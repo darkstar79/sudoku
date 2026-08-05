@@ -759,6 +759,19 @@ void MainWindow::applySettings(const core::Settings& s) {
             updateStatusBar();
         }
     }
+
+    applyHighlightOptions(s);
+}
+
+void MainWindow::applyHighlightOptions(const core::Settings& s) {
+    const view::HighlightOptions opts{
+        .regions = s.highlight_regions, .same_numbers = s.highlight_same_numbers, .conflicts = s.show_conflicts};
+    if (board_widget_) {
+        board_widget_->setHighlightOptions(opts);
+    }
+    if (training_widget_) {
+        training_widget_->setHighlightOptions(opts);
+    }
 }
 
 void MainWindow::setPlayLimitController(std::shared_ptr<viewmodel::PlayLimitController> controller) {
@@ -1761,6 +1774,20 @@ void MainWindow::showSettingsDialog() {
     show_conflicts_cb->setChecked(settings_manager_->getSettings().show_conflicts);
     display_layout->addWidget(show_conflicts_cb);
 
+    auto* highlight_regions_cb =
+        new QCheckBox(qstr(core::loc("Sudoku", "Highlight row, column and box of the selected cell")));
+    highlight_regions_cb->setChecked(settings_manager_->getSettings().highlight_regions);
+    highlight_regions_cb->setToolTip(qstr(
+        core::loc("Sudoku", "Tint every cell that shares a row, a column or a 3x3 box with the cell you are on.")));
+    display_layout->addWidget(highlight_regions_cb);
+
+    auto* highlight_numbers_cb = new QCheckBox(qstr(core::loc("Sudoku", "Highlight matching numbers")));
+    highlight_numbers_cb->setChecked(settings_manager_->getSettings().highlight_same_numbers);
+    highlight_numbers_cb->setToolTip(
+        qstr(core::loc("Sudoku", "Tint cells holding the same number as the cell you are on, and emphasise "
+                                 "matching pencil marks - including the pencil mark under the mouse pointer.")));
+    display_layout->addWidget(highlight_numbers_cb);
+
     auto* show_hints_cb = new QCheckBox(qstr(core::loc("Sudoku", "Show Hints")));
     show_hints_cb->setChecked(settings_manager_->getSettings().show_hints);
     display_layout->addWidget(show_hints_cb);
@@ -1931,10 +1958,20 @@ void MainWindow::showSettingsDialog() {
     };
 
     connectCheckBox(show_conflicts_cb, [this](bool checked) {
-        settings_manager_->setShowConflicts(checked);
+        settings_manager_->setShowConflicts(checked);  // observer -> applySettings -> repaint (story 8-20)
         if (view_model_) {
+            // Vestigial: nothing reads UIState::show_conflicts (the render path is HighlightOptions,
+            // via applyHighlightOptions()). Kept only for bug #15's regression tests — see story 8-20.
             view_model_->setShowConflicts(checked);
         }
+    });
+
+    connectCheckBox(highlight_regions_cb, [this](bool checked) {
+        settings_manager_->setHighlightRegions(checked);  // observer -> applySettings -> repaint
+    });
+
+    connectCheckBox(highlight_numbers_cb, [this](bool checked) {
+        settings_manager_->setHighlightSameNumbers(checked);  // observer -> applySettings -> repaint
     });
 
     connectCheckBox(show_hints_cb, [this](bool checked) {

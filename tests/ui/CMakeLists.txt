@@ -17,6 +17,7 @@ set(UI_TEST_SOURCES
     test_experimental_gating.cpp
     test_session_timer.cpp
     test_color_utils.cpp
+    test_board_highlighting.cpp
     test_chrome_legibility.cpp
     test_pause_mode.cpp
 )

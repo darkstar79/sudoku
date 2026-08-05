@@ -56,6 +56,7 @@ class TestTrainingWidget;
 class TestEditMode;
 class TestKeyboardShortcuts;
 class TestPauseMode;
+class TestBoardHighlighting;
 #endif
 
 namespace sudoku::view {
@@ -205,6 +206,10 @@ private:
     /// and silently omitted from the other (story 8-19).
     void applySettings(const core::Settings& s);
 
+    /// Pushes the three HighlightOptions flags to the game board and training boards (story 8-20).
+    /// Called from applySettings() — never from a checkbox lambda directly (AC9).
+    void applyHighlightOptions(const core::Settings& s);
+
     // CSV export
     void exportAggregateStatsCsv();
     void exportGameSessionsCsv();
@@ -237,6 +242,7 @@ private:
     friend class ::TestEditMode;
     friend class ::TestKeyboardShortcuts;
     friend class ::TestPauseMode;
+    friend class ::TestBoardHighlighting;
 #endif
 };
 

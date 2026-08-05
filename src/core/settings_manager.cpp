@@ -52,6 +52,35 @@ namespace {
 // reads as unlimited — the policy guards minutes <= 0).
 constexpr int kMaxLimitMinutes = 1440;
 
+void loadDisplayFields(const YAML::Node& root, Settings& settings) {
+    auto display = root["display"];
+    if (!display) {
+        return;
+    }
+    if (auto v = display["show_conflicts"]) {
+        settings.show_conflicts = v.as<bool>();
+    }
+    if (auto v = display["show_hints"]) {
+        settings.show_hints = v.as<bool>();
+    }
+    if (auto v = display["show_session_timer"]) {
+        settings.show_session_timer = v.as<bool>();
+    }
+    if (auto v = display["highlight_regions"]) {
+        settings.highlight_regions = v.as<bool>();
+    }
+    if (auto v = display["highlight_same_numbers"]) {
+        settings.highlight_same_numbers = v.as<bool>();
+    }
+    if (auto v = display["collect_detailed_stats"]) {
+        settings.collect_detailed_stats = v.as<bool>();
+    }
+    if (auto v = display["encrypt_detailed_stats"]) {
+        settings.encrypt_detailed_stats = v.as<bool>();
+    }
+    // auto_notes_on_startup: ignored (feature removed)
+}
+
 void loadTimeLimits(const YAML::Node& root, Settings& settings) {
     auto time_limits = root["time_limits"];
     if (!time_limits) {
@@ -165,6 +194,18 @@ void SettingsManager::setShowSessionTimer(bool value) {
     notifyIfChanged(old);
 }
 
+void SettingsManager::setHighlightRegions(bool value) {
+    auto old = settings_;
+    settings_.highlight_regions = value;
+    notifyIfChanged(old);
+}
+
+void SettingsManager::setHighlightSameNumbers(bool value) {
+    auto old = settings_;
+    settings_.highlight_same_numbers = value;
+    notifyIfChanged(old);
+}
+
 void SettingsManager::setCollectDetailedStats(bool value) {
     auto old = settings_;
     settings_.collect_detailed_stats = value;
@@ -266,24 +307,7 @@ void SettingsManager::load() {
             }
         }
 
-        if (auto display = root["display"]) {
-            if (auto v = display["show_conflicts"]) {
-                settings_.show_conflicts = v.as<bool>();
-            }
-            if (auto v = display["show_hints"]) {
-                settings_.show_hints = v.as<bool>();
-            }
-            if (auto v = display["show_session_timer"]) {
-                settings_.show_session_timer = v.as<bool>();
-            }
-            if (auto v = display["collect_detailed_stats"]) {
-                settings_.collect_detailed_stats = v.as<bool>();
-            }
-            if (auto v = display["encrypt_detailed_stats"]) {
-                settings_.encrypt_detailed_stats = v.as<bool>();
-            }
-            // auto_notes_on_startup: ignored (feature removed)
-        }
+        loadDisplayFields(root, settings_);
 
         loadTimeLimits(root, settings_);
 
@@ -322,6 +346,8 @@ void SettingsManager::save() const {
         display["show_conflicts"] = settings_.show_conflicts;
         display["show_hints"] = settings_.show_hints;
         display["show_session_timer"] = settings_.show_session_timer;
+        display["highlight_regions"] = settings_.highlight_regions;
+        display["highlight_same_numbers"] = settings_.highlight_same_numbers;
         display["collect_detailed_stats"] = settings_.collect_detailed_stats;
         display["encrypt_detailed_stats"] = settings_.encrypt_detailed_stats;
         root["display"] = display;
